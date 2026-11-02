@@ -8,6 +8,8 @@
 4. Renderer.apply_config：字号重建字体并清 T8 缓存、画布尺寸变更拒绝热应用
 5. UI.set_config：skip 策略跟随新配置
 """
+from __future__ import annotations
+
 import json
 import os
 

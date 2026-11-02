@@ -7,6 +7,8 @@
 用法:
     py tools/export_mooki_layers.py
 """
+from __future__ import annotations
+
 import os
 import re
 import sys
