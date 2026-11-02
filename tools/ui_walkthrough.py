@@ -10,12 +10,14 @@
   与 walkthrough.gif（按操作顺序的动图）。
 
 用法：
-    py -3 tools/ui_walkthrough.py
+    py -3 tools/ui_walkthrough.py [--game <游戏目录>]
 
-退出码 0 = 全部断言通过；1 = 有失败项（中文清单打印在末尾）。
+退出码 0 = 全部断言通过；1 = 有失败项（中文清单打印在末尾）；
+2 = 找不到走查素材（公开仓库不含 作品/ 目录，需用 --game 指定已有工程）。
 """
 from __future__ import annotations
 
+import argparse
 import os
 import shutil
 import sys
@@ -41,7 +43,8 @@ from engine.renderer import Renderer  # noqa: E402
 from engine.runtime import Runtime  # noqa: E402
 from engine.ui import UI  # noqa: E402
 
-# 素材：作品示例《星海回声》——带 CG、选项、转场、镜头与画廊门控，覆盖面最全
+# 默认素材：作品示例《星海回声》——带 CG、选项、转场、镜头与画廊门控，覆盖面最全
+# 注意：作品/ 不随本仓库分发，公开仓库里请用 --game 指定自己的工程。
 SRC_GAME = ROOT / "作品" / "副产物" / "作品示例" / "星海回声"
 OUT = ROOT / "screenshots" / "walkthrough"
 
@@ -285,13 +288,13 @@ class Walk:
             self._hover_override = None
 
 
-def _prepare_game(tmp_root: Path) -> Path:
+def _prepare_game(tmp_root: Path, source: Path) -> Path:
     """复制作品到临时目录并补标题（不改动原工程与真实存档）。"""
-    game = tmp_root / "星海回声"
-    shutil.copytree(SRC_GAME, game,
+    game = tmp_root / source.name
+    shutil.copytree(source, game,
                     ignore=shutil.ignore_patterns("saves", "__pycache__"))
     settings = load_settings(str(game / "settings.json"))
-    settings.update({"title": "星海回声", "splash": False, "title_text_visible": True})
+    settings.update({"title": source.name, "splash": False, "title_text_visible": True})
     save_settings(settings, str(game / "settings.json"))
     return game
 
@@ -700,20 +703,33 @@ def _write_report(w: Walk, elapsed: float) -> Path:
   <h2>逐屏证据</h2>
   {''.join(rows)}
 </main>
-<footer>生成时间 {time.strftime('%Y-%m-%d %H:%M:%S')} · 素材：作品示例《星海回声》（临时副本，未改动原工程）</footer>
+<footer>生成时间 {time.strftime('%Y-%m-%d %H:%M:%S')} · 素材：{w.game.name}（临时副本，未改动原工程）</footer>
 </body></html>"""
     path = w.out / "report.html"
     path.write_text(html, encoding="utf-8")
     return path
 
 
-def main() -> int:
+def main(argv=None) -> int:
+    parser = argparse.ArgumentParser(
+        description="MYONL 玩家侧全交互走查：真实键鼠事件驱动，逐屏截图并断言。")
+    parser.add_argument("--game", default=str(SRC_GAME),
+                        help="走查用的游戏工程目录（需含 script.gal）；默认 %(default)s")
+    args = parser.parse_args(argv)
+    source = Path(args.game).expanduser().resolve()
+    if not (source / "script.gal").is_file():
+        print(f"找不到走查素材：{source}", file=sys.stderr)
+        print("说明：作品/ 目录不随本仓库分发，公开仓库里请用 --game 指定自己的工程。",
+              file=sys.stderr)
+        print("例如：py -3 tools/ui_walkthrough.py --game games/标准示例", file=sys.stderr)
+        return 2
+
     OUT.mkdir(parents=True, exist_ok=True)
     for old in OUT.glob("*.png"):
         old.unlink()
     tmp_root = Path(tempfile.mkdtemp(prefix="myonl_walk_"))
     save_api.set_saves_dir(str(tmp_root / "saves"))
-    game = _prepare_game(tmp_root)
+    game = _prepare_game(tmp_root, source)
     t0 = time.perf_counter()
     w = Walk(game, OUT)
     try:

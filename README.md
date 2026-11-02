@@ -43,7 +43,7 @@ MYONL 是一个自研的 Galgame / 视觉小说引擎。作者写 `script.gal`�
 - **开发体验**：Web 编辑器（三视图 + 实时预览）、语法检查、一键打包、**剧本/配置热重载**（`--hot-reload`）
 - **平台**：逻辑画布可配（1280×720 / 1920×1080 等比缩放）、素材按需加载 + LRU 缓存（大素材库不会一次性占满内存）
 
-### 快速开始（Windows）
+## 源码开发（Windows，需 Python 3.13）
 
 ```powershell
 pip install -r requirements.txt
@@ -69,7 +69,7 @@ py -3 -m engine.demo games/我的第一个游戏/script.gal --assets games/我�
 
 改 `.gal` → 500ms 内从当前场景重播；改 `config.json` → 字号/颜色/对话框即时生效。
 
-## 开发
+### 测试与门禁
 
 ```powershell
 py -3 -m pytest -q                    # 全量测试（约 90s）
