@@ -1,0 +1,123 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 320">
+  <defs>
+    <!-- 月牙身体渐变：月白 → 暖奶油金（径向，柔和） -->
+    <radialGradient id="bodyGrad" cx="50%" cy="38%" r="75%">
+      <stop offset="0%" stop-color="#FFFDF5"/>
+      <stop offset="55%" stop-color="#FFF6DF"/>
+      <stop offset="100%" stop-color="#FFE9B8"/>
+    </radialGradient>
+    <!-- 金边渐变（有明暗层次） -->
+    <linearGradient id="edgeGrad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#FFE08A"/>
+      <stop offset="100%" stop-color="#F5B84C"/>
+    </linearGradient>
+    <!-- 外圈光晕（梦幻发光） -->
+    <radialGradient id="glowGrad" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#FFE066" stop-opacity="0.55"/>
+      <stop offset="55%" stop-color="#FFE066" stop-opacity="0.18"/>
+      <stop offset="100%" stop-color="#FFE066" stop-opacity="0"/>
+    </radialGradient>
+    <!-- 瞳孔渐变：深空蓝 → 亮蓝紫 -->
+    <radialGradient id="pupilGrad" cx="38%" cy="32%" r="85%">
+      <stop offset="0%" stop-color="#4A5AA8"/>
+      <stop offset="70%" stop-color="#2A3059"/>
+      <stop offset="100%" stop-color="#1D2342"/>
+    </radialGradient>
+    <!-- 腮红：粉 → 粉白 -->
+    <radialGradient id="cheekGrad" cx="50%" cy="40%" r="65%">
+      <stop offset="0%" stop-color="#FFCBD6"/>
+      <stop offset="100%" stop-color="#FFB6C1"/>
+    </radialGradient>
+    <!-- 星星渐变 -->
+    <linearGradient id="starGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#FFEF9E"/>
+      <stop offset="100%" stop-color="#FFD166"/>
+    </linearGradient>
+  </defs>
+
+  <!-- ========== 1. 外圈光晕 ========== -->
+  <ellipse cx="160" cy="175" rx="128" ry="118" fill="url(#glowGrad)"/>
+
+  <!-- ========== 2. 月牙身体（C 形碗状，胖月牙） ========== -->
+  <!-- 外弧 + 内凹弧（月牙船形） -->
+  <path d="M 62 178 A 98 96 0 1 1 258 178 A 66 62 0 1 0 62 178 Z"
+        fill="url(#bodyGrad)"/>
+  <!-- 金边描边（沿外弧 + 内弧，粗细 2.6，圆头） -->
+  <path d="M 62 178 A 98 96 0 1 1 258 178"
+        fill="none" stroke="url(#edgeGrad)" stroke-width="2.6" stroke-linecap="round"/>
+  <path d="M 258 178 A 66 62 0 1 0 62 178"
+        fill="none" stroke="url(#edgeGrad)" stroke-width="2.2" stroke-linecap="round"/>
+  <!-- 月牙内壁浅高光（内侧亮边，立体感） -->
+  <path d="M 96 128 A 70 62 0 1 0 224 128"
+        fill="none" stroke="#FFFFFF" stroke-opacity="0.5" stroke-width="2" stroke-linecap="round"/>
+  <!-- 月牙顶端小亮斑 -->
+  <ellipse cx="160" cy="86" rx="18" ry="10" fill="#FFFFFF" opacity="0.35"/>
+
+  <!-- ========== 3. 头顶主星（亮星 + 高光 + 星芒） ========== -->
+  <g transform="translate(160, 40)">
+    <!-- 星芒细线（柔光） -->
+    <g stroke="#FFE066" stroke-opacity="0.35" stroke-width="1.6" stroke-linecap="round">
+      <line x1="0" y1="-26" x2="0" y2="-14"/>
+      <line x1="0" y1="14" x2="0" y2="26"/>
+      <line x1="-26" y1="0" x2="-14" y2="0"/>
+      <line x1="14" y1="0" x2="26" y2="0"/>
+      <line x1="-18" y1="-18" x2="-10" y2="-10"/>
+      <line x1="10" y1="10" x2="18" y2="18"/>
+    </g>
+    <!-- 五角星主体（圆角尖） -->
+    <path d="M 0 -15 L 4.6 -4.6 L 15 0 L 4.6 4.6 L 0 15 L -4.6 4.6 L -15 0 L -4.6 -4.6 Z"
+          fill="url(#starGrad)" stroke="#F5B84C" stroke-width="1.2" stroke-linejoin="round"/>
+    <!-- 星上高光 -->
+    <circle cx="-4" cy="-6" r="2.2" fill="#FFFFFF"/>
+  </g>
+  <!-- 侧边小星（梦幻点缀） -->
+  <g fill="#FFE066">
+    <circle cx="236" cy="88" r="3.2" opacity="0.85"/>
+    <circle cx="234" cy="86" r="1.3" fill="#FFFFFF"/>
+    <circle cx="42" cy="120" r="2.2" opacity="0.7"/>
+    <circle cx="280" cy="140" r="1.8" opacity="0.6"/>
+    <circle cx="30" cy="52" r="1.6" opacity="0.5"/>
+  </g>
+
+  <!-- ========== 4. 眼睛（层次：眼白→金描→渐变瞳孔→大高光→反光点） ========== -->
+  <!-- 左眼 -->
+  <g>
+    <ellipse cx="115" cy="152" rx="17" ry="19" fill="#FFFFFF"/>
+    <ellipse cx="115" cy="152" rx="17" ry="19" fill="none" stroke="#F5C966" stroke-width="1.3"/>
+    <circle cx="119" cy="154" r="10.5" fill="url(#pupilGrad)"/>
+    <circle cx="113.5" cy="148" r="3.6" fill="#FFFFFF"/>
+    <circle cx="123" cy="160" r="1.5" fill="#FFFFFF" opacity="0.65"/>
+  </g>
+  <!-- 右眼 -->
+  <g>
+    <ellipse cx="205" cy="152" rx="17" ry="19" fill="#FFFFFF"/>
+    <ellipse cx="205" cy="152" rx="17" ry="19" fill="none" stroke="#F5C966" stroke-width="1.3"/>
+    <circle cx="201" cy="154" r="10.5" fill="url(#pupilGrad)"/>
+    <circle cx="195.5" cy="148" r="3.6" fill="#FFFFFF"/>
+    <circle cx="205" cy="160" r="1.5" fill="#FFFFFF" opacity="0.65"/>
+  </g>
+
+  <!-- ========== 5. 腮红（双层，柔） ========== -->
+  <ellipse cx="88" cy="196" rx="14" ry="8.5" fill="url(#cheekGrad)" opacity="0.8"/>
+  <ellipse cx="88" cy="194" rx="9" ry="5" fill="#FFDDE4" opacity="0.6"/>
+  <ellipse cx="232" cy="196" rx="14" ry="8.5" fill="url(#cheekGrad)" opacity="0.8"/>
+  <ellipse cx="232" cy="194" rx="9" ry="5" fill="#FFDDE4" opacity="0.6"/>
+
+  <!-- ========== 6. 嘴巴（微笑 + 两端小翘） ========== -->
+  <path d="M 146 200 Q 160 209 174 200" fill="none" stroke="#2A3059" stroke-width="2.4" stroke-linecap="round"/>
+  <path d="M 152 203 Q 160 209 168 203" fill="none" stroke="#2A3059" stroke-width="1.4" stroke-linecap="round" opacity="0.6"/>
+
+  <!-- ========== 7. 小金脚 ========== -->
+  <ellipse cx="128" cy="252" rx="9" ry="5.5" fill="url(#edgeGrad)" opacity="0.85"/>
+  <ellipse cx="192" cy="252" rx="9" ry="5.5" fill="url(#edgeGrad)" opacity="0.85"/>
+
+  <!-- ========== 8. 星尘点缀（月牙周围细碎光点） ========== -->
+  <g fill="#FFFFFF" opacity="0.5">
+    <circle cx="150" cy="120" r="1.2"/>
+    <circle cx="178" cy="112" r="0.9"/>
+    <circle cx="240" cy="168" r="1.1"/>
+    <circle cx="92" cy="88" r="1.0"/>
+    <circle cx="210" cy="250" r="1.0"/>
+    <circle cx="70" cy="210" r="0.9"/>
+  </g>
+</svg>

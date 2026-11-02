@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>Mooki · 图标 v2 预览</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: system-ui, -apple-system, "Segoe UI", sans-serif; background: #F5F2EB; padding: 40px 32px; color: #2A3059; }
+  h1 { font-size: 24px; letter-spacing: 1px; margin-bottom: 4px; }
+  h1 .tag { display: inline-block; font-size: 12px; padding: 2px 8px; background: #FFD166; border-radius: 4px; margin-left: 10px; color: #2A3059; }
+  .sub { color: #7a7f9e; font-size: 13px; margin-bottom: 32px; }
+  .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; }
+  .card { background: #FFFFFF; border-radius: 12px; padding: 20px; border: 1px solid #E8E4D8; box-shadow: 0 2px 8px rgba(42,48,89,.06); }
+  .card h3 { font-size: 13px; color: #7a7f9e; margin-bottom: 12px; font-weight: 600; letter-spacing: .5px; }
+  .bg-swatch { width: 100%; aspect-ratio: 1; border-radius: 8px; display: flex; align-items: center; justify-content: center; border: 1px solid #E8E4D8; }
+  .bg-dark   { background: linear-gradient(160deg, #1D2342, #2A3059 60%, #5A4E8C); }
+  .bg-night  { background: radial-gradient(ellipse at 35% 30%, #3B4E8C, #1D2342 70%); }
+  .bg-light  { background: #FFFFFF; border: 1px solid #E8E4D8; }
+  .bg-cream  { background: linear-gradient(160deg, #FFF7E6, #FFEED0); }
+  .expressions { display: flex; gap: 12px; }
+  .expr-item { flex: 1; text-align: center; }
+  .expr-item svg { width: 100%; height: auto; }
+  .expr-item .label { font-size: 11px; color: #7a7f9e; margin-top: 6px; }
+  .sizes { display: flex; flex-wrap: wrap; gap: 16px; align-items: center; padding: 12px 0; }
+  .sizes svg { flex-shrink: 0; }
+  .sizes .label { font-size: 10px; color: #7a7f9e; margin-bottom: 2px; }
+  .sizes .item { display: flex; flex-direction: column; align-items: center; }
+  .follow-area { width: 100%; height: 240px; background: linear-gradient(160deg, #1D2342, #2A3059 60%, #5A4E8C); border-radius: 8px; position: relative; overflow: hidden; cursor: crosshair; border: 1px solid #5A6180; }
+  .follow-area svg { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 180px; height: auto; }
+  .follow-hint { position: absolute; bottom: 8px; left: 50%; transform: translateX(-50%); font-size: 10px; color: #FFE066; opacity: .8; }
+  .toolbar { margin: 20px 0 32px; display: flex; gap: 10px; flex-wrap: wrap; }
+  .toolbar button { padding: 8px 18px; border: 1px solid #E8E4D8; background: #FFFFFF; border-radius: 6px; cursor: pointer; font-size: 13px; color: #2A3059; transition: all .15s; }
+  .toolbar button:hover { border-color: #FFD166; background: #FFF7E6; }
+  .toolbar button.active { background: #FFD166; border-color: #FFD166; }
+  .color-row { display: flex; gap: 8px; flex-wrap: wrap; }
+  .color-chip { display: flex; flex-direction: column; align-items: center; font-size: 10px; color: #2A3059; }
+  .color-chip .sw { width: 40px; height: 40px; border-radius: 8px; border: 1px solid rgba(0,0,0,.08); margin-bottom: 4px; }
+  .footer { margin-top: 40px; text-align: center; color: #b5b8ca; font-size: 11px; }
+  .note { font-size: 12px; color: #7a7f9e; line-height: 1.8; }
+</style>
+</head>
+<body>
+
+<h1>Mooki · 图标 v2 <span class="tag">重绘版</span></h1>
+<div class="sub">发光月牙 · 渐变身体 · 星尘光晕 · 层次眼睛（重绘，告别几何剪影）</div>
+
+<div class="toolbar">
+  <button class="active" onclick="setExpr('normal')">正常微笑</button>
+  <button onclick="setExpr('happy')">眯眼开心</button>
+  <button onclick="setExpr('surprise')">惊讶</button>
+  <button onclick="setExpr('angry')">鼓鼓脸</button>
+  <button onclick="toggleFollow()">眼睛跟随</button>
+</div>
+
+<div class="grid">
+
+  <div class="card">
+    <h3>不同背景表现</h3>
+    <div style="display:grid; grid-template-columns: repeat(2, 1fr); gap: 8px;">
+      <div class="bg-swatch bg-dark"><svg viewBox="0 0 320 320" width="170" height="auto" id="svg-dark"></svg></div>
+      <div class="bg-swatch bg-night"><svg viewBox="0 0 320 320" width="170" height="auto" id="svg-night"></svg></div>
+      <div class="bg-swatch bg-light"><svg viewBox="0 0 320 320" width="170" height="auto" id="svg-light"></svg></div>
+      <div class="bg-swatch bg-cream"><svg viewBox="0 0 320 320" width="170" height="auto" id="svg-cream"></svg></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>表情变体（当前：<span id="expr-label">正常微笑</span>）</h3>
+    <div class="expressions" id="expressions">
+      <div class="expr-item"><svg viewBox="0 0 320 320" id="expr-1"></svg><div class="label">正常微笑</div></div>
+      <div class="expr-item"><svg viewBox="0 0 320 320" id="expr-2"></svg><div class="label">眯眼开心</div></div>
+      <div class="expr-item"><svg viewBox="0 0 320 320" id="expr-3"></svg><div class="label">惊讶</div></div>
+      <div class="expr-item"><svg viewBox="0 0 320 320" id="expr-4"></svg><div class="label">鼓鼓脸</div></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>眼睛跟随鼠标（在框内移动）</h3>
+    <div class="follow-area" id="follow-area">
+      <svg viewBox="0 0 320 320" id="follow-svg"></svg>
+      <div class="follow-hint">鼠标在框内移动 · 瞳孔会跟着你看</div>
+    </div>
+  </div>
+
+  <div class="card" style="grid-column: span 2;">
+    <h3>多尺寸缩放（矢量无损）</h3>
+    <div class="sizes">
+      <div class="item"><div class="label">512</div><svg viewBox="0 0 320 320" width="128" height="auto" id="sz-512"></svg></div>
+      <div class="item"><div class="label">256</div><svg viewBox="0 0 320 320" width="64" height="auto" id="sz-256"></svg></div>
+      <div class="item"><div class="label">128</div><svg viewBox="0 0 320 320" width="32" height="auto" id="sz-128"></svg></div>
+      <div class="item"><div class="label">64</div><svg viewBox="0 0 320 320" width="16" height="auto" id="sz-64"></svg></div>
+      <div class="item"><div class="label">32</div><svg viewBox="0 0 320 320" width="9" height="auto" id="sz-32"></svg></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>配色规范（v2）</h3>
+    <div class="color-row" style="margin-bottom: 14px;">
+      <div class="color-chip"><div class="sw" style="background:#FFFDF5"></div>#FFFDF5<br>月白芯</div>
+      <div class="color-chip"><div class="sw" style="background:#FFE9B8"></div>#FFE9B8<br>暖金缘</div>
+      <div class="color-chip"><div class="sw" style="background:#FFE066"></div>#FFE066<br>星光</div>
+      <div class="color-chip"><div class="sw" style="background:#FFB6C1"></div>#FFB6C1<br>腮红</div>
+      <div class="color-chip"><div class="sw" style="background:#2A3059"></div>#2A3059<br>深空蓝</div>
+    </div>
+    <div class="note">
+      身体：径向渐变（月白→暖金），告别纯色剪影<br>
+      光晕：外圈金色径向光 + 星尘点缀<br>
+      眼睛：眼白→金描→渐变瞳孔→双高光<br>
+      描边：渐变金边（有明暗，非同粗单线）<br>
+      瞳孔偏移：±7px 跟随鼠标（桌宠用）
+    </div>
+  </div>
+
+</div>
+
+<div class="footer">MYONL Engine · Mooki · Icon v2 · 2026-10-29</div>
+
+<script>
+/* ========== v2 图标 SVG 主体（与 icon_v2.svg 同源，含渐变 defs） ========== */
+const SVG_BODY = `
+  <defs>
+    <radialGradient id="bodyGrad" cx="50%" cy="38%" r="75%">
+      <stop offset="0%" stop-color="#FFFDF5"/>
+      <stop offset="55%" stop-color="#FFF6DF"/>
+      <stop offset="100%" stop-color="#FFE9B8"/>
+    </radialGradient>
+    <linearGradient id="edgeGrad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#FFE08A"/>
+      <stop offset="100%" stop-color="#F5B84C"/>
+    </linearGradient>
+    <radialGradient id="glowGrad" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#FFE066" stop-opacity="0.55"/>
+      <stop offset="55%" stop-color="#FFE066" stop-opacity="0.18"/>
+      <stop offset="100%" stop-color="#FFE066" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="pupilGrad" cx="38%" cy="32%" r="85%">
+      <stop offset="0%" stop-color="#4A5AA8"/>
+      <stop offset="70%" stop-color="#2A3059"/>
+      <stop offset="100%" stop-color="#1D2342"/>
+    </radialGradient>
+    <radialGradient id="cheekGrad" cx="50%" cy="40%" r="65%">
+      <stop offset="0%" stop-color="#FFCBD6"/>
+      <stop offset="100%" stop-color="#FFB6C1"/>
+    </radialGradient>
+    <linearGradient id="starGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#FFEF9E"/>
+      <stop offset="100%" stop-color="#FFD166"/>
+    </linearGradient>
+  </defs>
+  <ellipse cx="160" cy="175" rx="128" ry="118" fill="url(#glowGrad)"/>
+  <path d="M 62 178 A 98 96 0 1 1 258 178 A 66 62 0 1 0 62 178 Z" fill="url(#bodyGrad)"/>
+  <path d="M 62 178 A 98 96 0 1 1 258 178" fill="none" stroke="url(#edgeGrad)" stroke-width="2.6" stroke-linecap="round"/>
+  <path d="M 258 178 A 66 62 0 1 0 62 178" fill="none" stroke="url(#edgeGrad)" stroke-width="2.2" stroke-linecap="round"/>
+  <path d="M 96 128 A 70 62 0 1 0 224 128" fill="none" stroke="#FFFFFF" stroke-opacity="0.5" stroke-width="2" stroke-linecap="round"/>
+  <ellipse cx="160" cy="86" rx="18" ry="10" fill="#FFFFFF" opacity="0.35"/>
+  <g transform="translate(160, 40)">
+    <g stroke="#FFE066" stroke-opacity="0.35" stroke-width="1.6" stroke-linecap="round">
+      <line x1="0" y1="-26" x2="0" y2="-14"/>
+      <line x1="0" y1="14" x2="0" y2="26"/>
+      <line x1="-26" y1="0" x2="-14" y2="0"/>
+      <line x1="14" y1="0" x2="26" y2="0"/>
+      <line x1="-18" y1="-18" x2="-10" y2="-10"/>
+      <line x1="10" y1="10" x2="18" y2="18"/>
+    </g>
+    <path d="M 0 -15 L 4.6 -4.6 L 15 0 L 4.6 4.6 L 0 15 L -4.6 4.6 L -15 0 L -4.6 -4.6 Z"
+          fill="url(#starGrad)" stroke="#F5B84C" stroke-width="1.2" stroke-linejoin="round"/>
+    <circle cx="-4" cy="-6" r="2.2" fill="#FFFFFF"/>
+  </g>
+  <g fill="#FFE066">
+    <circle cx="236" cy="88" r="3.2" opacity="0.85"/>
+    <circle cx="234" cy="86" r="1.3" fill="#FFFFFF"/>
+    <circle cx="42" cy="120" r="2.2" opacity="0.7"/>
+    <circle cx="280" cy="140" r="1.8" opacity="0.6"/>
+    <circle cx="30" cy="52" r="1.6" opacity="0.5"/>
+  </g>
+  <g fill="#FFFFFF" opacity="0.5">
+    <circle cx="150" cy="120" r="1.2"/>
+    <circle cx="178" cy="112" r="0.9"/>
+    <circle cx="240" cy="168" r="1.1"/>
+    <circle cx="92" cy="88" r="1.0"/>
+    <circle cx="210" cy="250" r="1.0"/>
+    <circle cx="70" cy="210" r="0.9"/>
+  </g>
+  <ellipse cx="128" cy="252" rx="9" ry="5.5" fill="url(#edgeGrad)" opacity="0.85"/>
+  <ellipse cx="192" cy="252" rx="9" ry="5.5" fill="url(#edgeGrad)" opacity="0.85"/>
+`;
+
+/* ========== 4 种表情（眼睛 + 嘴巴，其余复用身体） ========== */
+const EXPRS = {
+  normal: `
+    <ellipse cx="115" cy="152" rx="17" ry="19" fill="#FFFFFF"/>
+    <ellipse cx="115" cy="152" rx="17" ry="19" fill="none" stroke="#F5C966" stroke-width="1.3"/>
+    <circle data-pupil data-bx="119" data-by="154" cx="119" cy="154" r="10.5" fill="url(#pupilGrad)"/>
+    <circle cx="113.5" cy="148" r="3.6" fill="#FFFFFF"/>
+    <circle cx="123" cy="160" r="1.5" fill="#FFFFFF" opacity="0.65"/>
+    <ellipse cx="205" cy="152" rx="17" ry="19" fill="#FFFFFF"/>
+    <ellipse cx="205" cy="152" rx="17" ry="19" fill="none" stroke="#F5C966" stroke-width="1.3"/>
+    <circle data-pupil data-bx="201" data-by="154" cx="201" cy="154" r="10.5" fill="url(#pupilGrad)"/>
+    <circle cx="195.5" cy="148" r="3.6" fill="#FFFFFF"/>
+    <circle cx="205" cy="160" r="1.5" fill="#FFFFFF" opacity="0.65"/>
+    <ellipse cx="88" cy="196" rx="14" ry="8.5" fill="url(#cheekGrad)" opacity="0.8"/>
+    <ellipse cx="88" cy="194" rx="9" ry="5" fill="#FFDDE4" opacity="0.6"/>
+    <ellipse cx="232" cy="196" rx="14" ry="8.5" fill="url(#cheekGrad)" opacity="0.8"/>
+    <ellipse cx="232" cy="194" rx="9" ry="5" fill="#FFDDE4" opacity="0.6"/>
+    <path d="M 146 200 Q 160 209 174 200" fill="none" stroke="#2A3059" stroke-width="2.4" stroke-linecap="round"/>
+    <path d="M 152 203 Q 160 209 168 203" fill="none" stroke="#2A3059" stroke-width="1.4" stroke-linecap="round" opacity="0.6"/>
+  `,
+  happy: `
+    <path d="M 95 150 Q 115 133 135 150" fill="none" stroke="#2A3059" stroke-width="3.2" stroke-linecap="round"/>
+    <path d="M 185 150 Q 205 133 225 150" fill="none" stroke="#2A3059" stroke-width="3.2" stroke-linecap="round"/>
+    <ellipse cx="88" cy="198" rx="15" ry="9" fill="#FF8FA3" opacity="0.85"/>
+    <ellipse cx="232" cy="198" rx="15" ry="9" fill="#FF8FA3" opacity="0.85"/>
+    <path d="M 142 196 Q 160 212 178 196" fill="none" stroke="#2A3059" stroke-width="2.6" stroke-linecap="round"/>
+    <path d="M 150 200 Q 160 209 170 200" fill="none" stroke="#2A3059" stroke-width="1.4" stroke-linecap="round" opacity="0.6"/>
+  `,
+  surprise: `
+    <ellipse cx="115" cy="152" rx="19" ry="21" fill="#FFFFFF"/>
+    <ellipse cx="115" cy="152" rx="19" ry="21" fill="none" stroke="#F5C966" stroke-width="1.3"/>
+    <circle data-pupil data-bx="115" data-by="152" cx="115" cy="152" r="12.5" fill="url(#pupilGrad)"/>
+    <circle cx="109" cy="146" r="4.2" fill="#FFFFFF"/>
+    <ellipse cx="205" cy="152" rx="19" ry="21" fill="#FFFFFF"/>
+    <ellipse cx="205" cy="152" rx="19" ry="21" fill="none" stroke="#F5C966" stroke-width="1.3"/>
+    <circle data-pupil data-bx="205" data-by="152" cx="205" cy="152" r="12.5" fill="url(#pupilGrad)"/>
+    <circle cx="199" cy="146" r="4.2" fill="#FFFFFF"/>
+    <ellipse cx="160" cy="205" rx="7" ry="8.5" fill="#2A3059"/>
+    <ellipse cx="88" cy="200" rx="13" ry="8" fill="#FFB6C1" opacity="0.7"/>
+    <ellipse cx="232" cy="200" rx="13" ry="8" fill="#FFB6C1" opacity="0.7"/>
+  `,
+  angry: `
+    <ellipse cx="115" cy="154" rx="16" ry="18" fill="#FFFFFF"/>
+    <ellipse cx="115" cy="154" rx="16" ry="18" fill="none" stroke="#F5C966" stroke-width="1.3"/>
+    <circle data-pupil data-bx="119" data-by="156" cx="119" cy="156" r="9" fill="url(#pupilGrad)"/>
+    <circle cx="114" cy="150" r="3" fill="#FFFFFF"/>
+    <ellipse cx="205" cy="154" rx="16" ry="18" fill="#FFFFFF"/>
+    <ellipse cx="205" cy="154" rx="16" ry="18" fill="none" stroke="#F5C966" stroke-width="1.3"/>
+    <circle data-pupil data-bx="201" data-by="156" cx="201" cy="156" r="9" fill="url(#pupilGrad)"/>
+    <circle cx="196" cy="150" r="3" fill="#FFFFFF"/>
+    <path d="M 96 132 L 118 140" stroke="#2A3059" stroke-width="3" stroke-linecap="round"/>
+    <path d="M 224 132 L 202 140" stroke="#2A3059" stroke-width="3" stroke-linecap="round"/>
+    <ellipse cx="88" cy="200" rx="14" ry="9" fill="#FF6B81" opacity="0.7"/>
+    <ellipse cx="232" cy="200" rx="14" ry="9" fill="#FF6B81" opacity="0.7"/>
+    <path d="M 148 204 L 172 204" stroke="#2A3059" stroke-width="2.4" stroke-linecap="round"/>
+  `,
+};
+
+function assembleSVG(expr) {
+  return SVG_BODY + EXPRS[expr];
+}
+
+['svg-dark','svg-night','svg-light','svg-cream','sz-512','sz-256','sz-128','sz-64','sz-32'].forEach(id => {
+  document.getElementById(id).innerHTML = assembleSVG('normal');
+});
+
+function setExpr(expr) {
+  const names = {normal:'正常微笑', happy:'眯眼开心', surprise:'惊讶', angry:'鼓鼓脸'};
+  document.getElementById('expr-label').textContent = names[expr];
+  const exprs = ['normal','happy','surprise','angry'];
+  exprs.forEach((e, i) => document.getElementById('expr-' + (i+1)).innerHTML = assembleSVG(e));
+  document.getElementById('follow-svg').innerHTML = assembleSVG(expr);
+}
+setExpr('normal');
+
+let followOn = true;
+function toggleFollow() {
+  followOn = !followOn;
+  document.getElementById('follow-area').style.cursor = followOn ? 'crosshair' : 'default';
+}
+
+const FA = document.getElementById('follow-area');
+FA.addEventListener('mousemove', e => {
+  if (!followOn) return;
+  const rect = FA.getBoundingClientRect();
+  const cx = rect.left + rect.width/2;
+  const cy = rect.top + rect.height/2;
+  const dx = (e.clientX - cx) / (rect.width/2);
+  const dy = (e.clientY - cy) / (rect.height/2);
+  const maxOff = 7;
+  const offX = Math.max(-maxOff, Math.min(maxOff, dx * maxOff));
+  const offY = Math.max(-maxOff, Math.min(maxOff, dy * maxOff * 0.7));
+  document.querySelectorAll('#follow-svg circle[data-pupil]').forEach(c => {
+    c.setAttribute('cx', parseFloat(c.dataset.bx) + offX);
+    c.setAttribute('cy', parseFloat(c.dataset.by) + offY);
+  });
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,50 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# 测试与调试产物
+.pytest_cache/
+.screenshots/
+screenshots/
+saves/
+.coverage
+.coverage-summary.json
+htmlcov/
+
+# 生成物 / 运行时资产
+assets/_generated/
+build/
+dist/
+# 玩家模板（约 23MB 的预构建运行库，由 tools/build_player_template.py 生成）
+engine/templates/player/
+*.log
+# 编辑器预览用的临时剧本（mkstemp 命名 tmpXXXXXXXX.gal，异常退出才可能残留）
+tmp????????.gal
+
+# 模型权重与大模型文件（体积大，不入库）
+*.ckpt
+*.safetensors
+*.bin
+*.pth
+*.onnx
+
+# 编辑器与系统
+.idea/
+# 环境变量未展开时误建的目录（如 %SystemDrive%/ProgramData/...）
+%SystemDrive%/
+.vscode/
+.DS_Store
+Thumbs.db
+
+games/月光漫步/src/
+
+# 参考材料（第三方源码 / 商业项目 / 视频，约 380MB，仅本地查阅，不入库）
+p30-renpy-ref/
+
+settings.json
+
+# Trae HTML 分享缓存（工具产物，不入库）
+.trae-html-share-packages/

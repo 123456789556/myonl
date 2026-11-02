@@ -1,0 +1,15 @@
+{
+  "_说明": "打包档案（python pack.py <游戏目录> 自动读取）：上线前把游戏名、图标、运营号改成你自己的。",
+  "schema": 1,
+  "game_name": "晚风与约定",
+  "version": "1.0.0",
+  "icon": "icon.png",
+  "publisher": {
+    "name": "MYONL",
+    "account_id": "MYONL-DEMO",
+    "channel": "itch.io",
+    "contact": ""
+  },
+  "description": "MYONL 标准示例：一个 5 分钟、双结局的短篇视觉小说。",
+  "release_notes": "首个版本"
+}

@@ -1,0 +1,13 @@
+{
+  "_说明": "P28 画廊配置：键=画廊格名，值=点开后轮播的高清场景序列（每张约 5 秒）。未解锁格由引擎自动画 cg_locked 灰锁图。",
+  "cg_dark": ["bg_beach2", "bg_beach1b", "bg_beach3"],
+  "cg_dawn": ["bg_dawn1", "bg_dawn2", "bg_dawn3"],
+  "cg_end1": ["bg_moonpic", "bg_girlpic", "bg_nogirlpic", "bg_badending"],
+  "cg_end2": ["bg_library", "bg_beach1d", "bg_badending"],
+  "cg_end3": ["bg_littlemary", "bg_littlemary2", "bg_ending"],
+  "cg_end4": ["bg_hospital1", "bg_hospital2", "bg_heaven", "bg_ending"],
+  "cg_dark_mary": {"images": ["bg_beach2", "玛丽_暗_smiling"],
+                   "require": ["cg_end1", "cg_end2", "cg_end3", "cg_end4"]},
+  "cg_dawn_mary": {"images": ["bg_dawn1", "玛丽_黎明_smiling"],
+                   "require": ["cg_end1", "cg_end2", "cg_end3", "cg_end4"]}
+}

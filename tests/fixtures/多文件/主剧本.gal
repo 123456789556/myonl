@@ -1,0 +1,6 @@
+# 多文件示例：主剧本（@include 内联展开）
+@include 章节/第一章.gal
+
+@label main_end
+@ 林晚 回到主线。
+@end

@@ -1,0 +1,5 @@
+{
+  "_说明": "MYONL 只读配置（P30-S3）。只写要覆盖的键，其余走引擎默认值；玩家偏好请改 settings.json。完整可配项见 engine/config.py 的 DEFAULTS。",
+  "window_title": "月光漫步",
+  "title_music": "waves"
+}

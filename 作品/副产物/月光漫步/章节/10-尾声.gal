@@ -1,0 +1,45 @@
+# 10 尾声
+# 公共尾声：结局名 + 结局 CG（3/4 好结局，1/2 坏结局）+ end_theme + 署名
+
+@label 尾声_无话可说
+
+@ 结局一：无话可说
+
+@bg bg_badending
+@music end_theme
+@jump 终幕
+
+@label 尾声_历史
+
+@ 结局二：历史
+
+@bg bg_badending
+@music end_theme
+@jump 终幕
+
+@label 尾声_新娘
+
+@ 结局三：片刻的新娘
+
+@bg bg_ending
+@music end_theme
+@jump 终幕
+
+@label 尾声_光
+
+@ 结局四：携手走向光
+
+@bg bg_ending
+@music end_theme
+@jump 终幕
+
+@label 终幕
+
+@ 《月光漫步》
+@ 改编自《Moonlight Walks》v2.0
+@ 原作：PyTom（American Bishoujo）
+@ 美术：Mugenjohncel
+@ 引擎：MYONL（Ren'Py 开源版复刻）
+@ 鸣谢：所有支持与鼓励过我们的人
+@ 感谢游玩！
+@ 本作品基于 MIT 许可改编，版权归原作者 PyTom/American Bishoujo（2005-2009）

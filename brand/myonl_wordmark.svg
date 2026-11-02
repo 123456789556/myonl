@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- MYONL 横版字标 · 极简字母月方案
+     概念：MYONL 五字母中 O = 满月（发光月盘），Y 的右臂 = 金色月牙，M/U/L 为几何圆头字形
+     场景：官网 Header / 启动器标题 / 编辑器关于页（深色背景使用）
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 860 300">
+  <defs>
+    <radialGradient id="wmMoonGrad" cx="42%" cy="36%" r="80%">
+      <stop offset="0%" stop-color="#FFFDF5"/>
+      <stop offset="60%" stop-color="#FFF3D6"/>
+      <stop offset="100%" stop-color="#FFE9B8"/>
+    </radialGradient>
+    <radialGradient id="wmGlowGrad" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#FFE066" stop-opacity="0.45"/>
+      <stop offset="55%" stop-color="#FFE066" stop-opacity="0.14"/>
+      <stop offset="100%" stop-color="#FFE066" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="wmCrescentGrad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#FFE066"/>
+      <stop offset="100%" stop-color="#F5B84C"/>
+    </linearGradient>
+  </defs>
+
+  <!-- ========== M（几何圆头字形） ========== -->
+  <polyline points="50,230 50,70 100,160 150,70 150,230"
+            fill="none" stroke="#FFF7E6" stroke-width="30"
+            stroke-linecap="round" stroke-linejoin="round"/>
+
+  <!-- ========== O · 满月 ========== -->
+  <circle cx="255" cy="150" r="104" fill="url(#wmGlowGrad)"/>
+  <circle cx="255" cy="150" r="80" fill="url(#wmMoonGrad)"/>
+  <circle cx="232" cy="130" r="10" fill="#F0D9A8" opacity="0.35"/>
+  <circle cx="276" cy="172" r="6.5" fill="#F0D9A8" opacity="0.25"/>
+  <circle cx="268" cy="118" r="4" fill="#F0D9A8" opacity="0.2"/>
+
+  <!-- ========== Y · 月白几何字形 + 右上新月（V3 点月式，与图标一致） ========== -->
+  <line x1="390" y1="70" x2="440" y2="150" stroke="#FFF7E6" stroke-width="30" stroke-linecap="round"/>
+  <line x1="494" y1="70" x2="440" y2="150" stroke="#FFF7E6" stroke-width="30" stroke-linecap="round"/>
+  <line x1="440" y1="150" x2="440" y2="230" stroke="#FFF7E6" stroke-width="30" stroke-linecap="round"/>
+  <!-- 金色新月：Y 右上方，凹面朝左下，两尖朝右上 -->
+  <path d="M 518 34 A 40 40 0 0 0 568 76 A 29 29 0 0 1 518 34 Z" fill="url(#wmCrescentGrad)"/>
+
+  <!-- ========== U ========== -->
+  <path d="M 585 70 L 585 170 A 40 40 0 0 0 665 170 L 665 70"
+        fill="none" stroke="#FFF7E6" stroke-width="30"
+        stroke-linecap="round" stroke-linejoin="round"/>
+
+  <!-- ========== L ========== -->
+  <polyline points="735,70 735,230 810,230"
+            fill="none" stroke="#FFF7E6" stroke-width="30"
+            stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

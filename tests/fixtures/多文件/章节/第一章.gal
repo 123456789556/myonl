@@ -1,0 +1,7 @@
+# 第一章：定义角色、include 子目录插曲、跨文件跳转
+@character 林晚 #aaccff
+
+@label label_first
+@ 林晚 第一章。
+@include 子/插曲.gal
+@jump label_second

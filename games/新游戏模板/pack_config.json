@@ -1,0 +1,15 @@
+{
+  "_说明": "打包档案（python pack.py <游戏目录> 自动读取）：上线前把游戏名、图标、运营号改成你自己的。",
+  "schema": 1,
+  "game_name": "新游戏模板",
+  "version": "1.0.2",
+  "icon": "icon.png",
+  "publisher": {
+    "name": "个人开发者",
+    "account_id": "MYONL-DEMO",
+    "channel": "本地发行",
+    "contact": ""
+  },
+  "description": "由 MYONL 标准模板创建的游戏。",
+  "release_notes": "首个版本"
+}

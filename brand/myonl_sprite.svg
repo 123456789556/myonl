@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- MYONL 精灵 · Mooki · SVG 初稿
+     造型：胖月牙身体（evenodd 椭圆差集）+ 金边描边 + 腮红 + 大眼 + 头顶星星
+     配色：月白 #FFF7E6 / 金边 #FFD166 / 深空蓝 #2A3059 / 粉腮红 #FFB6C1 / 星光 #FFE066
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 200" width="240" height="200">
+  <!-- 背景画布（深空蓝半透明，方便看精灵在深色场景） -->
+  <rect width="240" height="200" fill="#2A3059" opacity="0.08" rx="12" />
+
+  <!-- ========== 1. 头顶小星星（呼应"夜空讲故事"） ========== -->
+  <g transform="translate(120, 18)">
+    <!-- 小星星 path：5 角星，尖朝上 -->
+    <path d="
+      M 0 -10
+      L 3 -3
+      L 10 -3
+      L 4.5 2
+      L 7 9
+      L 0 5
+      L -7 9
+      L -4.5 2
+      L -10 -3
+      L -3 -3
+      Z
+    " fill="#FFE066" stroke="#FFD166" stroke-width="1.2" stroke-linejoin="round" />
+    <!-- 星光高光点 -->
+    <circle cx="-2" cy="-5" r="1.2" fill="#FFFFFF" />
+  </g>
+
+  <!-- ========== 2. 月牙身体（evenodd 椭圆差集） ========== -->
+  <!-- 外椭圆（大） + 内椭圆（小）= 月牙形状 -->
+  <path d="
+    M 120 45
+    A 78 65 0 1 1 120 155
+    A 55 44 0 1 0 120 60
+    Z
+  " fill="#FFF7E6" fill-rule="evenodd" />
+
+  <!-- 金边描边（单独一条路径，给月牙外轮廓 + 内凹弧线描金边） -->
+  <!-- 外弧 -->
+  <path d="M 42 100 A 78 65 0 1 1 198 100" fill="none" stroke="#FFD166" stroke-width="3" stroke-linecap="round" />
+  <!-- 内弧（反向） -->
+  <path d="M 198 100 A 55 44 0 1 0 42 100" fill="none" stroke="#FFD166" stroke-width="3" stroke-linecap="round" />
+  <!-- 两端圆润连接（让金边在顶端/底端闭合） -->
+  <circle cx="42" cy="100" r="2.5" fill="#FFD166" />
+  <circle cx="198" cy="100" r="2.5" fill="#FFD166" />
+
+  <!-- ========== 3. 腮红（两团暖粉，椭圆半透明） ========== -->
+  <ellipse cx="72"  cy="120" rx="12" ry="7" fill="#FFB6C1" opacity="0.75" />
+  <ellipse cx="168" cy="120" rx="12" ry="7" fill="#FFB6C1" opacity="0.75" />
+
+  <!-- ========== 4. 眼睛（灵魂！大圆 + 瞳孔 + 高光） ========== -->
+  <!-- 左眼白色底 -->
+  <ellipse cx="88"  cy="96" rx="18" ry="20" fill="#FFFFFF" />
+  <!-- 右眼白色底 -->
+  <ellipse cx="152" cy="96" rx="18" ry="20" fill="#FFFFFF" />
+  <!-- 描边（和金边协调，细一点 1.5px） -->
+  <ellipse cx="88"  cy="96" rx="18" ry="20" fill="none" stroke="#FFD166" stroke-width="1.5" />
+  <ellipse cx="152" cy="96" rx="18" ry="20" fill="none" stroke="#FFD166" stroke-width="1.5" />
+  <!-- 左眼瞳孔（深空蓝圆 + 更小的瞳孔偏移，表示"看向中间"的初始状态） -->
+  <circle cx="92"  cy="98" r="11" fill="#2A3059" />
+  <!-- 右眼瞳孔 -->
+  <circle cx="148" cy="98" r="11" fill="#2A3059" />
+  <!-- 高光（小白点在瞳孔左上，体现"水汪汪"） -->
+  <circle cx="86"  cy="92" r="3.2" fill="#FFFFFF" />
+  <circle cx="142" cy="92" r="3.2" fill="#FFFFFF" />
+  <!-- 次高光（更小） -->
+  <circle cx="96"  cy="104" r="1.6" fill="#FFFFFF" opacity="0.7" />
+  <circle cx="152" cy="104" r="1.6" fill="#FFFFFF" opacity="0.7" />
+
+  <!-- ========== 5. 微笑嘴巴（下弯的小弧线，在月牙底部中央） ========== -->
+  <!-- 正常微笑 -->
+  <path d="M 112 142 Q 120 148 128 142" fill="none" stroke="#2A3059" stroke-width="2.2" stroke-linecap="round" />
+  <!-- 上唇小凸起（让嘴更像真嘴） -->
+  <path d="M 118 144 Q 120 140 122 144" fill="none" stroke="#2A3059" stroke-width="1.6" stroke-linecap="round" />
+
+  <!-- ========== 6. 身体下方两个小"脚"（让月牙看起来像站着的） ========== -->
+  <ellipse cx="82"  cy="160" rx="8" ry="5" fill="#FFD166" opacity="0.8" />
+  <ellipse cx="158" cy="160" rx="8" ry="5" fill="#FFD166" opacity="0.8" />
+
+  <!-- ========== 7. 标签（开发期临时，定稿前删掉） ========== -->
+  <text x="120" y="194" text-anchor="middle" font-size="8" fill="#2A3059" opacity="0.4" font-family="system-ui, sans-serif">
+    MYONL · Mooki v0.1 初稿
+  </text>
+</svg>

@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>MYONL · 卡片式横板字母预览</title>
+<style>
+  body { margin: 0; background: linear-gradient(160deg, #0B1030 0%, #171B4E 45%, #2A1B5E 100%); font-family: Arial, "Microsoft YaHei", sans-serif; color: #E8E4FF; }
+  .wrap { max-width: 900px; margin: 0 auto; padding: 48px 32px; }
+  h1 { font-size: 22px; font-weight: 700; letter-spacing: 2px; margin: 0 0 6px; }
+  .sub { font-size: 13px; color: #9A93C9; margin-bottom: 36px; }
+  .stage { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.10); border-radius: 18px; padding: 44px 28px; display: flex; justify-content: center; }
+  .stage svg { width: 100%; max-width: 800px; height: auto; }
+  .spec { margin-top: 30px; display: flex; gap: 28px; flex-wrap: wrap; font-size: 13px; }
+  .spec div { flex: 1; min-width: 220px; background: rgba(255,255,255,0.05); border-radius: 12px; padding: 16px 18px; }
+  .spec h3 { margin: 0 0 10px; font-size: 13px; color: #C9B8FF; letter-spacing: 1px; }
+  .spec li { margin: 4px 0; color: #B9B2DE; }
+  .chip { display: inline-block; width: 14px; height: 14px; border-radius: 4px; vertical-align: -2px; margin-right: 6px; border: 1px solid rgba(255,255,255,0.2); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>MYONL · 卡片式横板字母</h1>
+  <div class="sub">界面标识 / 启动器标题 / 品牌横版字标（深色背景使用）</div>
+  <div class="stage">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 220" width="800" height="220">
+      <defs>
+        <linearGradient id="cardGrad" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#22307A"/>
+          <stop offset="55%" stop-color="#3A2E8C"/>
+          <stop offset="100%" stop-color="#5B2E9E"/>
+        </linearGradient>
+        <linearGradient id="cardGradY" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#2A3B96"/>
+          <stop offset="55%" stop-color="#4B3AA8"/>
+          <stop offset="100%" stop-color="#7C3FBB"/>
+        </linearGradient>
+        <linearGradient id="letterGrad" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stop-color="#FFFFFF"/>
+          <stop offset="100%" stop-color="#E8E4FF"/>
+        </linearGradient>
+        <linearGradient id="moonGrad" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stop-color="#FFE9A8"/>
+          <stop offset="100%" stop-color="#FFC94D"/>
+        </linearGradient>
+        <radialGradient id="glow" cx="0.5" cy="0.45" r="0.5">
+          <stop offset="0%" stop-color="#7C6BFF" stop-opacity="0.55"/>
+          <stop offset="100%" stop-color="#7C6BFF" stop-opacity="0"/>
+        </radialGradient>
+      </defs>
+      <ellipse cx="400" cy="130" rx="330" ry="80" fill="url(#glow)"/>
+      <g>
+        <rect x="10" y="25" width="140" height="170" rx="24" fill="url(#cardGrad)" stroke="#6B5BD0" stroke-width="2"/>
+        <rect x="10" y="25" width="140" height="170" rx="24" fill="none" stroke="#FFFFFF" stroke-opacity="0.18" stroke-width="1.5"/>
+        <text x="80" y="142" font-family="Arial, Helvetica, sans-serif" font-size="104" font-weight="bold" fill="url(#letterGrad)" text-anchor="middle" dominant-baseline="middle">M</text>
+        <path d="M 118 40 l 4 4 l -4 4 l -4 -4 z" fill="#FFE9A8" opacity="0.9"/>
+      </g>
+      <g>
+        <rect x="170" y="25" width="140" height="170" rx="24" fill="url(#cardGrad)" stroke="#6B5BD0" stroke-width="2"/>
+        <rect x="170" y="25" width="140" height="170" rx="24" fill="none" stroke="#FFFFFF" stroke-opacity="0.18" stroke-width="1.5"/>
+        <text x="240" y="142" font-family="Arial, Helvetica, sans-serif" font-size="104" font-weight="bold" fill="url(#letterGrad)" text-anchor="middle" dominant-baseline="middle">O</text>
+        <circle cx="278" cy="40" r="5.5" fill="#FFC94D" opacity="0.9"/>
+      </g>
+      <g>
+        <rect x="330" y="25" width="140" height="170" rx="24" fill="url(#cardGradY)" stroke="#8A6BD8" stroke-width="2.5"/>
+        <rect x="330" y="25" width="140" height="170" rx="24" fill="none" stroke="#FFFFFF" stroke-opacity="0.22" stroke-width="1.5"/>
+        <text x="400" y="142" font-family="Arial, Helvetica, sans-serif" font-size="104" font-weight="bold" fill="url(#letterGrad)" text-anchor="middle" dominant-baseline="middle">Y</text>
+        <g transform="translate(374,56)">
+          <path d="M 16 0 a 16 16 0 1 0 16 16 a 12.5 12.5 0 1 1 -16 -16 z" fill="url(#moonGrad)"/>
+        </g>
+      </g>
+      <g>
+        <rect x="490" y="25" width="140" height="170" rx="24" fill="url(#cardGrad)" stroke="#6B5BD0" stroke-width="2"/>
+        <rect x="490" y="25" width="140" height="170" rx="24" fill="none" stroke="#FFFFFF" stroke-opacity="0.18" stroke-width="1.5"/>
+        <text x="560" y="142" font-family="Arial, Helvetica, sans-serif" font-size="104" font-weight="bold" fill="url(#letterGrad)" text-anchor="middle" dominant-baseline="middle">U</text>
+        <circle cx="598" cy="40" r="5.5" fill="#FFC94D" opacity="0.9"/>
+      </g>
+      <g>
+        <rect x="650" y="25" width="140" height="170" rx="24" fill="url(#cardGrad)" stroke="#6B5BD0" stroke-width="2"/>
+        <rect x="650" y="25" width="140" height="170" rx="24" fill="none" stroke="#FFFFFF" stroke-opacity="0.18" stroke-width="1.5"/>
+        <text x="720" y="142" font-family="Arial, Helvetica, sans-serif" font-size="104" font-weight="bold" fill="url(#letterGrad)" text-anchor="middle" dominant-baseline="middle">L</text>
+        <path d="M 748 36 l 4 4 l -4 4 l -4 -4 z" fill="#FFE9A8" opacity="0.9"/>
+      </g>
+    </svg>
+  </div>
+  <div class="spec">
+    <div>
+      <h3>结构</h3>
+      <ul>
+        <li>M-O-Y-U-L 五字母等宽横排</li>
+        <li>每字母一个圆角卡片（rx 24）</li>
+        <li>Y 卡片高亮 + 金月牙点睛（品牌锚点）</li>
+        <li>M/U/L 右上角星光点缀</li>
+      </ul>
+    </div>
+    <div>
+      <h3>配色</h3>
+      <ul>
+        <li><span class="chip" style="background:#22307A"></span>卡片 深蓝 #22307A</li>
+        <li><span class="chip" style="background:#5B2E9E"></span>卡片 紫 #5B2E9E</li>
+        <li><span class="chip" style="background:#FFC94D"></span>月牙 月光黄 #FFC94D</li>
+        <li><span class="chip" style="background:#FFFFFF"></span>字母 白→淡紫渐变</li>
+        <li><span class="chip" style="background:#7C6BFF"></span>底部柔光 #7C6BFF</li>
+      </ul>
+    </div>
+    <div>
+      <h3>应用</h3>
+      <ul>
+        <li>启动器标题 / 编辑器关于页</li>
+        <li>官网 Header / 文档页眉</li>
+        <li>配合方形应用图标（另出）</li>
+      </ul>
+    </div>
+  </div>
+</div>
+</body>
+</html>

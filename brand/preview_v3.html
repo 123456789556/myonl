@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>MYONL 品牌预览 · 图标定稿 + Mooki v2</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: system-ui, -apple-system, "Segoe UI", sans-serif; background: #F5F2EB; padding: 40px 32px; color: #2A3059; }
+  h1 { font-size: 24px; letter-spacing: 1px; margin-bottom: 4px; }
+  h1 .tag { display: inline-block; font-size: 12px; padding: 2px 8px; background: #FFD166; border-radius: 4px; margin-left: 10px; color: #2A3059; }
+  .sub { color: #7a7f9e; font-size: 13px; margin-bottom: 32px; }
+  .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; }
+  .card { background: #FFFFFF; border-radius: 12px; padding: 20px; border: 1px solid #E8E4D8; box-shadow: 0 2px 8px rgba(42,48,89,.06); }
+  .card h3 { font-size: 13px; color: #7a7f9e; margin-bottom: 12px; font-weight: 600; letter-spacing: .5px; }
+  .span3 { grid-column: span 3; }
+  .span2 { grid-column: span 2; }
+  .bg-swatch { width: 100%; aspect-ratio: 1; border-radius: 8px; display: flex; align-items: center; justify-content: center; border: 1px solid #E8E4D8; }
+  .bg-dark   { background: linear-gradient(160deg, #1D2342, #2A3059 60%, #5A4E8C); }
+  .bg-light  { background: #FFFFFF; }
+  .bg-cream  { background: linear-gradient(160deg, #FFF7E6, #FFEED0); }
+  .bg-taskbar { background: #202020; }
+  .sizes { display: flex; flex-wrap: wrap; gap: 18px; align-items: flex-end; padding: 12px 0; }
+  .sizes .item { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+  .sizes .label { font-size: 10px; color: #7a7f9e; }
+  .sizes img { display: block; }
+  .toolbar { margin: 16px 0; display: flex; gap: 10px; flex-wrap: wrap; }
+  .toolbar button { padding: 8px 18px; border: 1px solid #E8E4D8; background: #FFFFFF; border-radius: 6px; cursor: pointer; font-size: 13px; color: #2A3059; transition: all .15s; }
+  .toolbar button:hover { border-color: #FFD166; background: #FFF7E6; }
+  .toolbar button.active { background: #FFD166; border-color: #FFD166; }
+  .pet-area { width: 100%; height: 340px; background: linear-gradient(160deg, #1D2342, #2A3059 60%, #5A4E8C); border-radius: 8px; position: relative; overflow: hidden; cursor: crosshair; border: 1px solid #5A6180; display: flex; align-items: center; justify-content: center; }
+  .pet-area svg { width: 260px; height: auto; }
+  .follow-hint { position: absolute; bottom: 8px; left: 50%; transform: translateX(-50%); font-size: 10px; color: #FFE066; opacity: .8; }
+  .color-row { display: flex; gap: 8px; flex-wrap: wrap; }
+  .color-chip { display: flex; flex-direction: column; align-items: center; font-size: 10px; color: #2A3059; }
+  .color-chip .sw { width: 40px; height: 40px; border-radius: 8px; border: 1px solid rgba(0,0,0,.08); margin-bottom: 4px; }
+  .note { font-size: 12px; color: #7a7f9e; line-height: 1.8; }
+  .footer { margin-top: 40px; text-align: center; color: #b5b8ca; font-size: 11px; }
+</style>
+</head>
+<body>
+
+<h1>MYONL 品牌预览 <span class="tag">P36 · B1/B2 定稿</span></h1>
+<div class="sub">极简字母月图标 · V3 点月式（O=满月 · Y 旁伴金色新月，双月呼应）+ MYONL 字标 + Mooki v2（SVG 分层 · 伪 Live2D 视差 · 四表情）</div>
+
+<div class="grid">
+
+  <!-- ========== 图标：多背景 ========== -->
+  <div class="card">
+    <h3>图标 · 不同背景</h3>
+    <div style="display:grid; grid-template-columns: repeat(2, 1fr); gap: 8px;">
+      <div class="bg-swatch bg-dark"><img src="moyul_icon.svg" width="120" alt="icon on dark"></div>
+      <div class="bg-swatch bg-light"><img src="moyul_icon.svg" width="120" alt="icon on light"></div>
+      <div class="bg-swatch bg-cream"><img src="moyul_icon.svg" width="120" alt="icon on cream"></div>
+      <div class="bg-swatch bg-taskbar"><img src="moyul_icon.svg" width="120" alt="icon on taskbar"></div>
+    </div>
+  </div>
+
+  <!-- ========== 图标：六档尺寸 ========== -->
+  <div class="card span2">
+    <h3>图标 · PNG 六档（512→16，16px 仍可辨识：亮圆 + 金弧 + 紫底）</h3>
+    <div class="sizes">
+      <div class="item"><img src="moyul_icon_512.png" width="128" height="128"><span class="label">512</span></div>
+      <div class="item"><img src="moyul_icon_256.png" width="96" height="96"><span class="label">256</span></div>
+      <div class="item"><img src="moyul_icon_128.png" width="64" height="64"><span class="label">128</span></div>
+      <div class="item"><img src="moyul_icon_64.png" width="48" height="48"><span class="label">64</span></div>
+      <div class="item"><img src="moyul_icon_32.png" width="32" height="32"><span class="label">32</span></div>
+      <div class="item"><img src="moyul_icon_16.png" width="16" height="16" style="image-rendering:auto"><span class="label">16</span></div>
+    </div>
+    <div class="note">源文件 <code>moyul_icon.svg</code>；PNG 由 <code>tools/svg2png.py</code>（pygame-ce nanosvg）导出，透明底圆角方可直接作应用图标。</div>
+  </div>
+
+  <!-- ========== 字标 ========== -->
+  <div class="card span3">
+    <h3>MYONL 横版字标（官网 Header / 启动器标题 / 编辑器关于页）</h3>
+    <div class="bg-dark" style="border-radius:8px; padding:28px 32px; display:flex; justify-content:center;">
+      <img src="moyul_wordmark.svg" style="width:520px; max-width:100%;" alt="MYONL wordmark">
+    </div>
+  </div>
+
+  <!-- ========== Mooki v2 ========== -->
+  <div class="card span3">
+    <h3>Mooki v2 · 发光小团子（分层 SVG · 表情切换 · 视差跟随演示）</h3>
+    <div class="toolbar">
+      <button class="active" onclick="setExpr('normal', this)">正常微笑</button>
+      <button onclick="setExpr('happy', this)">眯眼开心</button>
+      <button onclick="setExpr('surprise', this)">惊讶</button>
+      <button onclick="setExpr('angry', this)">鼓鼓脸</button>
+    </div>
+    <div class="pet-area" id="petArea">
+      <!-- 内联 Mooki v2（与 mooki_v2.svg 同步） -->
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" id="mookiSvg">
+        <defs>
+          <radialGradient id="mkBodyGrad" cx="50%" cy="32%" r="85%">
+            <stop offset="0%" stop-color="#FFFDF5"/>
+            <stop offset="55%" stop-color="#FFF6DF"/>
+            <stop offset="100%" stop-color="#FFE9B8"/>
+          </radialGradient>
+          <linearGradient id="mkEdgeGrad" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stop-color="#FFE08A"/>
+            <stop offset="100%" stop-color="#F5B84C"/>
+          </linearGradient>
+          <radialGradient id="mkGlowGrad" cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stop-color="#FFE066" stop-opacity="0.55"/>
+            <stop offset="55%" stop-color="#FFE066" stop-opacity="0.18"/>
+            <stop offset="100%" stop-color="#FFE066" stop-opacity="0"/>
+          </radialGradient>
+          <radialGradient id="mkPupilGrad" cx="38%" cy="32%" r="85%">
+            <stop offset="0%" stop-color="#4A5AA8"/>
+            <stop offset="70%" stop-color="#2A3059"/>
+            <stop offset="100%" stop-color="#1D2342"/>
+          </radialGradient>
+          <radialGradient id="mkCheekGrad" cx="50%" cy="40%" r="65%">
+            <stop offset="0%" stop-color="#FFCBD6"/>
+            <stop offset="100%" stop-color="#FFB6C1"/>
+          </radialGradient>
+          <linearGradient id="mkStarGrad" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#FFEF9E"/>
+            <stop offset="100%" stop-color="#FFD166"/>
+          </linearGradient>
+        </defs>
+        <g id="layer-glow">
+          <ellipse cx="200" cy="236" rx="160" ry="150" fill="url(#mkGlowGrad)"/>
+        </g>
+        <g id="layer-body">
+          <g id="body-core">
+            <path d="M 78 180 A 122 120 0 0 0 322 180 C 282 216 118 216 78 180 Z" fill="url(#mkBodyGrad)" opacity="0.97"/>
+            <path d="M 78 180 A 122 120 0 0 0 322 180" fill="none" stroke="url(#mkEdgeGrad)" stroke-width="3.2" stroke-linecap="round"/>
+            <path d="M 322 180 C 282 216 118 216 78 180" fill="none" stroke="url(#mkEdgeGrad)" stroke-width="2.6" stroke-linecap="round"/>
+            <path d="M 124 224 C 166 244 234 244 276 224" fill="none" stroke="#FFFFFF" stroke-opacity="0.45" stroke-width="2.4" stroke-linecap="round"/>
+            <ellipse cx="160" cy="316" rx="11" ry="7" fill="url(#mkEdgeGrad)" opacity="0.85"/>
+            <ellipse cx="240" cy="316" rx="11" ry="7" fill="url(#mkEdgeGrad)" opacity="0.85"/>
+          </g>
+        </g>
+        <g id="layer-face">
+          <g id="cheeks">
+            <ellipse cx="110" cy="272" rx="17" ry="10.5" fill="url(#mkCheekGrad)" opacity="0.8"/>
+            <ellipse cx="110" cy="269" rx="11" ry="6" fill="#FFDDE4" opacity="0.6"/>
+            <ellipse cx="290" cy="272" rx="17" ry="10.5" fill="url(#mkCheekGrad)" opacity="0.8"/>
+            <ellipse cx="290" cy="269" rx="11" ry="6" fill="#FFDDE4" opacity="0.6"/>
+          </g>
+          <g id="expr-mouth-normal">
+            <path d="M 182 276 Q 200 287 218 276" fill="none" stroke="#2A3059" stroke-width="3" stroke-linecap="round"/>
+            <path d="M 189 280 Q 200 287 211 280" fill="none" stroke="#2A3059" stroke-width="1.8" stroke-linecap="round" opacity="0.6"/>
+          </g>
+        </g>
+        <g id="layer-eyes">
+          <ellipse cx="144" cy="236" rx="21" ry="23.5" fill="#FFFFFF"/>
+          <ellipse cx="144" cy="236" rx="21" ry="23.5" fill="none" stroke="#F5C966" stroke-width="1.6"/>
+          <ellipse cx="256" cy="236" rx="21" ry="23.5" fill="#FFFFFF"/>
+          <ellipse cx="256" cy="236" rx="21" ry="23.5" fill="none" stroke="#F5C966" stroke-width="1.6"/>
+        </g>
+        <g id="layer-pupils">
+          <g id="expr-eyes-normal">
+            <circle cx="149" cy="238" r="13" fill="url(#mkPupilGrad)"/>
+            <circle cx="142.5" cy="231" r="4.4" fill="#FFFFFF"/>
+            <circle cx="154" cy="245" r="1.9" fill="#FFFFFF" opacity="0.65"/>
+            <circle cx="251" cy="238" r="13" fill="url(#mkPupilGrad)"/>
+            <circle cx="244.5" cy="231" r="4.4" fill="#FFFFFF"/>
+            <circle cx="257" cy="245" r="1.9" fill="#FFFFFF" opacity="0.65"/>
+          </g>
+        </g>
+        <g id="layer-star">
+          <g transform="translate(200, 52)">
+            <g stroke="#FFE066" stroke-opacity="0.35" stroke-width="2" stroke-linecap="round">
+              <line x1="0" y1="-32" x2="0" y2="-17"/>
+              <line x1="0" y1="17" x2="0" y2="32"/>
+              <line x1="-32" y1="0" x2="-17" y2="0"/>
+              <line x1="17" y1="0" x2="32" y2="0"/>
+              <line x1="-22" y1="-22" x2="-12" y2="-12"/>
+              <line x1="12" y1="12" x2="22" y2="22"/>
+            </g>
+            <path d="M 0 -18.5 L 5.7 -5.7 L 18.5 0 L 5.7 5.7 L 0 18.5 L -5.7 5.7 L -18.5 0 L -5.7 -5.7 Z" fill="url(#mkStarGrad)" stroke="#F5B84C" stroke-width="1.5" stroke-linejoin="round"/>
+            <circle cx="-5" cy="-7.5" r="2.7" fill="#FFFFFF"/>
+          </g>
+          <g fill="#FFE066">
+            <circle cx="296" cy="110" r="4" opacity="0.85"/>
+            <circle cx="293.5" cy="107.5" r="1.6" fill="#FFFFFF"/>
+            <circle cx="52" cy="150" r="2.7" opacity="0.7"/>
+            <circle cx="352" cy="175" r="2.2" opacity="0.6"/>
+            <circle cx="38" cy="66" r="2" opacity="0.5"/>
+          </g>
+        </g>
+        <g id="layer-dust" fill="#FFFFFF" opacity="0.5">
+          <circle cx="188" cy="170" r="1.5"/>
+          <circle cx="222" cy="160" r="1.1"/>
+          <circle cx="300" cy="230" r="1.4"/>
+          <circle cx="115" cy="130" r="1.2"/>
+          <circle cx="262" cy="330" r="1.2"/>
+          <circle cx="88" cy="282" r="1.1"/>
+        </g>
+        <g id="expr-happy" display="none">
+          <path d="M 124 238 Q 144 220 164 238" fill="none" stroke="#2A3059" stroke-width="4" stroke-linecap="round"/>
+          <path d="M 236 238 Q 256 220 276 238" fill="none" stroke="#2A3059" stroke-width="4" stroke-linecap="round"/>
+          <path d="M 176 272 Q 200 296 224 272 Q 212 266 200 266 Q 188 266 176 272 Z" fill="#2A3059"/>
+          <ellipse cx="200" cy="278" rx="7" ry="4" fill="#FF9EAA"/>
+        </g>
+        <g id="expr-surprise" display="none">
+          <circle cx="146" cy="236" r="15.5" fill="url(#mkPupilGrad)"/>
+          <circle cx="139" cy="228" r="5" fill="#FFFFFF"/>
+          <circle cx="254" cy="236" r="15.5" fill="url(#mkPupilGrad)"/>
+          <circle cx="247" cy="228" r="5" fill="#FFFFFF"/>
+          <ellipse cx="200" cy="280" rx="10" ry="12" fill="#2A3059"/>
+          <ellipse cx="200" cy="284" rx="5" ry="6" fill="#FF9EAA"/>
+        </g>
+        <g id="expr-angry" display="none">
+          <path d="M 124 226 L 164 234" stroke="#2A3059" stroke-width="4" stroke-linecap="round"/>
+          <path d="M 276 226 L 236 234" stroke="#2A3059" stroke-width="4" stroke-linecap="round"/>
+          <circle cx="146" cy="242" r="10" fill="url(#mkPupilGrad)"/>
+          <circle cx="254" cy="242" r="10" fill="url(#mkPupilGrad)"/>
+          <ellipse cx="110" cy="274" rx="20" ry="13" fill="url(#mkCheekGrad)" opacity="0.95"/>
+          <ellipse cx="290" cy="274" rx="20" ry="13" fill="url(#mkCheekGrad)" opacity="0.95"/>
+          <path d="M 184 282 Q 200 274 216 282" fill="none" stroke="#2A3059" stroke-width="3" stroke-linecap="round"/>
+        </g>
+      </svg>
+      <div class="follow-hint">移动鼠标查看分层视差（瞳孔 ±8 · 眼 ±6 · 身体 ±4 · 光晕 ±2 · 星尘反向）</div>
+    </div>
+  </div>
+
+  <!-- ========== 配色规范 ========== -->
+  <div class="card span3">
+    <h3>品牌配色（MYONL / Mooki 共用，B3 规范源）</h3>
+    <div class="color-row">
+      <div class="color-chip"><div class="sw" style="background:#FFF7E6"></div>月白 #FFF7E6</div>
+      <div class="color-chip"><div class="sw" style="background:#FFD166"></div>金边 #FFD166</div>
+      <div class="color-chip"><div class="sw" style="background:#FFE066"></div>星光 #FFE066</div>
+      <div class="color-chip"><div class="sw" style="background:#FFB6C1"></div>腮红 #FFB6C1</div>
+      <div class="color-chip"><div class="sw" style="background:#2A3059"></div>深空蓝 #2A3059</div>
+      <div class="color-chip"><div class="sw" style="background:#1D2342"></div>夜空 #1D2342</div>
+      <div class="color-chip"><div class="sw" style="background:#5A4E8C"></div>星紫 #5A4E8C</div>
+    </div>
+  </div>
+
+</div>
+
+<div class="footer">MYONL · Mooki · P36 品牌落地预览（preview_v3.html）</div>
+
+<script>
+// 表情切换：normal 组（cheeks + expr-mouth-normal + layer-eyes + expr-eyes-normal）与其他三表情互斥
+function setExpr(name, btn) {
+  document.querySelectorAll('.toolbar button').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  const $ = id => document.getElementById(id);
+  const show = (el, on) => { if (el) el.setAttribute('display', on ? 'inline' : 'none'); };
+  const isNormal = name === 'normal';
+  show($('expr-mouth-normal'), isNormal);
+  show($('expr-eyes-normal'),  isNormal);
+  show($('cheeks'),            isNormal);           // angry 自带鼓腮
+  show($('expr-happy'),        name === 'happy');
+  show($('expr-surprise'),     name === 'surprise');
+  show($('expr-angry'),        name === 'angry');
+}
+
+// 分层视差跟随（伪 Live2D 预览）：瞳孔 ±8 / 眼 ±6 / 身体·脸·星 ±4 / 光晕 ±2 / 星尘 ∓2
+const petArea = document.getElementById('petArea');
+const L = id => document.getElementById(id);
+petArea.addEventListener('mousemove', e => {
+  const r = petArea.getBoundingClientRect();
+  const nx = ((e.clientX - r.left) / r.width  - 0.5) * 2;   // -1..1
+  const ny = ((e.clientY - r.top)  / r.height - 0.5) * 2;
+  const mv = (el, kx, ky) => { if (el) el.setAttribute('transform', `translate(${(nx*kx).toFixed(1)},${(ny*ky).toFixed(1)})`); };
+  mv(L('layer-pupils'), 8, 8);
+  mv(L('layer-eyes'),   6, 6);
+  mv(L('layer-body'),   4, 4);
+  mv(L('layer-face'),   4, 4);
+  mv(L('layer-star'),   4, 4);
+  mv(L('layer-glow'),   2, 2);
+  mv(L('layer-dust'),  -2, -2);
+  // 表情组随身体层（happy/surprise/angry 内的眉眼嘴）
+  ['expr-happy','expr-surprise','expr-angry'].forEach(id => mv(L(id), 5, 5));
+});
+petArea.addEventListener('mouseleave', () => {
+  ['layer-pupils','layer-eyes','layer-body','layer-face','layer-star','layer-glow','layer-dust',
+   'expr-happy','expr-surprise','expr-angry'].forEach(id => {
+    const el = L(id); if (el) el.removeAttribute('transform');
+  });
+});
+</script>
+
+</body>
+</html>

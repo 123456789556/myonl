@@ -1,0 +1,10 @@
+{
+  "game_name": "MYONL",
+  "icon": "../../brand/icon/icon_my_256.png",
+  "publisher": {
+    "name": "MYONL",
+    "account_id": "moyul",
+    "channel": "itch.io"
+  },
+  "version": "1.0.0"
+}

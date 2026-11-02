@@ -1,0 +1,172 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Mooki v2 · 发光小团子 · SVG 手写精修分层版（方案A：可控矢量输出）
+     分层契约（桌宠伪 Live2D 视差消费）：
+       layer-glow   光晕层     —— 缓跟（±2px）
+       layer-body   身体层     —— 中跟（±4px），含呼吸缩放锚点 body-core
+       layer-face   面部层     —— 随身体（腮红/嘴，四表情可切换 expr-*）
+       layer-eyes   眼睛层     —— 快跟（±6px），含眼白/描边
+       layer-pupils 瞳孔层     —— 最快跟（±8px），鼠标跟随主驱动
+       layer-star   头顶星层   —— 随身体，独立微晃
+       layer-dust   星尘层     —— 缓跟反向（漂浮感）
+     表情组：expr-normal 默认显示；expr-happy / expr-surprise / expr-angry 默认 display:none
+     构造说明：身体内弧一律用贝塞尔（不用小半径 arc），保证浏览器/nanosvg(pygame 导出)渲染一致
+     配色：月白 #FFF7E6 / 金边 #FFD166 / 星光 #FFE066 / 腮红 #FFB6C1 / 深空蓝 #2A3059
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400">
+  <defs>
+    <radialGradient id="mkBodyGrad" cx="50%" cy="32%" r="85%">
+      <stop offset="0%" stop-color="#FFFDF5"/>
+      <stop offset="55%" stop-color="#FFF6DF"/>
+      <stop offset="100%" stop-color="#FFE9B8"/>
+    </radialGradient>
+    <linearGradient id="mkEdgeGrad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#FFE08A"/>
+      <stop offset="100%" stop-color="#F5B84C"/>
+    </linearGradient>
+    <radialGradient id="mkGlowGrad" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#FFE066" stop-opacity="0.55"/>
+      <stop offset="55%" stop-color="#FFE066" stop-opacity="0.18"/>
+      <stop offset="100%" stop-color="#FFE066" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="mkPupilGrad" cx="38%" cy="32%" r="85%">
+      <stop offset="0%" stop-color="#4A5AA8"/>
+      <stop offset="70%" stop-color="#2A3059"/>
+      <stop offset="100%" stop-color="#1D2342"/>
+    </radialGradient>
+    <radialGradient id="mkCheekGrad" cx="50%" cy="40%" r="65%">
+      <stop offset="0%" stop-color="#FFCBD6"/>
+      <stop offset="100%" stop-color="#FFB6C1"/>
+    </radialGradient>
+    <linearGradient id="mkStarGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#FFEF9E"/>
+      <stop offset="100%" stop-color="#FFD166"/>
+    </linearGradient>
+  </defs>
+
+  <!-- ========== layer-glow：外圈光晕（缓跟） ========== -->
+  <g id="layer-glow">
+    <ellipse cx="200" cy="236" rx="160" ry="150" fill="url(#mkGlowGrad)"/>
+  </g>
+
+  <!-- ========== layer-body：胖月牙碗身体（中跟，呼吸锚点 body-core） ========== -->
+  <g id="layer-body">
+    <g id="body-core">
+      <!-- 身体：凸底朝下 + 碗口朝上浅凹（胖月牙船形，半透明全息质感 0.97） -->
+      <path d="M 78 180 A 122 120 0 0 0 322 180 C 282 216 118 216 78 180 Z"
+            fill="url(#mkBodyGrad)" opacity="0.97"/>
+      <!-- 金边：外弧（碗底）+ 内弧（碗口） -->
+      <path d="M 78 180 A 122 120 0 0 0 322 180"
+            fill="none" stroke="url(#mkEdgeGrad)" stroke-width="3.2" stroke-linecap="round"/>
+      <path d="M 322 180 C 282 216 118 216 78 180"
+            fill="none" stroke="url(#mkEdgeGrad)" stroke-width="2.6" stroke-linecap="round"/>
+      <!-- 碗口下缘浅高光（立体感） -->
+      <path d="M 124 224 C 166 244 234 244 276 224"
+            fill="none" stroke="#FFFFFF" stroke-opacity="0.45" stroke-width="2.4" stroke-linecap="round"/>
+      <!-- 小金脚 -->
+      <ellipse cx="160" cy="316" rx="11" ry="7" fill="url(#mkEdgeGrad)" opacity="0.85"/>
+      <ellipse cx="240" cy="316" rx="11" ry="7" fill="url(#mkEdgeGrad)" opacity="0.85"/>
+    </g>
+  </g>
+
+  <!-- ========== layer-face：腮红 + 嘴（随身体，表情可切换） ========== -->
+  <g id="layer-face">
+    <g id="cheeks">
+      <ellipse cx="110" cy="272" rx="17" ry="10.5" fill="url(#mkCheekGrad)" opacity="0.8"/>
+      <ellipse cx="110" cy="269" rx="11" ry="6" fill="#FFDDE4" opacity="0.6"/>
+      <ellipse cx="290" cy="272" rx="17" ry="10.5" fill="url(#mkCheekGrad)" opacity="0.8"/>
+      <ellipse cx="290" cy="269" rx="11" ry="6" fill="#FFDDE4" opacity="0.6"/>
+    </g>
+    <g id="expr-mouth-normal">
+      <path d="M 182 276 Q 200 287 218 276" fill="none" stroke="#2A3059" stroke-width="3" stroke-linecap="round"/>
+      <path d="M 189 280 Q 200 287 211 280" fill="none" stroke="#2A3059" stroke-width="1.8" stroke-linecap="round" opacity="0.6"/>
+    </g>
+  </g>
+
+  <!-- ========== layer-eyes：眼白 + 金描（快跟） ========== -->
+  <g id="layer-eyes">
+    <ellipse cx="144" cy="236" rx="21" ry="23.5" fill="#FFFFFF"/>
+    <ellipse cx="144" cy="236" rx="21" ry="23.5" fill="none" stroke="#F5C966" stroke-width="1.6"/>
+    <ellipse cx="256" cy="236" rx="21" ry="23.5" fill="#FFFFFF"/>
+    <ellipse cx="256" cy="236" rx="21" ry="23.5" fill="none" stroke="#F5C966" stroke-width="1.6"/>
+  </g>
+
+  <!-- ========== layer-pupils：瞳孔 + 高光（最快跟，鼠标跟随主驱动） ========== -->
+  <g id="layer-pupils">
+    <g id="expr-eyes-normal">
+      <circle cx="149" cy="238" r="13" fill="url(#mkPupilGrad)"/>
+      <circle cx="142.5" cy="231" r="4.4" fill="#FFFFFF"/>
+      <circle cx="154" cy="245" r="1.9" fill="#FFFFFF" opacity="0.65"/>
+      <circle cx="251" cy="238" r="13" fill="url(#mkPupilGrad)"/>
+      <circle cx="244.5" cy="231" r="4.4" fill="#FFFFFF"/>
+      <circle cx="257" cy="245" r="1.9" fill="#FFFFFF" opacity="0.65"/>
+    </g>
+  </g>
+
+  <!-- ========== layer-star：头顶主星（随身体，独立微晃） ========== -->
+  <g id="layer-star">
+    <g transform="translate(200, 52)">
+      <g stroke="#FFE066" stroke-opacity="0.35" stroke-width="2" stroke-linecap="round">
+        <line x1="0" y1="-32" x2="0" y2="-17"/>
+        <line x1="0" y1="17" x2="0" y2="32"/>
+        <line x1="-32" y1="0" x2="-17" y2="0"/>
+        <line x1="17" y1="0" x2="32" y2="0"/>
+        <line x1="-22" y1="-22" x2="-12" y2="-12"/>
+        <line x1="12" y1="12" x2="22" y2="22"/>
+      </g>
+      <path d="M 0 -18.5 L 5.7 -5.7 L 18.5 0 L 5.7 5.7 L 0 18.5 L -5.7 5.7 L -18.5 0 L -5.7 -5.7 Z"
+            fill="url(#mkStarGrad)" stroke="#F5B84C" stroke-width="1.5" stroke-linejoin="round"/>
+      <circle cx="-5" cy="-7.5" r="2.7" fill="#FFFFFF"/>
+    </g>
+    <g fill="#FFE066">
+      <circle cx="296" cy="110" r="4" opacity="0.85"/>
+      <circle cx="293.5" cy="107.5" r="1.6" fill="#FFFFFF"/>
+      <circle cx="52" cy="150" r="2.7" opacity="0.7"/>
+      <circle cx="352" cy="175" r="2.2" opacity="0.6"/>
+      <circle cx="38" cy="66" r="2" opacity="0.5"/>
+    </g>
+  </g>
+
+  <!-- ========== layer-dust：星尘（缓跟反向） ========== -->
+  <g id="layer-dust" fill="#FFFFFF" opacity="0.5">
+    <circle cx="188" cy="170" r="1.5"/>
+    <circle cx="222" cy="160" r="1.1"/>
+    <circle cx="300" cy="230" r="1.4"/>
+    <circle cx="115" cy="130" r="1.2"/>
+    <circle cx="262" cy="330" r="1.2"/>
+    <circle cx="88" cy="282" r="1.1"/>
+  </g>
+
+  <!-- ========== 表情组：happy / surprise / angry（默认隐藏，程序/预览切换） ========== -->
+  <g id="expr-happy" display="none">
+    <!-- 眯眼（笑弧） -->
+    <path d="M 124 238 Q 144 220 164 238" fill="none" stroke="#2A3059" stroke-width="4" stroke-linecap="round"/>
+    <path d="M 236 238 Q 256 220 276 238" fill="none" stroke="#2A3059" stroke-width="4" stroke-linecap="round"/>
+    <!-- 大笑嘴 -->
+    <path d="M 176 272 Q 200 296 224 272 Q 212 266 200 266 Q 188 266 176 272 Z" fill="#2A3059"/>
+    <ellipse cx="200" cy="278" rx="7" ry="4" fill="#FF9EAA"/>
+  </g>
+
+  <g id="expr-surprise" display="none">
+    <!-- 瞪大眼（更大瞳孔） -->
+    <circle cx="146" cy="236" r="15.5" fill="url(#mkPupilGrad)"/>
+    <circle cx="139" cy="228" r="5" fill="#FFFFFF"/>
+    <circle cx="254" cy="236" r="15.5" fill="url(#mkPupilGrad)"/>
+    <circle cx="247" cy="228" r="5" fill="#FFFFFF"/>
+    <!-- O 型嘴 -->
+    <ellipse cx="200" cy="280" rx="10" ry="12" fill="#2A3059"/>
+    <ellipse cx="200" cy="284" rx="5" ry="6" fill="#FF9EAA"/>
+  </g>
+
+  <g id="expr-angry" display="none">
+    <!-- 半闭眼（上眼睑压线 + 八字眉） -->
+    <path d="M 124 226 L 164 234" stroke="#2A3059" stroke-width="4" stroke-linecap="round"/>
+    <path d="M 276 226 L 236 234" stroke="#2A3059" stroke-width="4" stroke-linecap="round"/>
+    <circle cx="146" cy="242" r="10" fill="url(#mkPupilGrad)"/>
+    <circle cx="254" cy="242" r="10" fill="url(#mkPupilGrad)"/>
+    <!-- 鼓腮（腮红加深放大） -->
+    <ellipse cx="110" cy="274" rx="20" ry="13" fill="url(#mkCheekGrad)" opacity="0.95"/>
+    <ellipse cx="290" cy="274" rx="20" ry="13" fill="url(#mkCheekGrad)" opacity="0.95"/>
+    <!-- 抿嘴（下弯） -->
+    <path d="M 184 282 Q 200 274 216 282" fill="none" stroke="#2A3059" stroke-width="3" stroke-linecap="round"/>
+  </g>
+</svg>

@@ -1,0 +1,32 @@
+{
+  "schema": 1,
+  "characters": [
+    {
+      "id": "林晚",
+      "name": "林晚",
+      "color": "#ffb3c8",
+      "kind": "default",
+      "avatars": {
+        "微笑": "林晚_微笑",
+        "生气": "林晚_生气",
+        "惊讶": "林晚_惊讶"
+      },
+      "layers": {},
+      "voice": "林晚_",
+      "notes": "示例主角：温柔、嘴硬心软"
+    },
+    {
+      "id": "苏晴",
+      "name": "苏晴",
+      "color": "#8ecae6",
+      "kind": "default",
+      "avatars": {
+        "微笑": "苏晴_微笑",
+        "默认": "苏晴_默认"
+      },
+      "layers": {},
+      "voice": "苏晴_",
+      "notes": "示例配角：开朗、爱吐槽"
+    }
+  ]
+}

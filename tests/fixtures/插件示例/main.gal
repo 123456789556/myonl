@@ -1,0 +1,8 @@
+# 插件示例剧本：演示 @plug:shake 调用
+@character 林晚 #aaccff
+
+@label start
+@bg classroom
+@plug:shake 1.0
+@ 林晚 刚才屏幕是不是晃了一下！
+@end

@@ -1,0 +1,11 @@
+# 序幕（对齐原作 13.5 秒节奏：大海滩 Pan 慢移 → presents 淡入 → 海浪声 5.5s 渐起）
+# 原作结构：bigbeach1 Pan((0,0),(0,1200),13.0) → presents Alpha 淡入 6s → 音乐 fadein 5.5
+@bg bg_bigbeach1
+@camera pan 下 13.0
+@ 《月光漫步》
+@music waves fadein=5.5
+@bg presents
+@ 《—— 献给所有在月光下漫步的人 ——》
+@ 《海水退去，故事才刚刚开始。》
+@transition dissolve 1.0
+@end

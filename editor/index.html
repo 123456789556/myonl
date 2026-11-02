@@ -1,0 +1,599 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MYONL 编辑器</title>
+<link rel="stylesheet" href="/editor.css">
+</head>
+<body>
+<!-- 轻量加载指示（顶部进度条 + 右下角徽标，不挡交互，约 0.6s 淡出） -->
+<div id="moyul-splash">
+  <div class="splash-bar"></div>
+  <div class="splash-badge">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16">
+      <rect x="2" y="2" width="20" height="20" rx="5" fill="#1e1e2e" stroke="#89b4fa" stroke-width="1.5"/>
+      <text x="12" y="15.5" font-family="Arial" font-size="11" font-weight="800" fill="#89b4fa" text-anchor="middle">MY</text>
+    </svg>
+    加载中…
+  </div>
+</div>
+<script>
+(function () {
+  var s = document.getElementById('moyul-splash');
+  if (!s) return;
+  // localStorage 开关：moyul_splash = "off" 时直接跳过加载动画
+  try {
+    if (localStorage.getItem('moyul_splash') === 'off') {
+      s.parentNode.removeChild(s);
+      return;
+    }
+  } catch (e) {}
+  var hide = function () {
+    if (s.dataset.done) return;
+    s.dataset.done = '1';
+    s.classList.add('hide');
+    setTimeout(function () { if (s.parentNode) s.parentNode.removeChild(s); }, 420);
+  };
+  // 页面资源就绪后淡出（约 0.6s，不挡交互）
+  setTimeout(hide, 600);
+})();
+</script>
+  <!-- 菜单栏（VSCode 式：文件/编辑/视图/运行/帮助） -->
+  <div class="menubar" id="menubar">
+    <div class="menu-item" data-menu="file">文件</div>
+    <div class="menu-item" data-menu="edit">编辑</div>
+    <div class="menu-item" data-menu="view">视图</div>
+    <div class="menu-item" data-menu="run">运行</div>
+    <div class="menu-item" data-menu="help">帮助</div>
+    <span class="mb-brand" title="MYONL 引擎">MYONL</span>
+    <label class="mb-search" id="mbSearchWrap" title="搜索工程里的剧本内容（Enter 打开结果 · Ctrl+Shift+F）">
+      <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5L20 20"/></svg>
+      <input id="mbSearchInput" placeholder="搜索文件 / 内容…" autocomplete="off" spellcheck="false">
+      <span class="mb-kbd">Ctrl+Shift+F</span>
+    </label>
+    <!-- 显式入口：非技术用户也能直接看到并点开（不用先找菜单/图标） -->
+    <div class="mb-acts" id="mbActs">
+      <button type="button" class="mb-act" id="mbScene" title="场景编辑（可视化，不写代码改背景/角色/台词）">场景</button>
+      <button type="button" class="mb-act" id="mbChars" title="角色库（角色与立绘）">角色</button>
+      <button type="button" class="mb-act" id="mbAsset" title="素材库（图片/音频/字体/视频）">素材</button>
+      <button type="button" class="mb-act" id="mbSet" title="设置中心（Ctrl+,）">设置</button>
+    </div>
+    <div class="menu-dropdown" id="menuDropdown"></div>
+  </div>
+  <!-- 标签页栏（VSCode/Trae 式：标签贴在编辑区顶部，不占全宽独立行；隐藏按钮保留 DOM 供菜单引用 P42） -->
+  <div class="main">
+    <!-- 活动栏（VSCode 式最左窄栏，切换侧边栏视图） -->
+    <div class="activity-bar" id="activityBar">
+      <div class="act-btn active" data-view="files" title="工程文件 / 大纲">📁<span class="act-badge hidden" id="actProblemBadge">0</span><span class="act-dot hidden" id="actDirtyDot" title="有未保存的修改"></span></div>
+      <div class="act-btn" data-view="assets" title="素材库">🗂️<span class="act-spin hidden" id="actImportSpin" title="素材导入中…"></span></div>
+      <div class="act-btn" data-view="settings" title="设置">⚙️</div>
+      <div class="act-btn" id="actHelp" title="教程 / 说明书（F1）">?</div>
+    </div>
+    <aside class="file-pane" id="filePane">
+      <div class="fp-head" id="fpTreeHead" title="点击折叠 / 展开「工程文件」">
+        <span class="fp-chev" id="fpTreeChev">▾</span>
+        <span class="fp-title">工程文件</span>
+        <div class="spacer"></div>
+        <button class="icon-btn" id="btnNewChapter" title="新建章节文件">＋</button>
+        <button class="icon-btn" id="fpCollapse" title="折叠文件栏">⟨</button>
+      </div>
+      <div class="fp-tree" id="fpTree"></div>
+      <div class="fp-outline-head" id="fpOutlineHead" title="点击折叠 / 展开「章节大纲」">
+        <span class="fp-chev" id="fpOutlineChev">▾</span>
+        <span>章节大纲</span>
+        <div class="spacer"></div>
+        <button class="icon-btn" id="outlineRefresh" title="刷新大纲">⟳</button>
+      </div>
+      <div class="fp-outline" id="fpOutline"></div>
+      <!-- E4：入门任务进度（自动勾选、可折叠、不弹窗） -->
+      <div class="fp-task-head" id="fpTaskHead" title="点击折叠 / 展开「入门任务」">
+        <span class="fp-chev" id="fpTaskChev">▾</span>
+        <span>入门任务</span>
+        <span class="fp-task-count" id="fpTaskCount">0/5</span>
+      </div>
+      <div class="fp-task" id="fpTask"></div>
+    </aside>
+    <div class="splitter" id="splitTree" title="拖动调整章节树宽度"></div>
+    <div class="left-pane">
+      <!-- 文件标签（VSCode/Trae 式：贴在编辑区顶部，P44-A1 动态多标签） -->
+      <div class="editor-tabs" id="editorTabs"></div>
+      <!-- M1.5：Trae/VSCode 式面包屑（工程 › 文件 › 当前 @label） -->
+      <div class="breadcrumb" id="breadcrumb" aria-label="Breadcrumb">
+        <span class="bc-item dim">工程</span>
+      </div>
+      <span class="hidden" id="filePath">script.gal</span>
+      <!-- 隐藏按钮：保留 DOM 供菜单 action 引用（P42） -->
+      <button class="top-btn hidden" id="btnNew" title="新建游戏：生成示例剧本与占位素材">＋ 新建游戏</button>
+        <button class="top-btn hidden" id="btnAssets" title="打开素材库（拖入文件即可导入）">🗂 素材库</button>
+        <button class="top-btn hidden" id="btnPack" title="打包发布：游戏名/图标/运营号/版本迭代">📦 打包发布</button>
+        <button class="top-btn hidden" id="btnGuide" title="重新打开新手引导">❓ 新手引导</button>
+        <button class="top-btn hidden" id="btnSettings" title="工程目录 / 数据目录设置">⚙ 设置</button>
+        <button class="top-btn hidden" id="btnUIDesign" title="游戏内 UI 设计：对话框/名字框/选项/快捷栏/菜单/设置页（写回项目 config.json）">🎨 UI 设计</button>
+        <button class="top-btn hidden" id="btnSave" title="保存当前文件（Ctrl+S）">💾 保存</button>
+        <button id="btnRun" class="hidden" title="运行游戏预览（Ctrl+R）">▶ 运行</button>
+      <div class="tabs hidden">
+        <div class="tab active" data-tab="source">源码</div>
+        <div class="tab" data-tab="json">JSON</div>
+        <div class="tab" data-tab="card">卡片</div>
+      </div>
+      <!-- P46 富文本工具栏：选中台词文字后点按钮，自动包上 {b}/{i}/{color}/{size} 标记 -->
+      <div id="richToolbar" style="display:flex;gap:6px;align-items:center;padding:4px 8px;flex-shrink:0;border-bottom:1px solid #313244">
+        <button class="icon-btn" type="button" data-rich="b" title="粗体：选中文字包上 {b}…{/b}"><b>B</b></button>
+        <button class="icon-btn" type="button" data-rich="i" title="斜体：选中文字包上 {i}…{/i}"><i>I</i></button>
+        <select id="richColor" title="文字颜色：选中文字包上 {color=…}…{/color}">
+          <option value="">颜色…</option>
+          <option value="#ff6666">红</option>
+          <option value="#ffa94d">橙</option>
+          <option value="#ffd43b">黄</option>
+          <option value="#69db7c">绿</option>
+          <option value="#74c0fc">蓝</option>
+          <option value="#b197fc">紫</option>
+          <option value="#ffffff">白</option>
+        </select>
+        <select id="richSize" title="字号：选中文字包上 {size=…}…{/size}">
+          <option value="">字号…</option>
+          <option value="22">小 22</option>
+          <option value="28">标准 28</option>
+          <option value="34">大 34</option>
+          <option value="42">特大 42</option>
+        </select>
+      </div>
+      <div class="source-wrap" id="sourceWrap">
+        <div class="line-numbers" id="lineNumbers">1</div>
+        <textarea id="source" spellcheck="false" placeholder="在此输入 .gal 剧本，如：&#10;@character 林晚 #ffcccc&#10;@ 林晚 你好呀&#10;@end"></textarea>
+        <div class="error-overlay" id="errorOverlay"></div>
+      </div>
+      <pre class="json-view" id="jsonView"></pre>
+      <div class="card-view" id="cardView"></div>
+    </div>
+    <div class="splitter" id="splitEdit" title="拖动调整预览栏宽度"></div>
+    <div class="right-pane">
+      <!-- M1.5：素材晾衣绳（交互灵感来自 Tendedero，MIT；未使用其代码/名称/图标） -->
+      <div class="clothesline" id="clothesline">
+        <div class="cl-line"></div>
+        <div class="cl-tabs" id="clTabs">
+          <button class="cl-tab active" data-cltab="assets" title="最近素材">素材</button>
+          <button class="cl-tab" data-cltab="previews" title="最近预览历史（点缩略图回到那次预览）">预览历史</button>
+        </div>
+        <div class="cl-items" id="clItems"></div>
+      </div>
+      <div class="cl-trigger" id="clTrigger" title="素材晾衣绳（鼠标靠近滑下，点卡片插入指令）">🧵</div>
+      <div class="preview-wrap">
+        <div class="preview-img-wrap" id="previewWrap">
+          <div class="preview-placeholder">输入剧本后自动预览</div>
+        </div>
+        <div class="preview-bar" id="previewBar">
+          <span id="previewState">就绪</span>
+          <div class="spacer"></div>
+          <span class="pv-btn" id="pvReload" title="重载预览">⟳</span>
+          <span class="pv-btn" id="pvGoto" title="定位到光标">⌖</span>
+          <span class="pv-btn" id="pvFloat" title="独立预览窗口">⛶</span>
+          <span class="pv-btn" id="pvSide" title="游戏界面位置：右侧 / 左侧（切换）">⇌</span>
+        </div>
+        <!-- 后续流程（LetsGal 式：本章结束后可能前往的位置） -->
+        <div class="flow-next" id="flowNext">
+          <span class="fn-label">后续流程</span>
+          <span class="fn-targets" id="flowNextTargets">—</span>
+        </div>
+      </div>
+      <div class="inspector" id="inspector">
+        <div class="inspector-head">
+          <span>属性检查器</span>
+          <span class="inspector-line" id="inspectorLine"></span>
+          <button class="pane-toggle" id="inspectorToggle" title="收起/展开检查器">−</button>
+        </div>
+        <div class="inspector-body" id="inspectorBody">
+          <div class="insp-empty">点击源码中的指令行（@bg / @show / @choice / @set …），在这里改参数，源码与预览实时同步。</div>
+        </div>
+      </div>
+      <div class="scene-panel" id="scenePanel" style="display:none"></div>
+      <div class="timeline" id="timeline" style="display:none"></div>
+      <div class="missing-bar" id="missingBar" style="display:none"></div>
+    </div>
+    <aside class="asset-pane" id="assetPane">
+      <div class="asset-head">
+        <span class="asset-title">素材库</span>
+        <div class="spacer"></div>
+        <button class="icon-btn" id="assetImportBtn" title="导入素材文件">＋</button>
+        <button class="icon-btn" id="assetRefresh" title="刷新素材列表">⟳</button>
+        <button class="icon-btn" id="assetCollapse" title="折叠素材栏">⟩</button>
+      </div>
+      <div class="asset-tabs" id="assetTabs">
+        <div class="asset-tab active" data-cat="images">图片</div>
+        <div class="asset-tab" data-cat="characters">角色</div>
+        <div class="asset-tab" data-cat="audio">音频</div>
+        <div class="asset-tab" data-cat="fonts">字体</div>
+        <div class="asset-tab" data-cat="videos">视频</div>
+        <div class="asset-tab" data-cat="anims">动画</div>
+      </div>
+      <!-- E-3：素材搜索（当前分类内按文件名过滤） -->
+      <div class="asset-search">
+        <input id="assetSearch" type="search" placeholder="搜索当前分类素材…" autocomplete="off" spellcheck="false">
+        <button class="icon-btn hidden" id="assetSearchClear" title="清空搜索">✕</button>
+      </div>
+      <div class="asset-body" id="assetBody"></div>
+      <!-- E-3：批量导入进度（≥2 个文件时显示） -->
+      <div class="asset-progress hidden" id="assetProgress">
+        <div class="asset-progress-bar"><div class="asset-progress-fill" id="assetProgressFill"></div></div>
+        <div class="asset-progress-text" id="assetProgressText"></div>
+      </div>
+      <div class="asset-hint" id="assetHint">拖素材到左侧代码区生成指令；把文件拖到这里导入</div>
+      <input type="file" id="assetFile" multiple style="display:none">
+    </aside>
+  </div>
+  <!-- D1：底部 Dock 面板体系（问题 / 输出 / 运行日志），VSCode Panel 式，可拖高 -->
+  <div class="dock hidden" id="problemsPanel">
+    <div class="dock-resize" id="dockResize" title="拖动调整面板高度"></div>
+    <div class="dock-head">
+      <div class="dock-tabs" id="dockTabs">
+        <button type="button" class="dock-tab active" data-pane="problems">问题 <span class="dock-badge hidden" id="dockProblemBadge">0</span></button>
+        <button type="button" class="dock-tab" data-pane="output">输出</button>
+        <button type="button" class="dock-tab" data-pane="run">运行日志</button>
+      </div>
+      <div class="dock-view hidden" id="dockView">
+        <button type="button" class="dock-seg active" data-view="simple" title="简单视图：只说哪里不对">简单</button>
+        <button type="button" class="dock-seg" data-view="detail" title="详细视图：文件行号 + 指令原文 + 建议，可复制">详细</button>
+      </div>
+      <div class="spacer"></div>
+      <button type="button" class="icon-btn" id="dockClear" title="Clear · 清空当前面板">清空</button>
+      <button type="button" class="icon-btn" id="dockClose" title="Close Panel · 关闭面板（Ctrl+J）">✕</button>
+    </div>
+    <div class="dock-body">
+      <div class="problems-list dock-pane" id="problemsList" data-pane="problems"></div>
+      <div class="dock-log dock-pane hidden" id="dockOutput" data-pane="output"></div>
+      <div class="dock-log dock-pane hidden" id="dockRun" data-pane="run"></div>
+    </div>
+  </div>
+  <!-- 状态栏（VSCode 式底部） -->
+  <div class="statusbar" id="statusbar">
+    <span class="sb-item" id="sbReady">就绪</span>
+    <span class="sb-sep"></span>
+    <span class="sb-item" id="sbLine">第 1 行</span>
+    <span class="sb-sep"></span>
+    <span class="sb-item status" id="status">未检查</span>
+    <span class="sb-sep"></span>
+    <select id="sbLang" class="sb-lang" title="语法高亮语言（仅影响编辑器显示，不影响剧本保存格式）">
+      <option value="gal">剧本文本 (.gal)</option>
+      <option value="plain">纯文本</option>
+      <option value="json">JSON</option>
+    </select>
+    <span class="sb-sep"></span>
+    <span class="sb-item" id="sbProblems" title="语法问题数量（点击看问题面板）">⚠ 0</span>
+    <span class="sb-sep"></span>
+    <span class="sb-item">UTF-8</span>
+    <div class="spacer"></div>
+    <span class="sb-item" id="sbVersion">MYONL v1.0</span>
+  </div>
+  <div class="autocomplete" id="autocomplete"></div>
+  <!-- 新建游戏弹窗 -->
+  <div class="modal-mask" id="newGameModal" style="display:none">
+    <div class="modal">
+      <div class="modal-title">新建游戏</div>
+      <input id="newGameName" maxlength="20" placeholder="游戏名：中文/字母/数字/下划线，≤20 字符">
+      <div class="field" style="margin-top:10px;gap:6px">
+        <input id="newGameDir" placeholder="保存位置（留空则默认在 games/ 下）" readonly style="flex:1;cursor:default">
+        <button class="icon-btn" id="newGameBrowse" type="button" style="flex-shrink:0" title="Browse · 选择游戏项目目录">📁 选择</button>
+      </div>
+      <!-- P46：UI 主题 + 正文对齐（写入 config.json，建后也可手改换肤） -->
+      <div class="field" style="margin-top:10px;gap:8px;align-items:center">
+        <label for="newGameTheme" style="white-space:nowrap">界面主题</label>
+        <select id="newGameTheme" style="flex:1">
+          <option value="black" selected>黑·左列（默认）</option>
+          <option value="purple">紫（夜紫面板 + 金高亮）</option>
+          <option value="white">白（浅色面板 + 深字）</option>
+        </select>
+      </div>
+      <div class="field" style="margin-top:8px;gap:8px;align-items:center">
+        <label for="newGameAlign" style="white-space:nowrap">正文对齐</label>
+        <select id="newGameAlign" style="flex:1">
+          <option value="left" selected>左对齐·顶格（默认）</option>
+          <option value="center">居中</option>
+          <option value="right">右对齐·顶格</option>
+        </select>
+      </div>
+      <div class="modal-hint">将在所选位置下创建游戏目录，含示例教学剧本与占位素材，创建后自动打开。</div>
+      <div class="modal-err" id="newGameErr"></div>
+      <div class="modal-actions">
+        <button class="icon-btn" id="newGameCancel" title="取消新建游戏">取消</button>
+        <button id="newGameOk">创建</button>
+      </div>
+    </div>
+  </div>
+  <!-- P35 打包发布弹窗：选项目 → 编辑必填配置 → 版本迭代打包 -->
+  <div class="modal-mask" id="packModal" style="display:none">
+    <div class="modal modal-wide" style="width:680px">
+      <div class="modal-title">打包发布</div>
+      <div class="pack-grid">
+        <div class="pack-field full">
+          <label for="packProject">选择游戏项目（已打包项目会显示版本与构建号）</label>
+          <div class="modal-row" style="margin-top:0">
+            <select id="packProject" style="flex:1"></select>
+            <button class="icon-btn" id="packRefresh" title="重新扫描 games/ 项目">刷新</button>
+          </div>
+          <div class="pack-meta" id="packMeta"></div>
+        </div>
+        <div class="pack-field">
+          <label for="packName">游戏名（显示在窗口/产物 exe）</label>
+          <input id="packName" maxlength="60" placeholder="例如：月光漫步">
+        </div>
+        <div class="pack-field">
+          <label for="packVersion">版本号</label>
+          <input id="packVersion" placeholder="1.0.0">
+        </div>
+        <div class="pack-field">
+          <label for="packBump">版本迭代方式</label>
+          <select id="packBump">
+            <option value="">保持当前版本</option>
+            <option value="patch">补丁版本 +1（1.0.0 → 1.0.1）</option>
+            <option value="minor">次版本 +1（1.0.x → 1.1.0）</option>
+            <option value="major">主版本 +1（1.x.x → 2.0.0）</option>
+          </select>
+        </div>
+        <div class="pack-field">
+          <label for="packIcon">游戏图标（游戏目录内相对路径，PNG/ICO）</label>
+          <input id="packIcon" placeholder="icon.png">
+        </div>
+        <div class="pack-field">
+          <label for="packPublisher">运营号名称（必填）</label>
+          <input id="packPublisher" placeholder="例如：MYONL Studio">
+        </div>
+        <div class="pack-field">
+          <label for="packAccount">运营号 ID（必填）</label>
+          <input id="packAccount" placeholder="例如：MYONL-001">
+        </div>
+        <div class="pack-field">
+          <label for="packChannel">发行渠道</label>
+          <input id="packChannel" placeholder="Steam / itch.io / 本地发行">
+        </div>
+        <div class="pack-field">
+          <label for="packContact">运营联系方式</label>
+          <input id="packContact" placeholder="邮箱 / QQ / 官网（选填）">
+        </div>
+        <div class="pack-field full">
+          <label for="packNotes">版本说明（随 game_info.json 进产物）</label>
+          <textarea id="packNotes" placeholder="本次更新内容，例如：修复立绘错位，新增两个结局"></textarea>
+        </div>
+      </div>
+      <div class="pack-errors" id="packErrors"></div>
+      <div class="pack-status" id="packStatus">尚未开始打包。建议先「保存配置」，再「开始打包」。</div>
+      <div class="modal-actions">
+        <button class="icon-btn" id="packClose" title="Close · 关闭打包面板">关闭</button>
+        <button class="icon-btn" id="packSave" title="Save Config · 保存打包配置">保存配置</button>
+        <button id="packStart">开始打包</button>
+      </div>
+    </div>
+  </div>
+  <!-- 新建章节弹窗 -->
+  <div class="modal-mask" id="newChapterModal" style="display:none">
+    <div class="modal">
+      <div class="modal-title">新建章节</div>
+      <input id="newChapterName" maxlength="40" placeholder="章节文件名：中文/字母/数字/下划线（无需 .gal 后缀）">
+      <div class="modal-hint">将在项目根目录创建 .gal 文件，含 @label 教学骨架。</div>
+      <div class="modal-err" id="newChapterErr"></div>
+      <div class="modal-actions">
+        <button class="icon-btn" id="newChapterCancel" title="Cancel · 取消新建章节">取消</button>
+        <button id="newChapterOk">创建</button>
+      </div>
+    </div>
+  </div>
+  <!-- P20：设置面板（工程目录 / 数据目录 / 自动生成指令） -->
+  <div class="modal-mask" id="settingsModal" style="display:none">
+    <div class="modal modal-wide">
+      <div class="modal-title">设置</div>
+      <label class="modal-label" for="setProject">工程目录（.gal 剧本与 images/audio/fonts 所在）</label>
+      <div class="modal-row">
+        <input id="setProject" placeholder="工程目录的绝对路径">
+        <button class="icon-btn" id="setProjectReset" title="Reset Project · 恢复为启动时的工程目录">当前工程</button>
+      </div>
+      <div class="field-path" id="setProjectPath"></div>
+      <label class="modal-label" for="setData">数据目录（素材库）</label>
+      <div class="modal-row">
+        <input id="setData" placeholder="留空 = 随工程（推荐，移动工程不失效）">
+        <button class="icon-btn" id="setDataReset" title="Reset to Default · 恢复默认：随工程">恢复默认</button>
+      </div>
+      <div class="field-path" id="setDataPath"></div>
+      <label class="modal-check">
+        <input type="checkbox" id="setAutoInsert">
+        导入素材后自动生成指令（图片可选 @bg / @show / @cg）
+      </label>
+      <label class="modal-check">
+        <input type="checkbox" id="setSplash">
+        启用启动加载动画（关闭后打开编辑器直接进入界面）
+      </label>
+      <div class="modal-hint">
+        配置保存在工程根目录 <b>.editor_config.json</b>：移动整个工程文件夹后配置跟随，无需重设。<br>
+        数据目录填绝对路径后，移动工程需回来重设；留空则始终随工程。
+      </div>
+      <div class="modal-err" id="settingsErr"></div>
+      <div class="modal-actions">
+        <button class="icon-btn" id="settingsCancel" title="Cancel · 取消设置">取消</button>
+        <button id="settingsOk">保存</button>
+      </div>
+    </div>
+  </div>
+  <!-- P20：同名素材冲突三选 -->
+  <div class="modal-mask" id="conflictModal" style="display:none">
+    <div class="modal">
+      <div class="modal-title">素材同名</div>
+      <div class="modal-hint" id="conflictDesc" style="margin-top:0"></div>
+      <div class="modal-actions">
+        <button class="icon-btn" id="conflictCancel" title="取消">取消</button>
+        <button class="icon-btn" id="conflictRename" title="使用新名字保存">改名</button>
+        <button class="danger" id="conflictOverwrite">覆盖</button>
+      </div>
+    </div>
+  </div>
+  <!-- P51/P52：游戏内 UI 设计区（六组：对话框/名字框/选项/快捷栏/菜单/设置页 → 写回项目 config.json） -->
+  <div class="modal-mask" id="uiDesignModal" style="display:none">
+    <div class="modal modal-wide" style="width:940px;max-height:88vh;overflow:auto">
+      <div class="modal-title">游戏内 UI 设计</div>
+      <div class="modal-hint" style="margin-top:0">
+        调整游戏内各分组 UI 的几何、间距与配色，右侧实时预览（按当前分组渲染）。保存后写回当前项目的
+        <b>config.json</b>（只改这里列出的键，其余配置原样保留）。
+      </div>
+      <div class="ui-design-tabs" id="uidTabs">
+        <button class="uid-tab active" data-scene="dialog" data-panel="uidPanelDlg">对话框</button>
+        <button class="uid-tab" data-scene="dialog" data-panel="uidPanelName">名字框</button>
+        <button class="uid-tab" data-scene="choices" data-panel="uidPanelChoice">选项按钮</button>
+        <button class="uid-tab" data-scene="quickbar" data-panel="uidPanelQuick">快捷栏</button>
+        <button class="uid-tab" data-scene="menu" data-panel="uidPanelMenu">游戏内菜单</button>
+        <button class="uid-tab" data-scene="settings" data-panel="uidPanelSet">设置页</button>
+        <button class="uid-tab" data-scene="settings" data-panel="uidPanelTheme">配色</button>
+        <button class="uid-tab" data-scene="dialog" data-panel="uidPanelGlobal">全局</button>
+      </div>
+      <div class="ui-design-body">
+        <div class="ui-design-form">
+          <!-- 对话框 -->
+          <div class="uid-panel" id="uidPanelDlg">
+            <div class="ui-dl row"><span>圆角（radius）</span>
+              <input id="uidRadius" type="range" min="0" max="40" step="1"><span class="uid-val" id="uidRadiusVal">10</span></div>
+            <div class="ui-dl row"><span>横向偏移（offset_x）</span>
+              <input id="uidOffsetX" type="range" min="-200" max="200" step="2"><span class="uid-val" id="uidOffsetXVal">0</span></div>
+            <div class="ui-dl row"><span>纵向偏移（offset_y）</span>
+              <input id="uidOffsetY" type="range" min="-160" max="160" step="2"><span class="uid-val" id="uidOffsetYVal">0</span></div>
+            <div class="ui-dl row"><span>面板宽（panel_width，0=全宽）</span>
+              <input id="uidPanelWidth" type="range" min="0" max="1280" step="8"><span class="uid-val" id="uidPanelWidthVal">0</span></div>
+            <div class="ui-dl row"><span>面板高（height）</span>
+              <input id="uidHeight" type="range" min="100" max="400" step="4"><span class="uid-val" id="uidHeightVal">180</span></div>
+          </div>
+          <!-- 名字框 -->
+          <div class="uid-panel" id="uidPanelName" style="display:none">
+            <div class="ui-dl row"><span>名字距顶（name_y）</span>
+              <input id="uidNameY" type="range" min="0" max="60" step="1"><span class="uid-val" id="uidNameYVal">12</span></div>
+            <div class="ui-dl row"><span>名字与正文间距（name_gap）</span>
+              <input id="uidNameGap" type="range" min="0" max="40" step="1"><span class="uid-val" id="uidNameGapVal">8</span></div>
+          </div>
+          <!-- 选项按钮 -->
+          <div class="uid-panel" id="uidPanelChoice" style="display:none">
+            <div class="ui-dl row"><span>行宽（width）</span>
+              <input id="uidChoiceW" type="range" min="240" max="800" step="8"><span class="uid-val" id="uidChoiceWVal">420</span></div>
+            <div class="ui-dl row"><span>行高（row_height）</span>
+              <input id="uidChoiceH" type="range" min="28" max="90" step="1"><span class="uid-val" id="uidChoiceHVal">52</span></div>
+            <div class="ui-dl row"><span>距对话框（dialog_gap）</span>
+              <input id="uidChoiceGap" type="range" min="8" max="160" step="2"><span class="uid-val" id="uidChoiceGapVal">40</span></div>
+            <div class="ui-dl row"><span>圆角（radius）</span>
+              <input id="uidChoiceRadius" type="range" min="0" max="30" step="1"><span class="uid-val" id="uidChoiceRadiusVal">8</span></div>
+          </div>
+          <!-- 快捷栏 -->
+          <div class="uid-panel" id="uidPanelQuick" style="display:none">
+            <div class="ui-dl row"><span>按键宽（button_width）</span>
+              <input id="uidQbW" type="range" min="40" max="180" step="2"><span class="uid-val" id="uidQbWVal">64</span></div>
+            <div class="ui-dl row"><span>按键高（button_height）</span>
+              <input id="uidQbH" type="range" min="20" max="60" step="1"><span class="uid-val" id="uidQbHVal">26</span></div>
+            <div class="ui-dl row"><span>间距（gap）</span>
+              <input id="uidQbGap" type="range" min="2" max="40" step="1"><span class="uid-val" id="uidQbGapVal">8</span></div>
+            <div class="ui-dl row"><span>横向边距（margin_x）</span>
+              <input id="uidQbMx" type="range" min="0" max="200" step="2"><span class="uid-val" id="uidQbMxVal">24</span></div>
+            <div class="ui-dl row"><span>纵向边距（margin_y）</span>
+              <input id="uidQbMy" type="range" min="0" max="80" step="1"><span class="uid-val" id="uidQbMyVal">10</span></div>
+            <div class="ui-dl row"><span>底透明度（alpha）</span>
+              <input id="uidQbAlpha" type="range" min="0" max="255" step="1"><span class="uid-val" id="uidQbAlphaVal">185</span></div>
+            <div class="ui-dl row"><span>圆角（radius）</span>
+              <input id="uidQbRadius" type="range" min="0" max="40" step="1"><span class="uid-val" id="uidQbRadiusVal">15</span></div>
+            <div class="ui-dl row"><span>位置（position）</span>
+              <select id="uidQbPos"><option value="bottom">贴屏幕底部</option><option value="above_dialog">对话框上方</option></select></div>
+            <div class="ui-dl row"><span>对齐（align）</span>
+              <select id="uidQbAlign"><option value="right">右对齐</option><option value="left">左对齐</option><option value="center">居中</option></select></div>
+          </div>
+          <!-- 游戏内菜单 -->
+          <div class="uid-panel" id="uidPanelMenu" style="display:none">
+            <div class="ui-dl row"><span>菜单项宽（row_width）</span>
+              <input id="uidMenuW" type="range" min="240" max="700" step="8"><span class="uid-val" id="uidMenuWVal">380</span></div>
+            <div class="ui-dl row"><span>菜单项高（row_height）</span>
+              <input id="uidMenuH" type="range" min="40" max="90" step="1"><span class="uid-val" id="uidMenuHVal">54</span></div>
+            <div class="ui-dl row"><span>起始 y（top）</span>
+              <input id="uidMenuTop" type="range" min="80" max="520" step="4"><span class="uid-val" id="uidMenuTopVal">240</span></div>
+            <div class="ui-dl row"><span>圆角（radius）</span>
+              <input id="uidMenuRadius" type="range" min="0" max="30" step="1"><span class="uid-val" id="uidMenuRadiusVal">12</span></div>
+          </div>
+          <!-- 设置页 -->
+          <div class="uid-panel" id="uidPanelSet" style="display:none">
+            <div class="ui-dl row"><span>控件行宽（row_width）</span>
+              <input id="uidSetW" type="range" min="320" max="900" step="8"><span class="uid-val" id="uidSetWVal">620</span></div>
+            <div class="ui-dl row"><span>控件行高（row_height）</span>
+              <input id="uidSetH" type="range" min="44" max="110" step="1"><span class="uid-val" id="uidSetHVal">72</span></div>
+            <div class="ui-dl row"><span>导航宽（nav_width）</span>
+              <input id="uidSetNav" type="range" min="100" max="260" step="2"><span class="uid-val" id="uidSetNavVal">180</span></div>
+            <div class="ui-dl row"><span>起始 y（top）</span>
+              <input id="uidSetTop" type="range" min="80" max="400" step="4"><span class="uid-val" id="uidSetTopVal">210</span></div>
+          </div>
+          <!-- 配色面板由 editor_uidesign.js 生成（保持入口文件行数目标） -->
+          <div class="uid-panel" id="uidPanelTheme" style="display:none"></div>
+          <!-- 全局（像素化/字号/行距/圆角上限） -->
+          <div class="uid-panel" id="uidPanelGlobal" style="display:none">
+            <div class="ui-dl row"><span>像素化</span>
+              <select id="uidPixelated"><option value="true">开（Python 像素块渲染）</option><option value="false">关（平滑圆角）</option></select></div>
+            <div class="ui-dl row"><span>像素块大小（pixel_scale）</span>
+              <input id="uidPixelScale" type="range" min="1" max="12" step="1"><span class="uid-val" id="uidPixelScaleVal">4</span></div>
+            <div class="ui-dl row"><span>圆角矩形上限（corner_radius）</span>
+              <input id="uidCorner" type="range" min="0" max="40" step="1"><span class="uid-val" id="uidCornerVal">10</span></div>
+            <div class="ui-dl row"><span>画布尺寸（canvas_size）</span><select id="uidCanvas"><option value="1280x720">1280×720（720p，默认）</option><option value="1600x900">1600×900</option><option value="1920x1080">1920×1080（1080p，UI 等比 ×1.5）</option><option value="2560x1440">2560×1440（2K）</option></select></div>
+            <div class="ui-dl row"><span>正文字号（font.body）</span>
+              <input id="uidFontBody" type="range" min="16" max="48" step="1"><span class="uid-val" id="uidFontBodyVal">28</span></div>
+            <div class="ui-dl row"><span>正文行距（line_height.body）</span>
+              <input id="uidLineHeight" type="range" min="1" max="2.4" step="0.05"><span class="uid-val" id="uidLineHeightVal">1.6</span></div>
+          </div>
+          <div class="modal-actions" style="margin-top:12px">
+            <button class="icon-btn" id="uidReset" title="Reset to Default · 恢复引擎默认 UI 尺寸">恢复引擎默认</button>
+            <button class="icon-btn" id="uidClose" title="Close · 关闭 UI 设计面板">关闭</button>
+            <button id="uidSave">保存到项目 config.json</button>
+          </div>
+          <div class="modal-err" id="uidErr"></div>
+          <div class="modal-hint" id="uidPathHint"></div>
+        </div>
+        <div class="ui-design-preview">
+          <div class="uid-preview-head">
+            <span>实时预览（按当前分组渲染，与引擎同帧）</span>
+            <button type="button" class="icon-btn" id="uidZoom" title="放大预览（Esc 关闭）">⤢ 放大</button>
+          </div>
+          <div class="preview-img-wrap" id="uidPreviewWrap"><div class="preview-placeholder">调节参数后自动预览</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <!-- UI 设计预览放大（点预览图或「放大」，Esc / 点击关闭） -->
+  <div class="uid-zoom-mask" id="uidZoomMask" style="display:none"><img id="uidZoomImg" alt="UI 设计预览（放大）"><div class="uid-zoom-hint">Esc / 点击任意处关闭</div></div>
+  <!-- M1.5：内嵌教程 / 说明书（开发者侧边写边看；玩家侧不出现） -->
+  <div class="help-panel hidden" id="helpPanel">
+    <div class="help-head">
+      <span class="help-title">教程 / 说明书</span>
+      <span class="help-hint">边写边看 · F1 开关</span>
+      <div class="spacer"></div>
+      <button class="icon-btn" id="helpClose" title="关闭（Esc / F1）">关闭</button>
+    </div>
+    <div class="help-body">
+      <div class="help-list" id="helpList"><div class="help-empty">加载中…</div></div>
+      <div class="help-content" id="helpContent"><div class="help-empty">选择左侧一篇教程，右侧直接看——不用离开当前工程。</div></div>
+    </div>
+  </div>
+  <div class="toast-wrap" id="toastWrap"></div>
+  <!-- 新手引导浮层（三步，纯前端，状态存 localStorage gal_onboarding_done） -->
+  <div class="ob-mask" id="obMask" style="display:none"></div>
+  <div class="ob-ring" id="obRing"></div>
+  <div class="ob-card" id="obCard" data-step="1" style="display:none">
+    <button class="ob-skip" id="obSkip">跳过</button>
+    <div class="ob-step-tag" id="obStepTag">第 1 / 3 步</div>
+    <div class="ob-title" id="obTitle"></div>
+    <div class="ob-desc" id="obDesc"></div>
+    <div class="ob-actions">
+      <button class="icon-btn" id="obPrev" title="Previous · 上一步">上一步</button>
+      <button id="obNext">下一步</button>
+    </div>
+  </div>
+<!-- E-2：命令面板（Ctrl+Shift+P）—— 从菜单定义聚合，模糊搜索执行任意命令 -->
+<div id="cmdPaletteMask" class="cmd-mask hidden">
+  <div class="cmd-box">
+    <input id="cmdInput" class="cmd-input" placeholder="输入命令（支持模糊匹配）…" autocomplete="off" spellcheck="false">
+    <div id="cmdList" class="cmd-list"></div>
+  </div>
+</div>
+  <script src="/editor_main.js"></script>
+<script src="/editor_pro.js"></script>
+  <script src="/editor_scene.js"></script>
+  <script src="/editor_characters.js"></script>
+  <script src="/editor_level.js"></script>
+  <script src="/editor_uidesign.js"></script>
+  <script src="/editor_shell.js"></script>
+</body>
+</html>

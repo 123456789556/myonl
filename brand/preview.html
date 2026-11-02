@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>MYONL · Mooki 预览 v0.1</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+    background: #F5F2EB;
+    padding: 40px 32px;
+    color: #2A3059;
+  }
+  h1 { font-size: 24px; margin-bottom: 4px; letter-spacing: 1px; }
+  h1 .tag {
+    display: inline-block; font-size: 12px; padding: 2px 8px;
+    background: #FFD166; border-radius: 4px; margin-left: 10px; color: #2A3059;
+  }
+  .sub { color: #7a7f9e; font-size: 13px; margin-bottom: 32px; }
+
+  .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; }
+  .card {
+    background: #FFFFFF; border-radius: 12px; padding: 20px;
+    border: 1px solid #E8E4D8; box-shadow: 0 2px 8px rgba(42,48,89,.06);
+  }
+  .card h3 { font-size: 13px; color: #7a7f9e; margin-bottom: 12px; font-weight: 600; letter-spacing: .5px; }
+
+  /* 背景色块展示 */
+  .bg-swatch {
+    width: 100%; aspect-ratio: 1; border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    border: 1px solid #E8E4D8;
+  }
+  .bg-dark   { background: #2A3059; }
+  .bg-light  { background: #FFFFFF; border: 1px solid #E8E4D8; }
+  .bg-cream  { background: #FFF7E6; }
+  .bg-aurora { background: linear-gradient(135deg, #2A3059, #5A4E8C); }
+
+  /* 表情切换演示 */
+  .expressions { display: flex; gap: 12px; }
+  .expr-item { flex: 1; text-align: center; }
+  .expr-item svg { width: 100%; height: auto; }
+  .expr-item .label { font-size: 11px; color: #7a7f9e; margin-top: 6px; }
+
+  /* 尺寸展示 */
+  .sizes { display: flex; flex-wrap: wrap; gap: 16px; align-items: center; padding: 12px 0; }
+  .sizes svg { flex-shrink: 0; }
+  .sizes .label { font-size: 10px; color: #7a7f9e; margin-bottom: 2px; }
+  .sizes .item { display: flex; flex-direction: column; align-items: center; }
+
+  /* 鼠标跟随预览区 */
+  .follow-area {
+    width: 100%; height: 200px;
+    background: #2A3059; border-radius: 8px;
+    position: relative; overflow: hidden; cursor: crosshair;
+    border: 1px solid #5A6180;
+  }
+  .follow-area svg {
+    position: absolute; top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    width: 140px; height: auto;
+  }
+  .follow-hint {
+    position: absolute; bottom: 8px; left: 50%; transform: translateX(-50%);
+    font-size: 10px; color: #FFE066; opacity: .8;
+  }
+
+  /* 色块定义 */
+  .color-row { display: flex; gap: 8px; flex-wrap: wrap; }
+  .color-chip {
+    display: flex; flex-direction: column; align-items: center;
+    font-size: 10px; color: #2A3059;
+  }
+  .color-chip .sw {
+    width: 40px; height: 40px; border-radius: 8px;
+    border: 1px solid rgba(0,0,0,.08); margin-bottom: 4px;
+  }
+
+  /* 工具栏 */
+  .toolbar { margin: 20px 0 32px; display: flex; gap: 10px; }
+  .toolbar button {
+    padding: 8px 18px; border: 1px solid #E8E4D8; background: #FFFFFF;
+    border-radius: 6px; cursor: pointer; font-size: 13px; color: #2A3059;
+    transition: all .15s;
+  }
+  .toolbar button:hover { border-color: #FFD166; background: #FFF7E6; }
+  .toolbar button.active { background: #FFD166; border-color: #FFD166; }
+
+  .footer { margin-top: 40px; text-align: center; color: #b5b8ca; font-size: 11px; }
+</style>
+</head>
+<body>
+
+<h1>MYONL · Mooki <span class="tag">v0.1 初稿</span></h1>
+<div class="sub">月牙精灵 · 胖身体 + 大眼 + 金边 · 双击此 HTML 即可预览</div>
+
+<!-- ========== 工具栏 ========== -->
+<div class="toolbar">
+  <button class="active" onclick="setExpr('normal')">正常微笑</button>
+  <button onclick="setExpr('happy')">眯眼开心</button>
+  <button onclick="setExpr('surprise')">惊讶</button>
+  <button onclick="setExpr('angry')">鼓鼓脸</button>
+  <button onclick="toggleFollow()">眼睛跟随</button>
+</div>
+
+<div class="grid">
+
+  <!-- 不同背景 -->
+  <div class="card">
+    <h3>不同背景表现</h3>
+    <div style="display:grid; grid-template-columns: repeat(2, 1fr); gap: 8px;">
+      <div class="bg-swatch bg-dark">
+        <svg viewBox="0 0 240 200" width="160" height="auto" id="svg-dark"></svg>
+      </div>
+      <div class="bg-swatch bg-aurora">
+        <svg viewBox="0 0 240 200" width="160" height="auto" id="svg-aurora"></svg>
+      </div>
+      <div class="bg-swatch bg-light">
+        <svg viewBox="0 0 240 200" width="160" height="auto" id="svg-light"></svg>
+      </div>
+      <div class="bg-swatch bg-cream">
+        <svg viewBox="0 0 240 200" width="160" height="auto" id="svg-cream"></svg>
+      </div>
+    </div>
+  </div>
+
+  <!-- 表情切换 -->
+  <div class="card">
+    <h3>表情变体（当前：<span id="expr-label">正常微笑</span>）</h3>
+    <div class="expressions" id="expressions">
+      <div class="expr-item">
+        <svg viewBox="0 0 240 200" id="expr-1"></svg>
+        <div class="label">正常微笑</div>
+      </div>
+      <div class="expr-item">
+        <svg viewBox="0 0 240 200" id="expr-2"></svg>
+        <div class="label">眯眼开心</div>
+      </div>
+      <div class="expr-item">
+        <svg viewBox="0 0 240 200" id="expr-3"></svg>
+        <div class="label">惊讶</div>
+      </div>
+      <div class="expr-item">
+        <svg viewBox="0 0 240 200" id="expr-4"></svg>
+        <div class="label">鼓鼓脸</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 鼠标跟随演示 -->
+  <div class="card">
+    <h3>眼睛跟随鼠标（在框内移动）</h3>
+    <div class="follow-area" id="follow-area">
+      <svg viewBox="0 0 240 200" id="follow-svg"></svg>
+      <div class="follow-hint">鼠标在框内移动 · 瞳孔会跟着你看</div>
+    </div>
+  </div>
+
+  <!-- 尺寸展示 -->
+  <div class="card" style="grid-column: span 2;">
+    <h3>多尺寸缩放（矢量无损）</h3>
+    <div class="sizes">
+      <div class="item"><div class="label">512</div><svg viewBox="0 0 240 200" width="128" height="auto" id="sz-512"></svg></div>
+      <div class="item"><div class="label">256</div><svg viewBox="0 0 240 200" width="64" height="auto" id="sz-256"></svg></div>
+      <div class="item"><div class="label">128</div><svg viewBox="0 0 240 200" width="32" height="auto" id="sz-128"></svg></div>
+      <div class="item"><div class="label">64</div><svg viewBox="0 0 240 200" width="16" height="auto" id="sz-64"></svg></div>
+      <div class="item"><div class="label">32</div><svg viewBox="0 0 240 200" width="8" height="auto" id="sz-32"></svg></div>
+    </div>
+  </div>
+
+  <!-- 配色卡 -->
+  <div class="card">
+    <h3>配色规范</h3>
+    <div class="color-row" style="margin-bottom: 14px;">
+      <div class="color-chip"><div class="sw" style="background:#FFF7E6"></div>#FFF7E6<br>月白</div>
+      <div class="color-chip"><div class="sw" style="background:#FFD166"></div>#FFD166<br>金边</div>
+      <div class="color-chip"><div class="sw" style="background:#FFE066"></div>#FFE066<br>星光</div>
+      <div class="color-chip"><div class="sw" style="background:#FFB6C1"></div>#FFB6C1<br>腮红</div>
+      <div class="color-chip"><div class="sw" style="background:#2A3059"></div>#2A3059<br>深空蓝</div>
+    </div>
+    <div style="font-size:12px; color:#7a7f9e; line-height: 1.8;">
+      身体：evenodd 椭圆差集填充月白<br>
+      描边：双路径金边 3px<br>
+      瞳孔偏移：±6px 跟随鼠标（桌宠用）<br>
+      头顶星星：固定位置 + 高光点
+    </div>
+  </div>
+
+</div>
+
+<div class="footer">MYONL Engine · Mooki · Brand Identity Draft v0.1 · 2026-10-29</div>
+
+<script>
+/* ========== SVG 原始 source（模板，表情切换时只换眼睛/嘴巴部分） ========== */
+const SVG_BODY = `
+  <!-- 头顶小星星 -->
+  <g transform="translate(120, 18)">
+    <path d="M 0 -10 L 3 -3 L 10 -3 L 4.5 2 L 7 9 L 0 5 L -7 9 L -4.5 2 L -10 -3 L -3 -3 Z"
+          fill="#FFE066" stroke="#FFD166" stroke-width="1.2" stroke-linejoin="round" />
+    <circle cx="-2" cy="-5" r="1.2" fill="#FFFFFF" />
+  </g>
+  <!-- 月牙身体 evenodd -->
+  <path d="M 120 45 A 78 65 0 1 1 120 155 A 55 44 0 1 0 120 60 Z" fill="#FFF7E6" fill-rule="evenodd" />
+  <!-- 金边描边 -->
+  <path d="M 42 100 A 78 65 0 1 1 198 100" fill="none" stroke="#FFD166" stroke-width="3" stroke-linecap="round" />
+  <path d="M 198 100 A 55 44 0 1 0 42 100" fill="none" stroke="#FFD166" stroke-width="3" stroke-linecap="round" />
+  <circle cx="42" cy="100" r="2.5" fill="#FFD166" />
+  <circle cx="198" cy="100" r="2.5" fill="#FFD166" />
+  <!-- 腮红 -->
+  <ellipse cx="72"  cy="120" rx="12" ry="7" fill="#FFB6C1" opacity="0.75" />
+  <ellipse cx="168" cy="120" rx="12" ry="7" fill="#FFB6C1" opacity="0.75" />
+  <!-- 脚 -->
+  <ellipse cx="82"  cy="160" rx="8" ry="5" fill="#FFD166" opacity="0.8" />
+  <ellipse cx="158" cy="160" rx="8" ry="5" fill="#FFD166" opacity="0.8" />
+`;
+
+/* ========== 4 种表情：眼睛 + 嘴巴 ========== */
+const EXPRS = {
+  normal: `
+    <!-- 正常微笑 -->
+    <ellipse cx="88"  cy="96" rx="18" ry="20" fill="#FFFFFF" />
+    <ellipse cx="152" cy="96" rx="18" ry="20" fill="#FFFFFF" />
+    <ellipse cx="88"  cy="96" rx="18" ry="20" fill="none" stroke="#FFD166" stroke-width="1.5" />
+    <ellipse cx="152" cy="96" rx="18" ry="20" fill="none" stroke="#FFD166" stroke-width="1.5" />
+    <circle cx="92"  cy="98" r="11" fill="#2A3059" />
+    <circle cx="148" cy="98" r="11" fill="#2A3059" />
+    <circle cx="86"  cy="92" r="3.2" fill="#FFFFFF" />
+    <circle cx="142" cy="92" r="3.2" fill="#FFFFFF" />
+    <circle cx="96"  cy="104" r="1.6" fill="#FFFFFF" opacity="0.7" />
+    <circle cx="152" cy="104" r="1.6" fill="#FFFFFF" opacity="0.7" />
+    <path d="M 112 142 Q 120 148 128 142" fill="none" stroke="#2A3059" stroke-width="2.2" stroke-linecap="round" />
+    <path d="M 118 144 Q 120 140 122 144" fill="none" stroke="#2A3059" stroke-width="1.6" stroke-linecap="round" />
+  `,
+  happy: `
+    <!-- 眯眼开心（笑眯了眼） -->
+    <path d="M 70 96 Q 88 82 106 96" fill="none" stroke="#2A3059" stroke-width="3" stroke-linecap="round" />
+    <path d="M 134 96 Q 152 82 170 96" fill="none" stroke="#2A3059" stroke-width="3" stroke-linecap="round" />
+    <!-- 腮红更深 -->
+    <ellipse cx="72"  cy="120" rx="14" ry="8" fill="#FF8FA3" opacity="0.9" />
+    <ellipse cx="168" cy="120" rx="14" ry="8" fill="#FF8FA3" opacity="0.9" />
+    <!-- 大开心嘴 -->
+    <path d="M 108 140 Q 120 155 132 140" fill="none" stroke="#2A3059" stroke-width="2.5" stroke-linecap="round" />
+  `,
+  surprise: `
+    <!-- 惊讶（圆眼 + O嘴） -->
+    <ellipse cx="88"  cy="96" rx="20" ry="22" fill="#FFFFFF" />
+    <ellipse cx="152" cy="96" rx="20" ry="22" fill="#FFFFFF" />
+    <ellipse cx="88"  cy="96" rx="20" ry="22" fill="none" stroke="#FFD166" stroke-width="1.5" />
+    <ellipse cx="152" cy="96" rx="20" ry="22" fill="none" stroke="#FFD166" stroke-width="1.5" />
+    <circle cx="88"  cy="96" r="13" fill="#2A3059" />
+    <circle cx="152" cy="96" r="13" fill="#2A3059" />
+    <circle cx="82"  cy="90" r="4" fill="#FFFFFF" />
+    <circle cx="146" cy="90" r="4" fill="#FFFFFF" />
+    <ellipse cx="120" cy="145" rx="6" ry="7" fill="#2A3059" />
+  `,
+  angry: `
+    <!-- 鼓鼓脸（生气但可爱） -->
+    <ellipse cx="88"  cy="98" rx="17" ry="19" fill="#FFFFFF" />
+    <ellipse cx="152" cy="98" rx="17" ry="19" fill="#FFFFFF" />
+    <ellipse cx="88"  cy="98" rx="17" ry="19" fill="none" stroke="#FFD166" stroke-width="1.5" />
+    <ellipse cx="152" cy="98" rx="17" ry="19" fill="none" stroke="#FFD166" stroke-width="1.5" />
+    <circle cx="92"  cy="100" r="9" fill="#2A3059" />
+    <circle cx="148" cy="100" r="9" fill="#2A3059" />
+    <!-- 生气眉毛 -->
+    <path d="M 70 76 L 92 84" stroke="#2A3059" stroke-width="3" stroke-linecap="round" />
+    <path d="M 170 76 L 148 84" stroke="#2A3059" stroke-width="3" stroke-linecap="round" />
+    <!-- 腮红变生气红 -->
+    <ellipse cx="72"  cy="122" rx="14" ry="9" fill="#FF6B81" opacity="0.7" />
+    <ellipse cx="168" cy="122" rx="14" ry="9" fill="#FF6B81" opacity="0.7" />
+    <!-- 小嘴 -->
+    <path d="M 112 146 L 128 146" stroke="#2A3059" stroke-width="2.2" stroke-linecap="round" />
+  `,
+};
+
+function assembleSVG(expr) {
+  return SVG_BODY + EXPRS[expr];
+}
+
+/* ========== 渲染所有静态 SVG ========== */
+['svg-dark','svg-aurora','svg-light','svg-cream','sz-512','sz-256','sz-128','sz-64','sz-32'].forEach(id => {
+  document.getElementById(id).innerHTML = assembleSVG('normal');
+});
+
+/* ========== 表情面板 ========== */
+function setExpr(expr) {
+  const names = {normal:'正常微笑', happy:'眯眼开心', surprise:'惊讶', angry:'鼓鼓脸'};
+  document.getElementById('expr-label').textContent = names[expr];
+  // 表情面板四个全部重绘（区分度）
+  const exprs = ['normal','happy','surprise','angry'];
+  exprs.forEach((e, i) => {
+    document.getElementById('expr-' + (i+1)).innerHTML = assembleSVG(e);
+  });
+  // 更新跟随预览
+  document.getElementById('follow-svg').innerHTML = assembleSVG(expr);
+}
+setExpr('normal');
+
+/* ========== 眼睛跟随鼠标 ========== */
+let followOn = true;
+function toggleFollow() {
+  followOn = !followOn;
+  document.getElementById('follow-area').style.cursor = followOn ? 'crosshair' : 'default';
+}
+
+const FA = document.getElementById('follow-area');
+FA.addEventListener('mousemove', e => {
+  if (!followOn) return;
+  const rect = FA.getBoundingClientRect();
+  const cx = rect.left + rect.width/2;
+  const cy = rect.top + rect.height/2;
+  const dx = (e.clientX - cx) / (rect.width/2);   // -1 ~ 1
+  const dy = (e.clientY - cy) / (rect.height/2);  // -1 ~ 1
+  const maxOff = 6;  // 瞳孔最大偏移 px
+  const offX = Math.max(-maxOff, Math.min(maxOff, dx * maxOff));
+  const offY = Math.max(-maxOff, Math.min(maxOff, dy * maxOff * 0.7));
+  // 更新瞳孔位置（在 normal 表情里）
+  ['follow-svg'].forEach(id => {
+    const circles = document.querySelectorAll('#' + id + ' circle');
+    circles.forEach(c => {
+      const cx = parseFloat(c.getAttribute('cx'));
+      if (cx === 92 || cx === 148) {
+        c.setAttribute('cx', cx + offX);
+        c.setAttribute('cy', parseFloat(c.getAttribute('cy')) + offY);
+      }
+    });
+  });
+});
+</script>
+</body>
+</html>

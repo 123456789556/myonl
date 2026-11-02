@@ -1,0 +1,153 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Mooki 桌宠四表情展示（normal / happy / surprise / angry）
+     全部图层复用 mooki_v2.svg 分层结构（身体/光晕/星/腮红/星尘一致，仅面部切换）
+     配色：月白 #FFF7E6 / 金边 #FFD166 / 星光 #FFE066 / 腮红 #FFB6C1 / 深空蓝 #2A3059
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1240 400">
+  <defs>
+    <radialGradient id="meBody" cx="50%" cy="32%" r="85%">
+      <stop offset="0%" stop-color="#FFFDF5"/>
+      <stop offset="55%" stop-color="#FFF6DF"/>
+      <stop offset="100%" stop-color="#FFE9B8"/>
+    </radialGradient>
+    <linearGradient id="meEdge" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#FFE08A"/>
+      <stop offset="100%" stop-color="#F5B84C"/>
+    </linearGradient>
+    <radialGradient id="meGlow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#FFE066" stop-opacity="0.55"/>
+      <stop offset="55%" stop-color="#FFE066" stop-opacity="0.18"/>
+      <stop offset="100%" stop-color="#FFE066" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="mePupil" cx="38%" cy="32%" r="85%">
+      <stop offset="0%" stop-color="#4A5AA8"/>
+      <stop offset="70%" stop-color="#2A3059"/>
+      <stop offset="100%" stop-color="#1D2342"/>
+    </radialGradient>
+    <radialGradient id="meCheek" cx="50%" cy="40%" r="65%">
+      <stop offset="0%" stop-color="#FFCBD6"/>
+      <stop offset="100%" stop-color="#FFB6C1"/>
+    </radialGradient>
+    <linearGradient id="meStar" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#FFEF9E"/>
+      <stop offset="100%" stop-color="#FFD166"/>
+    </linearGradient>
+    <linearGradient id="meBg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#232A4A"/>
+      <stop offset="100%" stop-color="#3A3264"/>
+    </linearGradient>
+
+    <!-- 共享身体组（glow + body + cheeks + star + dust），表情层外置 -->
+    <g id="me-shared">
+      <ellipse cx="200" cy="236" rx="160" ry="150" fill="url(#meGlow)"/>
+      <path d="M 78 180 A 122 120 0 0 0 322 180 C 282 216 118 216 78 180 Z"
+            fill="url(#meBody)" opacity="0.97"/>
+      <path d="M 78 180 A 122 120 0 0 0 322 180"
+            fill="none" stroke="url(#meEdge)" stroke-width="3.2" stroke-linecap="round"/>
+      <path d="M 322 180 C 282 216 118 216 78 180"
+            fill="none" stroke="url(#meEdge)" stroke-width="2.6" stroke-linecap="round"/>
+      <path d="M 124 224 C 166 244 234 244 276 224"
+            fill="none" stroke="#FFFFFF" stroke-opacity="0.45" stroke-width="2.4" stroke-linecap="round"/>
+      <ellipse cx="160" cy="316" rx="11" ry="7" fill="url(#meEdge)" opacity="0.85"/>
+      <ellipse cx="240" cy="316" rx="11" ry="7" fill="url(#meEdge)" opacity="0.85"/>
+      <ellipse cx="110" cy="272" rx="17" ry="10.5" fill="url(#meCheek)" opacity="0.8"/>
+      <ellipse cx="110" cy="269" rx="11" ry="6" fill="#FFDDE4" opacity="0.6"/>
+      <ellipse cx="290" cy="272" rx="17" ry="10.5" fill="url(#meCheek)" opacity="0.8"/>
+      <ellipse cx="290" cy="269" rx="11" ry="6" fill="#FFDDE4" opacity="0.6"/>
+      <g transform="translate(200, 52)">
+        <g stroke="#FFE066" stroke-opacity="0.35" stroke-width="2" stroke-linecap="round">
+          <line x1="0" y1="-32" x2="0" y2="-17"/>
+          <line x1="0" y1="17" x2="0" y2="32"/>
+          <line x1="-32" y1="0" x2="-17" y2="0"/>
+          <line x1="17" y1="0" x2="32" y2="0"/>
+          <line x1="-22" y1="-22" x2="-12" y2="-12"/>
+          <line x1="12" y1="12" x2="22" y2="22"/>
+        </g>
+        <path d="M 0 -18.5 L 5.7 -5.7 L 18.5 0 L 5.7 5.7 L 0 18.5 L -5.7 5.7 L -18.5 0 L -5.7 -5.7 Z"
+              fill="url(#meStar)" stroke="#F5B84C" stroke-width="1.5" stroke-linejoin="round"/>
+        <circle cx="-5" cy="-7.5" r="2.7" fill="#FFFFFF"/>
+      </g>
+      <g fill="#FFFFFF" opacity="0.5">
+        <circle cx="188" cy="170" r="1.5"/>
+        <circle cx="222" cy="160" r="1.1"/>
+        <circle cx="300" cy="230" r="1.4"/>
+        <circle cx="115" cy="130" r="1.2"/>
+        <circle cx="262" cy="330" r="1.2"/>
+        <circle cx="88" cy="282" r="1.1"/>
+      </g>
+    </g>
+  </defs>
+
+  <!-- 四格底板 -->
+  <rect x="10"  y="10" width="290" height="380" rx="40" fill="url(#meBg)"/>
+  <rect x="320" y="10" width="290" height="380" rx="40" fill="url(#meBg)"/>
+  <rect x="630" y="10" width="290" height="380" rx="40" fill="url(#meBg)"/>
+  <rect x="940" y="10" width="290" height="380" rx="40" fill="url(#meBg)"/>
+
+  <!-- ========== 1 · normal 待机（大眼 + 微笑） ========== -->
+  <g transform="translate(35,55) scale(0.6)">
+    <use href="#me-shared"/>
+    <ellipse cx="144" cy="236" rx="21" ry="23.5" fill="#FFFFFF" stroke="#F5C966" stroke-width="1.6"/>
+    <ellipse cx="256" cy="236" rx="21" ry="23.5" fill="#FFFFFF" stroke="#F5C966" stroke-width="1.6"/>
+    <circle cx="149" cy="238" r="13" fill="url(#mePupil)"/>
+    <circle cx="142.5" cy="231" r="4.4" fill="#FFFFFF"/>
+    <circle cx="154" cy="245" r="1.9" fill="#FFFFFF" opacity="0.65"/>
+    <circle cx="251" cy="238" r="13" fill="url(#mePupil)"/>
+    <circle cx="244.5" cy="231" r="4.4" fill="#FFFFFF"/>
+    <circle cx="257" cy="245" r="1.9" fill="#FFFFFF" opacity="0.65"/>
+    <path d="M 182 276 Q 200 287 218 276" fill="none" stroke="#2A3059" stroke-width="3" stroke-linecap="round"/>
+    <path d="M 189 280 Q 200 287 211 280" fill="none" stroke="#2A3059" stroke-width="1.8" stroke-linecap="round" opacity="0.6"/>
+  </g>
+
+  <!-- ========== 2 · happy 摸头（眯眼笑 + 大笑嘴 + 爱心） ========== -->
+  <g transform="translate(345,55) scale(0.6)">
+    <use href="#me-shared"/>
+    <path d="M 124 238 Q 144 220 164 238" fill="none" stroke="#2A3059" stroke-width="4" stroke-linecap="round"/>
+    <path d="M 236 238 Q 256 220 276 238" fill="none" stroke="#2A3059" stroke-width="4" stroke-linecap="round"/>
+    <path d="M 176 272 Q 200 296 224 272 Q 212 266 200 266 Q 188 266 176 272 Z" fill="#2A3059"/>
+    <ellipse cx="200" cy="278" rx="7" ry="4" fill="#FF9EAA"/>
+    <!-- 爱心气泡 -->
+    <path d="M 330 96 C 330 84 344 80 350 90 C 356 80 370 84 370 96 C 370 108 350 120 350 120 C 350 120 330 108 330 96 Z"
+          fill="#FF9EAA" stroke="#FFFFFF" stroke-width="2"/>
+    <circle cx="330" cy="132" r="3.5" fill="#FF9EAA" opacity="0.7"/>
+    <circle cx="322" cy="146" r="2.5" fill="#FF9EAA" opacity="0.45"/>
+  </g>
+
+  <!-- ========== 3 · surprise 惊讶（瞪大眼 + O 嘴） ========== -->
+  <g transform="translate(655,55) scale(0.6)">
+    <use href="#me-shared"/>
+    <ellipse cx="144" cy="236" rx="24" ry="27" fill="#FFFFFF" stroke="#F5C966" stroke-width="1.6"/>
+    <ellipse cx="256" cy="236" rx="24" ry="27" fill="#FFFFFF" stroke="#F5C966" stroke-width="1.6"/>
+    <circle cx="146" cy="236" r="15.5" fill="url(#mePupil)"/>
+    <circle cx="139" cy="228" r="5" fill="#FFFFFF"/>
+    <circle cx="254" cy="236" r="15.5" fill="url(#mePupil)"/>
+    <circle cx="247" cy="228" r="5" fill="#FFFFFF"/>
+    <ellipse cx="200" cy="280" rx="10" ry="12" fill="#2A3059"/>
+    <ellipse cx="200" cy="284" rx="5" ry="6" fill="#FF9EAA"/>
+    <!-- 头顶惊叹汗滴 -->
+    <path d="M 330 60 C 338 74 344 84 344 94 A 14 14 0 0 1 316 94 C 316 84 322 74 330 60 Z"
+          fill="#9ED8FF" stroke="#FFFFFF" stroke-width="2"/>
+    <ellipse cx="324" cy="98" rx="3.5" ry="5" fill="#FFFFFF" opacity="0.7"/>
+  </g>
+
+  <!-- ========== 4 · angry 生气（八字眉 + 鼓腮 + 抿嘴） ========== -->
+  <g transform="translate(965,55) scale(0.6)">
+    <use href="#me-shared"/>
+    <path d="M 124 226 L 164 234" stroke="#2A3059" stroke-width="4" stroke-linecap="round"/>
+    <path d="M 276 226 L 236 234" stroke="#2A3059" stroke-width="4" stroke-linecap="round"/>
+    <circle cx="146" cy="242" r="10" fill="url(#mePupil)"/>
+    <circle cx="141" cy="237" r="3.2" fill="#FFFFFF"/>
+    <circle cx="254" cy="242" r="10" fill="url(#mePupil)"/>
+    <circle cx="249" cy="237" r="3.2" fill="#FFFFFF"/>
+    <ellipse cx="110" cy="274" rx="20" ry="13" fill="url(#meCheek)" opacity="0.95"/>
+    <ellipse cx="290" cy="274" rx="20" ry="13" fill="url(#meCheek)" opacity="0.95"/>
+    <path d="M 184 282 Q 200 274 216 282" fill="none" stroke="#2A3059" stroke-width="3" stroke-linecap="round"/>
+    <!-- 头顶爆筋 -->
+    <g transform="translate(330,72)" stroke="#FF9EAA" stroke-width="5" stroke-linecap="round" fill="none">
+      <path d="M -14 -14 L -4 -4 M -4 -14 L -14 -4"/>
+      <path d="M 4 -14 L 14 -4 M 14 -14 L 4 -4"/>
+      <path d="M -14 6 L -4 16 M -4 6 L -14 16"/>
+      <path d="M 4 6 L 14 16 M 14 6 L 4 16"/>
+    </g>
+  </g>
+</svg>

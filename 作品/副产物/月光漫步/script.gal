@@ -1,0 +1,18 @@
+# 月光漫步（MYONL 复刻版）
+# 基于《Moonlight Walks》v2.0 中文化演绎（MIT，PyTom/American Bishoujo）
+# 角色注册（全局可见）
+
+@character 玛丽 #ff8080
+@character 孙女 #ffff80
+
+# 章节入口（按剧情顺序 include；各章 @label 全局可见）
+@include 章节/01-相遇.gal
+@include 章节/02-拍照.gal
+@include 章节/03-交谈.gal
+@include 章节/04-身世.gal
+@include 章节/05-夜谈.gal
+@include 章节/06-再会.gal
+@include 章节/07-结局2-历史.gal
+@include 章节/08-结局3-片刻的新娘.gal
+@include 章节/09-结局4-携手走向光.gal
+@include 章节/10-尾声.gal

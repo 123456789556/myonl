@@ -1,0 +1,23 @@
+# 分支多结局：两分支走向不同对白与不同结局画面
+@character 向导 #88ccff
+
+@bg street
+@music bgm_night
+@ 向导 前面有两个方向。
+
+@choice:
+    > 走左边 -> left_end
+    > 走右边 -> right_end
+
+@label left_end
+@bg lake
+@ 向导 左边是湖。结局：湖畔。
+@jump fin
+
+@label right_end
+@bg mountain
+@ 向导 右边是山。结局：山巅。
+@jump fin
+
+@label fin
+@end

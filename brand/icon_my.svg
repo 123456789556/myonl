@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 220" width="220" height="220">
+  <!-- MYONL 应用图标 · 版 A 定稿：MY 两字母 + 右上独立星 + 极淡光晕 -->
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#26348A"/>
+      <stop offset="100%" stop-color="#452B94"/>
+    </linearGradient>
+    <linearGradient id="my" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#FFFFFF"/>
+      <stop offset="100%" stop-color="#DCD5FF"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="50%" cy="46%" r="55%">
+      <stop offset="0%" stop-color="#7C6BFF" stop-opacity="0.28"/>
+      <stop offset="100%" stop-color="#7C6BFF" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <!-- 极淡光晕（很小，不抢主体） -->
+  <rect x="0" y="0" width="220" height="220" fill="url(#glow)"/>
+  <!-- 渐变圆角底 -->
+  <rect x="8" y="8" width="204" height="204" rx="46" fill="url(#bg)"/>
+  <rect x="8" y="8" width="204" height="204" rx="46" fill="none" stroke="rgba(255,255,255,0.16)" stroke-width="1.5"/>
+  <!-- MY 两字母（主要识别层） -->
+  <text x="110" y="122" font-family="Arial, Helvetica, sans-serif" font-size="96" font-weight="800" fill="url(#my)" text-anchor="middle" dominant-baseline="middle" letter-spacing="2">MY</text>
+  <!-- 右上独立星（不贴字母） -->
+  <path d="M 178 48 l 4.5 4.5 l -4.5 4.5 l -4.5 -4.5 z" fill="#FFE9A8"/>
+</svg>

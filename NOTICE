@@ -1,0 +1,36 @@
+MYONL 引擎 第三方组件声明（NOTICE）
+====================================
+
+本产品在分发时包含或引用以下第三方组件，感谢其作者的贡献。
+
+1. Ren'Py Visual Novel Engine（早期 2.0 时代版本）
+   - 许可：MIT License
+   - 版权：Copyright 2004-2008 PyTom <pytom@bishoujo.us>
+   - 位置：games/月光漫步/src/moonlight-2.0/renpy/
+   - 说明：仅作复刻研究的原始参考保留，MYONL 引擎本体（engine/）为
+     独立实现，不派生自 Ren'Py 代码。各源文件头部保留完整 MIT 版权与
+     许可声明；其官方许可文本见同目录或上级 LICENSE.txt。
+
+2. Moonlight Walks（《月光漫步》原作）
+   - 许可：MIT License
+   - 版权：Copyright 2005-2009 PyTom / American Bishoujo
+   - 位置：games/月光漫步/src/moonlight-2.0/（README.html 内含许可全文）
+   - 说明：games/月光漫步/ 为基于原作许可的中文复刻练习项目，
+     剧本与素材按原作 MIT 条款使用并保留版权声明。
+
+3. pygame-ce（pygame Community Edition）
+   - 许可：GNU Lesser General Public License v2.1 或更高版本（LGPL-2.1+）
+   - 版权：pygame-ce 贡献者
+   - 说明：引擎运行时依赖；打包产物内包含其动态链接库（SDL2 系列，
+     SDL2 本身为 zlib License）。以动态链接方式使用，符合 LGPL 条款。
+
+4. Python 解释器及标准库
+   - 许可：PSF License（Python Software Foundation）
+   - 说明：打包产物内嵌 CPython 运行库。
+
+5. 中文字体（如随游戏目录 fonts/ 分发）
+   - 说明：字体版权归各自厂商所有；引擎默认使用系统中文字体，
+     不随引擎本体分发任何商业字体。
+
+如对本声明有任何疑问或遗漏指正，请联系运营号（见打包产物
+game_info.json 中的 publisher 信息）。

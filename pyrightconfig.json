@@ -1,0 +1,26 @@
+{
+  // 迭代-01 / 八大方向 1.2：pyright 引入。起步 basic 模式，先收集噪音再逐模块收紧；目标终态 strict。
+  // 存量错误基线见 tools/pyright-baseline.json，棘轮检查入口 tools/check_types.ps1。
+  "include": ["engine"],
+  "exclude": [
+    "**/__pycache__",
+    "作品/**",
+    "games/**",
+    "tests/**"
+  ],
+  "pythonVersion": "3.13",
+  "pythonPlatform": "All",
+  "typeCheckingMode": "basic",
+  "reportMissingImports": true,
+  "reportMissingTypeStubs": false,
+  "reportMissingParameterType": false,
+  "reportMissingTypeArgument": false,
+  "reportUnknownParameterType": false,
+  "reportUnknownArgumentType": false,
+  "reportUnknownVariableType": false,
+  "reportUnknownMemberType": false,
+  "reportUnknownLambdaType": false,
+  "reportOptionalMemberAccess": true,
+  "reportUninitializedInstanceVariable": false,
+  "reportCallInDefaultInitializer": false
+}

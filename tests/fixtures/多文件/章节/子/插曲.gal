@@ -1,0 +1,6 @@
+# 插曲：用 ../ 相对当前文件目录 include 第二章；label_second 供第一章跳转
+@include ../第二章.gal
+
+@label label_second
+@ 插曲里的旁白。
+@jump main_end

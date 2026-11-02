@@ -1,0 +1,181 @@
+{
+  "_说明": "MYONL 只读配置：只写要覆盖的键，其余走引擎默认值。完整可配项见 engine/config.py 的 DEFAULTS。",
+  "window_title": "新游戏",
+  "title_music": "",
+  "font": {
+    "title": 84,
+    "heading": 60,
+    "mid": 42,
+    "body": 28,
+    "option": 26,
+    "small": 22,
+    "em": 28
+  },
+  "line_height": {
+    "body": 1.6,
+    "heading": 1.3,
+    "option": 1.4
+  },
+  "theme": {
+    "primary": [
+      130,
+      140,
+      160
+    ],
+    "primary_soft": [
+      48,
+      52,
+      62
+    ],
+    "accent": [
+      255,
+      205,
+      130
+    ],
+    "surface": [
+      20,
+      22,
+      26
+    ],
+    "surface_alt": [
+      34,
+      37,
+      44
+    ],
+    "text": [
+      240,
+      244,
+      250
+    ],
+    "text_dim": [
+      150,
+      156,
+      166
+    ],
+    "border": [
+      58,
+      62,
+      70
+    ],
+    "danger": [
+      243,
+      139,
+      168
+    ],
+    "success": [
+      166,
+      227,
+      161
+    ],
+    "shadow": [
+      0,
+      0,
+      0
+    ]
+  },
+  "colors": {
+    "selected_bg": [
+      30,
+      33,
+      39
+    ],
+    "selected_border": [
+      130,
+      140,
+      160
+    ],
+    "selected_fg": [
+      255,
+      255,
+      255
+    ],
+    "dialog_fg": [
+      244,
+      246,
+      252
+    ],
+    "dialog_fg_dim": [
+      168,
+      174,
+      184
+    ],
+    "highlight": [
+      255,
+      218,
+      150
+    ]
+  },
+  "alphas": {
+    "selected_bg": 220,
+    "idle_bg": 168,
+    "menu": 228
+  },
+  "dialogue": {
+    "default": {
+      "height": 176,
+      "margin": 56,
+      "border_width": 0,
+      "bg_alpha": 150,
+      "radius": 12,
+      "name_y": 14,
+      "name_gap": 10,
+      "narration_y": 20,
+      "align": "left"
+    },
+    "nvl": {
+      "bg_alpha": 96,
+      "margin": 96,
+      "top": 190,
+      "bottom": 70,
+      "line_gap": 10,
+      "align": "left"
+    }
+  },
+  "skip": {
+    "enabled": true,
+    "mode": "viewed"
+  },
+  "ui": {
+    "corner_radius": 14,
+    "quickbar": {
+      "enabled": true,
+      "position": "bottom",
+      "align": "right",
+      "margin_x": 28,
+      "margin_y": 10,
+      "button_width": 64,
+      "button_height": 26,
+      "gap": 8,
+      "alpha": 185,
+      "radius": 14
+    },
+    "title": {
+      "menu_top": 230,
+      "menu_width": 240,
+      "menu_row_height": 52,
+      "logo_y": 150,
+      "letter_spacing": 3,
+      "stars": 36,
+      "align": "left",
+      "items": [
+        "开始新游戏",
+        "继续",
+        "读档",
+        "设置",
+        "退出"
+      ]
+    },
+    "choices": {
+      "width": 620,
+      "row_height": 56,
+      "gap": 20,
+      "radius": 16
+    },
+    "settings": {
+      "row_width": 760,
+      "row_height": 64,
+      "top": 196,
+      "nav_width": 190
+    }
+  }
+}

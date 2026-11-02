@@ -1,0 +1,29 @@
+# 基础流程（engine_spec.md 3.4「教室相遇」标准示例，覆盖全部 13 种指令）
+@character 主角 #ffcc88
+@character 林晚 #aaccff
+
+@bg classroom
+@music bgm_main
+@show lin normal
+
+@ 这是旁白，没有角色名。
+@ 主角 你好。
+@ 林晚 你来了。
+@sfx knock
+@set 好感 += 1
+
+@choice:
+    > 打招呼: 好感 >= 1 -> label_hello
+    > 不理她 -> label_ignore
+
+@label label_hello
+@if 好感 >= 1:
+    @ 林晚 你已经很信任我了。
+    @jump label_end
+
+@label label_ignore
+@ 林晚 ……
+
+@label label_end
+@hide lin
+@end
