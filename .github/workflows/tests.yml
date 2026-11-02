@@ -52,26 +52,3 @@ jobs:
           OMP_NUM_THREADS: "1"
           MKL_NUM_THREADS: "1"
         run: python -m pytest -q -m slow
-
-  probe-39:
-    name: 探针（Python 3.9，非阻塞）
-    runs-on: windows-latest
-    continue-on-error: true
-    if: github.event_name == 'workflow_dispatch'
-    defaults:
-      run:
-        shell: pwsh
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.9"
-
-      - name: 安装依赖（确认 pygame-ce 能否解析）
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt -r requirements-dev.txt
-
-      - name: 快速测试
-        run: python -m pytest -q -m "not slow"
