@@ -1,5 +1,10 @@
 # MYONL 引擎
 
+[![tests](https://github.com/123456789556/r/actions/workflows/tests.yml/badge.svg?branch=main)](https://github.com/123456789556/r/actions/workflows/tests.yml)
+![Windows](https://img.shields.io/badge/Windows-10%2021H2%2B%20%7C%2011-0078D4)
+![Python](https://img.shields.io/badge/Python-3.13-3776AB)
+![License](https://img.shields.io/badge/License-MIT-green)
+
 写几行中文脚本，做出一部能玩、能存档、能打包的视觉小说。
 
 > **这是一个引擎工具（给创作者用），不是游戏作品**；仓库里的小样板只是可以随便改的起点。
@@ -57,6 +62,22 @@
 ```
 
 存档记的是「离哪个标签往后数几句」，不是行号，所以剧本小改、加新章节，旧存档依然能读。
+
+## 它是怎么跑起来的
+
+```mermaid
+flowchart LR
+  A["script.gal<br/>中文指令"] --> B["engine/parser<br/>解析成指令序列"]
+  B --> C["engine/runtime<br/>执行 · 分支 · 变量 · 存档锚点"]
+  C --> D["engine/renderer<br/>scene / sprites / dialog / ui_pages"]
+  D --> E["pygame-ce 窗口<br/>逻辑画布 1280×720 等比缩放"]
+  C --> F["engine/save<br/>标签 + 偏移 存档"]
+  B --> G["engine/packaging<br/>打包成独立目录"]
+  G --> H["editor.exe / MYONLPlayer.exe<br/>玩家双击即玩"]
+  B -.-> I["editor/<br/>Web 编辑器 · 实时预览"]
+```
+
+同一套 `parser → runtime → renderer` 既供玩家窗口，也供编辑器右侧预览：预览就是引擎的真实渲染，不是另画的示意图。
 
 ## 源码开发（Windows，需 Python 3.13）
 
@@ -118,6 +139,25 @@ py -3 -m pytest -q -m slow            # 真实打包 / 全渲染 / 性能用例
 - 打包指南：[docs/打包使用指南.md](docs/打包使用指南.md)
 - 素材导入指南：[docs/素材导入指南.md](docs/素材导入指南.md)
 - 贡献说明：[docs/贡献指南.md](docs/贡献指南.md)
+
+## 常见问题
+
+- **要会编程吗？** 不用。剧本就是 24 条中文指令；只有当你想改引擎本身时才需要读 Python。
+- **要联网吗？** 不用。写、预览、打包、游玩全程离线。
+- **支持 Mac / Linux 吗？** 本期只支持 Windows（10 21H2+ / 11）；跨平台放在 BACKLOG 里，没有排期。
+- **能做 3D / 联机 / 手游吗？** 不做。这版只做视觉小说，并明确拒绝通用引擎方向。
+- **改剧本会让旧存档失效吗？** 不会。存档锚点是「标签 + 偏移」，不是行号。
+- **打包出来多大？** 运行库约 46MB，随游戏一起分发；玩家机器不需要 Python。
+- **内置 AI 吗？** 没有。引擎对外提供 JSON 控制原语，可被外部脚本 / AI 调用，但产品本身不含模型。
+- **示例素材能商用吗？** 先读 `NOTICE`；第三方素材各自有条款，不要直接搬。
+
+## English
+
+MYONL is an **offline, MIT-licensed visual-novel (galgame) engine and authoring tool for Windows**. You write a plain-text `.gal` script using 24 Chinese commands; the engine handles parsing, presentation (typewriter, camera, transitions, animated sprites, video backgrounds, voice), branching, save/load, a CG gallery, and one-click packaging into a double-click-able build that needs no Python on the player's machine. A built-in web editor with real-render preview ships with it.
+
+- From source: Python 3.13 + `pygame-ce>=2.5` (Windows only).
+- Tests: `pytest -q -m "not slow"` → 975 headless cases.
+- Documentation is written in Chinese: [快速上手](docs/快速上手.md) · [engine spec](docs/engine_spec.md).
 
 ## 许可
 
