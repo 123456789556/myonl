@@ -44,7 +44,11 @@ games/月光漫步/src/
 # 参考材料（第三方源码 / 商业项目 / 视频，约 380MB，仅本地查阅，不入库）
 p30-renpy-ref/
 
+# 玩家运行期写的 settings.json 不入库（根目录那份是本地游玩产物）
 settings.json
+# 例外：示例工程 / 素材模板自带的默认 settings.json 属于源码，需随仓库分发
+!games/*/settings.json
+!作品/副产物/*/settings.json
 
 # Trae HTML 分享缓存（工具产物，不入库）
 .trae-html-share-packages/

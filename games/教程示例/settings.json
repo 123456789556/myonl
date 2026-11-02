@@ -1,0 +1,6 @@
+{
+  "_说明": "玩家偏好（引擎可写）。title 显示在标题画面；splash=true 时若有开场.gal 会先播序幕。",
+  "title": "教程示例",
+  "splash": false,
+  "title_text_visible": true
+}
