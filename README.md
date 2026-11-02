@@ -1,22 +1,43 @@
 # MYONL 引擎
 
-> 用几行 `.gal` 脚本写出一部能玩的视觉小说：分支、存档、配音、CG、打包，全部开箱即用。
-> **这是一个引擎工具（给创作者用），不是游戏作品**；仓库里的示例游戏只是可改的小样板。
-> Windows · Python 3.13 · pygame-ce · MIT
+写几行中文脚本，做出一部能玩、能存档、能打包的视觉小说。
 
-**当前版本：`v1.0.0-rc6`** · 完全离线运行 · Windows 桌面 · MIT 开源；运行时仅依赖 Python 与 pygame-ce。
+> **这是一个引擎工具（给创作者用），不是游戏作品**；仓库里的小样板只是可以随便改的起点。
+> Windows 10 21H2+ / Windows 11 · Python 3.13 · pygame-ce · MIT · 完全离线
 
-## 我该看哪一节？
+![对话与选项](docs/images/dialogue-choices.jpg)
 
-- **只想做游戏**：使用随引擎发布的 Windows 发行包（无需安装 Python）；发行包内自带「五步上手」说明。
-- **读源码 / 改引擎 / 参与开发**：见下面的「源码开发」一节（需要 Python 3.13）。
+## 三句话
 
----
+- **写**：`script.gal` 是纯文本，24 条中文指令，任何编辑器都能改
+- **看**：Web 编辑器左边写剧本、右边实时预览，改一行半秒内出画面
+- **发**：一键打包成玩家双击即玩的目录，目标机器不装 Python、不做配置
 
-## 是什么
+## 能做什么
 
-MYONL 是一个自研的 Galgame / 视觉小说引擎。作者写 `script.gal`，引擎负责解析、执行、渲染、存档，
-并打包成玩家双击就能玩的独立应用（不装 Python、不做任何配置）。
+**玩家侧**
+
+- 标题 / 继续 / 读档 / 设置 / 画廊菜单，10 个存档位 + 快速存档（带缩略图与章节名）
+- 打字机对话、长段落自动分页、选项分支、历史回看
+- 自动播放、快进（仅跳已读）、隐藏 UI 截图模式、全屏
+- CG 与立绘画廊，按解锁进度展示
+
+**创作侧**
+
+- 24 条指令：`@bg` `@music` `@show` `@anim` `@fg` `@cg` `@camera` `@transition` `@chapter` `@choice` `@set` `@if` `@jump` `@voice` `@video` `@include` …
+- 打字机、22 条缓动曲线、镜头 pan/zoom/shake、三种转场、帧序列视频背景、配音
+- 语法检查、指令补全、素材拖拽导入、章节文件树、场景时间线、UI 设计面板
+- 热重载：改 `.gal` 从当前场景重播，改 `config.json` 字号/颜色即时生效
+- 逻辑画布可配（1280×720 / 1920×1080 等比缩放），素材按需加载 + LRU 缓存
+
+## 界面
+
+| | |
+|---|---|
+| ![标题画面](docs/images/title.jpg) 标题：继续项按有无存档自动灰置 | ![存档](docs/images/save.jpg) 存档：10 位 + 缩略图 + 章节名 |
+| ![画廊](docs/images/gallery.jpg) 画廊：CG / 立绘双页签 | ![编辑器](docs/images/editor.jpg) 编辑器：场景编辑 + 实时预览 |
+
+## 剧本长什么样
 
 ```gal
 @bg bg_天台
@@ -35,13 +56,7 @@ MYONL 是一个自研的 Galgame / 视觉小说引擎。作者写 `script.gal`�
 @end
 ```
 
-## 特性
-
-- **DSL**：24 条指令（含 `@bg/@music/@show/@anim/@fg/@cg/@camera/@transition/@chapter/@choice/@set/@if/@jump/@voice/@video/@include` 等），中文直写
-- **演出**：打字机、22 条缓动曲线、镜头 pan/zoom/shake、三种转场、动画立绘、帧序列视频背景、配音
-- **玩家外壳**：标题/菜单/存档 10 位/回看/设置/画廊/快捷栏，标准版主题（`config.json` 可换肤）+ 像素化 UI
-- **开发体验**：Web 编辑器（三视图 + 实时预览）、语法检查、一键打包、**剧本/配置热重载**（`--hot-reload`）
-- **平台**：逻辑画布可配（1280×720 / 1920×1080 等比缩放）、素材按需加载 + LRU 缓存（大素材库不会一次性占满内存）
+存档记的是「离哪个标签往后数几句」，不是行号，所以剧本小改、加新章节，旧存档依然能读。
 
 ## 源码开发（Windows，需 Python 3.13）
 
@@ -72,13 +87,16 @@ py -3 -m engine.demo games/我的第一个游戏/script.gal --assets games/我�
 ### 测试与门禁
 
 ```powershell
-py -3 -m pytest -q                    # 全量测试（约 90s）
-py -3 -m pytest -q -m "not slow"      # 日常快跑（约 50s）
-powershell -File tools/preflight.ps1 -Fast   # 一键门禁：pytest + pyright 等检查
+py -3 -m pytest -q                    # 全量 1008 项（1007 通过 / 1 跳过，约 90s）
+py -3 -m pytest -q -m "not slow"      # 日常快跑 975 项（约 50s）
+py -3 -m pytest -q -m slow            # 真实打包 / 全渲染 / 性能用例
 ```
 
-- 测试分层：`unit` / `ui` / `slow` / `integration`；覆盖率门禁 80%（`tools/check_coverage.ps1`）
-- 类型检查棘轮：`tools/check_types.ps1`（只拦新增，不许新增类型债）
+- 测试分层：`unit` / `ui` / `integration` / `slow`；覆盖率门禁 80%（`tools/check_coverage.ps1`）
+- 类型检查棘轮：`tools/check_types.ps1`（只拦新增，不偿还存量）
+- 交互走查：`py -3 tools/ui_walkthrough.py --game games/标准示例`（真实键鼠事件驱动，逐屏截图并断言）
+
+> 免安装发行包（`editor.exe` + 内置运行库）不放进 Git，用 `build_editor.bat` 与 `tools/build_release_zip.py` 可复现构建。
 
 ## 目录
 
@@ -87,8 +105,8 @@ powershell -File tools/preflight.ps1 -Fast   # 一键门禁：pytest + pyright �
 | `engine/` | 引擎核心：解析、运行时、渲染（10 个 render 模块）、存档、编辑器后端、打包 |
 | `editor/` | Web 编辑器前端（HTML/CSS/JS，无构建） |
 | `games/` | 示例工程（标准示例 / 教程示例 / 新游戏 / 新游戏模板） |
-| `tests/` | pytest 无头测试套件（unit / ui / integration；`-m "not slow"` 日常快跑） |
-| `tools/` | 门禁与工具脚本（coverage / pyright / 打包验证等） |
+| `tests/` | pytest 无头测试套件（unit / ui / integration / slow） |
+| `tools/` | 门禁与工具脚本（coverage / pyright / 打包验证 / 素材导入等） |
 | `docs/` | 上手 / 产品说明 / 引擎规格 / 开发者与打包指南 / 贡献说明 |
 
 ## 文档
