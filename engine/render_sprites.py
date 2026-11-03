@@ -6,6 +6,8 @@ SpriteMixin 的方法原样迁自 engine/renderer.py：方法体与签名不变�
 """
 from __future__ import annotations
 
+from typing import TYPE_CHECKING, Any
+
 import pygame
 from .render_utils import (
     SPRITE_MARGIN,
@@ -19,6 +21,23 @@ class SpriteMixin:
     """立绘层方法集（经多继承组合进 Renderer，见 engine/renderer.py）。"""
 
     _ui_scale: float  # T10 视觉比例（720p 基准；由 Renderer.__init__ 注入）
+
+    # 宿主（Renderer.__init__）注入的实例属性 / 其他 Mixin 方法——仅静态检查声明。
+    if TYPE_CHECKING:  # pragma: no cover
+        size: Any
+        timeline: Any
+        _screen: pygame.Surface
+        _layer_cache: dict
+        _sprite_anim: dict
+        _sequence_index: Any
+        _voice_busy: Any
+        _voice_length: Any
+        _voice_t0: Any
+        _dialog_top: Any
+        _load_image: Any
+        _load_image_path: Any
+        _load_window: Any
+        _now_ms: Any
 
     def _layer_composite(self, char, layers: dict):
         """P30-C-d：把 images/layers/角色ID/部位_素材.png 按固定顺序合成一张立绘。
