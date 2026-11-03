@@ -288,6 +288,21 @@ ui.handle(key: str) -> dict | None            # 消费一个统一键名
 ui.click(hit: dict) -> dict | None            # 鼠标点击分派（kind=key/item/gallery_tab）
 ui.view(now_ms: int | None) -> dict           # 导出绘制数据
 next_value(key, current) -> int | float       # 设置项取下一档（text_speed 三档循环）
+# 设置页分组（按 SETTINGS_ITEMS 出现顺序）：基础 / 音频 / 语音 / 高级 / 键位 / 界面
+# 「界面」组（玩家侧，追加在末尾不影响既有项位置）：
+#   quickbar_enabled  1 显示快捷栏 / 0 隐藏（快捷键仍可用）
+#   pet_enabled       1 游戏运行时拉起桌宠 / 0 关闭（默认 0；仅源码模式生效，
+#                     桌宠不进游戏包，见 engine/pet_host.py）
+```
+
+### `engine.pet_host`
+
+```python
+start() -> (bool, str)                        # 拉起桌宠子进程；失败给中文说明
+stop() -> None                                # 关闭并回收；游戏退出时必调
+sync(enabled) -> None                         # 按开关启停；失败只 stderr 告警
+is_running() -> bool
+# 安全阀：MYONL_NO_PET=1 或 SDL_VIDEODRIVER=dummy 时不启动（测试/无头环境）
 ```
 
 ### `engine.data`

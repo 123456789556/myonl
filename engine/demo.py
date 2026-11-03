@@ -26,6 +26,7 @@ from .data import (DEFAULT_SETTINGS, DataError, audio_hint, data_root, image_hin
                    load_gallery_config, load_settings, resolve_audio, resolve_image,
                    save_settings)
 from . import hotload
+from . import pet_host
 from .parser import parse_file
 from .renderer import CAM_ZOOM_SECONDS, Renderer
 from .runtime import Runtime
@@ -59,6 +60,9 @@ def run(script_path: str, assets_root=".", max_frames=None, auto=True,
     rt = Runtime()
     ren = Renderer(assets_root=assets_root)  # T10：画布尺寸从 config.json 读取
     settings_path = os.path.join(assets_root, "settings.json")
+    # 桌宠：默认关；玩家在设置页「界面 → 桌宠」打开后，游戏运行期间拉起独立进程
+    _boot_settings = load_settings(settings_path)
+    pet_host.sync(_boot_settings.get("pet_enabled"))
     # 存档目录跟随数据根（settings.data_dir：随游戏 / AppData / 自定义绝对路径）：
     # 统一走 data_root()，否则 data_dir=appdata 会被这里覆盖回游戏目录。
     save_api.set_saves_dir(os.path.join(data_root(assets_root), "saves"))
@@ -259,6 +263,7 @@ def run(script_path: str, assets_root=".", max_frames=None, auto=True,
                 break  # auto 模式跑完即退出；正常游玩停在终幕等玩家退出
     finally:
         ren.close()
+        pet_host.stop()  # 游戏退出不留孤儿桌宠窗口
         save_api.reset_saves_dir()  # 恢复默认 ./saves，避免污染同进程后续调用
         if profile:
             print(prof.report(wall_ms=(time.perf_counter() - _wall_t0) * 1000.0,
@@ -376,6 +381,8 @@ def _apply_business(business: dict, rt: Runtime, ren: Renderer, ui: UI,
         ren.update_settings(settings)  # 音量/打字速度实时生效
         if key == "display_mode":
             ren.apply_display_mode(settings.get("display_mode"))  # 立即切窗口；失败无副作用
+        if key == "pet_enabled":
+            pet_host.sync(settings.get(key))  # 开关即时生效（失败只中文告警）
         ui.set_settings(settings)      # UI 同步新值（下次进入设置即显示）
         return None
     if kind == "settings_set":

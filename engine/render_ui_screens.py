@@ -58,6 +58,9 @@ class UiScreensMixin:
         """
         cfg = self.config.ui_section("quickbar")
         enabled = bool(cfg.get("enabled", True))
+        # 玩家侧开关（设置页「界面 → 快捷栏」）：显式关掉时不绘制、也不预留底边
+        if enabled and not self._setting_on("quickbar_enabled", True):
+            enabled = False
         bw = self._ui_int("quickbar", "button_width", 64, 40, 180)
         bh = self._ui_int("quickbar", "button_height", 26, 20, 60)
         gap = self._ui_int("quickbar", "gap", 8, 2, 40)
@@ -246,6 +249,13 @@ class UiScreensMixin:
             return max(0, int(self.settings.get("ending_hold_ms", 1500)))
         except (TypeError, ValueError):
             return 1500
+
+    def _setting_on(self, key: str, default: bool = True) -> bool:
+        """读玩家设置里的开关：兼容 1/0、「1」/「0」、true/false 等写法。"""
+        raw = (self.settings or {}).get(key, default)
+        if isinstance(raw, str):
+            return raw.strip().lower() not in ("", "0", "false", "no", "off")
+        return bool(raw)
 
     def _quickbar_icon(self, icons, name, size: int):
         """快捷栏图标：ui.quickbar.icons 里按标签配了图就返回缩放后的 Surface。

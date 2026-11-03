@@ -264,7 +264,7 @@ def test_设置_分页方向键跨组():
     """P49：设置分三页（基础/音频/语音），方向键到底跨到相邻组并切换高亮。"""
     ui = UI()
     ui.mode = "settings"
-    assert ui.view()["settings_groups"] == ["基础", "音频", "语音", "高级", "键位"]
+    assert ui.view()["settings_groups"] == ["基础", "音频", "语音", "高级", "键位", "界面"]
     assert ui.view()["settings_tab"] == 0
     # 基础页只有打字速度：down → 跨到音频页首（音乐音量）
     ui.handle("down")

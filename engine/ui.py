@@ -75,6 +75,11 @@ SETTINGS_ITEMS = (
     {"key": "key_right", "label": "右", "kind": "key", "group": "键位"},
     {"key": "key_confirm", "label": "确认", "kind": "key", "group": "键位"},
     {"key": "key_back", "label": "返回", "kind": "key", "group": "键位"},
+    # 界面：玩家侧显示项——追加在末尾，不改既有分组顺序与光标位置
+    {"key": "quickbar_enabled", "label": "快捷栏", "min": 0, "max": 1, "step": 1,
+     "kind": "switch", "group": "界面"},
+    {"key": "pet_enabled", "label": "桌宠", "min": 0, "max": 1, "step": 1,
+     "kind": "switch", "group": "界面"},
 )
 
 # P30-S2-1：打字速度三档实际取值（慢/中/快），循环调整，老数值按最近档显示
