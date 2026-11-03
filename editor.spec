@@ -17,7 +17,7 @@ datas = [
 # 前端模块（拆分后的主脚本 / 场景 / 角色 / 档位）：漏掉任何一个，发行包打开编辑器即 500
 datas += [
     (os.path.join(ROOT, "editor", name), "editor")
-    for name in ("editor_pro.js", "editor_main.js", "editor_scene.js",
+    for name in ("editor_utils.js", "editor_pro.js", "editor_main.js", "editor_scene.js",
                  "editor_characters.js", "editor_level.js",
                  "editor_uidesign.js", "editor_shell.js")
 ]

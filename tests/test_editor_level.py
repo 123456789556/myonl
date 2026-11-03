@@ -71,7 +71,7 @@ def test_档位由后端路由提供():
 
 def test_发行包打包清单包含全部前端模块():
     """PyInstaller datas 漏文件时，exe 里打开编辑器会 500（真发生过）。"""
-    names = ("editor_pro.js", "editor_main.js", "editor_scene.js",
+    names = ("editor_utils.js", "editor_pro.js", "editor_main.js", "editor_scene.js",
              "editor_characters.js", "editor_level.js",
              "editor_uidesign.js", "editor_shell.js")
     spec = (ROOT / "editor.spec").read_text(encoding="utf-8")
