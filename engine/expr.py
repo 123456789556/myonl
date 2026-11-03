@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import ast
 import operator
+import sys
 
 __all__ = ["ExprError", "validate", "evaluate"]
 
@@ -42,13 +43,31 @@ _BANNED = {
     ast.Set: "集合",
     ast.JoinedStr: "字符串",
     ast.FormattedValue: "字符串",
-    ast.NamedExpr: "赋值表达式",
     ast.Starred: "星号展开",
 }
+# 赋值表达式（walrus）语法本身从 Python 3.8 才存在
+if hasattr(ast, "NamedExpr"):
+    _BANNED[ast.NamedExpr] = "赋值表达式"
 
 
 class ExprError(Exception):
     """表达式不合法（中文原因）。"""
+
+
+def _literal(node: ast.AST):
+    """识别字面量节点，返回 (是否字面量, 值)。
+
+    Python 3.7 的解析器产出 Num / Str / Bytes / NameConstant 旧节点，
+    3.8+ 统一为 Constant；这里两种都认。
+    """
+    if isinstance(node, ast.Constant):
+        return True, node.value
+    if sys.version_info < (3, 8):
+        for name, attr in (("Num", "n"), ("Str", "s"), ("Bytes", "s"), ("NameConstant", "value")):
+            cls = getattr(ast, name, None)
+            if cls is not None and isinstance(node, cls):
+                return True, getattr(node, attr)
+    return False, None
 
 
 def _parse(text: str) -> ast.AST:
@@ -74,8 +93,9 @@ def evaluate(text: str, variables=None):
 
 
 def _check(node: ast.AST) -> None:
-    if isinstance(node, ast.Constant):
-        if isinstance(node.value, bool) or not isinstance(node.value, (int, float, str)):
+    is_literal, value = _literal(node)
+    if is_literal:
+        if isinstance(value, bool) or not isinstance(value, (int, float, str)):
             raise ExprError("只支持数字、字符串字面量和变量（不支持 True/False）")
         return
     if isinstance(node, ast.Name):
@@ -114,8 +134,9 @@ def _check(node: ast.AST) -> None:
 
 
 def _eval(node: ast.AST, variables: dict):
-    if isinstance(node, ast.Constant):
-        return node.value
+    is_literal, value = _literal(node)
+    if is_literal:
+        return value
     if isinstance(node, ast.Name):
         return variables.get(node.id, 0)
     if isinstance(node, ast.BinOp):

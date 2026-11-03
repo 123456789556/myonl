@@ -120,6 +120,23 @@ def _slim_internal(out_dir: Path) -> None:
         print(f"  去重 SDL 运行库：省 {saved / 1024 / 1024:.2f} MB")
 
 
+def _copytree_into(src: Path, dst: Path) -> None:
+    """把 src 目录内容合并进 dst（Python 3.7 没有 dirs_exist_ok，手动递归）。"""
+    if sys.version_info >= (3, 8):
+        shutil.copytree(src, dst, dirs_exist_ok=True,
+                        ignore=shutil.ignore_patterns("__pycache__", "*.pyc"))
+        return
+    dst.mkdir(parents=True, exist_ok=True)
+    for entry in src.iterdir():
+        if entry.name == "__pycache__" or entry.name.endswith(".pyc"):
+            continue
+        target = dst / entry.name
+        if entry.is_dir():
+            _copytree_into(entry, target)
+        else:
+            shutil.copy2(entry, target)
+
+
 def _copy_game(game_dir: Path, out_dir: Path) -> list[str]:
     """把游戏目录的剧本/资源/插件原样复制进产物目录（跳过开发与版本控制内容）。"""
     copied = []
@@ -128,8 +145,7 @@ def _copy_game(game_dir: Path, out_dir: Path) -> list[str]:
             continue
         target = out_dir / item.name
         if item.is_dir():
-            shutil.copytree(item, target, dirs_exist_ok=True,
-                            ignore=shutil.ignore_patterns("__pycache__", "*.pyc"))
+            _copytree_into(item, target)
         else:
             shutil.copy2(item, target)
         copied.append(item.name)
