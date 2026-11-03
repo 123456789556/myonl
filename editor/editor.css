@@ -94,7 +94,7 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
 /* 主体：三栏（章节树 | 编辑区 | 预览+属性），素材库为右侧抽屉 */
 .main { flex: 1; display: flex; min-height: 0; position: relative; overflow: hidden; }
 .left-pane { flex: 1; display: flex; flex-direction: column; min-width: 280px; border-right: 1px solid var(--surface0); }
-.right-pane { flex: 0 0 auto; width: var(--right-w, 520px); display: flex; flex-direction: column; min-width: 300px; }
+.right-pane { flex: 0 0 auto; width: var(--right-w, 520px); max-width: calc(100vw - 560px); display: flex; flex-direction: column; min-width: 300px; }
 
 /* tab 栏 */
 .tabs { display: flex; background: var(--mantle); border-bottom: 1px solid var(--surface0); flex-shrink: 0; }
@@ -1729,6 +1729,9 @@ input[type="color"] {
     border-bottom: 1px solid var(--surface0);
   }
   .act-btn { width: 36px; height: 36px; }
-  .left-pane { flex: 0 0 auto; min-height: 380px; }
-  .right-pane { flex: 0 0 auto; min-height: 300px; }
+  .left-pane { flex: 0 0 auto; min-height: 380px; max-height: 70vh; }
+  .right-pane { flex: 0 0 auto; min-height: 300px; max-width: none; }
+  /* 窄窗口顶栏收紧：隐藏品牌与快捷键提示，搜索框可缩，避免整页横向滚动 */
+  .menubar .mb-brand, .menubar .mb-search .mb-kbd { display: none; }
+  .menubar .mb-search { min-width: 120px; flex: 1 1 120px; margin-left: 8px; }
 }

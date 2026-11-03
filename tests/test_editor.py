@@ -395,17 +395,21 @@ def test_ui_design_配色面板前端接线():
 
 
 def test_窄窗口布局约束_P3_P4():
-    """P3：工具条可换行、按钮不被压缩成竖排；P4：≤900px 时活动栏横排且编辑区/预览保留最小高度。"""
+    """P3：工具条可换行、按钮不被压缩成竖排；P4：≤900px 活动栏横排、编辑区限高、预览不越界。"""
     root = os.path.dirname(os.path.dirname(os.path.abspath(editor_mod.__file__)))
     css = open(os.path.join(root, "editor", "editor.css"), encoding="utf-8").read()
     # P3：放不下就换行，并禁止按钮收缩成竖排文字
     assert ".editor-toolbar { flex-wrap: wrap;" in css
     assert ".editor-toolbar .tb-btn { flex: 0 0 auto; white-space: nowrap; }" in css
-    # P4：取最后一个 900px 媒体块（本次新增），活动栏横排、两栏保底高度
+    # 三栏中间宽度（如 1024）：预览右缘不得越过视口
+    assert "max-width: calc(100vw - 560px);" in css
+    # P4：取最后一个 900px 媒体块（本次新增），活动栏横排、编辑区限高、预览占满
     block = css.rsplit("@media (max-width: 900px)", 1)[1]
     assert ".activity-bar {" in block and "flex-direction: row;" in block
-    assert ".left-pane { flex: 0 0 auto; min-height: 380px; }" in block
-    assert ".right-pane { flex: 0 0 auto; min-height: 300px; }" in block
+    assert ".left-pane { flex: 0 0 auto; min-height: 380px; max-height: 70vh; }" in block
+    assert ".right-pane { flex: 0 0 auto; min-height: 300px; max-width: none; }" in block
+    # 窄窗口顶栏收紧，避免 800px 横向滚动
+    assert ".menubar .mb-brand, .menubar .mb-search .mb-kbd { display: none; }" in block
 
 
 def test_检查去重与请求取消_P9_P10_P11():
