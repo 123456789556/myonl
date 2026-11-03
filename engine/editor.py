@@ -722,13 +722,23 @@ def _parse_at_root(text: str, root: str):
 
     返回 (指令列表, 顶层文件真实路径)：include 展开的其它文件指令 file 字段≠顶层路径。
     """
-    fd, tmp = tempfile.mkstemp(suffix=".gal", dir=root)
+    fd, tmp = _mkstemp_or_explain(root)
     try:
         with os.fdopen(fd, "w", encoding="utf-8") as f:
             f.write(text)
         return parse_file(tmp), os.path.realpath(tmp)
     finally:
         _remove_quiet(tmp)
+
+
+def _mkstemp_or_explain(dir_: str):
+    """在 dir_ 建临时 .gal；目录不可写时抛中文 ValueError（供各 API 统一返回 400）。"""
+    try:
+        return tempfile.mkstemp(suffix=".gal", dir=dir_)
+    except OSError as e:
+        raise ValueError(
+            f"工程目录不可写，无法做语法检查（{dir_}）：请检查目录权限后重试"
+        ) from e
 
 
 def _rel_edit_dir(root: str, rel: str) -> str:
@@ -743,7 +753,7 @@ def _parse_rel(text: str, root: str, rel: str) -> list[dict]:
     @include 展开的其他文件指令保留真实绝对路径。
     """
     dir_ = _rel_edit_dir(root, rel)
-    fd, tmp = tempfile.mkstemp(suffix=".gal", dir=dir_)
+    fd, tmp = _mkstemp_or_explain(dir_)
     tmp_real = os.path.realpath(tmp)
     try:
         with os.fdopen(fd, "w", encoding="utf-8") as f:
