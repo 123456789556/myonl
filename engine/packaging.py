@@ -244,7 +244,8 @@ def write_game_info(out_dir, profile: dict, build_number: int, built_at=None) ->
     """在产物根目录写 game_info.json：版本、运营号、构建号随包可查。"""
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
-    publisher = profile.get("publisher") if isinstance(profile.get("publisher"), dict) else {}
+    raw_publisher = profile.get("publisher")
+    publisher = raw_publisher if isinstance(raw_publisher, dict) else {}
     info = {
         "game_name": str(profile.get("game_name") or ""),
         "version": str(profile.get("version") or ""),
@@ -357,8 +358,9 @@ def _default_builder(root: Path):
     if not candidate.is_file():
         raise PackProfileError("当前环境缺少打包器 pack.py，无法执行 PyInstaller 构建")
     spec = importlib.util.spec_from_file_location("moyul_pack_builder", candidate)
+    if spec is None or spec.loader is None:
+        raise PackProfileError(f"无法加载打包器 pack.py：{candidate}")
     module = importlib.util.module_from_spec(spec)
-    assert spec and spec.loader
     spec.loader.exec_module(module)
     return module.pack
 
@@ -393,7 +395,8 @@ def pack_project(project_dir, *, version=None, bump=None, name=None, icon=None,
     if release_notes is not None:
         profile["release_notes"] = str(release_notes)
     if publisher is not None:
-        base_pub = profile.get("publisher") if isinstance(profile.get("publisher"), dict) else {}
+        raw_pub = profile.get("publisher")
+        base_pub = raw_pub if isinstance(raw_pub, dict) else {}
         merged = copy.deepcopy(base_pub)
         for key in ("name", "account_id", "channel", "contact"):
             if publisher.get(key) is not None:
@@ -427,7 +430,8 @@ def pack_project(project_dir, *, version=None, bump=None, name=None, icon=None,
         out_dir = Path(builder(
             str(project), name=game_name, icon=str(icon_ico),
             version=profile["version"], publisher=profile.get("publisher"),
-            description=profile.get("description"), release_notes=profile.get("release_notes"),
+            description=str(profile.get("description") or ""),
+            release_notes=str(profile.get("release_notes") or ""),
         ))
     except (PackProfileError, OSError):
         raise
