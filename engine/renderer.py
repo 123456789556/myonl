@@ -234,11 +234,21 @@ class Renderer(TextMixin, SceneMixin, SpriteMixin, MediaMixin, DialogMixin,
 
     def _load_fonts(self) -> None:
         """（重）建全部字体对象：启动与 P51 配置热重载改字号 / 换字体时复用。"""
-        try:
-            font_path = data.find_cjk_font()
-        except data.DataError as e:
-            print(f"[字体警告] {e}，回退到默认字体", file=sys.stderr)
-            font_path = None
+        font_path = None
+        custom = self.config.font_file()
+        if custom:
+            cand = custom if os.path.isabs(custom) else os.path.join(data.game_root(), custom)
+            if os.path.isfile(cand):
+                font_path = cand
+            else:
+                print(f"[字体警告] config.font_file 指向的字体不存在：{custom}，回退自动查找",
+                      file=sys.stderr)
+        if font_path is None:
+            try:
+                font_path = data.find_cjk_font()
+            except data.DataError as e:
+                print(f"[字体警告] {e}，回退到默认字体", file=sys.stderr)
+                font_path = None
         self._font_path = font_path
         self._font = pygame.font.Font(font_path, self._font_size("body"))
         # UI 层字号：标题大字 / 页面小标题 / 回看与存档行

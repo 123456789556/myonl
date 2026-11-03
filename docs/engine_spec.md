@@ -336,6 +336,7 @@ tl.reset_clock(name)
 Config(overrides: dict | None = None)
 cfg.window_title -> str
 cfg.font(name="body") -> int                  # 字号（8~128）
+cfg.font_file() -> str                        # 自定义字体（相对游戏根目录；空=自动查找 fonts/ → 系统）
 cfg.color(name) -> tuple                      # (r, g, b) 或 (r, g, b, a)
 cfg.alpha(name) -> int                        # 0~255
 cfg.theme_color(name) -> tuple                # 语义主题色（primary/accent/surface/...）
@@ -375,6 +376,12 @@ fb.get(size, bold=False, italic=False) -> pygame.font.Font
 create_game(name: str, template: str = "default", dest: str = ".") -> Path
 # 模板：default（教程骨架）、moonlight（完整素材复制）、standard（抛光 demo）
 # 生成项目目录：script.gal + images/ + audio/ + fonts/ + config.json
+
+# 自定义字体：config.json 里 "font_file": "fonts/我的字体.ttf"（相对游戏根目录，
+# 支持绝对路径）；文件不存在时打印中文警告并回退自动查找，不崩。
+# 快捷栏图标：config.json 的
+#   "ui": {"quickbar": {"icons": {"SAVE": "ui_save", "LOAD": "ui_load"}}}
+# 值为 images/ 下的图片名（不带扩展名）；缺项/缺图自动回退为原来的文字按钮。
 ```
 
 ### `engine.packaging`

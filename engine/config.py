@@ -41,6 +41,8 @@ DEFAULTS = {
         "option": 26,
         "em": 28,
     },
+    # 自定义字体：相对游戏根目录的 .ttf/.otf 路径；空 = 自动查找（fonts/ 目录 → 系统中文字体）
+    "font_file": "",
     # P37-T6 字体排版：行高（相对字号倍数），渲染层消费，老项目走默认合理值
     "line_height": {
         "body": 1.6,
@@ -91,7 +93,10 @@ DEFAULTS = {
         "choices": {"dialog_gap": 40, "width": 420, "row_height": 52, "radius": 8},
         "quickbar": {"button_width": 64, "button_height": 26, "gap": 8, "margin_x": 24,
                      "margin_y": 10, "alpha": 185, "radius": 15,
-                     "position": "bottom", "align": "right"},
+                     "position": "bottom", "align": "right",
+                     # 图标替换：{"SAVE": "ui_save", ...}，键是按钮标签（大写），值走 images/ 解析；
+                     # 缺项或图片缺失时自动回退文字按钮，老项目零改动。
+                     "icons": {}},
         "settings": {"row_width": 620, "row_height": 72, "nav_width": 180, "top": 210},
         # C3：标题排版——左列布局的作品名 x（y 用 title_text_y / ui.title.logo_y）
         "title": {"left_x": 96},
@@ -288,6 +293,14 @@ class Config:
             size = DEFAULTS["font"].get(name, 28)
         # T10 视觉比例：字号按 720p 基准等比放大（1080p → ×1.5），保证对话框占比不缩水
         return max(8, int(round(size * self.ui_scale())))
+
+    def font_file(self) -> str:
+        """自定义字体文件（相对游戏根目录）；空串表示走自动查找。
+
+        只做取值与类型防护，路径是否存在由渲染层判断（不存在则回退自动查找并告警）。
+        """
+        val = self.data.get("font_file")
+        return val.strip() if isinstance(val, str) else ""
 
     def color(self, name: str) -> tuple:
         raw = (self.data.get("colors") or {}).get(name)

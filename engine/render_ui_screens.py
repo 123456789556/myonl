@@ -247,6 +247,36 @@ class UiScreensMixin:
         except (TypeError, ValueError):
             return 1500
 
+    def _quickbar_icon(self, icons, name, size: int):
+        """快捷栏图标：ui.quickbar.icons 里按标签配了图就返回缩放后的 Surface。
+
+        找不到配置 / 图片缺失 / 加载失败一律返回 None，调用方自动回退文字按钮，
+        因此老项目（没有 icons 段）行为与之前完全一致。
+        """
+        if not isinstance(icons, dict):
+            return None
+        raw = icons.get(name) or icons.get(name.lower())
+        if not isinstance(raw, str) or not raw.strip():
+            return None
+        raw = raw.strip()
+        src = self._load_image(raw)
+        if src is None:
+            return None
+        cache = getattr(self, "_quickbar_icon_cache", None)
+        if cache is None:
+            cache = self._quickbar_icon_cache = {}
+        key = (raw, size)
+        surf = cache.get(key)
+        if surf is None:
+            sw, sh = src.get_size()
+            if sh <= 0:
+                return None
+            scale = size / float(sh)
+            surf = pygame.transform.smoothscale(
+                src, (max(1, int(round(sw * scale))), max(1, size)))
+            cache[key] = surf
+        return surf
+
     def _draw_quickbar(self, view) -> None:
         """P35 游戏内快捷栏：默认贴屏幕底部（SAVE/SKIP 等核心按钮）。
 
@@ -271,6 +301,7 @@ class UiScreensMixin:
         primary = self.config.theme_color("primary")
         text_dim = self.config.theme_color("text_dim")
         active_any = bool(qb.get("auto")) or bool(qb.get("skip"))
+        qb_icons = self.config.ui_section("quickbar").get("icons")
         # P50：hover 带区 = 快捷栏整行上下各扩 14px；鼠标在其中才显现快捷栏
         bar_w = len(labels) * (bw + gap) - gap
         zone = pygame.Rect(x0, y0 - 14, bar_w, bh + 28)
@@ -300,9 +331,14 @@ class UiScreensMixin:
                     rect, (18, 22, 32), 140, radius,
                     border_color=(70, 78, 95), border_width=1), rect.topleft)
                 color = (120, 126, 140) if skip_locked else text_dim
-            img = self._cached_font_surface(self._small_font, lab, True, color)
-            self._screen.blit(img, (rect.x + (bw - img.get_width()) // 2,
-                                    rect.y + (bh - img.get_height()) // 2))
+            icon = self._quickbar_icon(qb_icons, name, bh - 6)
+            if icon is not None:
+                self._screen.blit(icon, (rect.x + (bw - icon.get_width()) // 2,
+                                         rect.y + (bh - icon.get_height()) // 2))
+            else:
+                img = self._cached_font_surface(self._small_font, lab, True, color)
+                self._screen.blit(img, (rect.x + (bw - img.get_width()) // 2,
+                                        rect.y + (bh - img.get_height()) // 2))
             self._ui_hits.append((rect.copy(), {"kind": "quickbar", "index": i}))
         # P48：快捷栏字母上方左右对称三角 ◀ ▶（右下角；◀=回看上一句，▶=推进下一句）。
         # ▶ 不登记命中：点击它落到画面 → 引擎按「点击推进」处理（与对话框 ▼ 同语义）。
