@@ -61,6 +61,11 @@ jobs:
             "``````" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
             ($out | Select-Object -Last 40) | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
             "``````" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
+            # 同时输出为注解：即使无日志权限，也能在 run 页面看到失败项
+            foreach ($line in ($out | Select-Object -Last 20)) {
+              $msg = "$line" -replace '%','%25' -replace "`r",'%0D' -replace "`n",'%0A'
+              Write-Host "::error title=UI走查失败::$msg"
+            }
           }
           exit $code
 
