@@ -392,6 +392,23 @@ def test_窄窗口布局约束_P3_P4():
     assert ".right-pane { flex: 0 0 auto; min-height: 300px; }" in block
 
 
+def test_检查去重与请求取消_P9_P10_P11():
+    """P9/P10/P11：防抖后只发一次 /api/check（JSON 视图复用结果）、新一轮取消旧请求、同文本不重复渲染预览。"""
+    root = os.path.dirname(os.path.dirname(os.path.abspath(editor_mod.__file__)))
+    js = open(os.path.join(root, "editor", "editor_main.js"), encoding="utf-8").read()
+    # P10：检查/预览流程里只保留一处 /api/check 直连，不再为 JSON 视图重复 POST
+    assert js.count('fetch("/api/check"') == 1
+    assert "checkResp.instructions" in js, "JSON 视图应复用本次检查返回的 instructions"
+    # P11：AbortController 取消上一轮请求，主动取消不当作失败；旧响应不再落地
+    assert "new AbortController()" in js
+    assert "checkAbort.abort()" in js
+    assert "ctrl.signal.aborted" in js
+    assert "signal: ctrl.signal" in js
+    # P9：文本 + 光标行未变时跳过重复预览；「重载预览」可强制重渲染
+    assert "lastPreviewKey" in js and "previewKey" in js
+    assert "function scheduleCheck(force)" in js and "scheduleCheck(true)" in js
+
+
 def test_editor_app_webview2检测不崩():
     """发行版无控制台：WebView2 缺失检测必须返回布尔，不能抛异常。"""
     from engine import editor_app

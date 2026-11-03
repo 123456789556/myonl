@@ -15,6 +15,10 @@
 
   let debounceTimer = null;
   let lastError = null;
+  // P10/P11：检查与预览的请求治理
+  let checkAbort = null;        // 当前一轮检查/预览的取消句柄（新一次开始即取消旧的）
+  let lastPreviewKey = "";      // 上一次成功预览的「路径 + 文本」，相同则跳过重复渲染
+  let forcePreview = false;     // 手动「重载预览」时置位，强制忽略上面的去重
 
   // ---- P17 协同钩子：内容/光标变化广播（editor_pro.js 订阅）----
   const _changeFns = [];
@@ -442,15 +446,29 @@
   }
 
   // ---- 语法检查 + 预览（防抖 500ms）----
-  function scheduleCheck() {
+  // P10：一次防抖只发一次 /api/check（旧实现为了填 JSON 视图又重复请求一次，大剧本白付一遍解析与传输）
+  // P11：新一轮检查会取消上一轮未完成的请求，旧结果不再覆盖新编辑，避免预览请求排队堆积
+  function scheduleCheck(force) {
+    if (force) forcePreview = true;
     clearTimeout(debounceTimer);
-    debounceTimer = setTimeout(() => { checkAndPreview(); }, 500);
+    debounceTimer = setTimeout(() => {
+      const forceNow = forcePreview;
+      forcePreview = false;
+      checkAndPreview(forceNow);
+    }, 500);
   }
 
-  async function checkAndPreview() {
+  async function checkAndPreview(force) {
     const text = source.value;
     const curPath = (window.__proCurPath && window.__proCurPath()) || undefined;
+    if (checkAbort) checkAbort.abort();
+    const ctrl = new AbortController();
+    checkAbort = ctrl;
+    // 被新一轮取代或主动取消时，旧请求的后续步骤一律停手
+    const stale = () => checkAbort !== ctrl || ctrl.signal.aborted;
     if (!text.trim()) {
+      checkAbort = null;
+      lastPreviewKey = "";
       setStatus(true, "空剧本");
       previewWrap.innerHTML = '<div class="preview-placeholder">输入剧本后自动预览</div>';
       setPreviewBar(true, "就绪");
@@ -470,12 +488,16 @@
         method: "POST",
         headers: {"Content-Type": "application/json"},
         body: JSON.stringify({text, path: curPath}),
+        signal: ctrl.signal,
       }).then(r => r.json());
     } catch (e) {
+      if (stale()) return;   // 主动取消不算失败，不弹错误
       setStatus(false, "检查请求失败");
       return;
     }
+    if (stale()) return;
     if (!checkResp.ok) {
+      checkAbort = null;
       lastError = {line: checkResp.line, file: checkResp.file, message: checkResp.message};
       setStatus(false, `语法错误 · 第 ${checkResp.line} 行`);
       setPreviewBar(false, `解析失败：${checkResp.file} 第 ${checkResp.line} 行：${checkResp.message}`);
@@ -498,21 +520,24 @@
     updateFlowNext(text);
     _emitChange();
     updateMissingBar();  // 缺素材红字随剧本实时更新
-    // 更新 JSON 视图
-    try {
-      const jsonResp = await fetch("/api/check", {
-        method: "POST",
-        headers: {"Content-Type": "application/json"},
-        body: JSON.stringify({text, path: curPath}),
-      }).then(r => r.json());
-      if (jsonResp.ok) jsonView.textContent = JSON.stringify(jsonResp.instructions || jsonResp, null, 2);
-    } catch (e) {}
+    // 更新 JSON 视图：复用本次检查返回的 instructions
+    jsonView.textContent = JSON.stringify(checkResp.instructions || checkResp, null, 2);
+    // 预览：文本/文件/光标行都没变时不重复渲染（撤销/重做、重载同一文件、同一位置刷新等场景）
+    // 光标行参与 key，是因为 T4 预览会按光标台词锚定，换行位置不同画面可能不同
+    const cursorLine = text.slice(0, source.selectionStart).split("\n").length;
+    const previewKey = (curPath || "") + "\n" + cursorLine + "\n" + text;
+    if (!force && previewKey === lastPreviewKey) {
+      setPreviewBar(true, "解析成功 · 实时预览");
+      checkAbort = null;
+      return;
+    }
     // 预览（T4：editor_pro.js 把请求改写成「锚定 @label start / 光标台词」的小剧本）
     try {
       const blob = await fetch("/api/preview", {
         method: "POST",
         headers: {"Content-Type": "application/json"},
         body: JSON.stringify({text, frames: 30, path: curPath}),
+        signal: ctrl.signal,
       }).then(async r => {
         if (r.status === 422) {
           const err = await r.json();
@@ -521,14 +546,19 @@
         }
         return r.blob();
       });
+      if (stale()) return;
       if (blob) {
         const url = URL.createObjectURL(blob);
         previewWrap.innerHTML = `<img src="${url}" alt="预览">`;
         setPreviewBar(true, "解析成功 · 实时预览");
+        lastPreviewKey = previewKey;
         pushPreviewHistory(url, curPath);
       }
     } catch (e) {
+      if (stale()) return;
       setPreviewBar(false, "预览请求失败：" + e);
+    } finally {
+      if (checkAbort === ctrl) checkAbort = null;
     }
   }
 
@@ -2459,7 +2489,7 @@
 
   $("fpCollapse").addEventListener("click", () => setTreeCollapsed(!filePane.classList.contains("collapsed")));
   // P43：预览工具栏（Reload / Go to cursor / Float window）
-  $("pvReload").addEventListener("click", () => { scheduleCheck(); setPreviewBar(true, "已重载"); });
+  $("pvReload").addEventListener("click", () => { scheduleCheck(true); setPreviewBar(true, "已重载"); });
   $("pvGoto").addEventListener("click", () => { source.focus(); const l = source.value.slice(0, source.selectionStart).split("\n").length; setPreviewBar(true, `光标在第 ${l} 行`); });
   $("pvFloat").addEventListener("click", () => { window.open(location.href, "_blank"); });
   $("btnAssets").addEventListener("click", () => setAssetOpen(!assetPane.classList.contains("open")));
