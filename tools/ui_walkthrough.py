@@ -750,6 +750,13 @@ def _write_report(w: Walk, elapsed: float) -> Path:
 
 
 def main(argv=None) -> int:
+    # CI 的 Windows 控制台默认 cp1252，直接打印中文会抛 UnicodeEncodeError；
+    # 显式切到 UTF-8，保证报告里的中文失败项能正常输出。
+    for stream in (sys.stdout, sys.stderr):
+        try:
+            stream.reconfigure(encoding="utf-8", errors="replace")
+        except Exception:  # noqa: BLE001
+            pass
     parser = argparse.ArgumentParser(
         description="MYONL 玩家侧全交互走查：真实键鼠事件驱动，逐屏截图并断言。")
     parser.add_argument("--game", default=str(SRC_GAME),

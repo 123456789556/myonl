@@ -49,6 +49,8 @@ jobs:
 
       - name: 运行玩家侧走查（无头 SDL，逐屏截图并断言）
         env:
+          # Windows runner 控制台默认 cp1252，强制 Python 走 UTF-8 输出中文
+          PYTHONUTF8: "1"
           OPENBLAS_NUM_THREADS: "1"
           OMP_NUM_THREADS: "1"
           MKL_NUM_THREADS: "1"
