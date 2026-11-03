@@ -291,12 +291,46 @@ def _write_project_config(root: str, data: dict) -> str:
     return path
 
 
+# UI 设计页「界面开关」：写到项目 settings.json，作为玩家默认值
+_UI_INTERFACE_KEYS = ("quickbar_enabled", "pet_enabled")
+
+
+def _as_switch(value) -> int:
+    """开关值统一成 0/1：兼容 true/1/"1"/"on" 与 false/0/"0"/"off"。"""
+    if isinstance(value, str):
+        return 0 if value.strip().lower() in ("", "0", "false", "no", "off") else 1
+    return 1 if value else 0
+
+
+def _interface_settings(root: str) -> dict:
+    """读项目 settings.json 的界面开关；缺省回落引擎默认（快捷栏开 / 桌宠关）。"""
+    from .data import DEFAULT_SETTINGS, load_settings
+
+    st = load_settings(os.path.join(root, "settings.json"))
+    return {k: _as_switch(st.get(k, DEFAULT_SETTINGS.get(k))) for k in _UI_INTERFACE_KEYS}
+
+
+def _save_interface_settings(root: str, patch: dict) -> str:
+    """把界面开关写进项目 settings.json（作者/玩家其余设置键原样保留）。"""
+    from .data import load_settings, save_settings
+
+    path = os.path.join(root, "settings.json")
+    st = load_settings(path)
+    for k in _UI_INTERFACE_KEYS:
+        if k in patch:
+            st[k] = _as_switch(patch.get(k))
+    save_settings(st, path)
+    return path
+
+
 @dummy_video
 def _ui_design_png(assets_root: str, ui_patch: dict, dlg_patch: dict,
                    font_patch: dict | None = None,
                    lh_patch: dict | None = None,
                    scene: str = "dialog",
-                   theme_patch: dict | None = None) -> bytes:
+                   theme_patch: dict | None = None,
+                   font_file: str = "",
+                   interface_patch: dict | None = None) -> bytes:
     """渲染一帧 UI 设计预览：纯色背景 + 一句台词 + 对话框（带指定几何/像素化）。
 
     复用 Renderer 的真实绘制路径；玩家级覆盖（ui_geometry）与 P51 引擎默认
@@ -330,8 +364,16 @@ def _ui_design_png(assets_root: str, ui_patch: dict, dlg_patch: dict,
         if font_patch:
             ren.config.data.setdefault("font", {}).update(font_patch)
             ren._load_fonts()
+        # 自定义字体：预览也走真实字体解析（相对项目根），看不到就回落自动查找
+        if font_file:
+            ren.config.data["font_file"] = font_file
+            ren._load_fonts()
         if lh_patch:
             ren.config.data.setdefault("line_height", {}).update(lh_patch)
+        # 界面开关：预览按面板上的选择走（快捷栏关掉时预览里也不画）
+        if interface_patch and "quickbar_enabled" in interface_patch:
+            ren.settings["quickbar_enabled"] = _as_switch(
+                interface_patch.get("quickbar_enabled"))
         # 画一帧稳定的 UI 预览：深色纯底 + 名字 + 台词
         ren._screen.fill((30, 32, 44))
         text = "这是 UI 设计预览：调整圆角、位置与大小，右侧实时显示。"
@@ -1209,7 +1251,7 @@ class _EditorHandler(BaseHTTPRequestHandler):
                            "name_y", "name_gap")   # P52：名字框（y/间距）并入对话框组
     _UI_DESIGN_CHOICES_KEYS = ("width", "row_height", "dialog_gap", "radius")
     _UI_DESIGN_QUICKBAR_KEYS = ("button_width", "button_height", "gap", "margin_x",
-                                "margin_y", "alpha", "radius", "position", "align")
+                                "margin_y", "alpha", "radius", "position", "align", "icons")
     _UI_DESIGN_MENU_KEYS = ("row_width", "row_height", "top", "radius")
     _UI_DESIGN_SETTINGS_KEYS = ("row_width", "row_height", "nav_width", "top")
     # B2：排版常用两项（正文字号 / 正文行距），其余字号键保持项目原样
@@ -1236,7 +1278,8 @@ class _EditorHandler(BaseHTTPRequestHandler):
 
         返回磁盘 config.json 的现值；未写键以引擎默认补齐（前端显示"默认"）。
         """
-        cfg = _load_project_config(self.app.project_root)
+        root = self.app.project_root
+        cfg = _load_project_config(root)
         if not isinstance(cfg, dict):
             cfg = {}
         from .config import DEFAULTS as _CFG_DEFAULTS
@@ -1276,6 +1319,10 @@ class _EditorHandler(BaseHTTPRequestHandler):
         # 1080p 预设：画布尺寸（顶层 canvas_size，[宽, 高]）
         size = cfg.get("canvas_size") or _CFG_DEFAULTS.get("canvas_size") or [1280, 720]
         resp["canvas"] = {"size": [int(size[0]), int(size[1])]}
+        # 自定义字体（顶层 font_file）：相对项目根的 ttf/otf 路径，空 = 自动查找
+        resp["font_file"] = str(cfg.get("font_file") or "")
+        # 界面开关（项目 settings.json 的玩家默认值）：快捷栏显隐 / 桌宠
+        resp["interface"] = _interface_settings(root)
         self._send_json(200, {"ok": True, **resp})
 
     def _ui_design_set(self, parsed=None) -> None:
@@ -1285,8 +1332,9 @@ class _EditorHandler(BaseHTTPRequestHandler):
         ui.choices / ui.quickbar / ui.menu / ui.settings、font、line_height。
         """
         data = self._read_json()
+        root = self.app.project_root
         try:
-            cfg = _load_project_config(self.app.project_root)
+            cfg = _load_project_config(root)
             cfg = dict(cfg)  # 浅拷贝：写回不污染内存共享
 
             # ui 顶层段（pixelated/pixel_scale/corner_radius）
@@ -1317,6 +1365,12 @@ class _EditorHandler(BaseHTTPRequestHandler):
                 for k in keys:
                     if k in patch:
                         sec[k] = patch[k]
+                # 快捷栏图标：只接受 {标签: 图片名} 的字符串映射，脏数据不落盘
+                if name == "quickbar" and "icons" in patch:
+                    raw = patch.get("icons")
+                    sec["icons"] = ({str(k).upper(): str(v) for k, v in raw.items()
+                                     if isinstance(k, str) and isinstance(v, str) and v.strip()}
+                                    if isinstance(raw, dict) else {})
                 ui[name] = sec
             cfg["ui"] = ui
             # font / line_height
@@ -1356,11 +1410,35 @@ class _EditorHandler(BaseHTTPRequestHandler):
                 if (isinstance(size, (list, tuple)) and len(size) == 2
                         and all(isinstance(v, int) and 320 <= v <= 7680 for v in size)):
                     cfg["canvas_size"] = [int(size[0]), int(size[1])]
-            path = _write_project_config(self.app.project_root, cfg)
+            # 自定义字体：顶层 font_file（空串 = 清除覆盖，走自动查找）
+            if "font_file" in data:
+                ff = data.get("font_file")
+                ff = ff.strip() if isinstance(ff, str) else ""
+                if ff and (ff.startswith("..") or "\0" in ff):
+                    self._send_json(400, {"ok": False,
+                                          "message": "字体路径不合法：请写项目内的相对路径"})
+                    return
+                if ff and not ff.lower().endswith((".ttf", ".otf", ".ttc")):
+                    self._send_json(400, {"ok": False,
+                                          "message": "字体文件需为 .ttf / .otf / .ttc"})
+                    return
+                if ff:
+                    cfg["font_file"] = ff
+                else:
+                    cfg.pop("font_file", None)
+            path = _write_project_config(root, cfg)
+            # 界面开关：写项目 settings.json（玩家默认值），与 config.json 分开保存
+            iface = data.get("interface")
+            settings_path = ""
+            if isinstance(iface, dict):
+                settings_path = _save_interface_settings(root, iface)
         except (OSError, ValueError, TypeError) as e:
             self._send_json(400, {"ok": False, "message": f"保存 UI 设计失败：{e}"})
             return
-        self._send_json(200, {"ok": True, "path": path})
+        result = {"ok": True, "path": path}
+        if settings_path:
+            result["settings_path"] = settings_path
+        self._send_json(200, result)
 
     def _pet_control(self, parsed=None) -> None:
         """桌宠开关（实验功能）：start / stop / status。默认关闭。
@@ -1438,11 +1516,16 @@ class _EditorHandler(BaseHTTPRequestHandler):
         scene = str(data.get("scene") or "dialog")
         if scene not in ("dialog", "choices", "quickbar", "menu", "settings"):
             scene = "dialog"
+        font_file = data.get("font_file")
+        font_file = font_file.strip() if isinstance(font_file, str) else ""
+        interface_patch = data.get("interface")
+        interface_patch = interface_patch if isinstance(interface_patch, dict) else {}
         try:
             with _preview_lock:
                 png = _ui_design_png(self.app.project_root, ui_patch, dlg_patch,
                                      font_patch, lh_patch, scene=scene,
-                                     theme_patch=theme_patch)
+                                     theme_patch=theme_patch, font_file=font_file,
+                                     interface_patch=interface_patch)
         except Exception as e:
             self._send_json(500, {"ok": False, "message": f"UI 预览渲染失败：{e}"})
             return

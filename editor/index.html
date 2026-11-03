@@ -428,10 +428,7 @@
   <div class="modal-mask" id="uiDesignModal" style="display:none">
     <div class="modal modal-wide" style="width:940px;max-height:88vh;overflow:auto">
       <div class="modal-title">游戏内 UI 设计</div>
-      <div class="modal-hint" style="margin-top:0">
-        调整游戏内各分组 UI 的几何、间距与配色，右侧实时预览（按当前分组渲染）。保存后写回当前项目的
-        <b>config.json</b>（只改这里列出的键，其余配置原样保留）。
-      </div>
+      <div class="modal-hint" style="margin-top:0">调整游戏内各分组 UI 的几何、间距与配色，右侧实时预览（按当前分组渲染）。保存后写回当前项目的 <b>config.json</b>（只改这里列出的键，其余配置原样保留）；「界面开关」写入 <b>settings.json</b> 作为玩家默认值。</div>
       <div class="ui-design-tabs" id="uidTabs">
         <button class="uid-tab active" data-scene="dialog" data-panel="uidPanelDlg">对话框</button>
         <button class="uid-tab" data-scene="dialog" data-panel="uidPanelName">名字框</button>
@@ -440,6 +437,7 @@
         <button class="uid-tab" data-scene="menu" data-panel="uidPanelMenu">游戏内菜单</button>
         <button class="uid-tab" data-scene="settings" data-panel="uidPanelSet">设置页</button>
         <button class="uid-tab" data-scene="settings" data-panel="uidPanelTheme">配色</button>
+        <button class="uid-tab" data-scene="quickbar" data-panel="uidPanelIface">界面开关</button>
         <button class="uid-tab" data-scene="dialog" data-panel="uidPanelGlobal">全局</button>
       </div>
       <div class="ui-design-body">
@@ -496,6 +494,8 @@
             <div class="ui-dl row"><span>对齐（align）</span>
               <select id="uidQbAlign"><option value="right">右对齐</option><option value="left">左对齐</option><option value="center">居中</option></select></div>
           </div>
+          <!-- 界面开关（写 settings.json，作为玩家默认值；控件由 editor_uidesign.js 注入） -->
+          <div class="uid-panel" id="uidPanelIface" style="display:none"></div>
           <!-- 游戏内菜单 -->
           <div class="uid-panel" id="uidPanelMenu" style="display:none">
             <div class="ui-dl row"><span>菜单项宽（row_width）</span>
@@ -537,7 +537,7 @@
           <div class="modal-actions" style="margin-top:12px">
             <button class="icon-btn" id="uidReset" title="Reset to Default · 恢复引擎默认 UI 尺寸">恢复引擎默认</button>
             <button class="icon-btn" id="uidClose" title="Close · 关闭 UI 设计面板">关闭</button>
-            <button id="uidSave">保存到项目 config.json</button>
+            <button id="uidSave">保存到项目配置</button>
           </div>
           <div class="modal-err" id="uidErr"></div>
           <div class="modal-hint" id="uidPathHint"></div>

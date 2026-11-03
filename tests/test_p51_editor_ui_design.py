@@ -141,7 +141,7 @@ def test_ui_design_p52_白名单扩为六组():
         "width", "row_height", "dialog_gap", "radius"}
     assert set(E._EditorHandler._UI_DESIGN_QUICKBAR_KEYS) == {
         "button_width", "button_height", "gap", "margin_x", "margin_y",
-        "alpha", "radius", "position", "align"}
+        "alpha", "radius", "position", "align", "icons"}
     assert set(E._EditorHandler._UI_DESIGN_MENU_KEYS) == {
         "row_width", "row_height", "top", "radius"}
     assert set(E._EditorHandler._UI_DESIGN_SETTINGS_KEYS) == {
@@ -232,3 +232,53 @@ def test_ui_design_p52_嵌套组补丁参与预览不改磁盘(tmp_path):
     assert png[:8] == b"\x89PNG\r\n\x1a\n"
     assert len(png) > 1000
     assert E._load_project_config(root) == before
+
+
+# ============ 第四步：界面开关（quickbar_enabled / pet_enabled）接入 UI 设计页 ============
+
+
+def test_ui_design_界面开关读写(tmp_path):
+    """界面开关读写项目 settings.json：缺省回落引擎默认，写入保留其余键。"""
+    root = _make_project(tmp_path)
+    settings_path = os.path.join(root, "settings.json")
+    with open(settings_path, "w", encoding="utf-8") as f:
+        json.dump({"quickbar_enabled": 0, "title": "保留"}, f, ensure_ascii=False)
+
+    # 未写的 pet_enabled 回落默认 0；已写的 quickbar_enabled 读回原值
+    assert E._interface_settings(root) == {"quickbar_enabled": 0, "pet_enabled": 0}
+    # 兼容 "1" / True 两种写法
+    assert E._save_interface_settings(root, {"quickbar_enabled": "1",
+                                             "pet_enabled": True}) == settings_path
+    with open(settings_path, encoding="utf-8") as f:
+        back = json.load(f)
+    assert back["quickbar_enabled"] == 1
+    assert back["pet_enabled"] == 1
+    assert back["title"] == "保留"                    # 作者键原样保留
+    assert E._interface_settings(root) == {"quickbar_enabled": 1, "pet_enabled": 1}
+    # 脏值按开关语义归一：空串/off → 0
+    assert E._as_switch("") == 0
+    assert E._as_switch("off") == 0
+    assert E._as_switch("on") == 1
+
+
+def test_ui_design_界面开关参与预览不改磁盘(tmp_path):
+    """界面开关补丁参与快捷栏预览；不写项目 settings.json。"""
+    root = _make_project(tmp_path)
+    settings_path = os.path.join(root, "settings.json")
+    png = E._ui_design_png(root, {}, {}, scene="quickbar",
+                           interface_patch={"quickbar_enabled": 0})
+    assert png[:8] == b"\x89PNG\r\n\x1a\n"
+    assert len(png) > 1000
+    assert not os.path.exists(settings_path)          # 预览不落盘
+
+
+def test_ui_design_界面开关前端接线():
+    """前端有「界面开关」分页（控件由 JS 注入），且预览/保存 payload 带 interface。"""
+    root = os.path.dirname(os.path.dirname(os.path.abspath(E.__file__)))
+    html = open(os.path.join(root, "editor", "index.html"), encoding="utf-8").read()
+    js = open(os.path.join(root, "editor", "editor_uidesign.js"), encoding="utf-8").read()
+    assert 'id="uidPanelIface"' in html
+    assert "uidBuildExtraPanels" in js
+    for token in ('id="uidIfIfaceQb"', 'id="uidIfIfacePet"', "out.interface",
+                  "uidIfIfaceQb", "uidIfIfacePet"):
+        assert token in js, f"editor_uidesign.js 缺 {token}"

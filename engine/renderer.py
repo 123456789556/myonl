@@ -237,7 +237,8 @@ class Renderer(TextMixin, SceneMixin, SpriteMixin, MediaMixin, DialogMixin,
         font_path = None
         custom = self.config.font_file()
         if custom:
-            cand = custom if os.path.isabs(custom) else os.path.join(data.game_root(), custom)
+            base = self.assets_root or data.game_root()
+            cand = custom if os.path.isabs(custom) else os.path.join(base, custom)
             if os.path.isfile(cand):
                 font_path = cand
             else:
