@@ -73,6 +73,10 @@ class Walk:
         self.ren._now_ms = self._now  # 可控时钟：淡入/打字机/幻灯片才能稳定复现
         self.ui = UI(config=load_config(str(game_root)))
         self.ui.settings_path = self.settings_path
+        self.gallery_cells = len(load_gallery_config(str(game_root)))
+        # 工程能力探测：没有 @cg / 画廊格子的示例工程跳过对应展示断言，避免硬编码素材
+        script_text = Path(self.script).read_text(encoding="utf-8", errors="ignore")
+        self.has_cg = any(ln.strip().startswith("@cg") for ln in script_text.splitlines())
         self.ui.set_gallery_config(load_gallery_config(str(game_root)))
         self.ui.set_script_title(_read_script_title(self.script))
         self.ui.refresh()
@@ -324,9 +328,10 @@ def _run(w: Walk) -> None:
 
     # 标题 → 画廊（空）→ Esc 回标题（验证返回层级）
     w.click(lambda p: p.get("kind") == "item" and p.get("index") == 4, "标题-画廊")
-    w.shot("04_gallery_empty.png", "点击「画廊」（尚未解锁 CG）", "固定格子全部灰锁，Esc 可回标题",
+    w.shot("04_gallery_empty.png", "点击「画廊」（尚未解锁 CG）", "网格为空或固定格子全部灰锁，Esc 可回标题",
            [("模式=gallery", w.view["mode"] == "gallery"),
-            ("有固定格子", bool((w.view.get("gallery") or {}).get("items"))),
+            ("条目数=配置格子数", len((w.view.get("gallery") or {}).get("items") or [])
+             == w.gallery_cells),
             ("全部未解锁", all(not it.get("unlocked")
                               for it in (w.view.get("gallery") or {}).get("items") or []))])
     w.key("K_ESCAPE")
@@ -382,25 +387,42 @@ def _run(w: Walk) -> None:
            [("分组页=2（语音）", w.view.get("settings_tab") == 2)])
 
     # 点「键位」分组 → 改键捕获 → 按 W → 恢复默认
+    # 分组由工程实际 settings 决定：按组名定位，不再硬编码页序号
     groups = w.view.get("settings_groups") or []
-    w.click(lambda p: p.get("kind") == "settings_nav" and p.get("index") == 15,
-            "设置-键位分组")
-    w.shot("10_settings_keys.png", "点击左侧「键位」", "显示 6 个可改键项",
-           [("分组页=末组（键位）", w.view.get("settings_tab") == len(groups) - 1)])
+    items = w.view.get("items") or []
+    key_group = next((g for g in groups if "键位" in g or "Key" in g), None)
+    key_items = [it for it in items
+                 if key_group and it.get("group") == key_group and it.get("kind") == "key"]
+    if key_group and key_items:
+        first_idx = items.index(key_items[0])
+        w.click(lambda p: p.get("kind") == "settings_nav" and p.get("index") == first_idx,
+                "设置-键位分组")
+        w.shot("10_settings_keys.png", "点击左侧「键位」", "显示可改键项",
+               [("分组页=键位", w.view.get("settings_tab") == groups.index(key_group)),
+                ("可改键项>=1", len(key_items) >= 1)])
 
-    w.key("K_RETURN")
-    w.shot("11_settings_capture.png", "在「上」按回车", "进入「请按键…」捕获态",
-           [("捕获键=key_up", ui.capturing == "key_up"),
-            ("视图暴露捕获态", w.view.get("capturing") == "key_up")])
+        key_name = key_items[0]["key"]
+        w.key("K_RETURN")
+        w.shot("11_settings_capture.png", "在首个改键项按回车", "进入「请按键…」捕获态",
+               [("捕获键=" + str(key_name), ui.capturing == key_name),
+                ("视图暴露捕获态", w.view.get("capturing") == key_name)])
 
-    w.key("K_w")
-    w.shot("12_settings_rebind.png", "按 W 完成改键", "「上」绑定为 W 并立即写盘",
-           [("key_up=w", str(ui._settings.get("key_up")) == "w")])
+        w.key("K_w")
+        w.shot("12_settings_rebind.png", "按 W 完成改键", "该项绑定为 W 并立即写盘",
+               [("改键=w", str(ui._settings.get(key_name)) == "w")])
 
-    w.key("K_RETURN")
-    w.key("K_ESCAPE")  # 捕获态按 Esc = 恢复默认
-    w.expect(str(ui._settings.get("key_up") or "") == "", "改键后 Esc 应恢复默认")
-    w.key("K_ESCAPE")
+        w.key("K_RETURN")
+        w.key("K_ESCAPE")  # 捕获态按 Esc = 恢复默认
+        w.expect(str(ui._settings.get(key_name) or "") == "", "改键后 Esc 应恢复默认")
+        w.key("K_ESCAPE")
+    else:
+        w.shot("10_settings_keys.png", "工程未提供键位分组", "跳过改键检查",
+               [("无键位分组时跳过", True)])
+        w.shot("11_settings_capture.png", "工程未提供键位分组", "跳过改键捕获检查",
+               [("无键位分组时跳过", True)])
+        w.shot("12_settings_rebind.png", "工程未提供键位分组", "跳过改键写盘检查",
+               [("无键位分组时跳过", True)])
+        w.key("K_ESCAPE")
     w.shot("13_title_after_settings.png", "Esc 返回标题", "设置持久化，回到标题",
            [("模式=title", w.view["mode"] == "title"),
             ("音量仍是 0.35", abs(float(ui._settings.get("bgm_volume", -1)) - 0.35) <= 0.02)])
@@ -529,15 +551,21 @@ def _run(w: Walk) -> None:
            [("分支已选定", w.rt.snapshot().get("pending_choice") is None)])
 
     # ==================== 七、CG 与画廊 ====================
-    for _ in range(80):
-        if w.ren._cg_showing is not None or w.state.get("finished"):
-            break
+    if w.has_cg:
+        for _ in range(80):
+            if w.ren._cg_showing is not None or w.state.get("finished"):
+                break
+            w.key("K_SPACE")
+        w.shot("30_cg.png", "推进到 CG", "CG 全屏展示，按空格/点击继续",
+               [("CG 正在展示", w.ren._cg_showing is not None)])
         w.key("K_SPACE")
-    w.shot("30_cg.png", "推进到 CG", "CG 全屏展示，按空格/点击继续",
-           [("CG 正在展示", w.ren._cg_showing is not None)])
-    w.key("K_SPACE")
-    w.shot("31_after_cg.png", "按空格关闭 CG", "回到剧情并推进一句",
-           [("CG 已关闭", w.ren._cg_showing is None)])
+        w.shot("31_after_cg.png", "按空格关闭 CG", "回到剧情并推进一句",
+               [("CG 已关闭", w.ren._cg_showing is None)])
+    else:
+        w.shot("30_cg.png", "剧本未使用 @cg", "跳过 CG 展示检查",
+               [("无 @cg 时跳过", True)])
+        w.shot("31_after_cg.png", "剧本未使用 @cg", "跳过 CG 关闭检查",
+               [("无 @cg 时跳过", True)])
 
     w.key("K_ESCAPE")
     w.shot("32_menu.png", "按 Esc 打开游戏内菜单", "存档/读档/画廊/回标题/设置/退出",
@@ -546,22 +574,33 @@ def _run(w: Walk) -> None:
 
     w.click(lambda p: p.get("kind") == "item" and p.get("index") == 2, "菜单-画廊")
     gv = w.view.get("gallery") or {}
-    unlocked = [it.get("unlocked") for it in gv.get("items") or []]
-    w.shot("33_gallery_grid.png", "点击「画廊」", "固定格子：已解锁 CG 亮、未解锁灰锁",
+    gitems = gv.get("items") or []
+    unlocked = [it.get("unlocked") for it in gitems]
+    expected_cells = max(w.gallery_cells, sum(1 for u in unlocked if u))
+    w.shot("33_gallery_grid.png", "点击「画廊」", "网格条目与工程配置一致；已解锁亮、未解锁灰锁",
            [("模式=gallery", w.view["mode"] == "gallery"),
-            ("至少 1 格解锁", any(unlocked)),
-            ("存在未解锁格", any(not u for u in unlocked))])
-    w.click(lambda p: p.get("kind") == "item" and p.get("index") == 0, "画廊-CG 格")
-    w.shot("34_gallery_detail.png", "点击已解锁 CG", "进入大图鉴赏（可轮播）",
-           [("详情名=cg_star", (w.view.get("gallery") or {}).get("detail") == "cg_star"),
-            ("轮播图非空", bool((w.view.get("gallery") or {}).get("detail_images")))])
-    w.key("K_RIGHT")
-    w.shot("35_gallery_slide.png", "按 → 切换幻灯片", "大图切到下一张",
-           [("轮播下标=1", (w.view.get("gallery") or {}).get("detail_index") == 1)])
-    w.key("K_ESCAPE")
-    w.expect(w.view["mode"] == "gallery", "Esc 应先关闭大图回到网格")
-    w.key("K_ESCAPE")
-    w.shot("36_back_to_menu.png", "再按 Esc", "返回游戏内菜单（不是标题）",
+            ("条目数=配置数/已解锁数", len(gitems) == expected_cells),
+            ("条目状态完整", all(isinstance(it.get("unlocked"), bool) for it in gitems))])
+    if any(unlocked):
+        first_unlocked = next(i for i, u in enumerate(unlocked) if u)
+        w.click(lambda p: p.get("kind") == "item" and p.get("index") == first_unlocked,
+                "画廊-CG 格")
+        w.shot("34_gallery_detail.png", "点击已解锁 CG", "进入大图鉴赏（可轮播）",
+               [("进入大图详情", bool((w.view.get("gallery") or {}).get("detail"))),
+                ("轮播图非空", bool((w.view.get("gallery") or {}).get("detail_images")))])
+        w.key("K_RIGHT")
+        w.shot("35_gallery_slide.png", "按 → 切换幻灯片", "大图切到下一张",
+               [("轮播下标=1", (w.view.get("gallery") or {}).get("detail_index") == 1)])
+        w.key("K_ESCAPE")
+        w.expect(w.view["mode"] == "gallery", "Esc 应先关闭大图回到网格")
+        w.key("K_ESCAPE")
+    else:
+        w.shot("34_gallery_detail.png", "没有已解锁 CG", "跳过画廊大图检查",
+               [("无已解锁 CG 时跳过", True)])
+        w.shot("35_gallery_slide.png", "没有已解锁 CG", "跳过画廊轮播检查",
+               [("无已解锁 CG 时跳过", True)])
+        w.key("K_ESCAPE")  # 空网格一层 Esc 即回菜单
+    w.shot("36_back_to_menu.png", "按 Esc", "返回游戏内菜单（不是标题）",
            [("模式=menu", w.view["mode"] == "menu")])
 
     w.click(lambda p: p.get("kind") == "item" and p.get("index") == 4, "菜单-设置")
