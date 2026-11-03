@@ -5,6 +5,7 @@
 读档流程（空位灰置）/ 回标题 / 设置落盘 / 继续灰置 / 回看 / 数字键选位 / 退出 / 红线回归。
 """
 import json
+import sys
 from pathlib import Path
 
 import pytest
@@ -258,6 +259,16 @@ def test_设置_滑条点击按比例定值():
     act = ui.click({"kind": "settings_slider", "key": "sfx_volume", "bar": bar},
                    pos=(450, 300))
     assert act == {"action": "settings_set", "key": "sfx_volume", "value": 0.25}
+
+
+def test_设置_发行版隐藏桌宠开关(monkeypatch):
+    """桌宠不随游戏包分发：frozen 下设置页不显示该项，快捷栏开关照常可见。"""
+    monkeypatch.setattr(sys, "frozen", True, raising=False)
+    ui = UI()
+    ui.mode = "settings"
+    keys = [it.get("key") for it in ui.view()["items"]]
+    assert "pet_enabled" not in keys
+    assert "quickbar_enabled" in keys
 
 
 def test_设置_分页方向键跨组():

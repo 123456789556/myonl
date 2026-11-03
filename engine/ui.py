@@ -9,6 +9,7 @@
 """
 from __future__ import annotations
 
+import sys
 import time
 
 from . import data
@@ -230,7 +231,12 @@ class UI:
         隐藏项不进 view["items"]，renderer 不画、光标不落位，但设置值本身仍保留。
         """
         hidden = set((self._settings or {}).get("settings_hidden", []) or [])
-        return [it for it in SETTINGS_ITEMS if it["key"] not in hidden]
+        items = [it for it in SETTINGS_ITEMS if it["key"] not in hidden]
+        # 桌宠只随引擎分发（pack.py 排除 engine.pet）：发行版游戏包里这项用不了，
+        # 直接不显示，避免玩家看到一个「开了也没反应」的开关。
+        if getattr(sys, "frozen", False):
+            items = [it for it in items if it["key"] != "pet_enabled"]
+        return items
 
     # ==================== 对外属性 ====================
 
