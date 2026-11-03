@@ -123,8 +123,27 @@
   }
 
   // ---- 行号 ----
+  // 大剧本每次敲键都重建全部行号 DOM 是主要输入卡顿（3123 行实测约 150ms）；
+  // 只有行数 / 错误行 / @include 行这三类可见状态变化时才重建，其余只更新当前行标记。
+  let lineNoCount = -1;
+  let lineNoErr = 0;
+  let lineNoInc = "";
+  function incSignature(arr) {
+    let sig = "";
+    for (let i = 1; i <= arr.length; i++) {
+      if (/^@include\s+\S+/.test(arr[i - 1].trim())) sig += i + ",";
+    }
+    return sig;
+  }
   function updateLineNumbers() {
     const arr = source.value.split("\n");
+    const errLine = lastError ? lastError.line : 0;
+    const inc = incSignature(arr);
+    if (arr.length === lineNoCount && errLine === lineNoErr && inc === lineNoInc) {
+      markCurrentLine(cursorLineIndex());
+      updateBreadcrumb();
+      return;
+    }
     let html = "";
     for (let i = 1; i <= arr.length; i++) {
       let cls = (lastError && lastError.line === i) ? 'ln err' : 'ln';
@@ -132,10 +151,13 @@
       html += `<div class="${cls}" data-line="${i}">${i}</div>`;
     }
     lineNumbers.innerHTML = html;
+    lineNoCount = arr.length;
+    lineNoErr = errLine;
+    lineNoInc = inc;
     markCurrentLine(cursorLineIndex());
     updateBreadcrumb();
   }
-  source.addEventListener("input", updateLineNumbers);
+  source.addEventListener("input", () => updateLineNumbers());
   source.addEventListener("scroll", () => {
     lineNumbers.scrollTop = source.scrollTop;
   });

@@ -171,8 +171,19 @@ def _parse_rel(text: str, root: str, rel: str) -> list[dict]:
                 e.source = rel
                 e.args = (f"{rel} 第 {e.line} 行：{e.message}",)
             raise
+        # 逐指令 realpath 在 Windows 上是一次系统调用，3000+ 行剧本约 440ms；
+        # 同一路径只解析一次即可（主文件指令都指向同一个临时文件）。
+        real_cache: dict[str, str] = {}
+
+        def _real(path: str) -> str:
+            got = real_cache.get(path)
+            if got is None:
+                got = os.path.realpath(path)
+                real_cache[path] = got
+            return got
+
         for i in _walk_instrs(instrs):
-            if i.get("file") and os.path.realpath(i["file"]) == tmp_real:
+            if i.get("file") and _real(i["file"]) == tmp_real:
                 i["file"] = rel
         return instrs
     finally:
