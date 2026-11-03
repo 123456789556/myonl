@@ -1,0 +1,64 @@
+name: ui-walkthrough
+
+# 玩家侧全交互走查（真实键鼠事件 + 逐屏截图断言）。
+# 独立 workflow：不属于主门禁（tests.yml）的必需检查，因此失败不会阻塞合并；
+# 失败在 Actions 里以独立红色工作流/green check 区分，产物（报告与截图）随 run 下载。
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 18 * * *"   # 每日 UTC 18:00（北京时间 02:00）跑一次夜间回归
+  push:
+    branches: [main]
+    paths:
+      - "engine/**"
+      - "editor/**"
+      - "games/**"
+      - "tools/ui_walkthrough.py"
+      - ".github/workflows/ui-walkthrough.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ui-walkthrough-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  walkthrough:
+    name: UI 走查（标准示例，逐屏断言）
+    runs-on: windows-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: |
+            requirements.txt
+            requirements-dev.txt
+
+      - name: 安装依赖
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt -r requirements-dev.txt
+
+      - name: 运行玩家侧走查（无头 SDL，逐屏截图并断言）
+        env:
+          OPENBLAS_NUM_THREADS: "1"
+          OMP_NUM_THREADS: "1"
+          MKL_NUM_THREADS: "1"
+        run: python tools/ui_walkthrough.py --game "games/标准示例"
+
+      - name: 上传走查报告与截图
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ui-walkthrough-${{ github.run_number }}
+          path: screenshots/walkthrough
+          if-no-files-found: warn
+          retention-days: 14

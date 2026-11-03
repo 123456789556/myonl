@@ -34,7 +34,7 @@
 | 编辑器前端 | index.html **529 行**（主脚本已外置 editor_main.js）；零单元测试、零类型 | T16 剩余：域拆分/类型化；需要时启动 |
 | editor_app.py 覆盖 | 27% | 编辑器出 bug 时补 |
 | 资产体积 | bgm_night 已转 ogg（0.12MB × 4，原 wav 5MB × 4）；引擎支持 ogg | 大素材导入前先做压缩预设 |
-| CI 流水线 | 当前为本地 PowerShell 门禁 | 后续接入托管 CI |
+| CI 流水线 | GitHub Actions：`tests.yml`（windows-latest，Python 3.9–3.15）为主门禁；`ui-walkthrough.yml` 独立非阻断（每日/手动/main 相关改动触发，上传报告与截图） | 需要时把走查升级为必需检查 |
 
 ## 可视化创作层后续（2026-11-01 新）
 
