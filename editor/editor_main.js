@@ -148,6 +148,8 @@
   document.querySelectorAll(".tab").forEach(tab => {
     tab.addEventListener("click", () => switchTab(tab.dataset.tab));
   });
+  // P1：视图菜单（editor_shell.js）复用同一入口，卡片视图才会触发 enterCardView 渲染
+  window.__switchTab = switchTab;
 
   // ---- 状态 ----
   function setStatus(ok, msg) {

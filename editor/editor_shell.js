@@ -180,6 +180,12 @@
   };
 
   function switchTab(name) {
+    // P1：视图菜单与页签共用主编辑器入口；卡片视图必须走 enterCardView，不能只切 display
+    if (window.__switchTab) {
+      window.__switchTab(name);
+      return;
+    }
+    // 兜底：主编辑器未就绪时只切显示，避免菜单点击报错
     document.querySelectorAll(".tab").forEach(t =>
       t.classList.toggle("active", t.dataset.tab === name));
     ["source", "json", "card"].forEach(v => {

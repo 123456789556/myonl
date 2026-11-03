@@ -402,6 +402,23 @@ def test_画布尺寸下拉与读写入口():
     assert 'resp["canvas"]' in py and 'cfg["canvas_size"]' in py
 
 
+# ---------- P1 卡片视图菜单入口 ----------
+
+def test_P1_卡片视图菜单入口走真实渲染():
+    """菜单「视图 → 卡片视图」必须复用主编辑器 switchTab（会调 enterCardView），不能只切 display。"""
+    shell = open(os.path.join(ROOT, "editor", "editor_shell.js"), encoding="utf-8").read()
+    main = open(os.path.join(ROOT, "editor", "editor_main.js"), encoding="utf-8").read()
+    # 菜单入口存在，且菜单侧 switchTab 优先委托给主编辑器统一入口
+    assert 'switchTab("card")' in shell
+    assert "window.__switchTab" in shell, "editor_shell.js 的 switchTab 未委托主编辑器"
+    assert "window.__switchTab(name)" in shell
+    # 主编辑器暴露入口，卡片分支真实触发渲染；页签点击也走同一函数
+    assert "window.__switchTab = switchTab" in main
+    assert "enterCardView();" in main
+    assert 'if (name === "card") {' in main
+    assert 'tab.addEventListener("click", () => switchTab(tab.dataset.tab))' in main
+
+
 # ---------- 素材热重载：同名文件替换后自动重读 ----------
 
 def test_图片素材替换后自动重载(ren, tmp_path):
