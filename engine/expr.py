@@ -10,7 +10,6 @@ from __future__ import annotations
 
 import ast
 import operator
-import sys
 
 __all__ = ["ExprError", "validate", "evaluate"]
 
@@ -45,9 +44,8 @@ _BANNED = {
     ast.FormattedValue: "字符串",
     ast.Starred: "星号展开",
 }
-# 赋值表达式（walrus）语法本身从 Python 3.8 才存在
-if hasattr(ast, "NamedExpr"):
-    _BANNED[ast.NamedExpr] = "赋值表达式"
+# 赋值表达式（walrus）不属于白名单
+_BANNED[ast.NamedExpr] = "赋值表达式"
 
 
 class ExprError(Exception):
@@ -55,18 +53,9 @@ class ExprError(Exception):
 
 
 def _literal(node: ast.AST):
-    """识别字面量节点，返回 (是否字面量, 值)。
-
-    Python 3.7 的解析器产出 Num / Str / Bytes / NameConstant 旧节点，
-    3.8+ 统一为 Constant；这里两种都认。
-    """
+    """识别字面量节点，返回 (是否字面量, 值)。"""
     if isinstance(node, ast.Constant):
         return True, node.value
-    if sys.version_info < (3, 8):
-        for name, attr in (("Num", "n"), ("Str", "s"), ("Bytes", "s"), ("NameConstant", "value")):
-            cls = getattr(ast, name, None)
-            if cls is not None and isinstance(node, cls):
-                return True, getattr(node, attr)
     return False, None
 
 

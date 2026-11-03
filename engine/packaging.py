@@ -297,20 +297,9 @@ def player_template_dir(root=None) -> Path | None:
 
 
 def _copytree_into(src: Path, dst: Path) -> None:
-    """把 src 目录内容合并进 dst（Python 3.7 没有 dirs_exist_ok，手动递归）。"""
-    if sys.version_info >= (3, 8):
-        shutil.copytree(src, dst, dirs_exist_ok=True,
-                        ignore=shutil.ignore_patterns("__pycache__", "*.pyc"))
-        return
-    dst.mkdir(parents=True, exist_ok=True)
-    for entry in src.iterdir():
-        if entry.name == "__pycache__" or entry.name.endswith(".pyc"):
-            continue
-        target = dst / entry.name
-        if entry.is_dir():
-            _copytree_into(entry, target)
-        else:
-            shutil.copy2(entry, target)
+    """把 src 目录内容合并进 dst。"""
+    shutil.copytree(src, dst, dirs_exist_ok=True,
+                    ignore=shutil.ignore_patterns("__pycache__", "*.pyc"))
 
 
 def _copy_game_tree(project: Path, out_dir: Path) -> None:

@@ -2,7 +2,7 @@
 
 > 本文档是引擎的架构定稿 + AI 操作手册。任何人/AI 控制引擎前，先读本文档。
 > **版本**：v1.1（2026-10-29；P33 增补：`@bg fadein=`、config `title_music` 标题 BGM、画廊 `require` 解锁门控）
-> **技术栈**：Python 3.7+（发行包用 3.13 冻结）+ pygame-ce 2.3–2.5（按 Python 版本自动解析）/ PyInstaller，零第三方依赖除 pygame-ce。
+> **技术栈**：Python 3.9+（发行包用 3.13 冻结）+ pygame-ce 2.5+ / PyInstaller，零第三方依赖除 pygame-ce。
 > **平台**：Windows 10/11 唯一目标平台（跨平台支持已砍）。
 
 ---

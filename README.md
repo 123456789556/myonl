@@ -2,13 +2,13 @@
 
 [![tests](https://github.com/123456789556/myonl/actions/workflows/tests.yml/badge.svg?branch=main)](https://github.com/123456789556/myonl/actions/workflows/tests.yml)
 ![Windows](https://img.shields.io/badge/Windows-10%2021H2%2B%20%7C%2011-0078D4)
-![Python](https://img.shields.io/badge/Python-3.7%2B-3776AB)
+![Python](https://img.shields.io/badge/Python-3.9%2B-3776AB)
 ![License](https://img.shields.io/badge/License-MIT-green)
 
 写几行中文脚本，做出一部能玩、能存档、能打包的视觉小说。
 
 > **这是一个引擎工具（给创作者用），不是游戏作品**；仓库里的小样板只是可以随便改的起点。
-> Windows 10 21H2+ / Windows 11 · Python 3.7+ · pygame-ce · MIT · 完全离线
+> Windows 10 21H2+ / Windows 11 · Python 3.9+ · pygame-ce · MIT · 完全离线
 
 ![对话与选项](docs/images/dialogue-choices.jpg)
 
@@ -79,7 +79,7 @@ flowchart LR
 
 同一套 `parser → runtime → renderer` 既供玩家窗口，也供编辑器右侧预览：预览就是引擎的真实渲染，不是另画的示意图。
 
-## 源码开发（Windows，需 Python 3.7+）
+## 源码开发（Windows，需 Python 3.9+）
 
 ```powershell
 pip install -r requirements.txt
@@ -155,7 +155,7 @@ py -3 -m pytest -q -m slow            # 真实打包 / 全渲染 / 性能用例
 
 MYONL is an **offline, MIT-licensed visual-novel (galgame) engine and authoring tool for Windows**. You write a plain-text `.gal` script using 24 Chinese commands; the engine handles parsing, presentation (typewriter, camera, transitions, animated sprites, video backgrounds, voice), branching, save/load, a CG gallery, and one-click packaging into a double-click-able build that needs no Python on the player's machine. A built-in web editor with real-render preview ships with it.
 
-- From source: Python 3.7+ + `pygame-ce>=2.3` (Windows only).
+- From source: Python 3.9+ + `pygame-ce>=2.5` (Windows only).
 - Tests: `pytest -q -m "not slow"` → 975 headless cases.
 - Documentation is written in Chinese: [快速上手](docs/快速上手.md) · [engine spec](docs/engine_spec.md).
 
