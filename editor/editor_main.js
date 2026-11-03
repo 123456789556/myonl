@@ -12,6 +12,11 @@
   const errorOverlay = $("errorOverlay");
   const autocomplete = $("autocomplete");
   const btnRun = $("btnRun");
+  // 纯函数工具层（editor_utils.js）：不接触本闭包状态，可独立演进/复用
+  const {
+    escapeText, lineIndent, _clKey, assetURL, el, field, selectField, row,
+    iconBtn, summaryOf, fieldRow, mkInput, mkTextarea, mkSelect,
+  } = window.MyonlEditorUtils;
 
   let debounceTimer = null;
   let lastError = null;
@@ -253,10 +258,6 @@
   let dockPane = "problems";     // 当前激活 tab
   let dockOpen = false;          // 面板显隐
   let lastProblemCount = 0;      // 问题数 0→N 跳变才自动弹出（手动关后不反复弹）
-
-  function escapeText(t) {
-    return String(t).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-  }
 
   function jumpToLine(line) {
     const lines = source.value.split("\n");
@@ -631,42 +632,6 @@
     const el = lineNumbers.querySelector('.ln[data-line="' + (idx + 1) + '"]');
     if (el && !el.classList.contains("err")) el.classList.add("cur");
   }
-  function lineIndent(s) { return (s.match(/^\s*/) || [""])[0]; }
-
-  function el(tag, cls, text) {
-    const e = document.createElement(tag);
-    if (cls) e.className = cls;
-    if (text != null) e.textContent = text;
-    return e;
-  }
-  function field(value, ph) {
-    const i = document.createElement("input");
-    i.value = value || "";
-    if (ph) i.placeholder = ph;
-    return i;
-  }
-  function selectField(options, value) {
-    const s = document.createElement("select");
-    let found = false;
-    options.forEach(([v, label]) => {
-      const o = document.createElement("option");
-      o.value = v; o.textContent = label;
-      if (v === value) { o.selected = true; found = true; }
-      s.appendChild(o);
-    });
-    if (value && !found) {
-      const o = document.createElement("option");
-      o.value = value; o.textContent = value; o.selected = true;
-      s.appendChild(o);
-    }
-    return s;
-  }
-  function row(label, control) {
-    const r = el("div", "insp-row");
-    r.appendChild(el("label", "", label));
-    r.appendChild(control);
-    return r;
-  }
   // ---- M1.5：素材晾衣绳（Asset Clothesline）----
   // 交互灵感：Tendedero（MIT）。只借「悬停滑出 + 悬挂卡片 + 点击即用」的想法，未复制其代码/名称/图标。
   // 能力：最近素材 / 置顶常用 / 点击或拖拽插入指令 / 预览历史。
@@ -684,7 +649,6 @@
     clPins = raw ? JSON.parse(raw) : [];
     if (!Array.isArray(clPins)) clPins = [];
   } catch (e) { clPins = []; }
-  function _clKey(cat, name) { return cat + ":" + name; }
   function _clSavePins() {
     try { localStorage.setItem(CL_PIN_KEY, JSON.stringify(clPins)); } catch (e) {}
   }
@@ -1372,28 +1336,6 @@
     return out;
   }
 
-  function summaryOf(ins) {
-    switch (ins.op) {
-      case "say": return (ins.char ? ins.char + "：" : "旁白：") + (ins.text || "");
-      case "bg": return "背景 → " + (ins.image || "");
-      case "music": return "音乐 → " + (ins.track || "");
-      case "sfx": return "音效 → " + (ins.sound || "");
-      case "show": return "立绘 " + (ins.char || "") + " / " + (ins.expr || "");
-      case "hide": return "隐藏 " + (ins.char || "");
-      case "character": return (ins.name || "") + " " + (ins.color || "");
-      case "label": return "标签 " + (ins.name || "");
-      case "jump": return "跳到 → " + (ins.target || "");
-      case "set": return (ins.var || "") + " " + (ins.operator || "") + " " + ins.value;
-      case "if": {
-        const c = ins.cond || {};
-        return "若 " + (c.var || "") + " " + (c.op || "") + " " + c.value + " 则执行 " + (ins.body || []).length + " 条";
-      }
-      case "choice": return (ins.options || []).length + " 个选项";
-      case "end": return "剧本结束";
-      default: return ins.op || "未知";
-    }
-  }
-
   // ---------- 渲染 ----------
   function renderCards() {
     cardView.innerHTML = "";
@@ -1488,16 +1430,6 @@
     return card;
   }
 
-  function iconBtn(text, title, handler) {
-    const b = document.createElement("button");
-    b.className = "icon-btn";
-    b.type = "button";
-    b.textContent = text;
-    b.title = title;
-    b.addEventListener("click", handler);
-    return b;
-  }
-
   function makeAddButton(list, parentPath, text) {
     const holder = document.createElement("div");
     const btn = document.createElement("button");
@@ -1569,40 +1501,6 @@
   }
 
   // ---------- 表单 ----------
-  function fieldRow(labelText, el) {
-    const d = document.createElement("div");
-    d.className = "field";
-    const l = document.createElement("label");
-    l.textContent = labelText;
-    d.appendChild(l); d.appendChild(el);
-    return d;
-  }
-  function mkInput(field, value, type) {
-    const el = document.createElement("input");
-    if (type === "color") { el.type = "color"; } else if (type === "number") { el.type = "number"; el.step = "any"; }
-    else { el.type = "text"; }
-    el.dataset.f = field;
-    el.value = value === undefined || value === null ? "" : value;
-    return el;
-  }
-  function mkTextarea(field, value) {
-    const el = document.createElement("textarea");
-    el.dataset.f = field;
-    el.value = value === undefined || value === null ? "" : value;
-    return el;
-  }
-  function mkSelect(field, value, options) {
-    const el = document.createElement("select");
-    el.dataset.f = field;
-    options.forEach(([v, label]) => {
-      const o = document.createElement("option");
-      o.value = v; o.textContent = label;
-      el.appendChild(o);
-    });
-    el.value = value;
-    return el;
-  }
-
   function buildForm(ins, list, index, path, card) {
     const form = document.createElement("div");
     form.className = "card-form";
@@ -1943,10 +1841,6 @@
       el.style.transition = "opacity .25s";
       setTimeout(() => el.remove(), 260);
     }, 2800);
-  }
-
-  function assetURL(cat, name) {
-    return "/api/asset/" + cat + "/" + encodeURIComponent(name);
   }
 
   function setAssetHint(msg, err) {

@@ -553,6 +553,7 @@ class _EditorHandler(BaseHTTPRequestHandler):
         ("GET", "/editor_scene.js"): "_serve_scene_js",
         ("GET", "/editor_characters.js"): "_serve_characters_js",
         ("GET", "/editor_main.js"): "_serve_main_js",
+        ("GET", "/editor_utils.js"): "_serve_utils_js",
         # E9：编辑器三档模式 Level 1–3（前端档位开关，状态存 localStorage）
         ("GET", "/editor_level.js"): "_serve_level_js",
         # T16 域拆分：游戏内 UI 设计区 / 壳层（菜单 + 命令面板 + 教程）
@@ -770,6 +771,9 @@ class _EditorHandler(BaseHTTPRequestHandler):
 
     def _serve_main_js(self, parsed=None) -> None:
         self._serve_editor_file("editor_main.js", "application/javascript; charset=utf-8")
+
+    def _serve_utils_js(self, parsed=None) -> None:
+        self._serve_editor_file("editor_utils.js", "application/javascript; charset=utf-8")
 
     def _serve_characters_js(self, parsed=None) -> None:
         self._serve_editor_file("editor_characters.js", "application/javascript; charset=utf-8")
