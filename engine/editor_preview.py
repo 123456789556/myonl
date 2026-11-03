@@ -40,6 +40,21 @@ class _PreviewCancelled(Exception):
     """用户已继续编辑，旧预览在渲染途中被放弃。"""
 
 
+class _FastForwardClock:
+    """预览专用时钟：按真实 60FPS 的节奏产出帧间隔，但不真的睡眠。
+
+    Renderer.render 内部用 pygame.time.Clock.tick(60) 限帧；预览是离屏渲染，
+    没必要为 30 帧白等约 500ms。这里只推进等价的虚拟时间，画面结果不变。
+    """
+
+    def __init__(self) -> None:
+        self.now = 0
+
+    def tick(self, fps: int = 0) -> int:
+        self.now += 16
+        return 16
+
+
 def _preview_cache_key(text: str, base_dir: str, assets_root: str, frames: int) -> tuple:
     digest = hashlib.sha256((text or "").encode("utf-8")).hexdigest()
     try:
@@ -144,7 +159,10 @@ def _preview_png(script_path: str, assets_root: str, max_frames: int = 30,
     from .runtime import Runtime
 
     rt = Runtime()
-    ren = Renderer(assets_root=assets_root)  # T10：画布尺寸从 config.json 读取
+    # 预览离屏跑：注入虚拟时钟替代 60FPS 限帧，避免每帧真实睡眠（画面结果不变）
+    clock = _FastForwardClock()
+    ren = Renderer(assets_root=assets_root,          # T10：画布尺寸从 config.json 读取
+                   clock=clock, now_ms=lambda: clock.now)
     png_path = ""
     try:
         rt.load(script_path)

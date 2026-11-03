@@ -88,8 +88,9 @@ class Renderer(TextMixin, SceneMixin, SpriteMixin, MediaMixin, DialogMixin,
                UiScreensMixin, UiPagesMixin, WindowMixin):
     """把 Runtime.snapshot() 的 GameState 画成逻辑画布画面，并把玩家输入翻译成统一动作。"""
 
-    def __init__(self, size=None, assets_root="."):
-        # assets_root：资源根目录，其下有 images/、audio/、fonts/ 三个子目录
+    def __init__(self, size=None, assets_root=".", *, clock=None, now_ms=None):
+        # assets_root 是资源根目录；clock/now_ms 供离屏预览注入虚拟时钟（正常游玩用默认值）
+        self._now_source = now_ms or pygame.time.get_ticks
         self.assets_root = str(assets_root)
         self.settings = data.load_settings(os.path.join(self.assets_root, "settings.json"))
         # P30-S3：只读配置（config.json）——窗口标题/字号/色板/遮罩 alpha/键位
@@ -140,7 +141,7 @@ class Renderer(TextMixin, SceneMixin, SpriteMixin, MediaMixin, DialogMixin,
         self._load_fonts()
 
         # ---- 内部展示缓存（不进 GameState）----
-        self._clock = pygame.time.Clock()
+        self._clock = clock if clock is not None else pygame.time.Clock()
         self._img_cache = OrderedDict()  # 路径 -> Surface（LRU：末尾最新，超限从头释放）
         self._img_bytes = 0              # 图片缓存估算字节数
         self._img_cache_max = IMG_CACHE_MAX
@@ -636,7 +637,7 @@ class Renderer(TextMixin, SceneMixin, SpriteMixin, MediaMixin, DialogMixin,
 
     def _now_ms(self) -> int:
         """当前时刻（毫秒）。独立成方法便于测试替换时间源。"""
-        return pygame.time.get_ticks()
+        return int(self._now_source())
 
     def _detect_tier(self) -> str:
         """设备档位：settings.quality_tier 显式覆盖 > 自动探测（失败回落 mid）。"""
