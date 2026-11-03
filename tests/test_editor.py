@@ -127,6 +127,22 @@ def test_check_error_结构化字段(server):
     assert body["hint"]                 # A3：未知指令会给出「你是不是想写…」建议
 
 
+# 3c. 工程目录不可写（只读盘/无权限）时：不能断连接，要给中文错误
+def test_check_工程目录不可写时返回中文错误(server, monkeypatch):
+    port, _ = server
+
+    def _boom(*args, **kwargs):
+        raise PermissionError(13, "Permission denied")
+
+    monkeypatch.setattr(editor_mod.tempfile, "mkstemp", _boom)
+    status, raw = _post(port, "/api/check", {"text": VALID_SCRIPT, "path": "script.gal"})
+    assert status == 400
+    body = json.loads(raw)
+    assert body["ok"] is False
+    assert "工程目录不可写" in body["message"]
+    assert "权限" in body["message"]
+
+
 # 4. preview 出图
 def test_preview_png(server, monkeypatch):
     port, project = server
@@ -407,6 +423,15 @@ def test_检查去重与请求取消_P9_P10_P11():
     # P9：文本 + 光标行未变时跳过重复预览；「重载预览」可强制重渲染
     assert "lastPreviewKey" in js and "previewKey" in js
     assert "function scheduleCheck(force)" in js and "scheduleCheck(true)" in js
+
+
+def test_非语法错误不使用undefined行号():
+    """检查失败且没有行号（目录不可写/路径非法）时，前端给中文提示，不再显示“第 undefined 行”。"""
+    root = os.path.dirname(os.path.dirname(os.path.abspath(editor_mod.__file__)))
+    js = open(os.path.join(root, "editor", "editor_main.js"), encoding="utf-8").read()
+    assert "if (!checkResp.line)" in js
+    assert "检查失败：${msg}" in js
+    assert "if (!line || line < 1) return;" in js
 
 
 def test_editor_app_webview2检测不崩():

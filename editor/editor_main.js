@@ -498,6 +498,23 @@
     if (stale()) return;
     if (!checkResp.ok) {
       checkAbort = null;
+      // 非语法错误（工程目录不可写、路径非法等）：给中文提示，不冒充「第 undefined 行」
+      if (!checkResp.line) {
+        lastError = null;
+        const msg = checkResp.message || "未知错误";
+        setStatus(false, "检查失败");
+        setPreviewBar(false, `检查失败：${msg}`);
+        highlightError(null);
+        renderProblems([{
+          line: 0,
+          summary: msg,
+          detail: checkResp.detail || "",
+          hint: checkResp.hint || "请检查工程目录权限与文件路径",
+          message: msg,
+        }]);
+        updateLineNumbers();
+        return;
+      }
       lastError = {line: checkResp.line, file: checkResp.file, message: checkResp.message};
       setStatus(false, `语法错误 · 第 ${checkResp.line} 行`);
       setPreviewBar(false, `解析失败：${checkResp.file} 第 ${checkResp.line} 行：${checkResp.message}`);
@@ -2669,6 +2686,7 @@
   }
 
   function jumpToLine(line) {
+    if (!line || line < 1) return;   // 非行级错误（如目录不可写）不跳转
     const lines = source.value.split("\n");
     let pos = 0;
     for (let i = 0; i < line - 1 && i < lines.length; i++) pos += lines[i].length + 1;
