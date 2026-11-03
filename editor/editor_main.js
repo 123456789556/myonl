@@ -19,6 +19,12 @@
   let checkAbort = null;        // 当前一轮检查/预览的取消句柄（新一次开始即取消旧的）
   let lastPreviewKey = "";      // 上一次成功预览的「路径 + 文本」，相同则跳过重复渲染
   let forcePreview = false;     // 手动「重载预览」时置位，强制忽略上面的去重
+  // P12：预览取消标记。每个标签页固定 client，序号随每次检查/预览递增，
+  // 服务端据此在帧间放弃已被新输入取代的旧渲染，避免 600ms 白跑。
+  const previewClient = (window.crypto && crypto.randomUUID)
+    ? crypto.randomUUID()
+    : ("c" + Math.random().toString(36).slice(2) + Date.now().toString(36));
+  let previewSeq = 0;
 
   // ---- P17 协同钩子：内容/光标变化广播（editor_pro.js 订阅）----
   const _changeFns = [];
@@ -461,6 +467,7 @@
   async function checkAndPreview(force) {
     const text = source.value;
     const curPath = (window.__proCurPath && window.__proCurPath()) || undefined;
+    const reqSeq = ++previewSeq;
     if (checkAbort) checkAbort.abort();
     const ctrl = new AbortController();
     checkAbort = ctrl;
@@ -487,7 +494,7 @@
       checkResp = await fetch("/api/check", {
         method: "POST",
         headers: {"Content-Type": "application/json"},
-        body: JSON.stringify({text, path: curPath}),
+        body: JSON.stringify({text, path: curPath, client: previewClient, seq: reqSeq}),
         signal: ctrl.signal,
       }).then(r => r.json());
     } catch (e) {
@@ -553,7 +560,8 @@
       const blob = await fetch("/api/preview", {
         method: "POST",
         headers: {"Content-Type": "application/json"},
-        body: JSON.stringify({text, frames: 30, path: curPath}),
+        body: JSON.stringify({text, frames: 30, path: curPath,
+                              client: previewClient, seq: reqSeq}),
         signal: ctrl.signal,
       }).then(async r => {
         if (r.status === 422) {

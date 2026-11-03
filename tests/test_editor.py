@@ -161,6 +161,61 @@ def test_preview_error(server):
     assert "file" in body and "line" in body and "message" in body
 
 
+# 5.1 预览内容哈希缓存：相同文本不重复渲染，不同文本重新渲染
+def test_preview_content_hash_cache(server, monkeypatch):
+    port, _ = server
+    calls = []
+
+    def fake_png(script_path, assets_root, max_frames=30, cancel=None):
+        calls.append(script_path)
+        return b"\x89PNG-cache"
+
+    monkeypatch.setattr(editor_mod, "_preview_png", fake_png)
+    editor_mod._preview_cache_clear()
+    try:
+        status, raw = _post(port, "/api/preview", {"text": VALID_SCRIPT, "frames": 10})
+        assert status == 200 and raw == b"\x89PNG-cache" and len(calls) == 1
+        status, raw = _post(port, "/api/preview", {"text": VALID_SCRIPT, "frames": 10})
+        assert status == 200 and raw == b"\x89PNG-cache" and len(calls) == 1
+        changed = VALID_SCRIPT + "@ 林晚 追加一句\n"
+        status, raw = _post(port, "/api/preview", {"text": changed, "frames": 10})
+        assert status == 200 and len(calls) == 2
+    finally:
+        editor_mod._preview_cache_clear()
+
+
+# 5.2 预览取消标记：新序号到达后，旧序号在排队阶段直接放弃（204）
+def test_preview_stale_request_skipped(server, monkeypatch):
+    port, _ = server
+    called = []
+
+    def fake_png(script_path, assets_root, max_frames=30, cancel=None):
+        called.append(script_path)
+        return b"\x89PNG-stale"
+
+    monkeypatch.setattr(editor_mod, "_preview_png", fake_png)
+    editor_mod._preview_cache_clear()
+    editor_mod._preview_note_seq("tab-test", 5)
+    try:
+        status, raw = _post(port, "/api/preview", {
+            "text": VALID_SCRIPT, "frames": 10, "client": "tab-test", "seq": 4})
+        assert status == 204 and raw == b""
+        assert called == []
+    finally:
+        editor_mod._preview_cache_clear()
+
+
+def test_preview_seq_state():
+    editor_mod._preview_note_seq("tab-a", 1)
+    assert not editor_mod._preview_is_stale("tab-a", 1)
+    editor_mod._preview_note_seq("tab-a", 3)
+    assert editor_mod._preview_is_stale("tab-a", 1)
+    assert not editor_mod._preview_is_stale("tab-a", 3)
+    # 非法序号不参与判断
+    editor_mod._preview_note_seq("tab-a", "x")
+    assert not editor_mod._preview_is_stale("tab-a", 4)
+
+
 # 6. complete 补全
 def test_complete(server):
     port, _ = server
@@ -503,6 +558,17 @@ def test_path_traversal(server, tmp_path):
     # 确认不落盘
     evil_abs = tmp_path / ".." / ".." / "evil.gal"
     assert not evil_abs.exists()
+
+
+def test_相对script路径按项目目录解析(tmp_path):
+    """--project games/X --script script.gal：相对路径应相对项目目录，而不是进程 cwd。"""
+    script = tmp_path / "script.gal"
+    script.write_text(VALID_SCRIPT, encoding="utf-8")
+    app = EditorApp(str(tmp_path), "script.gal")
+    assert app.script_path == os.path.realpath(script)
+    # 越界路径仍必须拒绝
+    with pytest.raises(ValueError, match="必须在项目目录内"):
+        EditorApp(str(tmp_path), "../outside.gal")
 
 
 # 10. 端口占用

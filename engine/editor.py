@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import base64
 import binascii
+import hashlib
 import json
 import os
 import re
@@ -25,6 +26,7 @@ import tempfile
 import time
 import threading
 import uuid
+from collections import OrderedDict
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, unquote, urlparse
 
@@ -103,6 +105,72 @@ _RE_SET_VAR = re.compile(r"^@set\s+(\S+)\s*[+\-]?=", re.MULTILINE)
 # 预览串行锁：pygame 非线程安全，同一时刻只跑一次预览渲染
 _preview_lock = threading.Lock()
 
+# 最近预览结果缓存：同一「文件目录 + 素材根 + 帧数 + 剧本内容哈希」直接复用，
+# 避免连续输入时对已渲染过的旧文本重复跑 600ms 渲染。
+_PREVIEW_CACHE_MAX = 4
+_preview_cache: "OrderedDict[tuple, bytes]" = OrderedDict()
+_preview_cache_lock = threading.Lock()
+# 每个编辑器标签页最近一次请求序号：新请求一到，旧请求在帧间自行放弃。
+_preview_latest: dict = {}
+_preview_latest_lock = threading.Lock()
+
+
+class _PreviewCancelled(Exception):
+    """用户已继续编辑，旧预览在渲染途中被放弃。"""
+
+
+def _preview_cache_key(text: str, base_dir: str, assets_root: str, frames: int) -> tuple:
+    digest = hashlib.sha256((text or "").encode("utf-8")).hexdigest()
+    try:
+        frame_count = int(frames)
+    except (TypeError, ValueError):
+        frame_count = -1
+    return (os.path.realpath(base_dir), os.path.realpath(assets_root),
+            frame_count, digest)
+
+
+def _preview_cache_get(key: tuple):
+    with _preview_cache_lock:
+        png = _preview_cache.get(key)
+        if png is not None:
+            _preview_cache.move_to_end(key)
+        return png
+
+
+def _preview_cache_put(key: tuple, png: bytes) -> None:
+    with _preview_cache_lock:
+        _preview_cache[key] = png
+        _preview_cache.move_to_end(key)
+        while len(_preview_cache) > _PREVIEW_CACHE_MAX:
+            _preview_cache.popitem(last=False)
+
+
+def _preview_cache_clear() -> None:
+    with _preview_cache_lock:
+        _preview_cache.clear()
+
+
+def _preview_note_seq(client, seq) -> None:
+    """记录某标签页的最新请求序号；非法值忽略。"""
+    if not isinstance(client, str) or not client:
+        return
+    if isinstance(seq, bool) or not isinstance(seq, int):
+        return
+    with _preview_latest_lock:
+        if seq > _preview_latest.get(client, 0):
+            _preview_latest[client] = seq
+        while len(_preview_latest) > 64:
+            _preview_latest.pop(next(iter(_preview_latest)))
+
+
+def _preview_is_stale(client, seq) -> bool:
+    if not isinstance(client, str) or not client:
+        return False
+    if isinstance(seq, bool) or not isinstance(seq, int):
+        return False
+    with _preview_latest_lock:
+        return _preview_latest.get(client, 0) > seq
+
 
 def _collect_symbols(text: str) -> dict:
     """从剧本文本扫描已定义的角色名 / 标签名 / 变量名。"""
@@ -143,7 +211,8 @@ def _completions(line: str, full_text: str = "") -> list:
 
 
 @dummy_video
-def _preview_png(script_path: str, assets_root: str, max_frames: int = 30) -> bytes:
+def _preview_png(script_path: str, assets_root: str, max_frames: int = 30,
+                 cancel=None) -> bytes:
     """无窗口跑剧本 auto 钩子，返回当前帧 PNG bytes。
 
     用 dummy 视频驱动，复用 Runtime + Renderer（demo.run 内部会关闭 Renderer，
@@ -160,6 +229,8 @@ def _preview_png(script_path: str, assets_root: str, max_frames: int = 30) -> by
         rt.load(script_path)
         frames = 0
         while True:
+            if cancel is not None and cancel():
+                raise _PreviewCancelled()
             state = rt.snapshot()
             ren.render(state)
             if state.get("finished"):
@@ -998,6 +1069,23 @@ class _EditorHandler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(body)
 
+    def _send_png(self, png: bytes) -> None:
+        self.send_response(200)
+        self.send_header("Content-Type", "image/png")
+        self.send_header("Content-Length", str(len(png)))
+        self.send_header("Cache-Control", "no-store")
+        self.end_headers()
+        try:
+            self.wfile.write(png)
+        except (BrokenPipeError, ConnectionResetError, ConnectionAbortedError):
+            # 客户端已发起新一轮请求并中断连接：正常现象，不写错误日志
+            pass
+
+    def _send_no_content(self) -> None:
+        self.send_response(204)
+        self.send_header("Content-Length", "0")
+        self.end_headers()
+
     def _read_json(self) -> dict:
         length = int(self.headers.get("Content-Length", 0) or 0)
         raw = self.rfile.read(length) if length else b""
@@ -1151,6 +1239,8 @@ class _EditorHandler(BaseHTTPRequestHandler):
         data = self._read_json()
         text = data.get("text", "")
         rel = data.get("path")
+        # 新一轮检查开始即视为旧预览过期，服务端可在帧间放弃旧渲染
+        _preview_note_seq(data.get("client"), data.get("seq"))
         try:
             if rel:
                 # 多文件工程：以正在编辑的文件目录为 @include 基准
@@ -1172,12 +1262,26 @@ class _EditorHandler(BaseHTTPRequestHandler):
         text = data.get("text", "")
         frames = data.get("frames", 30)
         rel = data.get("path")
+        client = data.get("client")
+        seq = data.get("seq")
+        # 同一标签页新序号一到，旧预览即为过期；渲染循环每帧检查一次
+        _preview_note_seq(client, seq)
+        stale = lambda: _preview_is_stale(client, seq)
         try:
             # 临时剧本写在正在编辑的文件目录内，使 @include 基准正确
             base_dir = _rel_edit_dir(self.app.project_root, rel) if rel \
                 else self.app.project_root
         except ValueError as e:
             self._send_json(400, {"ok": False, "message": str(e)})
+            return
+        cache_key = _preview_cache_key(text, base_dir, self.app.project_root, frames)
+        cached = _preview_cache_get(cache_key)
+        if cached is not None:
+            self._send_png(cached)
+            return
+        # 排队前再判一次：已被更新输入取代的请求不再解析/写临时文件
+        if stale():
+            self._send_no_content()
             return
         try:
             if rel:
@@ -1193,18 +1297,35 @@ class _EditorHandler(BaseHTTPRequestHandler):
             with os.fdopen(fd, "w", encoding="utf-8") as f:
                 f.write(text)
             try:
-                with _preview_lock:
-                    png = _preview_png(tmp_path, self.app.project_root, frames)
+                acquired = False
+                try:
+                    # 等待渲染锁时持续轮询取消标记：已被新输入取代的请求不必排到队头
+                    while True:
+                        if _preview_lock.acquire(timeout=0.05):
+                            acquired = True
+                            break
+                        if stale():
+                            self._send_no_content()
+                            return
+                    # 排队期间用户已继续编辑：不再白跑这次渲染
+                    if stale():
+                        self._send_no_content()
+                        return
+                    png = _preview_png(tmp_path, self.app.project_root, frames,
+                                       cancel=stale)
+                finally:
+                    if acquired:
+                        _preview_lock.release()
+            except _PreviewCancelled:
+                self._send_no_content()
+                return
             except Exception as e:
                 self._send_json(500, {"ok": False, "message": f"预览渲染失败：{e}"})
                 return
         finally:
             _remove_quiet(tmp_path)
-        self.send_response(200)
-        self.send_header("Content-Type", "image/png")
-        self.send_header("Content-Length", str(len(png)))
-        self.end_headers()
-        self.wfile.write(png)
+        _preview_cache_put(cache_key, png)
+        self._send_png(png)
 
     def _complete(self, parsed=None) -> None:
         if parsed is not None and parsed.query:  # GET /api/complete?line=...&text=...
@@ -1601,6 +1722,9 @@ class _EditorHandler(BaseHTTPRequestHandler):
             data.get("data_b64", data.get("data")),
             bool(data.get("overwrite", False)),
         )
+        if result.get("ok"):
+            # 素材变化会影响预览画面，清空内容哈希缓存
+            _preview_cache_clear()
         self._send_json(200 if result.get("ok") else 400, result)
 
     # ---- P35 打包发布 ----
@@ -2107,9 +2231,12 @@ class EditorApp:
 
     def __init__(self, project_root: str, script_path: str | None = None):
         self.project_root = os.path.realpath(project_root)
-        self.script_path = script_path or os.path.join(self.project_root, "script.gal")
+        # 相对路径按项目目录解析，避免 --project games/X --script script.gal 被误判越界
+        raw_script = script_path or "script.gal"
+        if not os.path.isabs(raw_script):
+            raw_script = os.path.join(self.project_root, raw_script)
         # 默认剧本路径必须在项目目录内
-        sp = os.path.realpath(self.script_path)
+        sp = os.path.realpath(raw_script)
         if sp != self.project_root and not sp.startswith(self.project_root + os.sep):
             raise ValueError(f"--script 路径必须在项目目录内：{script_path}")
         self.script_path = sp
