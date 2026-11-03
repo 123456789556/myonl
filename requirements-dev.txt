@@ -4,10 +4,10 @@ pyright>=1.1.414; python_version >= "3.9"
 pytest-cov>=7; python_version >= "3.9"
 pytest-cov>=4,<7; python_version < "3.9"
 
-# 素材导入工具链（tools/import_assets.py）：批量照片缩放/裁切 + 短视频抽帧
+# Asset import toolchain (tools/import_assets.py): batch photo resize/crop + video frame extraction
 Pillow>=10; python_version >= "3.8"
 Pillow>=9.5,<10; python_version < "3.8"
 av>=14; python_version >= "3.9"
 av>=11,<14; python_version >= "3.8" and python_version < "3.9"
-# 素材生成工具链（tools/p44_standard_assets.py）：BGM 转 OGG/Vorbis
+# Asset generation toolchain (tools/p44_standard_assets.py): BGM to OGG/Vorbis
 soundfile>=0.12
