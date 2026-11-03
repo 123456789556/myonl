@@ -8,6 +8,6 @@ pytest-cov>=4,<7; python_version < "3.9"
 Pillow>=10; python_version >= "3.8"
 Pillow>=9.5,<10; python_version < "3.8"
 av>=14; python_version >= "3.9"
-av>=11,<14; python_version >= "3.8"
+av>=11,<14; python_version >= "3.8" and python_version < "3.9"
 # 素材生成工具链（tools/p44_standard_assets.py）：BGM 转 OGG/Vorbis
 soundfile>=0.12
