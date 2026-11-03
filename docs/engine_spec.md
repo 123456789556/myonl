@@ -194,7 +194,7 @@ engine/timeline.py（统一时间轴调度：镜头 / 转场 / 立绘补间 / �
 | **跨平台** | ❌ Windows-only | ✅ 全平台 | ✅ 全平台 | MYONL 已砍跨平台 |
 | **打包体积** | 🆕 **32MB** | ~100MB+ | 500MB+ | **MYONL 护城河** |
 | **零底层依赖** | 🆕 是 | 否（Cython/SDL 定制） | 否 | **第二个护城河** |
-| **测试覆盖** | 486 pytest passed | 估计 2000+（未见公开数据） | — | |
+| **测试覆盖** | 988 pytest passed（快速套件，2026-11-03） | 估计 2000+（未见公开数据） | — | |
 | **编辑器 / Launcher** | ❌（python -m engine.cli 命令行） | ✅ 完整（项目创建/打包/主题） | ✅ Unity Editor | 即将 P0-2 |
 
 **Ren'Py 值得直接抄/改的模块**（纯 Python，MIT 许可，可以引入）：
@@ -417,7 +417,7 @@ load_pack_profile(game_dir) -> PackProfile
 
 ## 7. 测试与验证
 
-- **全量 pytest**：`py -m pytest -q` —— 必须全绿（当前 500+ passed）
+- **全量 pytest**：`py -m pytest -q` —— 必须全绿（快速套件当前 988 passed + 1 skipped）
 - **无头通关**：`python -m engine.demo games/月光漫步/script.gal --assets games/月光漫步 --auto --max-frames 60000` —— 0 异常、stderr 空
 - **打包验证**：`py pack.py games/月光漫步` → `dist/月光漫步/月光漫步.exe` 无头启动 22s 不崩
 - **每一步新功能**：每个新 action / 指令 / 持久状态均带独立 pytest

@@ -108,8 +108,8 @@ py -3 -m engine.demo games/我的第一个游戏/script.gal --assets games/我�
 ### 测试与门禁
 
 ```powershell
-py -3 -m pytest -q                    # 全量 1008 项（1007 通过 / 1 跳过，约 90s）
-py -3 -m pytest -q -m "not slow"      # 日常快跑 975 项（约 50s）
+py -3 -m pytest -q                    # 全量 1021 项（含 slow，耗时较长）
+py -3 -m pytest -q -m "not slow"      # 日常快跑 988 通过 + 1 跳过（约 67s）
 py -3 -m pytest -q -m slow            # 真实打包 / 全渲染 / 性能用例
 ```
 
@@ -156,7 +156,7 @@ py -3 -m pytest -q -m slow            # 真实打包 / 全渲染 / 性能用例
 MYONL is an **offline, MIT-licensed visual-novel (galgame) engine and authoring tool for Windows**. You write a plain-text `.gal` script using 24 Chinese commands; the engine handles parsing, presentation (typewriter, camera, transitions, animated sprites, video backgrounds, voice), branching, save/load, a CG gallery, and one-click packaging into a double-click-able build that needs no Python on the player's machine. A built-in web editor with real-render preview ships with it.
 
 - From source: Python 3.9+ + `pygame-ce>=2.5` (Windows only).
-- Tests: `pytest -q -m "not slow"` → 975 headless cases.
+- Tests: `pytest -q -m "not slow"` → 988 passed + 1 skipped headless cases.
 - Documentation is written in Chinese: [快速上手](docs/快速上手.md) · [engine spec](docs/engine_spec.md).
 
 ## 许可
