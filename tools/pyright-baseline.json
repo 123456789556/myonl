@@ -1,11 +1,11 @@
 {
-  "_comment": "迭代-01 任务1.2 pyright 棘轮基线：tools/check_types.ps1 只拦截新增错误（file|rule 计数上升）。修复存量后同步下调本文件。生成于 2026-10-31；2026-10-31 修 ui.py set_settings 同名遮盖后下调至 637；2026-10-31 cli.py stdout/stderr 统一 UTF-8 后下调至 636；2026-10-31 T6 热重载给 TextMixin 补宿主属性声明后下调至 623。2026-11-01 修 M1.5 遗留后下调至 555。2026-11-01 C1/C2/C3 与 B1 落地：渲染四 Mixin（Dialog/UiPages/UiScreens/Media）补宿主注入属性 TYPE_CHECKING 声明（-388），并顺手收窄 editor.py UI 设计写回的 None（B2-UI），下调至 165。2026-11-03 修打包链路 None 解引用（publisher / importlib spec / description）后下调至 151；同日给 SpriteMixin 补宿主属性声明（-38）后下调至 113。",
-  "_total": 113,
+  "_comment": "迭代-01 任务1.2 pyright 棘轮基线：tools/check_types.ps1 只拦截新增错误（file|rule 计数上升）。修复存量后同步下调本文件。生成于 2026-10-31；2026-10-31 修 ui.py set_settings 同名遮盖后下调至 637；2026-10-31 cli.py stdout/stderr 统一 UTF-8 后下调至 636；2026-10-31 T6 热重载给 TextMixin 补宿主属性声明后下调至 623。2026-11-01 修 M1.5 遗留后下调至 555。2026-11-01 C1/C2/C3 与 B1 落地：渲染四 Mixin（Dialog/UiPages/UiScreens/Media）补宿主注入属性 TYPE_CHECKING 声明（-388），并顺手收窄 editor.py UI 设计写回的 None（B2-UI），下调至 165。2026-11-03 修打包链路 None 解引用（publisher / importlib spec / description）后下调至 151；同日给 SpriteMixin 补宿主属性声明（-38）后下调至 113。2026-11-03 编辑器预览拆分后实测 112（editor.py|reportArgumentType 7→6），正式下调至 112。",
+  "_total": 112,
   "counts": {
     "cli.py|reportAttributeAccessIssue": 1,
     "config.py|reportArgumentType": 4,
     "demo.py|reportArgumentType": 11,
-    "editor.py|reportArgumentType": 7,
+    "editor.py|reportArgumentType": 6,
     "editor.py|reportAttributeAccessIssue": 67,
     "editor.py|reportCallIssue": 2,
     "editor.py|reportOptionalSubscript": 1,
