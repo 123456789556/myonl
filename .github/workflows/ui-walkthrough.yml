@@ -52,7 +52,17 @@ jobs:
           OPENBLAS_NUM_THREADS: "1"
           OMP_NUM_THREADS: "1"
           MKL_NUM_THREADS: "1"
-        run: python tools/ui_walkthrough.py --game "games/标准示例"
+        run: |
+          $out = & python tools/ui_walkthrough.py --game "games/标准示例" 2>&1
+          $code = $LASTEXITCODE
+          $out | ForEach-Object { Write-Host $_ }
+          if ($code -ne 0) {
+            "## UI 走查失败（exit $code）" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
+            "``````" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
+            ($out | Select-Object -Last 40) | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
+            "``````" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
+          }
+          exit $code
 
       - name: 上传走查报告与截图
         if: always()
