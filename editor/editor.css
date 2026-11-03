@@ -1568,6 +1568,12 @@ input[type="text"], input[type="search"], select { background: var(--input-bg); 
 .scene-form select, .scene-form input[type="text"], .scene-form input:not([type]) { max-width: 440px; }
 .sf-scene { font-size: 13px; margin-bottom: 14px; }
 .sf-label { display: inline-block; min-width: 64px; color: var(--surface2); font-size: 12px; margin-right: 10px; }
+
+/* ===== P3 窄窗口工具条：放不下就换行，按钮不压成竖排 ===== */
+.editor-toolbar { flex-wrap: wrap; row-gap: 4px; height: auto; min-height: 36px; padding: 5px 10px; }
+.editor-toolbar .tb-btn { flex: 0 0 auto; white-space: nowrap; }
+
+
 .sf-row { display: flex; align-items: center; margin-bottom: 12px; }
 .sf-row select, .sf-row input { flex: 1; }
 .sf-sec { display: flex; align-items: center; gap: 8px; margin: 18px 0 8px; font-size: 12px; color: var(--subtext0); }
@@ -1709,3 +1715,20 @@ input[type="color"] {
 .sf-real-shot { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; background: #000; z-index: 2; }
 
 .sf-real-btn { z-index: 9; pointer-events: auto; }
+
+/* ===== P4 窄窗口纵向堆叠：编辑区 / 预览各留最小可用高度，避免被压成一条缝 ===== */
+@media (max-width: 900px) {
+  /* 活动栏改横向：否则纵向堆叠时它会按内容高度占掉近半屏，把文件区和编辑区一起往下挤 */
+  .activity-bar {
+    flex-direction: row;
+    width: auto;
+    height: 46px;
+    padding: 3px 6px;
+    gap: 4px;
+    border-right: none;
+    border-bottom: 1px solid var(--surface0);
+  }
+  .act-btn { width: 36px; height: 36px; }
+  .left-pane { flex: 0 0 auto; min-height: 380px; }
+  .right-pane { flex: 0 0 auto; min-height: 300px; }
+}
