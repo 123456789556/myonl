@@ -832,6 +832,11 @@
     window.__hlGetMode = function () { return hlMode; };
 
     function syncScroll() {
+      // 文本域出现竖向滚动条时 clientWidth 不含滚动条宽度（WebView2 经典滚动条为 10px），
+      // 而高亮层铺到 right:0 会比文本域内容区宽出这一截，软换行断点随之不同：
+      // 长行多/少折一行 → 行号、当前行、错误浮层越往下偏越多（表现为「末尾多 22px」）。
+      var w = ta.clientWidth;
+      if (w > 0 && pre.style.width !== w + "px") pre.style.width = w + "px";
       pre.style.transform = "translate(" + (-ta.scrollLeft) + "px," + (-ta.scrollTop) + "px)";
     }
     function render() {
