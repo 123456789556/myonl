@@ -218,6 +218,167 @@ def main() -> int:
             page.locator("#charClose").click()
             page.wait_for_timeout(200)
 
+            # ==================== 20 大剧本高亮层：逐行增量更新回归 ====================
+            # 覆盖：整层与文本高度一致、打字后不漂移、光标行对齐、错误行不串行
+            big = page.evaluate("""() => {
+              const ta = document.querySelector('#source');
+              const pre = document.querySelector('.hl-layer');
+              const lines = ['@character 林晚 #ffb3c8', '@bg bg_走廊'];
+              for (let i = 1; i <= 3000; i++) lines.push('@ 林晚 第' + i + '句台词');
+              ta.value = lines.join('\\n');
+              ta.dispatchEvent(new Event('input', {bubbles: true}));
+              void pre.offsetHeight;
+              return {lines: lines.length, children: pre.children.length,
+                      pre_h: pre.scrollHeight, ta_h: ta.scrollHeight,
+                      line_h: pre.children[1].offsetHeight,
+                      tokens: pre.querySelectorAll('span').length};
+            }""")
+            check("大剧本高亮层逐行结构", big["children"] == big["lines"] and big["line_h"] == 22,
+                  f"行数 {big['lines']} / 容器 {big['children']} / 行高 {big['line_h']}")
+            check("大剧本高亮层与文本高度一致", abs(big["pre_h"] - big["ta_h"]) <= 2,
+                  f"高亮 {big['pre_h']} / 文本 {big['ta_h']}")
+            check("大剧本仍有语法高亮 token", big["tokens"] > 0, f"token {big['tokens']}")
+
+            typed = page.evaluate("""() => {
+              const ta = document.querySelector('#source');
+              const pre = document.querySelector('.hl-layer');
+              const top_before = pre.children[2000].offsetTop;
+              const rows = ta.value.split('\\n');
+              rows[300] = '@ 林晚 打字后的一句话';
+              ta.value = rows.join('\\n');
+              const t0 = performance.now();
+              ta.dispatchEvent(new Event('input', {bubbles: true}));
+              const ms = performance.now() - t0;
+              void pre.offsetHeight;
+              return {ms: ms, children: pre.children.length, top_before: top_before,
+                      top_after: pre.children[2000].offsetTop,
+                      pre_h: pre.scrollHeight, ta_h: ta.scrollHeight};
+            }""")
+            check("打字后高亮层不漂移",
+                  typed["children"] == big["lines"] and abs(typed["pre_h"] - typed["ta_h"]) <= 2
+                  and typed["top_after"] == typed["top_before"],
+                  f"容器 {typed['children']} / 高度差 {typed['ta_h'] - typed['pre_h']} / "
+                  f"第 2001 行位移 {typed['top_after'] - typed['top_before']} / 单键 {typed['ms']:.0f}ms")
+
+            cursor = page.evaluate("""() => {
+              const ta = document.querySelector('#source');
+              const rows = ta.value.split('\\n');
+              let pos = 0;
+              for (let i = 0; i < 499; i++) pos += rows[i].length + 1;
+              ta.focus();
+              ta.setSelectionRange(pos, pos);
+              ta.scrollTop = 0;            // 选完光标再回顶，避免浏览器把光标滚进视口
+              ta.dispatchEvent(new Event('scroll'));
+              ta.dispatchEvent(new Event('keyup', {bubbles: true}));
+              const hl = document.getElementById('lineHighlight');
+              const m = /matrix\\(1, 0, 0, 1, 0, (-?[\\d.]+)\\)/.exec(getComputedStyle(hl).transform);
+              const cur = document.querySelector('#lineNumbers .ln.cur');
+              return {y: m ? Number(m[1]) : NaN, expect: 10 + 499 * 22.4 - ta.scrollTop,
+                      cur: cur ? Number(cur.dataset.line) : null, scroll: ta.scrollTop};
+            }""")
+            check("打字后光标与高亮层仍对齐",
+                  abs(cursor["y"] - cursor["expect"]) <= 2 and cursor["cur"] == 500,
+                  f"当前行背景 {cursor['y']} / 期望 {cursor['expect']:.1f} / 行号 {cursor['cur']}")
+
+            ins = page.evaluate("""() => {
+              const ta = document.querySelector('#source');
+              const pre = document.querySelector('.hl-layer');
+              const last_before = pre.children[pre.children.length - 1].offsetTop;
+              const h_before = pre.children[1].offsetHeight;
+              const rows = ta.value.split('\\n');
+              rows.splice(300, 0, '@ 林晚 新插入的一行');
+              ta.value = rows.join('\\n');
+              const t0 = performance.now();
+              ta.dispatchEvent(new Event('input', {bubbles: true}));
+              const ms = performance.now() - t0;
+              void pre.offsetHeight;
+              const last_after = pre.children[pre.children.length - 1].offsetTop;
+              return {ms: ms, children: pre.children.length,
+                      shift: last_after - last_before, h_before: h_before,
+                      pre_h: pre.scrollHeight, ta_h: ta.scrollHeight};
+            }""")
+            check("插入一行后高亮层随行数增长",
+                  ins["children"] == big["lines"] + 1 and abs(ins["shift"] - ins["h_before"]) <= 2
+                  and abs(ins["pre_h"] - ins["ta_h"]) <= 2,
+                  f"容器 {ins['children']} / 末行下移 {ins['shift']}（行高 {ins['h_before']}） / 单次 {ins['ms']:.0f}ms")
+
+            err = page.evaluate("""async () => {
+              const ta = document.querySelector('#source');
+              const pre = document.querySelector('.hl-layer');
+              const rows = ta.value.split('\\n');
+              rows[1000] = '@foo bar';      // 第 1001 行
+              rows[2000] = '@foo baz';      // 第 2001 行：第二条错误，只应报第一条
+              ta.value = rows.join('\\n');
+              ta.dispatchEvent(new Event('input', {bubbles: true}));
+              const r = await fetch('/api/check', {method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({text: ta.value})}).then(x => x.json());
+              return {ok: r.ok, line: r.line, message: r.message, children: pre.children.length,
+                      top1000: pre.children[1000].offsetTop, line_h: pre.children[1].offsetHeight};
+            }""")
+            try:
+                page.wait_for_function(
+                    "() => document.querySelector('#lineNumbers .ln.err') !== null", timeout=12000)
+                err_state = page.evaluate("""() => {
+                  const all = Array.from(document.querySelectorAll('#lineNumbers .ln.err'));
+                  const pre = document.querySelector('.hl-layer');
+                  return {n: all.length, line: all[0] ? Number(all[0].dataset.line) : null,
+                          children: pre.children.length};
+                }""")
+            except Exception:  # noqa: BLE001 — 超时即视为未标出错误行
+                err_state = {"n": 0, "line": None, "children": 0}
+            check("多行语法错误只标第一条且不串行",
+                  (not err["ok"]) and err["line"] == 1001 and err_state["n"] == 1
+                  and err_state["line"] == err["line"] and abs(err["top1000"] - 1000 * 22.4) <= 2
+                  and err_state["children"] == err["children"],
+                  f"报错行 {err['line']} / 标红 {err_state['line']}（{err_state['n']} 处） / "
+                  f"第 1001 行 top {err['top1000']} / 容器 {err['children']}→{err_state['children']}")
+
+            # 窄窗口 900 / 1024 / 800：高亮层与文本高度仍一致
+            narrow = {}
+            for w in (900, 1024, 800):
+                page.set_viewport_size({"width": w, "height": 800})
+                page.wait_for_timeout(350)
+                narrow[w] = page.evaluate("""() => {
+                  const pre = document.querySelector('.hl-layer');
+                  const ta = document.querySelector('#source');
+                  return {pre_h: pre.scrollHeight, ta_h: ta.scrollHeight};
+                }""")
+                page.screenshot(path=str(SHOT_DIR / f"verify_hl_{w}.png"))
+            page.set_viewport_size({"width": 1600, "height": 900})
+            page.wait_for_timeout(300)
+            check("窄窗口 900/1024/800 高亮层高度一致",
+                  all(abs(v["pre_h"] - v["ta_h"]) <= 2 for v in narrow.values()),
+                  "; ".join(f"{w}: {v['ta_h'] - v['pre_h']}" for w, v in narrow.items()))
+
+            # 滚动到底：高亮层盒高必须随内容增长，否则正文会被自身裁空（只剩行号）
+            scroll = page.evaluate("""() => {
+              const ta = document.querySelector('#source');
+              const pre = document.querySelector('.hl-layer');
+              ta.scrollTop = ta.scrollHeight;
+              ta.dispatchEvent(new Event('scroll'));
+              const wr = document.querySelector('#sourceWrap').getBoundingClientRect();
+              let visible = 0;
+              for (const ch of pre.children) {
+                const b = ch.getBoundingClientRect();
+                if (b.bottom > wr.top + 10 && b.top < wr.bottom - 10) visible++;
+              }
+              return {client_h: pre.clientHeight, scroll_h: pre.scrollHeight,
+                      visible: visible, top: ta.scrollTop,
+                      transform: pre.style.transform};
+            }""")
+            check("滚动到底后高亮层不被自身裁空",
+                  scroll["client_h"] + 1 >= scroll["scroll_h"] and scroll["visible"] > 5,
+                  f"盒高 {scroll['client_h']} / 内容 {scroll['scroll_h']} / "
+                  f"可视行 {scroll['visible']} / 位移 {scroll['transform']}")
+            page.screenshot(path=str(SHOT_DIR / "verify_hl_scroll.png"))
+            page.evaluate("""() => {
+              const ta = document.querySelector('#source');
+              ta.scrollTop = 0;
+              ta.dispatchEvent(new Event('scroll'));
+            }""")
+            page.wait_for_timeout(200)
+
             page.wait_for_timeout(1500)   # 等最后一次预览/检查请求收尾，避免服务被杀时留下临时剧本
             page.screenshot(path=str(SHOT_DIR / "verify_editor_trae.png"))
             browser.close()
