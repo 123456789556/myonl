@@ -105,6 +105,20 @@ def main() -> int:
             svg_n = page.locator("#activityBar svg").count()
             check("活动栏 SVG 图标 >= 5", svg_n >= 5, f"实际 {svg_n}")
 
+            # 4b 卡片视图（跨文件只读总览 / 单文件可编辑）：卡片数量与行号完整，切回源码不丢内容
+            before_len = page.evaluate("() => document.querySelector('#source').value.length")
+            page.evaluate("() => window.__switchTab('card')")
+            page.wait_for_timeout(1200)
+            card_n = page.locator("#cardView .card").count()
+            line_n = page.locator("#cardView .card .card-line").count()
+            page.screenshot(path=str(SHOT_DIR / "verify_card_view.png"))
+            page.evaluate("() => window.__switchTab('source')")
+            page.wait_for_timeout(300)
+            after_len = page.evaluate("() => document.querySelector('#source').value.length")
+            check("卡片视图卡片数与行号完整",
+                  card_n > 5 and line_n >= card_n and before_len == after_len,
+                  f"卡片 {card_n} / 行号 {line_n} / 源码长度 {before_len}→{after_len}")
+
             # 5 语法高亮层存在且有 token
             token_n = page.locator(".hl-layer .t-cmd, .hl-layer .t-comment").count()
             check("语法高亮 token 渲染", token_n > 0, f"token {token_n}")
