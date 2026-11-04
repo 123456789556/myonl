@@ -123,8 +123,17 @@
     // T1/T8：顶部动作条三态 + 状态栏保存分段
     if (window.__proToolbarSync) window.__proToolbarSync();
     if (window.__statusSaveSync) window.__statusSaveSync();
+    // 桌面窗口（pywebview）关闭确认：把「任一未保存」同步给 Python 侧。
+    // 浏览器模式没有 window.pywebview，仍由上面的 beforeunload 兜底。
+    try {
+      if (window.pywebview && window.pywebview.api && window.pywebview.api.set_dirty) {
+        const p = window.pywebview.api.set_dirty(anyDirty);
+        if (p && typeof p.catch === "function") p.catch(() => {});
+      }
+    } catch (e) { /* 未就绪/非桌面模式：忽略 */ }
   }
   window.__proDirty = () => !!(curPath && dirtyOf(curPath));
+  window.__proAnyDirty = () => files.some(dirtyOf);
 
   // ==================== 文件树 ====================
   const collapsedDirs = new Set();

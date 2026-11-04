@@ -129,6 +129,46 @@ def start_server(project_root: str, script_path: str | None = None):
     return srv, f"http://127.0.0.1:{port}"
 
 
+class _EditorBridge:
+    """前端未保存状态 → Python 侧标记。
+
+    关闭确认不能现读 JS：pywebview 的 closing 事件在窗口 UI 线程里同步执行，
+    此时同步求值 JS 会卡住窗口消息循环。所以由前端在脏标记变化时主动通知，
+    关窗时只看这个布尔量。
+    """
+
+    def __init__(self) -> None:
+        self.dirty = False
+
+    def set_dirty(self, dirty: bool = False) -> bool:
+        self.dirty = bool(dirty)
+        return True
+
+
+CLOSE_CONFIRM_TEXT = "当前有未保存的修改，关闭将丢弃这些修改。确定关闭吗？"
+
+
+def make_closing_handler(window, bridge: _EditorBridge):
+    """构造关闭确认回调：无未保存 → 直接关；否则弹原生确认框。
+
+    回调返回 False 时 pywebview 会取消关闭（见 webview.event.Event.set）。
+    对话框不可用或调用失败时不阻塞关闭，避免用户卡在关不掉的窗口上。
+    """
+
+    def _on_closing() -> bool:
+        if not bridge.dirty:
+            return True
+        dialog = getattr(window, "create_confirmation_dialog", None)
+        if dialog is None:
+            return True
+        try:
+            return bool(dialog("MYONL 编辑器", CLOSE_CONFIRM_TEXT))
+        except Exception:  # noqa: BLE001 — 确认框失败不应导致无法关闭
+            return True
+
+    return _on_closing
+
+
 def main(argv=None) -> int:
     argv = list(sys.argv[1:] if argv is None else argv)
     # 桌宠模式：editor.exe --pet（打包后没有独立 python，用它启动内置桌宠）
@@ -168,8 +208,12 @@ def main(argv=None) -> int:
         return 1
 
     try:
-        webview.create_window("MYONL 编辑器", url, width=1280, height=800,
-                              min_size=(900, 600), background_color="#1e1e2e")
+        bridge = _EditorBridge()
+        win = webview.create_window("MYONL 编辑器", url, width=1280, height=800,
+                                    min_size=(900, 600), background_color="#1e1e2e",
+                                    js_api=bridge)
+        if win is not None:
+            win.events.closing += make_closing_handler(win, bridge)
         webview.start()
     except Exception as e:  # noqa: BLE001 — 发行版无控制台，必须弹窗说明
         _show_startup_error(f"编辑器窗口启动失败：{e}\n\n"
