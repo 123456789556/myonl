@@ -260,7 +260,7 @@ def main() -> int:
                   f"容器 {typed['children']} / 高度差 {typed['ta_h'] - typed['pre_h']} / "
                   f"第 2001 行位移 {typed['top_after'] - typed['top_before']} / 单键 {typed['ms']:.0f}ms")
 
-            cursor = page.evaluate("""() => {
+            cursor = page.evaluate("""async () => {
               const ta = document.querySelector('#source');
               const rows = ta.value.split('\\n');
               let pos = 0;
@@ -270,11 +270,18 @@ def main() -> int:
               ta.scrollTop = 0;            // 选完光标再回顶，避免浏览器把光标滚进视口
               ta.dispatchEvent(new Event('scroll'));
               ta.dispatchEvent(new Event('keyup', {bubbles: true}));
+              // 当前行背景/行号高度在下一帧才应用（避免输入路径里强制重排），等两帧再读
+              await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
               const hl = document.getElementById('lineHighlight');
+              const pre = document.querySelector('.hl-layer');
               const m = /matrix\\(1, 0, 0, 1, 0, (-?[\\d.]+)\\)/.exec(getComputedStyle(hl).transform);
               const cur = document.querySelector('#lineNumbers .ln.cur');
-              return {y: m ? Number(m[1]) : NaN, expect: 10 + 499 * 22.4 - ta.scrollTop,
-                      cur: cur ? Number(cur.dataset.line) : null, scroll: ta.scrollTop};
+              // 期望值取高亮层真实行顶（Chromium 会按 1/64 px 取整，固定 22.4 会累计偏差）
+              const expect = pre.children[499] ? pre.children[499].offsetTop - ta.scrollTop
+                                               : 10 + 499 * 22.4 - ta.scrollTop;
+              return {y: m ? Number(m[1]) : NaN, expect: expect,
+                      cur: cur ? Number(cur.dataset.line) : null, scroll: ta.scrollTop,
+                      h: parseFloat(hl.style.height)};
             }""")
             check("打字后光标与高亮层仍对齐",
                   abs(cursor["y"] - cursor["expect"]) <= 2 and cursor["cur"] == 500,
@@ -378,6 +385,95 @@ def main() -> int:
               ta.dispatchEvent(new Event('scroll'));
             }""")
             page.wait_for_timeout(200)
+
+            # 软换行（长台词自动折行）：行号必须逐行跟高亮层等高，当前行/错误浮层必须对齐
+            wrap = page.evaluate("""async () => {
+              const ta = document.querySelector('#source');
+              const rows = [];
+              for (let i = 1; i <= 12; i++) rows.push('@ 林晚 第' + i + '行短台词');
+              rows[2] = '@ 林晚 ' + '长'.repeat(120);   // 第 3 行折成 3 排
+              ta.value = rows.join('\\n');
+              ta.dispatchEvent(new Event('input', {bubbles: true}));
+              await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+              const pre = document.querySelector('.hl-layer');
+              const nums = document.querySelector('#lineNumbers');
+              let drift = 0, maxH = 0, sumH = 0;
+              for (let i = 0; i < pre.children.length; i++) {
+                drift = Math.max(drift, Math.abs(nums.children[i].getBoundingClientRect().top
+                                            - pre.children[i].getBoundingClientRect().top));
+                maxH = Math.max(maxH, pre.children[i].getBoundingClientRect().height);
+                sumH += nums.children[i].getBoundingClientRect().height;
+              }
+              // #lineNumbers 是 flex 拉伸的高容器，它的 scrollHeight 等于自身可视高度，
+              // 所以用「行号逐行高度之和」对比「高亮层内容高」，并核对末行底边
+              const lastPre = pre.children[pre.children.length - 1].getBoundingClientRect();
+              const lastNum = nums.children[nums.children.length - 1].getBoundingClientRect();
+              return {lines: pre.children.length,
+                      nums_h: Math.round(sumH),
+                      pre_h: Math.round(lastPre.bottom - pre.children[0].getBoundingClientRect().top),
+                      bottom_delta: Math.round(lastNum.bottom - lastPre.bottom),
+                      drift: Math.round(drift), wrap_h: Math.round(maxH),
+                      ln3_h: Math.round(nums.children[2].getBoundingClientRect().height)};
+            }""")
+            check("软换行后行号逐行对齐高亮层",
+                  wrap["lines"] == 12 and wrap["drift"] <= 2
+                  and abs(wrap["nums_h"] - wrap["pre_h"]) <= 2 and abs(wrap["bottom_delta"]) <= 2
+                  and wrap["wrap_h"] >= 44 and abs(wrap["ln3_h"] - wrap["wrap_h"]) <= 2,
+                  f"行 {wrap['lines']} / 最大漂移 {wrap['drift']} / 行号逐行高之和 {wrap['nums_h']} vs "
+                  f"内容高 {wrap['pre_h']} / 末行底边差 {wrap['bottom_delta']} / "
+                  f"折行高 {wrap['wrap_h']} / 行号3高 {wrap['ln3_h']}")
+            page.screenshot(path=str(SHOT_DIR / "verify_hl_wrap.png"))
+
+            # 当前行背景落在折行行的真实位置
+            cur = page.evaluate("""async () => {
+              const ta = document.querySelector('#source');
+              const rows = ta.value.split('\\n');
+              let pos = 0;
+              for (let i = 0; i < 2; i++) pos += rows[i].length + 1;
+              ta.focus();
+              ta.setSelectionRange(pos, pos);
+              ta.scrollTop = 0;
+              ta.dispatchEvent(new Event('scroll'));
+              ta.dispatchEvent(new Event('keyup', {bubbles: true}));
+              await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+              const hl = document.getElementById('lineHighlight').getBoundingClientRect();
+              const row = document.querySelector('.hl-layer').children[2].getBoundingClientRect();
+              return {delta: Math.round(hl.top - row.top), hl_h: Math.round(hl.height),
+                      row_h: Math.round(row.height)};
+            }""")
+            check("软换行行的当前行背景覆盖整行",
+                  abs(cur["delta"]) <= 2 and abs(cur["hl_h"] - cur["row_h"]) <= 2,
+                  f"背景 top 差 {cur['delta']} / 高 {cur['hl_h']} vs 行高 {cur['row_h']}")
+
+            # 折行上的语法错误：浮层要盖住整行，且只标这一行
+            page.evaluate("""async () => {
+              const ta = document.querySelector('#source');
+              const rows = ta.value.split('\\n');
+              rows[2] = '@foo ' + '长'.repeat(120);
+              ta.value = rows.join('\\n');
+              ta.dispatchEvent(new Event('input', {bubbles: true}));
+              const r = await fetch('/api/check', {method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({text: ta.value})}).then(x => x.json());
+              window.__wrapErr = r;
+            }""")
+            page.wait_for_function(
+                "() => document.querySelector('#lineNumbers .ln.err') !== null", timeout=12000)
+            errwrap = page.evaluate("""() => {
+              const all = Array.from(document.querySelectorAll('#lineNumbers .ln.err'));
+              const ov = document.getElementById('errorOverlay').getBoundingClientRect();
+              const row = document.querySelector('.hl-layer').children[2].getBoundingClientRect();
+              return {n: all.length, line: all[0] ? Number(all[0].dataset.line) : null,
+                      delta: Math.round(ov.top - row.top),
+                      ov_h: Math.round(ov.height), row_h: Math.round(row.height),
+                      api_line: window.__wrapErr ? window.__wrapErr.line : null};
+            }""")
+            check("折行上的错误浮层整行对齐且不串行",
+                  errwrap["api_line"] == 3 and errwrap["n"] == 1 and errwrap["line"] == 3
+                  and abs(errwrap["delta"]) <= 2 and abs(errwrap["ov_h"] - errwrap["row_h"]) <= 2,
+                  f"报错行 {errwrap['api_line']} / 标红 {errwrap['line']}（{errwrap['n']} 处）/ "
+                  f"浮层 top 差 {errwrap['delta']} / 高 {errwrap['ov_h']} vs 行高 {errwrap['row_h']}")
+            page.screenshot(path=str(SHOT_DIR / "verify_hl_wrap_err.png"))
 
             page.wait_for_timeout(1500)   # 等最后一次预览/检查请求收尾，避免服务被杀时留下临时剧本
             page.screenshot(path=str(SHOT_DIR / "verify_editor_trae.png"))

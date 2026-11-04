@@ -133,6 +133,7 @@
   let lineNoCount = -1;
   let lineNoErr = 0;
   let lineNoInc = "";
+  let lineNumDirty = false;   // 行号刚重建，等高亮层就绪后需要一次全量对齐
   function incSignature(arr) {
     let sig = "";
     for (let i = 1; i <= arr.length; i++) {
@@ -159,9 +160,51 @@
     lineNoCount = arr.length;
     lineNoErr = errLine;
     lineNoInc = inc;
+    // 软换行后每行高度不等，行号要逐行对齐高亮层真实高度
+    lineNumDirty = true;
+    scheduleLineNumHeights(0, arr.length, true);
     markCurrentLine(cursorLineIndex());
     updateBreadcrumb();
   }
+  // 行号逐行等高：读写分两趟、且推迟到下一帧，避免读一次写一次触发 3124 次强制重排
+  let numRaf = 0, numFrom = Infinity, numTo = -1, numAll = false;
+  function scheduleLineNumHeights(from, count, all) {
+    if (all) numAll = true;
+    else {
+      numFrom = Math.min(numFrom, Math.max(0, from || 0));
+      numTo = Math.max(numTo, Math.max(0, from || 0) + (count || 0));
+    }
+    if (numRaf) return;
+    numRaf = requestAnimationFrame(() => {
+      numRaf = 0;
+      const full = numAll, f = numFrom, t = numTo;
+      numAll = false; numFrom = Infinity; numTo = -1;
+      applyLineNumHeights(full ? 0 : f, full ? lineNumbers.children.length : t - f);
+    });
+  }
+  function applyLineNumHeights(from, count) {
+    const kids = lineNumbers.children;
+    if (!kids.length) return;
+    const ready = window.__hlLineReady ? window.__hlLineReady() : -1;
+    const start = Math.max(0, from == null ? 0 : from);
+    const end = Math.min(kids.length, start + (count == null ? kids.length : count));
+    // 先只读一遍（同帧内不再插入写操作，避免强制重排）
+    const hs = [];
+    if (ready === kids.length && window.__hlLineMetrics) {
+      for (let i = start; i < end; i++) hs.push(window.__hlLineMetrics(i).h);
+    }
+    for (let i = start; i < end; i++) {
+      // 不要 toFixed：Chromium 会把 px 值向下取整到 1/64，逐行少 0.0156 累计 3000 行就偏 49px
+      const h = hs[i - start] != null ? hs[i - start] + "px" : "";
+      if (kids[i].style.height !== h) kids[i].style.height = h;
+    }
+    if (ready === kids.length) lineNumDirty = false;
+  }
+  window.addEventListener("myonl:hl-lines", (e) => {
+    const d = e.detail || {};
+    if (d.reset || lineNumDirty) scheduleLineNumHeights(0, lineNumbers.children.length, true);
+    else scheduleLineNumHeights(d.from || 0, d.count || 0);
+  });
   source.addEventListener("input", () => updateLineNumbers());
   source.addEventListener("scroll", () => {
     lineNumbers.scrollTop = source.scrollTop;
@@ -231,15 +274,20 @@
       return;
     }
     const lineHeight = 1.6 * 14; // line-height * font-size
-    const top = source.offsetTop + (line - 1) * lineHeight - source.scrollTop;
+    // 软换行行高不等：按高亮层真实行顶/行高定位，否则错误行会越往下偏越多
+    const ready = window.__hlLineReady ? window.__hlLineReady() : -1;
+    const met = (ready === source.value.split("\n").length && window.__hlLineMetrics)
+      ? window.__hlLineMetrics(line - 1) : null;
+    const top = source.offsetTop + (met ? met.top : (line - 1) * lineHeight + 10) - source.scrollTop;
     errorOverlay.style.display = "block";
     errorOverlay.style.left = lineNumbers.offsetWidth + "px";
     errorOverlay.style.width = (source.offsetWidth - lineNumbers.offsetWidth) + "px";
     errorOverlay.style.top = top + "px";
-    errorOverlay.style.height = lineHeight + "px";
+    errorOverlay.style.height = (met ? met.h : lineHeight) + "px";
     // 滚动到错误行
     source.focus();
-    source.scrollTop = (line - 1) * lineHeight;
+    source.scrollTop = window.__hlScrollTopForLine
+      ? window.__hlScrollTopForLine(line, 0) : (line - 1) * lineHeight;
   }
   source.addEventListener("scroll", () => { if (lastError) highlightError(lastError.line); });
   window.addEventListener("resize", () => { if (lastError) highlightError(lastError.line); });
@@ -266,7 +314,8 @@
     for (let i = 0; i < n - 1; i++) pos += lines[i].length + 1;
     source.focus();
     source.setSelectionRange(pos, pos + (lines[n - 1] || "").length);
-    source.scrollTop = Math.max(0, (n - 4) * 22);
+    source.scrollTop = window.__hlScrollTopForLine
+      ? window.__hlScrollTopForLine(n, 3) : Math.max(0, (n - 4) * 22);
     highlightError(n);
   }
 
@@ -2617,7 +2666,8 @@
     if (sourceWrap.style.display === "none") switchTab("source");
     source.focus();
     source.selectionStart = source.selectionEnd = pos;
-    source.scrollTop = Math.max(0, (line - 3) * (1.6 * 14));
+    source.scrollTop = window.__hlScrollTopForLine
+      ? window.__hlScrollTopForLine(line, 2) : Math.max(0, (line - 3) * (1.6 * 14));
     updateLineNumbers();
   }
 

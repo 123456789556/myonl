@@ -775,6 +775,7 @@
     var hlMode = "gal";
     // 逐行缓存上一次的原文：敲键时只重算变动行，避免整篇高亮重建（大剧本 90ms+）
     var prevLines = null;
+    var LINE_H = 22.4;                       // textarea 14px × line-height 1.6（本闭包内的高亮层回退值）
     function hlDiv(line) {
       return '<div class="hl-line">' + hlLine(line) + "</div>";
     }
@@ -784,11 +785,30 @@
       div.innerHTML = hlLine(line);
       return div;
     }
+    function notifyLines(from, count, reset) {
+      try {
+        window.dispatchEvent(new CustomEvent("myonl:hl-lines",
+          { detail: { from: from, count: count, reset: !!reset } }));
+      } catch (e) {}
+    }
+    // 软换行后每行高度不等：行号层 / 当前行 / 错误行 / 跳转统一按这里的真实位置算
+    function hlMetrics(i) {
+      var el = (hlMode === "gal") ? pre.children[i] : null;
+      if (!el) return { top: 10 + Math.max(0, i) * LINE_H, h: LINE_H };
+      return { top: el.offsetTop, h: el.getBoundingClientRect().height };
+    }
+    window.__hlLineMetrics = hlMetrics;
+    window.__hlLineReady = function () { return hlMode === "gal" ? pre.children.length : -1; };
+    window.__hlScrollTopForLine = function (lineNo, keepAbove) {
+      var i = Math.max(0, (Number(lineNo) || 1) - 1);
+      return Math.max(0, hlMetrics(i).top - 10 - (keepAbove || 0) * LINE_H);
+    };
     function fullRender(lines) {
       var buf = [];
       for (var i = 0; i < lines.length; i++) buf.push(hlDiv(lines[i]));
       pre.innerHTML = buf.join("");
       prevLines = lines;
+      notifyLines(0, lines.length);
     }
     function patchLine(i, line) {
       var el = pre.children[i];
@@ -809,8 +829,8 @@
       var text = ta.value;
       if (text === last) return;
       last = text;
-      if (hlMode === "plain") { pre.textContent = text || " "; prevLines = null; syncScroll(); return; }
-      if (hlMode === "json") { pre.innerHTML = jsonHl(text) || " "; prevLines = null; syncScroll(); return; }
+      if (hlMode === "plain") { pre.textContent = text || " "; prevLines = null; notifyLines(0, 0, true); syncScroll(); return; }
+      if (hlMode === "json") { pre.innerHTML = jsonHl(text) || " "; prevLines = null; notifyLines(0, 0, true); syncScroll(); return; }
       var lines = text.split("\n");
       var prev = prevLines;
       if (!prev || pre.children.length !== prev.length) { fullRender(lines); syncScroll(); return; }
@@ -834,6 +854,8 @@
         pre.insertBefore(frag, pre.children[p + oldMid] || null);
       }
       prevLines = lines;
+      // 只通知变动行的新高度，行号层据此同步（软换行行高会变）
+      notifyLines(p, Math.max(newMid, oldMid));
       syncScroll();
     }
     ta.addEventListener("input", render);
@@ -1150,7 +1172,8 @@
       if (E.switchToSource) E.switchToSource();
       ta.focus();
       ta.setSelectionRange(pos, pos);
-      ta.scrollTop = Math.max(0, (n - 3) * LINE_H);
+      ta.scrollTop = window.__hlScrollTopForLine
+        ? window.__hlScrollTopForLine(n, 2) : Math.max(0, (n - 3) * LINE_H);
     }
     function openTutorial() {
       closeCard();
@@ -1272,7 +1295,8 @@
     for (var i = 0; i < lineNo; i++) pos += lines[i].length + 1;
     var caret = pos + (lines[lineNo] || "").length;
     ta.setSelectionRange(caret, caret);
-    ta.scrollTop = Math.max(0, (lineNo - 2) * LINE_H);
+    ta.scrollTop = window.__hlScrollTopForLine
+      ? window.__hlScrollTopForLine(lineNo + 1, 1) : Math.max(0, (lineNo - 2) * LINE_H);
     if (focus) ta.focus();
     ta.dispatchEvent(new Event("click"));
   }
@@ -1355,21 +1379,29 @@
     hl.setAttribute("aria-hidden", "true");
     var hll = wrap.querySelector(".hl-layer");
     if (hll) wrap.insertBefore(hl, hll); else wrap.insertBefore(hl, ta);
-    var last = -1;
+    var last = -1, paintRaf = 0;
+    // 位置/高度读取放到下一帧做：输入同步里不强制重排（否则大剧本每键多出一次全量 layout）
+    function paint() {
+      paintRaf = 0;
+      var idx = (E.getCursorLine ? E.getCursorLine() : 1) - 1;
+      // 软换行行高不等，当前行背景要按高亮层的真实位置/高度走
+      var met = (window.__hlLineMetrics && window.__hlLineReady && window.__hlLineReady() === nums.children.length)
+        ? window.__hlLineMetrics(idx) : { top: 10 + idx * LINE_H, h: LINE_H };
+      hl.style.transform = "translateY(" + (met.top - ta.scrollTop) + "px)";
+      hl.style.height = met.h + "px";
+    }
     function sync() {
       var idx = (E.getCursorLine ? E.getCursorLine() : 1) - 1;
-      if (idx === last) {
-        hl.style.transform = "translateY(" + (10 + idx * LINE_H - ta.scrollTop) + "px)";
-        return;
+      if (idx !== last) {
+        last = idx;
+        if (E.lineNumbersEl) {
+          var old = E.lineNumbersEl.querySelector(".ln.cur");
+          if (old) old.classList.remove("cur");
+          var now = E.lineNumbersEl.querySelector('.ln[data-line="' + (idx + 1) + '"]');
+          if (now && !now.classList.contains("err")) now.classList.add("cur");
+        }
       }
-      last = idx;
-      hl.style.transform = "translateY(" + (10 + idx * LINE_H - ta.scrollTop) + "px)";
-      if (E.lineNumbersEl) {
-        var old = E.lineNumbersEl.querySelector(".ln.cur");
-        if (old) old.classList.remove("cur");
-        var now = E.lineNumbersEl.querySelector('.ln[data-line="' + (idx + 1) + '"]');
-        if (now && !now.classList.contains("err")) now.classList.add("cur");
-      }
+      if (!paintRaf) paintRaf = requestAnimationFrame(paint);
     }
     ta.addEventListener("scroll", sync, { passive: true });
     ta.addEventListener("click", sync);
@@ -1472,7 +1504,11 @@
   }
   function ensureVisible(pos) {
     var line = ta.value.slice(0, pos).split("\n").length - 1;
-    var top = line * LINE_H, h = ta.clientHeight;
+    // 软换行行高不等：取高亮层的真实行顶坐标，而不是 line * 固定行高
+    var met = (window.__hlScrollTopForLine && window.__hlLineReady
+      && window.__hlLineReady() === (ta.value.split("\n")).length)
+      ? { top: window.__hlScrollTopForLine(line + 1, 0) } : { top: line * LINE_H };
+    var top = met.top, h = ta.clientHeight;
     if (top < ta.scrollTop + 10) ta.scrollTop = Math.max(0, top - 24);
     else if (top > ta.scrollTop + h - 48) ta.scrollTop = Math.max(0, top - h + 64);
   }
