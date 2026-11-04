@@ -1016,6 +1016,9 @@
       var q = query.toLowerCase();
       var fileRows = files.filter(function (f) { return f.toLowerCase().indexOf(q) >= 0; }).slice(0, 8);
       return chain.then(function () { render(query, out, fileRows); });
+    }).catch(function () {
+      // 读取文件列表失败：别把「搜索中…」永远留在面板里
+      results.innerHTML = '<div class="qs-empty">搜索失败：无法连接编辑器服务，请稍后重试</div>';
     });
   }
 

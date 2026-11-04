@@ -552,6 +552,31 @@ def main() -> int:
             page.unroute("**/api/preview")
             page.wait_for_timeout(300)
 
+            # 空状态：搜索无匹配要有明确提示；空剧本要显示可操作空状态
+            page.locator("#actSearch").first.click()
+            page.wait_for_timeout(300)
+            page.fill("#qsInput", "zzz_no_match_zzz")
+            page.wait_for_timeout(1200)
+            qs_empty = page.locator("#qsResults").inner_text()
+            check("搜索无匹配显示空状态", "没有匹配结果" in qs_empty, f"面板「{qs_empty[:40]}」")
+            page.keyboard.press("Escape")
+            page.wait_for_timeout(200)
+
+            page.evaluate("""() => {
+              const ta = document.querySelector('#source');
+              ta.value = '';
+              ta.dispatchEvent(new Event('input', {bubbles: true}));
+            }""")
+            page.wait_for_timeout(900)
+            empty_ph = page.evaluate("""() => {
+              const ph = document.querySelector('#previewWrap .preview-placeholder');
+              return {txt: ph ? ph.innerText : '', aug: ph ? !!ph.getAttribute('data-aug') : false};
+            }""")
+            empty_state = page.locator("#status").inner_text()
+            check("空剧本显示空状态与可操作按钮",
+                  empty_state.strip() == "空剧本" and empty_ph["aug"] and "写一句台词" in empty_ph["txt"],
+                  f"状态「{empty_state}」/ 占位「{empty_ph['txt'][:30]}」/ 按钮 {empty_ph['aug']}")
+
             page.wait_for_timeout(1500)   # 等最后一次预览/检查请求收尾，避免服务被杀时留下临时剧本
             page.screenshot(path=str(SHOT_DIR / "verify_editor_trae.png"))
             browser.close()
