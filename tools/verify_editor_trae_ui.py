@@ -522,6 +522,36 @@ def main() -> int:
             page.unroute("**/api/check")
             page.wait_for_timeout(400)
 
+            # 运行按钮：请求未返回前禁用，连点只发一次（避免一次点击拉起两个游戏窗口）
+            run_hits = []
+            page.route("**/api/run", lambda route: run_hits.append(route))
+            page.evaluate("() => { const b = document.querySelector('#btnRun'); b.click(); b.click(); }")
+            page.wait_for_timeout(400)
+            run_disabled = page.evaluate("() => document.querySelector('#btnRun').disabled")
+            check("运行按钮请求期间禁用且连点只发一次",
+                  len(run_hits) == 1 and run_disabled,
+                  f"请求 {len(run_hits)} 次 / 禁用 {run_disabled}")
+            for route in run_hits:
+                route.abort()
+            page.unroute("**/api/run")
+            page.wait_for_timeout(600)
+
+            # 预览请求失败：清掉上一轮旧图，改给中文提示，避免把旧画面当成新结果
+            page.route("**/api/preview", lambda route: route.abort())
+            page.evaluate("""() => {
+              const ta = document.querySelector('#source');
+              ta.value = '@character 林晚 #ffb3c8\\n@ 林晚 预览失败测试台词';
+              ta.dispatchEvent(new Event('input', {bubbles: true}));
+            }""")
+            page.wait_for_timeout(1400)
+            pv_placeholder = page.locator("#previewWrap .preview-placeholder").count()
+            pv_txt = page.locator("#previewState").inner_text()
+            check("预览请求失败清掉旧图并给中文提示",
+                  pv_placeholder == 1 and "无法连接编辑器服务" in pv_txt,
+                  f"占位 {pv_placeholder} / 状态「{pv_txt}」")
+            page.unroute("**/api/preview")
+            page.wait_for_timeout(300)
+
             page.wait_for_timeout(1500)   # 等最后一次预览/检查请求收尾，避免服务被杀时留下临时剧本
             page.screenshot(path=str(SHOT_DIR / "verify_editor_trae.png"))
             browser.close()

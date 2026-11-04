@@ -655,7 +655,9 @@
       }
     } catch (e) {
       if (stale()) return;
-      setPreviewBar(false, "预览请求失败：" + e);
+      // 失败时清掉旧图，避免把上一轮画面当成这一版脚本的结果
+      previewWrap.innerHTML = '<div class="preview-placeholder">预览请求失败，请稍后重试</div>';
+      setPreviewBar(false, "预览请求失败：无法连接编辑器服务，请稍后重试");
     } finally {
       if (checkAbort === ctrl) checkAbort = null;
     }
@@ -3121,7 +3123,11 @@
   });
 
   // ---- 运行 demo ----
+  let runBusy = false;   // 连点保护：一次只拉起一个游戏窗口
   btnRun.addEventListener("click", async () => {
+    if (runBusy) return;
+    runBusy = true;
+    btnRun.disabled = true;
     const text = source.value;
     dockLog("run", "请求运行游戏…");
     try {
@@ -3140,9 +3146,12 @@
         alert("运行失败：" + (resp.message || "未知错误"));
       }
     } catch (e) {
-      dockLog("run", "运行请求失败：" + e);
+      dockLog("run", "运行请求失败：无法连接编辑器服务");
       dockShow(true, "run");
-      alert("运行请求失败：" + e);
+      alert("运行请求失败：无法连接编辑器服务，请稍后重试");
+    } finally {
+      runBusy = false;
+      btnRun.disabled = !(window.__proCurPath && window.__proCurPath());
     }
   });
 
