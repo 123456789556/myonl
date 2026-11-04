@@ -773,6 +773,27 @@
     wrap.insertBefore(pre, ta);
     var last = null;
     var hlMode = "gal";
+    // 逐行缓存上一次的原文：敲键时只重算变动行，避免整篇高亮重建（大剧本 90ms+）
+    var prevLines = null;
+    function hlDiv(line) {
+      return '<div class="hl-line">' + hlLine(line) + "</div>";
+    }
+    function hlDivNode(line) {
+      var div = document.createElement("div");
+      div.className = "hl-line";
+      div.innerHTML = hlLine(line);
+      return div;
+    }
+    function fullRender(lines) {
+      var buf = [];
+      for (var i = 0; i < lines.length; i++) buf.push(hlDiv(lines[i]));
+      pre.innerHTML = buf.join("");
+      prevLines = lines;
+    }
+    function patchLine(i, line) {
+      var el = pre.children[i];
+      if (el) el.innerHTML = hlLine(line);
+    }
     // 语言选择（状态栏 / 设置）：只影响编辑器显示，不影响剧本保存格式
     window.__hlSetMode = function (mode) {
       hlMode = (mode === "plain" || mode === "json") ? mode : "gal";
@@ -788,12 +809,31 @@
       var text = ta.value;
       if (text === last) return;
       last = text;
-      if (hlMode === "plain") { pre.textContent = text || " "; syncScroll(); return; }
-      if (hlMode === "json") { pre.innerHTML = jsonHl(text) || " "; syncScroll(); return; }
+      if (hlMode === "plain") { pre.textContent = text || " "; prevLines = null; syncScroll(); return; }
+      if (hlMode === "json") { pre.innerHTML = jsonHl(text) || " "; prevLines = null; syncScroll(); return; }
       var lines = text.split("\n");
-      var buf = [];
-      for (var i = 0; i < lines.length; i++) buf.push(hlLine(lines[i]));
-      pre.innerHTML = buf.join("\n") || " ";
+      var prev = prevLines;
+      if (!prev || pre.children.length !== prev.length) { fullRender(lines); syncScroll(); return; }
+      // 只动变化的中间段：公共前缀 + 公共后缀之外的行
+      var n = lines.length, m = prev.length, p = 0, s = 0, i;
+      while (p < n && p < m && lines[p] === prev[p]) p++;
+      while (s < n - p && s < m - p && lines[n - 1 - s] === prev[m - 1 - s]) s++;
+      var newMid = n - p - s, oldMid = m - p - s;
+      // 变动面太大（整段粘贴/换文件）时整篇重建更划算
+      if (newMid + oldMid > 40 && (newMid + oldMid) * 4 >= n) { fullRender(lines); syncScroll(); return; }
+      if (newMid <= oldMid) {
+        for (i = 0; i < newMid; i++) patchLine(p + i, lines[p + i]);
+        for (i = 0; i < oldMid - newMid; i++) {
+          var drop = pre.children[p + newMid];
+          if (drop) pre.removeChild(drop);
+        }
+      } else {
+        for (i = 0; i < oldMid; i++) patchLine(p + i, lines[p + i]);
+        var frag = document.createDocumentFragment();
+        for (i = oldMid; i < newMid; i++) frag.appendChild(hlDivNode(lines[p + i]));
+        pre.insertBefore(frag, pre.children[p + oldMid] || null);
+      }
+      prevLines = lines;
       syncScroll();
     }
     ta.addEventListener("input", render);

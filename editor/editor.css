@@ -947,8 +947,10 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 
 .source-wrap { position: relative; }
 .hl-layer {
-  position: absolute; left: 50px; top: 0; right: 0; bottom: 0; margin: 0; padding: 10px;
-  overflow: hidden; pointer-events: none;
+  /* 盒高必须随内容增长：用 bottom:0 固定高度 + overflow:hidden，滚动过首屏后正文会被自身裁空
+     （由 .source-wrap 的 overflow:hidden 负责可视区裁剪，这里不要重复裁） */
+  position: absolute; left: 50px; top: 0; right: 0; height: auto; margin: 0; padding: 10px;
+  overflow: visible; pointer-events: none;
   font-family: "Cascadia Code", "Consolas", "Courier New", monospace;
   font-size: 14px; line-height: 1.6; tab-size: 4;
   white-space: pre-wrap; overflow-wrap: break-word; color: var(--text);
@@ -963,6 +965,8 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 .hl-layer .t-num { color: var(--yellow); }
 .hl-layer .t-arrow { color: var(--mauve); font-weight: 600; }
 .hl-layer .t-comment { color: var(--surface2); font-style: italic; }
+/* 高亮层逐行容器：空行也要占一行高度，才能和 textarea 的行对齐 */
+.hl-layer .hl-line { min-height: 1.6em; }
 
 /* 编辑器工具条：把「运行 / 保存 / 打包」放进首屏可见位置（Trae 顶部动作条） */
 .editor-toolbar {
