@@ -547,6 +547,41 @@ def test_script_rw(server):
     assert body["text"] == content
 
 
+# 8b. 保存中途失败：磁盘上必须还是上一版，不能被截成半截剧本
+def test_保存失败保留上一版文件(tmp_path, monkeypatch):
+    target = tmp_path / "script.gal"
+    target.write_text(VALID_SCRIPT, encoding="utf-8")
+
+    def _boom(*args, **kwargs):
+        raise PermissionError(13, "Permission denied")
+
+    monkeypatch.setattr(editor_mod.os, "replace", _boom)
+    with pytest.raises(OSError):
+        editor_mod._write_text_atomic(str(target), "@unknown 123\n")
+    assert target.read_text(encoding="utf-8") == VALID_SCRIPT   # 原文件完好
+    assert list(tmp_path.glob("*.tmp")) == []                   # 临时文件也不残留
+
+
+def test_保存失败时接口返回中文错误且文件不变(server, monkeypatch):
+    port, project = server
+    path = os.path.join(project, "script.gal")
+    before = VALID_SCRIPT + "# 上一版注释\n"
+    with open(path, "w", encoding="utf-8") as f:   # 与要保存的内容不同，才能看出有无被截断
+        f.write(before)
+
+    def _boom(*args, **kwargs):
+        raise PermissionError(13, "Permission denied")
+
+    monkeypatch.setattr(editor_mod.os, "replace", _boom)
+    status, raw = _post(port, "/api/file/save",
+                        {"path": "script.gal", "content": VALID_SCRIPT})
+    assert status == 500
+    body = json.loads(raw)
+    assert body["ok"] is False
+    assert "保存失败" in body["message"] and "权限" in body["message"]
+    assert open(path, encoding="utf-8").read() == before
+
+
 # 9. 路径穿越拦截
 def test_path_traversal(server, tmp_path):
     port, project = server

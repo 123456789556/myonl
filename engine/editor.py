@@ -182,9 +182,7 @@ def _load_editor_config(root: str) -> dict:
 def _write_editor_config(root: str, data: dict) -> str:
     """配置写回工程根：.editor_config.json 跟随工程文件夹整体移动。"""
     path = os.path.join(root, _EDITOR_CONFIG)
-    with open(path, "w", encoding="utf-8") as f:
-        json.dump(data, f, ensure_ascii=False, indent=2)
-        f.write("\n")
+    _write_text_atomic(path, json.dumps(data, ensure_ascii=False, indent=2) + "\n")
     return path
 
 
@@ -199,12 +197,23 @@ def _load_project_config(root: str) -> dict:
 
 
 def _write_project_config(root: str, data: dict) -> str:
-    """写工程 config.json（保留换行风格；失败抛 OSError 由调用方处理）。"""
+    """写工程 config.json（失败抛 OSError 由调用方处理；原子写避免写坏旧配置）。"""
     path = os.path.join(root, "config.json")
-    with open(path, "w", encoding="utf-8") as f:
-        json.dump(data, f, ensure_ascii=False, indent=2)
-        f.write("\n")
+    _write_text_atomic(path, json.dumps(data, ensure_ascii=False, indent=2) + "\n")
     return path
+
+
+def _write_text_atomic(path: str, text: str) -> None:
+    """先写同目录临时文件再原子替换：写一半失败时原文件仍是上一版，不留半截剧本。"""
+    dir_ = os.path.dirname(os.path.abspath(path))
+    fd, tmp = tempfile.mkstemp(suffix=".tmp", dir=dir_)
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            f.write(text)
+        os.replace(tmp, path)
+    except BaseException:
+        _remove_quiet(tmp)
+        raise
 
 
 def _write_error_text(action: str, e: OSError, rel: str) -> str:
@@ -1641,8 +1650,7 @@ class _EditorHandler(BaseHTTPRequestHandler):
             self._send_json(400, {"ok": False, "message": str(e)})
             return
         try:
-            with open(target, "w", encoding="utf-8") as f:
-                f.write(text)
+            _write_text_atomic(target, text)
         except OSError as e:
             self._send_json(500, {"ok": False, "message": f"保存失败：{e}"})
             return
@@ -1713,8 +1721,7 @@ class _EditorHandler(BaseHTTPRequestHandler):
                                   "message": _write_error_text("语法检查失败", e, rel)})
             return
         try:
-            with open(target, "w", encoding="utf-8") as f:
-                f.write(content)
+            _write_text_atomic(target, content)
         except OSError as e:
             self._send_json(500, {"ok": False,
                                   "message": _write_error_text("保存失败", e, rel)})
