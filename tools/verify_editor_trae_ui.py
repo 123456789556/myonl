@@ -489,6 +489,27 @@ def main() -> int:
                   f"浮层 top 差 {errwrap['delta']} / 高 {errwrap['ov_h']} vs 行高 {errwrap['row_h']}")
             page.screenshot(path=str(SHOT_DIR / "verify_hl_wrap_err.png"))
 
+            # 检查进行中：预览栏文案切成「检查中…」，不残留上一轮的「解析成功 · 实时预览」
+            stalled = []
+
+            def stall_check(route):
+                stalled.append(route)   # 先挂起请求，读进行态文案后再释放
+
+            page.route("**/api/check", stall_check)
+            page.evaluate("""() => {
+              const ta = document.querySelector('#source');
+              ta.value = ta.value + '\\n@ 林晚 检查中横幅测试';
+              ta.dispatchEvent(new Event('input', {bubbles: true}));
+            }""")
+            page.wait_for_timeout(900)   # 防抖 500ms 后请求已发出，但被挂起
+            inflight = page.locator("#previewState").inner_text() if page.locator("#previewState").count() else ""
+            check("检查进行中预览栏显示「检查中…」", inflight.strip() == "检查中…",
+                  f"实际「{inflight}」")
+            for route in stalled:
+                route.abort()
+            page.unroute("**/api/check")
+            page.wait_for_timeout(400)
+
             page.wait_for_timeout(1500)   # 等最后一次预览/检查请求收尾，避免服务被杀时留下临时剧本
             page.screenshot(path=str(SHOT_DIR / "verify_editor_trae.png"))
             browser.close()

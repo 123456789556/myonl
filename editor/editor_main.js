@@ -560,6 +560,8 @@
       _emitChange();
       return;
     }
+    // 检查进行中：预览栏切到进行态，避免仍显示上一轮的「解析成功 · 实时预览」
+    setPreviewBar(true, "检查中…");
     // 语法检查
     let checkResp;
     try {
