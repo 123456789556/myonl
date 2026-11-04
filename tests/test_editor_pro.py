@@ -17,8 +17,10 @@ import ast
 import http.client
 import inspect
 import json
+import os
 import re
 import socket
+import stat
 import threading
 from pathlib import Path
 from urllib.parse import quote
@@ -158,6 +160,24 @@ def test_文件读写往返与越界(server):
     # 不存在的文件不能靠 save 创建（走 file/new）
     status, raw = _post(port, "/api/file/save", {"path": "不存在.gal", "content": "@end\n"})
     assert status == 404
+
+
+def test_只读文件保存失败给中文可操作提示(server):
+    """保存失败不能把 Errno/Permission denied 原文抛给用户，要说明原因与下一步动作。"""
+    port, root = server
+    _write(root, "ro.gal", "@end\n")
+    target = Path(root) / "ro.gal"
+    os.chmod(target, stat.S_IREAD)
+    try:
+        status, raw = _post(port, "/api/file/save",
+                            {"path": "ro.gal", "content": "@end\n"})
+    finally:
+        os.chmod(target, stat.S_IWRITE)
+    assert status == 500
+    body = json.loads(raw)
+    assert body["ok"] is False
+    assert "写入权限" in body["message"] and "ro.gal" in body["message"]
+    assert "Errno" not in body["message"] and "Permission denied" not in body["message"]
 
 
 # ---------- 验收 4：保存前语法校验 ----------

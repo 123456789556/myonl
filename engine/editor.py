@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import base64
 import binascii
+import errno
 import json
 import os
 import re
@@ -204,6 +205,17 @@ def _write_project_config(root: str, data: dict) -> str:
         json.dump(data, f, ensure_ascii=False, indent=2)
         f.write("\n")
     return path
+
+
+def _write_error_text(action: str, e: OSError, rel: str) -> str:
+    """把写盘失败翻译成可操作中文（只读/占用/磁盘满），不把 Errno 英文原文抛给用户。"""
+    if isinstance(e, PermissionError) or getattr(e, "errno", None) in (
+            errno.EACCES, errno.EPERM, errno.EROFS):
+        return (f"{action}：没有写入权限（{rel}）。文件可能是只读或被其它程序占用，"
+                "请取消只读 / 关闭占用后重试")
+    if getattr(e, "errno", None) == errno.ENOSPC:
+        return f"{action}：磁盘空间不足（{rel}）"
+    return f"{action}：{e}"
 
 
 # UI 设计页「界面开关」：写到项目 settings.json，作为玩家默认值
@@ -1697,13 +1709,15 @@ class _EditorHandler(BaseHTTPRequestHandler):
                                   "message": f"语法错误，未保存：{e.message}"})
             return
         except OSError as e:
-            self._send_json(500, {"ok": False, "message": f"语法检查失败：{e}"})
+            self._send_json(500, {"ok": False,
+                                  "message": _write_error_text("语法检查失败", e, rel)})
             return
         try:
             with open(target, "w", encoding="utf-8") as f:
                 f.write(content)
         except OSError as e:
-            self._send_json(500, {"ok": False, "message": f"保存失败：{e}"})
+            self._send_json(500, {"ok": False,
+                                  "message": _write_error_text("保存失败", e, rel)})
             return
         self._send_json(200, {"ok": True,
                               "path": _to_rel(self.app.project_root, target, rel),
