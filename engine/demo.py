@@ -286,7 +286,8 @@ def _hot_tick(script_watch, config_watch, rt: Runtime, ren: Renderer, ui: UI,
             instructions = parse_file(script_path)
         except Exception as e:  # noqa: BLE001 — 热重载失败不能影响正在玩的游戏
             print(f"[热重载] 剧本解析失败，继续用旧版本：{e}", file=sys.stderr)
-            ren.toast("剧本重载失败（见控制台）", 3.0)
+            # 发行版没有控制台：不能只说「见控制台」，要直接把行号与原因带上
+            ren.toast("剧本重载失败，继续用旧版本：" + _err_brief(e), 4.0)
         else:
             rt.reload(instructions)
             script_watch.set_paths(rt.script_files())
@@ -305,6 +306,24 @@ def _is_ui_key(action) -> bool:
     return action in _UI_KEYS or (str(action).startswith("slot") and str(action)[4:].isdigit())
 
 
+_TOAST_CHARS = 56
+
+
+def _toast_fit(text, limit: int = _TOAST_CHARS) -> str:
+    """toast 是左下角单行提示：过长会画出屏幕，这里压成一行并截断加省略号。"""
+    one = " ".join(str(text or "").split())
+    return one if len(one) <= limit else one[: limit - 1] + "…"
+
+
+def _err_brief(exc, limit: int = _TOAST_CHARS) -> str:
+    """异常转成一句可定位的短提示：语法错误优先给「第 N 行：原因」，省掉长路径。"""
+    line = getattr(exc, "line", 0) or 0
+    message = getattr(exc, "message", None)
+    if message and line:
+        return _toast_fit(f"第 {line} 行：{message}", limit)
+    return _toast_fit(exc, limit)
+
+
 def _apply_business(business: dict, rt: Runtime, ren: Renderer, ui: UI,
                     script_path: str, settings_path: str) -> str | None:
     """执行 UI 返回的业务动作。
@@ -319,6 +338,8 @@ def _apply_business(business: dict, rt: Runtime, ren: Renderer, ui: UI,
         except Exception as e:  # 剧本语法/IO 错误：打印中文警告，回标题不崩主循环
             print(f"[启动警告] 剧本加载失败：{e}", file=sys.stderr)
             ui.mode = "title"
+            # 发行版没有控制台：必须把原因（含文件名/行号）显示给玩家，否则像点了没反应
+            ren.toast("剧本加载失败：" + _err_brief(e), 4.0)
             return None
         _prime_first_beats(rt, ren)  # 立即出第一句，避免点了新游戏先看空画面
         return "loaded"

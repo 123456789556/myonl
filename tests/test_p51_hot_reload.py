@@ -218,7 +218,8 @@ def test_剧本写坏时保留旧版本并提示(hot_game, tmp_path, capsys):
     demo._hot_tick(watch, hotload.FileWatch([]), rt, ren, ui,
                    str(script), str(tmp_path), True)
     assert "第二幕第一版。" in json.dumps(rt._lists[0], ensure_ascii=False)  # 旧版本还在
-    assert ren._toast_text == "剧本重载失败（见控制台）"
+    assert ren._toast_text.startswith("剧本重载失败，继续用旧版本：第 1 行：")
+    assert "未知指令" in ren._toast_text
     assert "热重载" in capsys.readouterr().err
 
 
