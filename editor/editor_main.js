@@ -574,6 +574,8 @@
     } catch (e) {
       if (stale()) return;   // 主动取消不算失败，不弹错误
       setStatus(false, "检查请求失败");
+      // 预览栏不能停在「检查中…」，否则看起来像一直在等结果
+      setPreviewBar(false, "检查请求失败：无法连接编辑器服务，请稍后重试");
       return;
     }
     if (stale()) return;
