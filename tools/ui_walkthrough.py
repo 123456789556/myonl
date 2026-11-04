@@ -379,6 +379,10 @@ def _run(w: Walk) -> None:
     w._dirty = True
     w.shot("08_settings_slider.png", "拖动「音乐音量」滑条到 35%", "滑条实时跟随并落盘",
            [("音乐音量≈0.35", abs(float(ui._settings.get("bgm_volume", -1)) - 0.35) <= 0.02)])
+    # 真正读盘校验：内存值不算数，重新 load 一次 settings.json
+    disk = load_settings(w.settings_path)
+    w.expect(abs(float(disk.get("bgm_volume", -1)) - 0.35) <= 0.02,
+             f"音量应落盘：settings.json 实际 {disk.get('bgm_volume')}")
 
     # 键盘跨分组：连续 ↓ 从音频末项跨到语音组
     w.key("K_DOWN")
@@ -410,10 +414,16 @@ def _run(w: Walk) -> None:
         w.key("K_w")
         w.shot("12_settings_rebind.png", "按 W 完成改键", "该项绑定为 W 并立即写盘",
                [("改键=w", str(ui._settings.get(key_name)) == "w")])
+        disk = load_settings(w.settings_path)
+        w.expect(str(disk.get(key_name) or "") == "w",
+                 f"改键应落盘：settings.json 中 {key_name}={disk.get(key_name)!r}")
 
         w.key("K_RETURN")
         w.key("K_ESCAPE")  # 捕获态按 Esc = 恢复默认
         w.expect(str(ui._settings.get(key_name) or "") == "", "改键后 Esc 应恢复默认")
+        disk = load_settings(w.settings_path)
+        w.expect(str(disk.get(key_name) or "") == "",
+                 f"恢复默认应落盘：settings.json 中 {key_name}={disk.get(key_name)!r}")
         w.key("K_ESCAPE")
     else:
         w.shot("10_settings_keys.png", "工程未提供键位分组", "跳过改键检查",
