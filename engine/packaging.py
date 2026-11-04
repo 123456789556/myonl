@@ -318,13 +318,23 @@ def _template_builder(template: Path, root: Path):
     """返回 build_func：复制玩家模板 + 游戏资源，全程不需要 PyInstaller。"""
     def build(project_dir, *, name, icon=None, version="", publisher=None,
               description="", release_notes=""):
-        out_dir = Path(root) / "dist" / name
+        dist = Path(root) / "dist"
+        out_dir = dist / name
+        # 先建到暂存目录：复制中途失败（磁盘满/模板缺文件）时，上一版可玩产物仍在
+        staging = dist / f".{name}.building"
+        if staging.exists():
+            shutil.rmtree(staging)
+        staging.mkdir(parents=True)
+        try:
+            shutil.copy2(template / PLAYER_EXE, staging / f"{name}.exe")
+            shutil.copytree(template / "_internal", staging / "_internal")
+            _copy_game_tree(Path(project_dir).resolve(), staging)
+        except Exception:
+            shutil.rmtree(staging, ignore_errors=True)  # 不留半成品
+            raise
         if out_dir.exists():
             shutil.rmtree(out_dir)  # 只清本游戏的产物目录，避免旧版本残留
-        out_dir.mkdir(parents=True)
-        shutil.copy2(template / PLAYER_EXE, out_dir / f"{name}.exe")
-        shutil.copytree(template / "_internal", out_dir / "_internal")
-        _copy_game_tree(Path(project_dir).resolve(), out_dir)
+        staging.replace(out_dir)
         return str(out_dir)
 
     return build

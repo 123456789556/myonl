@@ -65,6 +65,22 @@ def test_模板打包会清掉旧产物(tmp_path):
     assert not (out / "stale.txt").exists(), "重打包不能留下上一版文件"
 
 
+def test_打包失败保留上一版产物(tmp_path):
+    """模板缺文件/复制中断时：上一版可玩产物必须还在，且不留 .building 半成品。"""
+    tpl = _fake_template(tmp_path)
+    proj = _fake_project(tmp_path)
+    old = tmp_path / "dist" / "演示" / "old.txt"
+    old.parent.mkdir(parents=True)
+    old.write_text("old", encoding="utf-8")
+    (tpl / "MYONLPlayer.exe").unlink()
+
+    build = packaging._template_builder(tpl, tmp_path)
+    with pytest.raises(FileNotFoundError):
+        build(str(proj), name="演示")
+    assert old.exists(), "打包失败不能把上一版产物删掉"
+    assert not (tmp_path / "dist" / ".演示.building").exists(), "失败要清掉暂存目录"
+
+
 def test_玩家模板查找_缺exe视为不可用(tmp_path, monkeypatch):
     tpl = _fake_template(tmp_path)
     # 隔离真实源码树里的模板：把模块 __file__ 指到 tmp，避免 fallback 命中仓库模板
