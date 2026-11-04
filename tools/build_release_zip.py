@@ -26,7 +26,7 @@ import zipfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-DEFAULT_VERSION = "v1.0.0-rc6"
+DEFAULT_VERSION = "v1.0.0-rc7"
 
 # 发行包专用 README：只讲双击即用的五步，绝不出现源码/ Python 指令，
 # 避免新用户照着源码版 README 去 pip install 而误以为包坏了。

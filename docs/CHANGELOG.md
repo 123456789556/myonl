@@ -2,6 +2,20 @@
 
 > 只记 release 级变化，一句话 + 证据链接。单项细节见 git 历史（原 archive/ 已删除）。
 
+## v1.0.0-rc7（2026-11-05，交互与失败态收口 / 定版）
+
+**失败态可定位（发行版无控制台）**：点「开始游戏」遇到剧本语法错误时，原来只写 stderr、玩家看起来像点了没反应；现在回标题并弹「剧本加载失败：第 N 行：原因」。热重载失败也把行号与原因压成单行 toast，不再提示「见控制台」。超长原因按 56 字截断，不会画出屏幕。
+
+**失败不留半成品**：剧本保存、`config.json`、`.editor_config.json` 改为「同目录临时文件写完 → `os.replace`」，写盘中途失败（磁盘满/权限变化/杀软锁文件）时原文件保持上一版，临时文件清理干净；新增 3 条测试（原子写失败保留旧内容、不留 `.tmp`、接口返回中文错误）。模板打包沿用暂存目录方案，失败保留上一版产物。
+
+**交互与错误提示补齐**：设置音量/改键真正写回 `settings.json`，写盘失败弹中文 toast；`/api/check` 网络失败不再让预览栏卡在「检查中…」；存档/读档失败弹中文 toast，读档失败退回存档列表重选；桌面窗口关闭前提示未保存改动；补 F5 / Ctrl+R / Ctrl+P / Ctrl+N / Ctrl+, 快捷键。
+
+**编辑器对齐与窗口缩放**：高亮层宽度改为跟随 `textarea.clientWidth`——WebView2 竖向滚动条占 10px，原来铺到 `right:0` 会比内容区宽出一截，软换行断点不同会让行号/当前行/错误浮层越往下偏越多（末尾表现为多一行 22px）。Dock 高度在窗口变矮时重新夹紧，并给编辑区保留 300px：420px 高窗口下正文由 20px 恢复到 112px。
+
+**性能实测（4000 行文档，CDP 采样 20 键）**：单键约 42.5ms，其中 `syncScroll` 读 `clientWidth` 触发的 textarea 整篇重排占 41.05ms；`updateLineNumbers` 0.17ms、`incSignature` 0.08ms、`updateBreadcrumb` 0.08ms。对比实验证实该重排在绘制前必然发生，推迟读取不减少总耗时；逐行正则与面包屑合计 <1%。因此本轮不做微优化（收益低于噪声），大文档输入性能作为已知限制记录，后续若需要只能换编辑器架构（contenteditable / 虚拟滚动）。
+
+**验证**：`pytest -q -m "not slow"` **1004 passed + 1 skipped**；`-m slow` **32 passed**；pyright **112 = 基线**；`verify_editor_trae_ui.py` **41/41**（教程示例 + 多文件工程各一轮）；`smoke_editor_exe.py` 两项 exit 0。
+
 ## v1.0.0-rc6（2026-11-02，发行版发布阻断修复 / 标准示例 Demo）
 
 **P0 修复：发行版「一键打包」实际不可用**。冻结后的 `editor.exe` 没有 Python/PyInstaller，打包 API 最终调用 `pack.py` → `editor.exe -m PyInstaller` 必然退出码 2。修复：随包内置**玩家运行库模板**（`engine/templates/player/MYONLPlayer.exe + _internal`，22.8MB），打包 = 复制模板 + 游戏资源，1 秒完成；新增 `engine/player_app.py` 作为模板与源码头（`pack.py` 复用同一入口）、`tools/build_player_template.py`（`build_editor.bat` 缺失时自动构建）、`engine/packaging.py` 的模板打包分支（冻结模式优先模板，缺模板给中文提示）。`tools/build_release_zip.py --verify` 新增「玩家模板必须在包里」检查。

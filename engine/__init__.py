@@ -31,7 +31,7 @@ from .data import (
     resolve_image, resolve_audio, data_root, game_root
 )
 
-__version__ = "1.0.0"
+__version__ = "1.0.0rc7"
 __all__ = [
     # Parser
     "GalSyntaxError", "parse_text", "parse_file", "dump_text", "dumps", "loads",

@@ -4,10 +4,10 @@
 > 历史计划与变更说明只保留在 git 历史（原 docs/archive 已于 2026-11-01 删除）。
 > 维护规则：人只改上面的四行；自动数字区由 py -3 tools/status.py --write 生成。
 
-- **版本**：v1.0.0-rc6（Windows 离线引擎；发行包经解压冒烟、一键打包与运行预览验证）
-- **在做**：**内置素材进引擎与空包**——`engine/templates` 随发行包；编辑器「新建游戏」= 极简 hello world（一行可改可删的旁白，不带素材），要成品观感可复制 `games/标准示例`；素材全删也能进标题并开局（深色占位）；修标题与首项菜单重叠、`@ 旁白` 前缀混进正文；另含 U7/U9/U10/U12、V1~V4、E4、1080p 预设、桌宠记忆、素材热重载。**文档已与代码同步**（README/快速上手/开发者指南/产品说明书/engine_spec 的版本、指令数 24、括号台词写法；新增《架构说明》《贡献指南》）。**后续 = 干净 Windows 环境人工抽测**（自动化等价验证已通过）。
+- **版本**：v1.0.0-rc7（Windows 离线引擎；rc6 后交互与失败态收口：原子保存、启动/热重载错误可定位、编辑器对齐与 Dock 缩放、存档/读档/打包失败态）
+- **在做**：**rc7 定版与发布**——本轮 8 项修复已提交并重新打包冒烟；文档、版本常量与发布说明同步到 rc7，打 tag 与 GitHub Release（附发行包）。后续 = 干净 Windows 环境人工抽测（自动化等价验证已通过）。
 - **质量门槛**：干净 Windows（无 Python 环境）下可做出并打包一个可玩 demo；自动化等价验证（改→存→跑→打包→成品）已通过，人工抽测待补。
-- **后续待办**：① 干净 Windows 环境人工抽测 ② 收集早期使用者反馈（CI 已接入 GitHub Actions · windows-latest）。
+- **后续待办**：① 干净 Windows 环境人工抽测 ② 收集早期使用者反馈（CI 已接入 GitHub Actions · windows-latest） ③ 已知限制：4000 行级文档单键约 42ms（textarea 整篇重排，微优化收益 <1%，需换编辑器架构）。
 
 <!-- auto:begin -->
 <!-- 自动数字区：由 tools/status.py 写入，勿手改 -->
@@ -25,6 +25,9 @@ M1 期间，engine/ 只接受「阻塞陌生人上手」的 P0 修复；功能�
 
 | 日期 | 命令 | 结果 |
 |---|---|---|
+| 2026-11-05 | py -3 -m pytest -q -m "not slow" / -m slow / tools/check_types.ps1 | **1004 passed + 1 skipped；slow 32 passed；pyright 112 = 基线（不新增）** |
+| 2026-11-05 | py -3 tools/verify_editor_trae_ui.py（教程示例 + 多文件工程） | **41/41 × 2**：含 900/1024/800 窄窗口、滚动到底正文可见、光标/行号/错误对齐 |
+| 2026-11-05 | PyInstaller --clean editor.spec + tools/smoke_editor_exe.py | **exit 0**：`-h` / `--demo-worker` 两项冒烟通过 |
 | 2026-11-02 | py -3 tools/verify_release_flow.py | **PASS**：发行包解压 → 空 AppData/无 Python 开编辑器 → 改一句 → 保存 → 运行（真实游戏窗口）→ 一键打包（1.0s / 22.8MB）→ 成品窗口；发布阻断全部修复 |
 | 2026-11-02 | py -3 tools/build_release_zip.py --version v1.0.0-rc6 --verify + tools/verify_release_clean.ps1 | **46.4MB / 407 文件**（SHA256 `4510CB…F408D`），含玩家模板与桌宠分层素材；解压冒烟 exit 0；净环境真实窗口 `[MYONL 编辑器]` PASS |
 | 2026-11-02 | py -3 -m pytest -q（分两批） | **1007 passed + 1 skipped**（玩家模板 4 例 + SDL 环境隔离 2 例 + 桌宠 3 例；第一批 994+1 跳过，第二批 13） |
