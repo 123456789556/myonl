@@ -328,14 +328,15 @@ def _apply_business(business: dict, rt: Runtime, ren: Renderer, ui: UI,
             ui.mode = "title"  # 无存档：标题已灰置，这里兜底回标题
             return None
         latest = max(slots, key=lambda e: e.get("saved_at") or "")
-        return _do_load(rt, ui, latest["slot"])
+        return _do_load(rt, ui, latest["slot"], ren)
     if kind == "load_slot":
-        return _do_load(rt, ui, business.get("slot"))
+        return _do_load(rt, ui, business.get("slot"), ren)
     if kind == "save_slot":
         try:
             rt.save(business.get("slot"))
         except (SaveError, RuntimeError) as e:
             print(f"[存档警告] {e}", file=sys.stderr)
+            ren.toast("存档失败：存档目录不可写", 3.0)  # 发行版无控制台，必须给可见反馈
         else:
             # ⑨ 存档后补三要素：缩略图 + 章节名 + 末句
             try:
@@ -441,13 +442,15 @@ def _prime_first_beats(rt: Runtime, ren: Renderer, max_events: int = _PRIME_MAX_
             return
 
 
-def _do_load(rt: Runtime, ui: UI, slot) -> str | None:
+def _do_load(rt: Runtime, ui: UI, slot, ren=None) -> str | None:
     """读档公共逻辑：成功返回 "loaded"；失败打印中文警告、退回存档列表重选。"""
     try:
         rt.load_save(slot)
         return "loaded"
     except (SaveError, RuntimeError) as e:
         print(f"[读档警告] {e}", file=sys.stderr)
+        if ren is not None:
+            ren.toast("读档失败：存档损坏或无法读取", 3.0)
         ui.mode = "slots"  # 留在列表重选（back 可退出来处：标题或菜单）
         ui.refresh()
         return None
