@@ -101,6 +101,13 @@ def test_文件树递归列出(server):
     assert body["current"] == "script.gal"
 
 
+def test_没有script_gall时默认打开第一个剧本(tmp_path):
+    """打开没有 script.gal 的工程（例如 tests/fixtures/多文件）：默认剧本回落到第一个 .gal。"""
+    _write(tmp_path, "主剧本.gal", "@label 开始\n@end\n")
+    app = EditorApp(str(tmp_path))
+    assert Path(app.script_path).name == "主剧本.gal"
+
+
 # ---------- 验收 2：新建章节 ----------
 
 def test_新建章节(server):

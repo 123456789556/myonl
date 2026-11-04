@@ -1801,7 +1801,8 @@ class EditorApp:
     def __init__(self, project_root: str, script_path: str | None = None):
         self.project_root = os.path.realpath(project_root)
         # 相对路径按项目目录解析，避免 --project games/X --script script.gal 被误判越界
-        raw_script = script_path or "script.gal"
+        # 未指定时沿用「script.gal 优先，否则第一个 .gal」，与设置页切换工程的规则一致
+        raw_script = script_path or _default_script(self.project_root)
         if not os.path.isabs(raw_script):
             raw_script = os.path.join(self.project_root, raw_script)
         # 默认剧本路径必须在项目目录内

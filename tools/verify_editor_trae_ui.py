@@ -203,13 +203,16 @@ def main() -> int:
             check("游戏界面可切到左侧", bool(side_ok))
             page.evaluate("window.__previewSideToggle()")
 
-            # 18 搜索出文件结果（搜文件夹内的东西）
+            # 18 搜索出文件结果（用工程里真实存在的文件名，兼容没有 script.gal 的工程）
+            first_file = page.evaluate(
+                "() => fetch('/api/files').then(r => r.json()).then(d => (d.files || [])[0] || '')")
+            want = Path(first_file).stem if first_file else "script"
             page.locator("#actSearch").first.click()
             page.wait_for_timeout(300)
-            page.fill("#qsInput", "script")
+            page.fill("#qsInput", want)
             page.wait_for_timeout(1600)
             file_rows = page.locator(".qs-file-row").count()
-            check("搜索出文件结果", file_rows > 0, f"文件结果 {file_rows}")
+            check("搜索出文件结果", file_rows > 0, f"关键词「{want}」/ 文件结果 {file_rows}")
             page.keyboard.press("Escape")
 
 
@@ -221,8 +224,13 @@ def main() -> int:
             if scene_n > 0:
                 page.locator(".scene-item").first.click()
                 page.wait_for_timeout(400)
-                stage_bg = page.locator(".sf-stage-bg").count()
-                check("场景舞台显示背景预览", stage_bg > 0, f"背景 {stage_bg}")
+                stage = page.evaluate("""() => ({
+                  bg: document.querySelectorAll('.sf-stage-bg').length,
+                  empty: document.querySelectorAll('.sf-stage-empty').length})""")
+                # 有背景就出图；该场景没有 @bg 时应给明确空状态，而不是空白舞台
+                check("场景舞台显示背景预览或明确空状态",
+                      stage["bg"] > 0 or stage["empty"] > 0,
+                      f"背景 {stage['bg']} / 空状态 {stage['empty']}")
             page.locator("#sceneClose").click()
             page.wait_for_timeout(300)
             page.locator("#btnCharLib").first.click()
