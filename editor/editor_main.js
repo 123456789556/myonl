@@ -475,12 +475,20 @@
 
   // 顶部拖拽把手：120px ~ 60vh，记忆 localStorage
   function applyDockHeight(h) {
-    problemsPanel.style.height = Math.max(120, Math.min(h, window.innerHeight * 0.6)) + "px";
+    // 上限 60vh；窗口很矮时再给编辑区留 300px，避免把正文压成一条缝
+    const limit = Math.max(120, Math.min(window.innerHeight * 0.6, window.innerHeight - 300));
+    problemsPanel.style.height = Math.max(120, Math.min(h, limit)) + "px";
   }
   try {
     const savedH = parseInt(localStorage.getItem(DOCK_H_KEY), 10);
     if (savedH) applyDockHeight(savedH);
   } catch (e) {}
+  // 窗口变矮后，记忆的像素高度可能超过 60vh：不重新夹紧会把编辑器区压到 0，缩小时必须跟随重算
+  window.addEventListener("resize", function () {
+    if (!dockOpen) return;
+    const h = parseFloat(problemsPanel.style.height) || problemsPanel.getBoundingClientRect().height;
+    if (h) applyDockHeight(h);
+  });
   let dockDrag = null;
   $("dockResize").addEventListener("mousedown", function (ev) {
     dockDrag = { y: ev.clientY, h: problemsPanel.getBoundingClientRect().height };
