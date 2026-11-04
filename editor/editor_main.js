@@ -2855,9 +2855,18 @@
       packSetStatus("没有可打包项目：请先在 games/ 下新建游戏。", "fail");
       return;
     }
-    const resp = await fetch("/api/pack/profile?project=" + encodeURIComponent(folder))
-      .then(r => r.json());
+    let resp;
+    try {
+      resp = await fetch("/api/pack/profile?project=" + encodeURIComponent(folder))
+        .then(r => r.json());
+    } catch (e) {
+      // 读取失败：清空表单，避免把上一个项目的档案存到新项目名下
+      packFillProfile({});
+      packSetStatus("读取打包配置失败：无法连接编辑器服务，请稍后重试", "fail");
+      return;
+    }
     if (!resp.ok) {
+      packFillProfile({});
       packSetStatus(resp.message || "读取打包配置失败", "fail");
       return;
     }
@@ -2868,7 +2877,13 @@
     packSetStatus("已加载打包配置。修改后可直接打包，或先保存配置。");
   }
   async function packLoadProjects() {
-    const resp = await fetch("/api/pack/projects").then(r => r.json());
+    let resp;
+    try {
+      resp = await fetch("/api/pack/projects").then(r => r.json());
+    } catch (e) {
+      packSetStatus("读取项目列表失败：无法连接编辑器服务，请稍后重试", "fail");
+      return;
+    }
     if (!resp.ok) {
       packSetStatus(resp.message || "读取项目列表失败", "fail");
       return;
@@ -2890,17 +2905,30 @@
       $("packVersion").value = (packProfile && packProfile.version) || "1.0.0";
       return;
     }
-    const resp = await fetch("/api/pack/version?project=" + encodeURIComponent(packFolder) +
-      "&bump=" + encodeURIComponent(bump)).then(r => r.json());
+    let resp;
+    try {
+      resp = await fetch("/api/pack/version?project=" + encodeURIComponent(packFolder) +
+        "&bump=" + encodeURIComponent(bump)).then(r => r.json());
+    } catch (e) {
+      packSetStatus("版本号预览失败：无法连接编辑器服务，请稍后重试", "fail");
+      return;
+    }
     if (resp.ok) $("packVersion").value = resp.version;
   }
   async function packSaveProfile(silent) {
     if (!packFolder) return false;
-    const resp = await fetch("/api/pack/profile", {
-      method: "POST",
-      headers: {"Content-Type": "application/json"},
-      body: JSON.stringify({project: packFolder, profile: packCollectProfile()}),
-    }).then(r => r.json());
+    let resp;
+    try {
+      resp = await fetch("/api/pack/profile", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({project: packFolder, profile: packCollectProfile()}),
+      }).then(r => r.json());
+    } catch (e) {
+      packShowErrors([], "保存失败：无法连接编辑器服务，请稍后重试");
+      if (!silent) packSetStatus("保存失败：无法连接编辑器服务，请稍后重试", "fail");
+      return false;
+    }
     if (!resp.ok) {
       packShowErrors([], resp.message || "保存失败");
       return false;
@@ -2913,11 +2941,21 @@
   async function packPollJob(jobId) {
     clearInterval(packPollTimer);
     const tick = async () => {
-      const resp = await fetch("/api/pack/status?id=" + encodeURIComponent(jobId))
-        .then(r => r.json());
+      let resp;
+      try {
+        resp = await fetch("/api/pack/status?id=" + encodeURIComponent(jobId))
+          .then(r => r.json());
+      } catch (e) {
+        // 轮询失败：停止定时器并给出可操作提示，避免「正在打包……」永远转圈
+        clearInterval(packPollTimer);
+        packPollTimer = null;
+        packSetStatus("查询打包状态失败：无法连接编辑器服务。打包可能在后台继续，稍后点「刷新」查看结果。", "fail");
+        return;
+      }
       if (!resp.ok) {
         packSetStatus(resp.message || "查询打包状态失败", "fail");
         clearInterval(packPollTimer);
+        packPollTimer = null;
         return;
       }
       const job = resp.job;
@@ -2955,11 +2993,20 @@
       bump: bump || null,
       version: bump ? null : $("packVersion").value.trim(),
     };
-    const resp = await fetch("/api/pack/build", {
-      method: "POST",
-      headers: {"Content-Type": "application/json"},
-      body: JSON.stringify(body),
-    }).then(r => r.json()).finally(() => { $("packStart").disabled = false; });
+    let resp;
+    try {
+      resp = await fetch("/api/pack/build", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify(body),
+      }).then(r => r.json());
+    } catch (e) {
+      packShowErrors([], "提交打包任务失败：无法连接编辑器服务，请稍后重试");
+      packSetStatus("提交打包任务失败：无法连接编辑器服务，请稍后重试", "fail");
+      return;
+    } finally {
+      $("packStart").disabled = false;
+    }
     if (!resp.ok) {
       packShowErrors(resp.errors, resp.message || "打包失败");
       packSetStatus(resp.message || "打包失败", "fail");

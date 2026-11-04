@@ -489,6 +489,18 @@ def main() -> int:
                   f"浮层 top 差 {errwrap['delta']} / 高 {errwrap['ov_h']} vs 行高 {errwrap['row_h']}")
             page.screenshot(path=str(SHOT_DIR / "verify_hl_wrap_err.png"))
 
+            # 打包面板：读取项目列表失败时给中文可操作提示，不卡在「正在读取……」进行态
+            page.route("**/api/pack/projects", lambda route: route.abort())
+            page.locator("#btnPack").click()
+            page.wait_for_timeout(800)
+            pack_txt = page.locator("#packStatus").inner_text() if page.locator("#packStatus").count() else ""
+            check("打包面板请求失败有中文提示且不残留进行态",
+                  "无法连接编辑器服务" in pack_txt and "正在读取" not in pack_txt,
+                  f"状态「{pack_txt}」")
+            page.unroute("**/api/pack/projects")
+            page.locator("#packClose").click()
+            page.wait_for_timeout(200)
+
             # 检查进行中：预览栏文案切成「检查中…」，不残留上一轮的「解析成功 · 实时预览」
             stalled = []
 
