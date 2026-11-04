@@ -365,6 +365,7 @@ def _apply_business(business: dict, rt: Runtime, ren: Renderer, ui: UI,
                 save_settings(settings, settings_path)
             except OSError as e:
                 print(f"[设置警告] 键位保存失败：{e}", file=sys.stderr)
+                ren.toast("键位保存失败：设置目录不可写", 3.0)  # 无控制台发行版也能看见
             ren.update_settings({key: code})   # 立即重建键位表
             ui.set_settings(settings)
         ui.capturing = None
@@ -378,6 +379,7 @@ def _apply_business(business: dict, rt: Runtime, ren: Renderer, ui: UI,
             save_settings(settings, settings_path)  # 修改即写
         except OSError as e:
             print(f"[设置警告] 设置保存失败：{e}", file=sys.stderr)
+            ren.toast("设置保存失败：设置目录不可写", 3.0)
         ren.update_settings(settings)  # 音量/打字速度实时生效
         if key == "display_mode":
             ren.apply_display_mode(settings.get("display_mode"))  # 立即切窗口；失败无副作用
@@ -406,6 +408,7 @@ def _apply_business(business: dict, rt: Runtime, ren: Renderer, ui: UI,
                 save_settings(settings, settings_path)  # 修改即写
             except (OSError, ValueError) as e:
                 print(f"[设置警告] 滑条设置保存失败：{e}", file=sys.stderr)
+                ren.toast("设置保存失败：修改未写入 settings.json", 3.0)
             ren.update_settings(settings)
             ui.set_settings(settings)
         return None

@@ -121,3 +121,19 @@ def test_u7_对话框位置滑条按像素换算(tmp_path):
     assert set_ratio(1.0) == 80       # 最右 = 下移 80
     assert set_ratio(0.0) == -80      # 最左 = 上移 80
     assert set_ratio(0.75) == 40
+
+
+def test_设置写盘失败时给出可见提示(tmp_path, monkeypatch):
+    """写盘失败（只读目录等）不能静默：内存里生效，但必须 toast 告知未落盘。"""
+    settings_path = os.path.join(str(tmp_path), "settings.json")
+
+    def boom(*_a, **_k):
+        raise OSError("read-only")
+
+    monkeypatch.setattr("engine.demo.save_settings", boom)
+    ren = Renderer(assets_root=PROJECT)
+    ui = UI()
+    ui.mode = "settings"
+    _apply_business({"action": "settings_set", "key": "bgm_volume", "value": 0.3},
+                    None, ren, ui, "", settings_path)
+    assert "保存失败" in ren._toast_text
