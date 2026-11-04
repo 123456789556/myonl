@@ -421,3 +421,16 @@ def test_时间线与场景支持path(server):
     body = json.loads(raw)
     assert body["ok"] is True
     assert [n["label"] for n in body["nodes"]] == ["bg_别章"]
+
+
+def test_菜单里展示的快捷键都有真实绑定():
+    """菜单/提示写着 F5、Ctrl+R、Ctrl+P、Ctrl+N、Ctrl+,，按键就必须有反应。"""
+    js = (ROOT / "editor" / "editor_shell.js").read_text(encoding="utf-8")
+    assert 'ev.key === "F5"' in js and 'clickBtn("btnRun")' in js
+    assert '(ev.key === "r" || ev.key === "R")' in js
+    assert 'clickBtn("btnPack")' in js
+    assert 'clickBtn("btnNew")' in js
+    assert 'clickBtn("btnSettings")' in js
+    for label in ('shortcut: "Ctrl+P"', 'shortcut: "Ctrl+N"',
+                  'shortcut: "Ctrl+,"', 'shortcut: "F5"'):
+        assert label in js, f"菜单应展示 {label}"

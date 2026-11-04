@@ -124,6 +124,19 @@
     const mod = ev.ctrlKey || ev.metaKey;
     if (ev.key === "F1") { ev.preventDefault(); toggleHelp(); }
     if (ev.key === "Escape" && !helpPanel.classList.contains("hidden")) toggleHelp(false);
+    // 菜单 / 提示里写出的快捷键必须真能触发；否则用户按键无反应
+    const clickBtn = (id) => { const el = $(id); if (el && !el.disabled) el.click(); };
+    if (ev.key === "F5") {
+      ev.preventDefault(); clickBtn("btnRun");
+    } else if (!ev.shiftKey && mod && (ev.key === "r" || ev.key === "R")) {
+      ev.preventDefault(); clickBtn("btnRun");
+    } else if (mod && !ev.shiftKey && (ev.key === "p" || ev.key === "P")) {
+      ev.preventDefault(); clickBtn("btnPack");
+    } else if (mod && (ev.key === "n" || ev.key === "N")) {
+      ev.preventDefault(); clickBtn("btnNew");
+    } else if (mod && ev.key === ",") {
+      ev.preventDefault(); clickBtn("btnSettings");
+    }
     // E-2：撤销/重做 + 命令面板
     if (mod && (ev.key === "z" || ev.key === "Z")) {
       ev.preventDefault();
