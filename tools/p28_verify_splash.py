@@ -2,13 +2,14 @@
 """无头驱动开场.gal，关键帧截图验证 Pan/presents/文字节奏。"""
 import os, sys
 os.environ.setdefault("SDL_VIDEODRIVER", "dummy")
-sys.path.insert(0, r"D:\娱乐工作区\自研项目\MYONL引擎")
+BASE = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.insert(0, os.path.join(BASE, "MYONL引擎"))
 
 from engine.runtime import Runtime
 from engine.renderer import Renderer
 
-ROOT = r"D:\娱乐工作区\自研项目\MYONL引擎\games\月光漫步"
-OUT = r"D:\娱乐工作区\自研项目\MYONL引擎\screenshots"
+ROOT = os.path.join(BASE, "MYONL引擎", "games", "月光漫步")
+OUT = os.path.join(BASE, "MYONL引擎", "screenshots")
 os.makedirs(OUT, exist_ok=True)
 
 rt = Runtime()

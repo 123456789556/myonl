@@ -29,7 +29,7 @@
 ```python
 # 一键扫描项目根所有 md 的合规性（输出违规项）
 import os, re, glob
-ROOT = r"D:\娱乐工作区\自研项目\MYONL引擎"
+ROOT = os.path.abspath("MYONL引擎")  # 在 D:\娱乐工作区\自研项目 下运行
 for f in sorted(glob.glob(os.path.join(ROOT, "*.md"))):
     b = open(f, "rb").read()
     text = b.decode("utf-8", errors="replace")

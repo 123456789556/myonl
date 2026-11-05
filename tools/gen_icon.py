@@ -4,9 +4,10 @@
 输出:   brand/icon/icon_my_{512,256,128,64,32,16}.png + 单色/反白 512
 """
 import os
+from pathlib import Path
 from PIL import Image, ImageDraw, ImageFont
 
-ROOT = r"D:\娱乐工作区\自研项目\MYONL引擎"
+ROOT = str(Path(__file__).resolve().parents[2] / "MYONL引擎")
 OUT = os.path.join(ROOT, "brand", "icon")
 os.makedirs(OUT, exist_ok=True)
 
