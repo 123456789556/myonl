@@ -4,9 +4,10 @@
 > 历史计划与变更说明只保留在 git 历史（原 docs/archive 已于 2026-11-01 删除）。
 > 维护规则：人只改上面的四行；自动数字区由 py -3 tools/status.py --write 生成。
 
-- **版本**：v1.0.0-rc7（Windows 离线引擎；rc6 后交互与失败态收口：原子保存、启动/热重载错误可定位、编辑器对齐与 Dock 缩放、存档/读档/打包失败态）
-- **在做**：**rc7 定版与发布**——本轮 8 项修复已提交并重新打包冒烟；文档、版本常量与发布说明同步到 rc7，打 tag 与 GitHub Release（附发行包）。后续 = 干净 Windows 环境人工抽测（自动化等价验证已通过）。
+- **版本**：v1.0.0-rc7（Windows 离线引擎；rc6 后交互与失败态收口：原子保存、启动/热重载错误可定位、编辑器对齐与 Dock 缩放、存档/读档/打包失败态）——**已发布**（GitHub Release prerelease，附件 `MYONL-v1.0.0-rc7-windows.zip` 46.43MB）
+- **在做**：**rc7 已上线，只剩唯一门槛**——tag `v1.0.0-rc7` 已推送 GitHub（tag 对象 `1079b1e` → 提交 `30bd8b6`），Release 已发布（prerelease，附件 `MYONL-v1.0.0-rc7-windows.zip` 46.43MB，创建于 2026-11-05 07:58 CST）；CI `tests` / `ui-walkthrough` 在 HEAD `8fc3e53` 全绿（2026-11-06 最近一次 ui-walkthrough success）。后续 = 干净 Windows 人工抽测（2026-11-07 发行包链路复验再次 PASS）。
 - **质量门槛**：干净 Windows（无 Python 环境）下可做出并打包一个可玩 demo；自动化等价验证（改→存→跑→打包→成品）已通过，人工抽测待补。
+- **本机限制（2026-11-07 实测）**：本机为 Windows 10 家庭版，无 Windows Sandbox（需专业版）；且 `py.exe` 位于 `C:\WINDOWS`，对所有本地用户可见——**新建本地用户也无法等价"无 Python"环境**。该格必须在外部机器 / 云桌面完成，或由用户拍板以自动化等价验证替代。
 - **后续待办**：① 干净 Windows 环境人工抽测 ② 收集早期使用者反馈（CI 已接入 GitHub Actions · windows-latest） ③ 已知限制：4000 行级文档单键约 42ms（textarea 整篇重排，微优化收益 <1%，需换编辑器架构）。
 
 <!-- auto:begin -->
@@ -25,6 +26,7 @@ M1 期间，engine/ 只接受「阻塞陌生人上手」的 P0 修复；功能�
 
 | 日期 | 命令 | 结果 |
 |---|---|---|
+| 2026-11-07 | py -3 tools/verify_release_flow.py --zip dist/release/MYONL引擎-v1.0.0-rc7.zip | **PASS / exit 0**：解压 408 文件 → 无 Python + 空 AppData 启动编辑器窗口 `[MYONL 编辑器]` · API 53449 → 改一句 → 语法检查 → 运行（`[教程示例]` 窗口）→ 打包（22.9MB，3.1s，走内置玩家模板）→ 成品窗口 `[教程示例]` |
 | 2026-11-05 | py -3 -m pytest -q -m "not slow" / -m slow / tools/check_types.ps1 | **1004 passed + 1 skipped；slow 32 passed；pyright 112 = 基线（不新增）** |
 | 2026-11-05 | py -3 tools/verify_editor_trae_ui.py（教程示例 + 多文件工程） | **41/41 × 2**：含 900/1024/800 窄窗口、滚动到底正文可见、光标/行号/错误对齐 |
 | 2026-11-05 | PyInstaller --clean editor.spec + tools/smoke_editor_exe.py | **exit 0**：`-h` / `--demo-worker` 两项冒烟通过 |
