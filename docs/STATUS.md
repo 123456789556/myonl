@@ -28,7 +28,7 @@ M1 期间，engine/ 只接受「阻塞陌生人上手」的 P0 修复；功能�
 |---|---|---|
 | 2026-11-07 | py -3 tools/verify_release_flow.py --zip dist/release/MYONL引擎-v1.0.0-rc7.zip | **PASS / exit 0**：解压 408 文件 → 无 Python + 空 AppData 启动编辑器窗口 `[MYONL 编辑器]` · API 53449 → 改一句 → 语法检查 → 运行（`[教程示例]` 窗口）→ 打包（22.9MB，3.1s，走内置玩家模板）→ 成品窗口 `[教程示例]` |
 | 2026-11-07 | py -3 -m pytest -q -m "not slow" | **1005 passed + 1 skipped**（新增 `tests/test_release_zip_manifest.py` 守护发行包清单） |
-| 2026-11-07 | py -3 tools/build_release_zip.py --version v1.0.0-rc7 --out dist/release/_candidate/… --verify | **409 文件 / 46.43MB**，冒烟两项 exit 0；与旧包diff 只多 `tools/win_env_check.bat`（SHA256 `AAAEF00B…9CEA2`）。**GitHub Release 附件仍是旧包（408 文件，缺该脚本），替换待用户拍板** |
+| 2026-11-07 | py -3 tools/build_release_zip.py --version v1.0.0-rc7 --out dist/release/_candidate/… --verify | **409 文件 / 46.43MB**，冒烟两项 exit 0；与旧包diff 只多 `tools/win_env_check.bat`（SHA256 `AAAEF00B…9CEA2`）。**附件已于同日替换**：asset `MYONL-v1.0.0-rc7-windows.zip` 46.43MB / SHA256 `AAAEF00B…9CEA2`（下载数归零），Release 正文补「2026-11-07 附件更新」段 |
 | 2026-11-05 | py -3 -m pytest -q -m "not slow" / -m slow / tools/check_types.ps1 | **1004 passed + 1 skipped；slow 32 passed；pyright 112 = 基线（不新增）** |
 | 2026-11-05 | py -3 tools/verify_editor_trae_ui.py（教程示例 + 多文件工程） | **41/41 × 2**：含 900/1024/800 窄窗口、滚动到底正文可见、光标/行号/错误对齐 |
 | 2026-11-05 | PyInstaller --clean editor.spec + tools/smoke_editor_exe.py | **exit 0**：`-h` / `--demo-worker` 两项冒烟通过 |
