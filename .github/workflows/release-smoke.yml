@@ -1,0 +1,85 @@
+name: release-smoke
+
+# 发行包干净环境验证：在 GitHub 全新 windows-latest runner 上，
+# 下载 Release 实际挂出的 zip，剥离 Python/AppData 后跑「改→存→跑→打包→成品」全链路
+# （tools/verify_release_flow.py 内部会把子进程 PATH 压到只剩 System32、AppData 重定向到空目录）。
+# 触发：发布/转正 Release 时自动跑；也可手动 dispatch 指定任意 tag 复验。
+on:
+  release:
+    types: [published, released]   # published 覆盖新发 prerelease；released 覆盖 prerelease 转正
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "要验证的 Release tag（留空 = 最新 Release）"
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-smoke-${{ github.event.release.tag_name || inputs.tag || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify-release-asset:
+    name: 发行包干净环境验证（改→存→跑→打包→成品）
+    runs-on: windows-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # 发布事件用该 tag 的工具链验证；手动 dispatch 未指定 tag 时回退 main
+          ref: ${{ github.event.release.tag_name || inputs.tag || github.ref }}
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: 安装验证脚本依赖
+        run: python -m pip install psutil
+
+      - name: 下载 Release 附件（发布后等待上传完成，最多 10 分钟）
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ github.event.release.tag_name || inputs.tag }}
+        run: |
+          $tag = $env:TAG
+          if (-not $tag) { $tag = gh release view --json tagName -q .tagName }
+          Write-Host "验证目标 Release：$tag"
+          $deadline = (Get-Date).AddMinutes(10)
+          while ($true) {
+            gh release download $tag --pattern "*.zip" --dir dist\release-smoke --clobber
+            if ($LASTEXITCODE -eq 0 -and (Get-ChildItem dist\release-smoke\*.zip -ErrorAction SilentlyContinue)) { break }
+            if ((Get-Date) -gt $deadline) { throw "下载 Release 附件超时（$tag）" }
+            Write-Host "附件未就绪，30 秒后重试…"
+            Start-Sleep -Seconds 30
+          }
+          Get-ChildItem dist\release-smoke | Format-Table Name, Length
+
+      - name: 无 Python 干净环境跑发行包全链路
+        env:
+          # Windows runner 控制台默认 cp1252，强制 Python 走 UTF-8 输出中文
+          PYTHONUTF8: "1"
+        run: |
+          $zip = (Get-ChildItem dist\release-smoke\*.zip | Select-Object -First 1).FullName
+          $out = & python tools/verify_release_flow.py --zip $zip 2>&1
+          $code = $LASTEXITCODE
+          $out | ForEach-Object { Write-Host $_ }
+          if ($code -eq 0) {
+            "✅ 发行包全链路验证通过：``$(Split-Path $zip -Leaf)``（windows-latest 干净 runner · 子进程剥离 Python/AppData）" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
+          } else {
+            "## 发行包链路验证失败（exit $code）" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
+            "``````" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
+            ($out | Select-Object -Last 40) | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
+            "``````" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
+            # 同时输出为注解：即使无日志权限，也能在 run 页面看到失败项
+            foreach ($line in ($out | Select-Object -Last 20)) {
+              $msg = "$line" -replace '%','%25' -replace "`r",'%0D' -replace "`n",'%0A'
+              Write-Host "::error title=发行包链路失败::$msg"
+            }
+          }
+          exit $code
