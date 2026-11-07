@@ -7,6 +7,7 @@
       games/教程示例/            ← 打开就能改的第一个工程
       快速上手.md / README.md / LICENSE / NOTICE
       文档/                    ← 开发者指南 / engine_spec / 插件指南
+      tools/win_env_check.bat  ← 零帮助抽测第 2 步的环境体检（只读不改）
 
 用法：
     py -3 tools/build_release_zip.py                    # 打包
@@ -111,6 +112,10 @@ def build(version: str, out: Path) -> Path:
             entries += 1
         entries += _add_tree(zf, ROOT / "dist" / "editor", f"{prefix}/editor")
         entries += _add_tree(zf, tutorial, f"{prefix}/games/教程示例")
+        # 零帮助抽测清单第 2 步要双击 tools/win_env_check.bat（docs/计划/00-总览.md §三）；
+        # 以前只在仓库里有、没进包，抽测走到第 2 步就找不到文件，故必须随包。
+        zf.write(ROOT / "tools" / "win_env_check.bat", f"{prefix}/tools/win_env_check.bat")
+        entries += 1
     size_mb = out.stat().st_size / 1024 / 1024
     print(f"发行包：{out}（{size_mb:.1f} MB，{entries} 个文件）")
     return out
@@ -158,6 +163,11 @@ def verify(zip_path: Path, version: str) -> int:
         player = base / "editor" / "_internal" / "engine" / "templates" / "player"
         if not (player / "MYONLPlayer.exe").is_file() or not (player / "_internal").is_dir():
             print(f"验证失败：发行包缺少玩家模板 {player}（先跑 tools/build_player_template.py）")
+            return 1
+        # 抽测清单第 2 步直接指向 tools/win_env_check.bat；缺了陌生人第 2 步就卡住
+        envcheck = base / "tools" / "win_env_check.bat"
+        if not envcheck.is_file():
+            print("验证失败：发行包缺少 tools/win_env_check.bat（零帮助抽测第 2 步要用）")
             return 1
         script = ROOT / "tools" / "smoke_editor_exe.py"
         print(f"冒烟：从解压目录运行 {exe}")
