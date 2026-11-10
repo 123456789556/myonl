@@ -4,11 +4,11 @@
 > 历史计划与变更说明只保留在 git 历史（原 docs/archive 已于 2026-11-01 删除）。
 > 维护规则：人只改上面的四行；自动数字区由 py -3 tools/status.py --write 生成。
 
-- **版本**：v1.0.0-rc7（Windows 离线引擎；rc6 后交互与失败态收口：原子保存、启动/热重载错误可定位、编辑器对齐与 Dock 缩放、存档/读档/打包失败态）——**已发布**（GitHub Release prerelease，附件 `MYONL-v1.0.0-rc7-windows.zip` 46.43MB）
-- **在做**：**rc7 已上线，只剩唯一门槛**——tag `v1.0.0-rc7` 已推送 GitHub（tag 对象 `1079b1e` → 提交 `30bd8b6`），Release 已发布（prerelease，附件 `MYONL-v1.0.0-rc7-windows.zip` 46.43MB，创建于 2026-11-05 07:58 CST）；CI `tests` / `ui-walkthrough` 在 HEAD `8fc3e53` 全绿（2026-11-06 最近一次 ui-walkthrough success）。后续 = 干净 Windows 人工抽测（2026-11-07 发行包链路复验再次 PASS）。
-- **质量门槛**：干净 Windows（无 Python 环境）下可做出并打包一个可玩 demo；自动化等价验证（改→存→跑→打包→成品）已通过，人工抽测待补。
+- **版本**：v1.0.0-rc7（Windows 离线引擎；rc6 后交互与失败态收口：原子保存、启动/热重载错误可定位、编辑器对齐与 Dock 缩放、存档/读档/打包失败态）——**已发布且为 Latest**（`prerelease=false`，`/releases/latest` 实测返回 rc7，附件 `MYONL-v1.0.0-rc7-windows.zip` 46.43MB）。**注意：该 zip 内是修复前构建，下面 ④ 的 P0 修复尚未进包**
+- **在做**：**发行与门面收口（2026-11-10）**——① rc7 从 prerelease 提为 **Latest**，Release 正文追加中英双语说明（原文未删）；② 英文入口上线 `README.en.md` + `docs/en/quick-start.md`，README 补语言切换并修断链 badge；③ 展示物料定稿 `docs/展示_60秒分镜与投稿包.md` + `docs/images/cover-60s.jpg`；④ **P0 修复「英文区域 Windows 上打包被中文日志打断」**（`engine/packaging.py` 的 `ensure_tolerant_console()` + `pack.py` 接入，4 条守护测试）。**唯一未完成**：重打发行包把 ④ 带进 zip → 复跑 `release-smoke` 转绿（该 workflow 当前是红的，run `42353120797`）。
+- **质量门槛**：干净 Windows（无 Python 环境）下可做出并打包一个可玩 demo；自动化等价验证（改→存→跑→打包→成品）在中文区域已通过，**在英文区域因 ④ 的编码 bug 失败**，修复已落到源码、尚未进发行包。
 - **本机限制（2026-11-07 实测）**：本机为 Windows 10 家庭版，无 Windows Sandbox（需专业版）；且 `py.exe` 位于 `C:\WINDOWS`，对所有本地用户可见——**新建本地用户也无法等价"无 Python"环境**。该格必须在外部机器 / 云桌面完成，或由用户拍板以自动化等价验证替代。
-- **后续待办**：① 干净 Windows 环境人工抽测 ② 收集早期使用者反馈（CI 已接入 GitHub Actions · windows-latest） ③ 已知限制：4000 行级文档单键约 42ms（textarea 整篇重排，微优化收益 <1%，需换编辑器架构）。
+- **后续待办**：① 重打发行包 + 复跑 `release-smoke`（P0 修复尚未进包） ② 干净 Windows 环境人工抽测 ③ 拍 60 秒展示片并投稿 ④ 收集早期使用者反馈 ⑤ 已知限制：4000 行级文档单键约 42ms（textarea 整篇重排，微优化收益 <1%，需换编辑器架构）。
 
 <!-- auto:begin -->
 <!-- 自动数字区：由 tools/status.py 写入，勿手改 -->
@@ -26,6 +26,9 @@ M1 期间，engine/ 只接受「阻塞陌生人上手」的 P0 修复；功能�
 
 | 日期 | 命令 | 结果 |
 |---|---|---|
+| 2026-11-10 | `$env:PYTHONIOENCODING="cp1252"; py -3 pack.py "games\教程示例"` | **修复前 exit 1**：`UnicodeEncodeError: 'charmap' codec can't encode characters`，栈顶 `engine/packaging.py:427`（与 CI run `42353120797` 同源）；**修复后 exit 0**，中文日志按预期降级成 `?`，产物 **22.77MB** 正常生成 |
+| 2026-11-10 | py -3 -m pytest -q -m "not slow" | **1009 passed + 1 skipped**（新增 `tests/test_console_encoding.py` 4 条；架构门禁 `test_每个测试文件声明分层marker` 通过） |
+| 2026-11-10 | GitHub API 复核 | `release-smoke` 在 `72bf5fe` **failure**（run `42353120797`，第 6 步失败）；`tests` 在 `3bdeb62` 与 `9cc005a` 均 success；`/releases/latest` 返回 `v1.0.0-rc7` |
 | 2026-11-07 | py -3 tools/verify_release_flow.py --zip dist/release/MYONL引擎-v1.0.0-rc7.zip | **PASS / exit 0**：解压 408 文件 → 无 Python + 空 AppData 启动编辑器窗口 `[MYONL 编辑器]` · API 53449 → 改一句 → 语法检查 → 运行（`[教程示例]` 窗口）→ 打包（22.9MB，3.1s，走内置玩家模板）→ 成品窗口 `[教程示例]` |
 | 2026-11-07 | py -3 -m pytest -q -m "not slow" | **1005 passed + 1 skipped**（新增 `tests/test_release_zip_manifest.py` 守护发行包清单） |
 | 2026-11-07 | py -3 tools/build_release_zip.py --version v1.0.0-rc7 --out dist/release/_candidate/… --verify | **409 文件 / 46.43MB**，冒烟两项 exit 0；与旧包diff 只多 `tools/win_env_check.bat`（SHA256 `AAAEF00B…9CEA2`）。**附件已于同日替换**：asset `MYONL-v1.0.0-rc7-windows.zip` 46.43MB / SHA256 `AAAEF00B…9CEA2`（下载数归零），Release 正文补「2026-11-07 附件更新」段 |

@@ -392,6 +392,8 @@ def main(argv=None) -> int:
 
     from engine import packaging
 
+    packaging.ensure_tolerant_console()
+
     if args.list:
         _print_project_list(packaging.list_projects(ROOT / "games", root=ROOT))
         return 0

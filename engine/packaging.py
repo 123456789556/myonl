@@ -369,6 +369,25 @@ def _build_number(project_dir, root=None, history_path=None) -> int:
     return len(builds) + 1
 
 
+def ensure_tolerant_console() -> None:
+    """让日志输出不会因控制台编码而中断打包。
+
+    rc7 实测（GitHub windows-latest runner，英文区域）：控制台编码是 cp1252，
+    第一句 `print("开始打包：…")` 就抛 UnicodeEncodeError，把整个打包流程打断
+    ——产物其实还没开始写。只降级日志的编码错误处理，**不改编码、不碰产物、不碰
+    已写入文件的 UTF-8 内容**；中文系统上行为完全不变，英文系统上中文日志退化成
+    替换字符，但打包照常完成。
+    """
+    for stream in (sys.stdout, sys.stderr):
+        reconfigure = getattr(stream, "reconfigure", None)
+        if reconfigure is None:
+            continue
+        try:
+            reconfigure(errors="replace")
+        except (ValueError, OSError):
+            pass
+
+
 def pack_project(project_dir, *, version=None, bump=None, name=None, icon=None,
                  publisher=None, description=None, release_notes=None,
                  build_func=None, root=None, history_path=None, register=True,
@@ -377,6 +396,7 @@ def pack_project(project_dir, *, version=None, bump=None, name=None, icon=None,
 
     返回 dict（可直接 JSON 给编辑器）；失败抛 PackProfileError（中文）。
     """
+    ensure_tolerant_console()
     root = Path(root) if root else _repo_root()
     project = Path(project_dir).resolve()
     if not project.is_dir():

@@ -2,6 +2,18 @@
 
 > 只记 release 级变化，一句话 + 证据链接。单项细节见 git 历史（原 archive/ 已删除）。
 
+## 2026-11-10（发行与门面收口 / P0：英文区域 Windows 打包被打断）
+
+**P0 修复：英文区域 Windows 上「打包」直接失败**。GitHub `windows-latest` runner 是英文区域，控制台编码 cp1252；`engine/packaging.py` 打包第一步 `print("开始打包：…")` 抛 `UnicodeEncodeError: 'charmap' codec can't encode characters`，流程在产物写出之前就中断，用户看到的是「打包失败」。修复：新增 `packaging.ensure_tolerant_console()`（只把 stdout/stderr 的编码错误处理降级为 `replace`，不改编码、不碰产物、不碰已写入的 UTF-8 文件），在 `pack_project()` 入口与 `pack.py main()` 各调用一次。证据：`PYTHONIOENCODING=cp1252` 复现——修复前 exit 1（栈顶 `packaging.py:427`），修复后 exit 0、产物 22.77 MB；CI 侧同源证据 = run `42353120797` 第 5 步 `FAIL 'charmap' codec`，前 4 步（解压 / 开编辑器 / 改一句 / 运行预览）全绿。新增 `tests/test_console_encoding.py` 4 条守护（含「不加保护确实会崩」的前提用例、中文控制台原样输出、stdout 为 `None` 的冻结窗口场景）。
+
+**英文入口上线**：`README.en.md`（英文主入口，明确写出「指令关键字与编辑器界面为中文，这是设计选择」，不夸大英文覆盖）+ `docs/en/quick-start.md`；`README.md` 顶部加语言切换，并修复第 3 行 badge 多一个右括号导致的断链。
+
+**rc7 转为 Latest**：`prerelease` 由 `true` 改 `false`，`/releases/latest` 实测返回 `v1.0.0-rc7`；Release 正文追加中英双语说明（原文未删）。**连带发现**：`release-smoke` 按 latest 取包，此前一直下到 rc6 的包、不是 rc7，根因在此。
+
+**展示物料**：`docs/展示_60秒分镜与投稿包.md`（7 镜 60 秒分镜、逐镜素材来源与取证要求、旁白逐字稿、B 站 / itch.io 投稿包）+ `docs/images/cover-60s.jpg`（2730×1536，由 `editor.jpg` 与 `title.jpg` 两张真截图合成，未重绘界面内容）。
+
+**遗留（未做，如实记）**：发行包 `MYONL-v1.0.0-rc7-windows.zip` 里的 `editor.exe` 仍是修复前构建，**该 P0 尚未进入已发布的 zip**；需重打发行包、替换附件、复跑 `release-smoke` 才能转绿。
+
 ## v1.0.0-rc7（2026-11-05，交互与失败态收口 / 定版）
 
 **失败态可定位（发行版无控制台）**：点「开始游戏」遇到剧本语法错误时，原来只写 stderr、玩家看起来像点了没反应；现在回标题并弹「剧本加载失败：第 N 行：原因」。热重载失败也把行号与原因压成单行 toast，不再提示「见控制台」。超长原因按 56 字截断，不会画出屏幕。
