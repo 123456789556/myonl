@@ -1,6 +1,8 @@
 # MYONL 引擎
 
-![tests](https://github.com/123456789556/myonl/actions/workflows/tests.yml/badge.svg?branch=main)](https://github.com/123456789556/myonl/actions/workflows/tests.yml)
+**简体中文** | [English](README.en.md)
+
+[![tests](https://github.com/123456789556/myonl/actions/workflows/tests.yml/badge.svg?branch=main)](https://github.com/123456789556/myonl/actions/workflows/tests.yml)
 ![Release](https://img.shields.io/badge/release-v1.0.0--rc7-blue)
 ![Windows](https://img.shields.io/badge/Windows-10%2021H2%2B%20%7C%2011-0078D4)
 ![Python](https://img.shields.io/badge/Python-3.9%2B-3776AB)
