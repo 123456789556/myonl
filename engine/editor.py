@@ -259,6 +259,109 @@ def _save_interface_settings(root: str, patch: dict) -> str:
     return path
 
 
+_SKIN_STR_KEYS = ("panel_image", "panel_texture")
+_ASSET_NAME_RE = re.compile(r"[\w\-. ]{1,64}")
+
+
+def _clean_dialogue_value(key: str, val: object) -> tuple[bool, object]:
+    """P53：dialogue 段写入前的类型清洗（返回 (是否接受, 归一值)）。
+
+    皮肤键都来自前端输入，必须挡住脏数据：
+    贴图名只允许项目 images 下的名字（不含目录穿越），
+    九宫格四边 / 染色只允许数值，其余数字键只允许数字。
+    """
+    if key in _SKIN_STR_KEYS:
+        if not isinstance(val, str):
+            return (False, None)
+        name = val.strip()
+        if not name:
+            return (True, "")
+        if ".." in name or "/" in name or "\\" in name:
+            return (False, None)
+        if not _ASSET_NAME_RE.fullmatch(name):
+            return (False, None)
+        return (True, name)
+    if key == "panel_slice":
+        if isinstance(val, bool):
+            return (False, None)
+        if isinstance(val, (int, float)):
+            return (True, max(0, min(4000, int(val))))
+        if isinstance(val, (list, tuple)) and len(val) == 4:
+            if all(isinstance(v, (int, float)) and not isinstance(v, bool) for v in val):
+                return (True, [max(0, min(4000, int(v))) for v in val])
+        return (False, None)
+    if key == "panel_tint":
+        if val is None:
+            return (True, None)
+        if (isinstance(val, (list, tuple)) and len(val) == 3
+                and all(isinstance(v, int) and 0 <= v <= 255 for v in val)):
+            return (True, [int(v) for v in val])
+        return (False, None)
+    if isinstance(val, (int, float)) and not isinstance(val, bool):
+        return (True, int(val))
+    return (False, None)
+
+
+@dummy_video
+def _textbox_png(assets_root: str, dlg_patch: dict, ui_patch: dict,
+                 width: int, height: int | None = None) -> bytes:
+    """P53：按当前设计导出一张成品 textbox.png（贴图 + 九宫格 + 渐变 + 纹理已完成）。
+
+    导出的图既能给 MYONL 自己当 panel_image 回填，也能直接丢进其它引擎/别的
+    工具里用——这是「设计器」而不是「参数面板」的关键：产出物是资产，不是配置。
+    """
+    from . import dialog_skin
+    from .renderer import Renderer
+    import pygame
+
+    ren = Renderer(assets_root=assets_root)
+    try:
+        ren.config.apply_player_ui(dlg_patch)
+        ui_cfg = ren.config.data.setdefault("ui", {})
+        for k, v in ui_patch.items():
+            ui_cfg[k] = v
+        dlg = ren.config.dialogue("default")
+        width = max(1, int(width))
+        height = max(1, int(height or dlg.get("height", 180)))
+        name = str(dlg.get("panel_image") or "").strip()
+        img = ren._load_image(name) if name else None
+        tex_name = str(dlg.get("panel_texture") or "").strip()
+        tex = ren._load_image(tex_name) if tex_name else None
+        tint_val = dlg.get("panel_tint")
+        tint_rgb = (tuple(int(v) for v in tint_val[:3])
+                    if isinstance(tint_val, (list, tuple)) and len(tint_val) == 3
+                    else None)
+        if img is None:
+            # 没贴图：用主题 surface 色 + 圆角导出一张等效底图
+            surf = dialog_skin.solid_panel(
+                width, height, ren.config.theme_color("surface"),
+                int(dlg.get("bg_alpha", 150)), int(dlg.get("radius", 10)),
+                pixelated=bool(ren.config.pixelated()),
+            )
+        else:
+            surf = dialog_skin.compose_panel(
+                img, width, height, dlg.get("panel_slice", 0), tint_rgb,
+                int(dlg.get("panel_fade", 0) or 0),
+                int(dlg.get("panel_fade_bottom", 0) or 0),
+                tex, int(dlg.get("panel_texture_alpha", 0) or 0),
+                int(dlg.get("panel_alpha", 255) or 255),
+                pixelated=bool(ren.config.pixelated()),
+            )
+        tmp = tempfile.NamedTemporaryFile(suffix=".png", delete=False)
+        tmp.close()
+        try:
+            pygame.image.save(surf, tmp.name)
+            with open(tmp.name, "rb") as f:
+                return f.read()
+        finally:
+            try:
+                os.unlink(tmp.name)
+            except OSError:
+                pass
+    finally:
+        ren.close()
+
+
 @dummy_video
 def _ui_design_png(assets_root: str, ui_patch: dict, dlg_patch: dict,
                    font_patch: dict | None = None,
@@ -283,6 +386,13 @@ def _ui_design_png(assets_root: str, ui_patch: dict, dlg_patch: dict,
     try:
         # P51：先把预览补丁合进配置视图（引擎默认 ← config.json ← 预览覆盖）
         ren.config.apply_player_ui(dlg_patch)
+        # P53：皮肤键（贴图/九宫格/渐变/纹理/内边距）不在玩家覆盖白名单里，
+        # 预览要单独并进内存配置，否则预览看不见皮肤
+        dlg_cfg = ren.config.data.setdefault("dialogue", {}).setdefault("default", {})
+        for k, v in dlg_patch.items():
+            ok, val = _clean_dialogue_value(k, v)
+            if ok and val is not None:
+                dlg_cfg[k] = val
         ui_cfg = ren.config.data.setdefault("ui", {})
         for k, v in ui_patch.items():
             ui_cfg[k] = v
@@ -594,6 +704,7 @@ class _EditorHandler(BaseHTTPRequestHandler):
         ("GET", "/api/ui-design"): "_ui_design_get",
         ("POST", "/api/ui-design"): "_ui_design_set",
         ("POST", "/api/ui-design/preview"): "_ui_design_preview",
+        ("POST", "/api/ui-design/export-textbox"): "_ui_design_export_textbox",
         # 桌宠（实验）：start / stop / status（源码模式可用；发行包后续接入）
         ("POST", "/api/pet"): "_pet_control",
         ("GET", "/api/complete"): "_complete",
@@ -955,7 +1066,11 @@ class _EditorHandler(BaseHTTPRequestHandler):
     # P52：扩为六组——对话框 / 名字框 / 选项 / 快捷栏 / 游戏内菜单 / 设置页
     _UI_DESIGN_UI_KEYS = ("pixelated", "pixel_scale", "corner_radius")
     _UI_DESIGN_DLG_KEYS = ("radius", "offset_x", "offset_y", "panel_width", "height",
-                           "name_y", "name_gap")   # P52：名字框（y/间距）并入对话框组
+                           "name_y", "name_gap",   # P52：名字框（y/间距）并入对话框组
+                           # P53：对话框皮肤（贴图九宫格 / 渐变蒙版 / 纹理 / 内边距）
+                           "panel_image", "panel_slice", "panel_tint",
+                           "panel_fade", "panel_fade_bottom", "panel_texture",
+                           "panel_texture_alpha", "panel_alpha", "pad_x", "pad_y")
     _UI_DESIGN_CHOICES_KEYS = ("width", "row_height", "dialog_gap", "radius")
     _UI_DESIGN_QUICKBAR_KEYS = ("button_width", "button_height", "gap", "margin_x",
                                 "margin_y", "alpha", "radius", "position", "align", "icons")
@@ -1058,7 +1173,14 @@ class _EditorHandler(BaseHTTPRequestHandler):
                 dlg = dict((cfg.get("dialogue") or {}).get("default") or {})
                 for k in self._UI_DESIGN_DLG_KEYS:
                     if k in dlg_patch:
-                        dlg[k] = dlg_patch[k]
+                        ok, val = _clean_dialogue_value(k, dlg_patch[k])
+                        if not ok:
+                            continue
+                        # P53：None（如 panel_tint）= 清掉覆盖，回落引擎默认
+                        if val is None:
+                            dlg.pop(k, None)
+                        else:
+                            dlg[k] = val
                 cfg.setdefault("dialogue", {})["default"] = dlg
             # ui 段下嵌套组：choices/quickbar/menu/settings
             ui = dict(cfg.get("ui") or {})
@@ -1241,6 +1363,47 @@ class _EditorHandler(BaseHTTPRequestHandler):
         self.send_header("Content-Length", str(len(png)))
         self.end_headers()
         self.wfile.write(png)
+
+    def _ui_design_export_textbox(self, parsed=None) -> None:
+        """P53：把当前对话框设计导出成成品 textbox.png，写进项目 images/。
+
+        产出的是「资产」不是「配置」——可以直接当 panel_image 回填，
+        也可以拿去给其它引擎/PS 流程用（尺寸按画布宽 × 面板高，与引擎同帧一致）。
+        """
+        data = self._read_json()
+        dlg_patch = data.get("dialogue")
+        ui_patch = data.get("ui")
+        dlg_patch = dlg_patch if isinstance(dlg_patch, dict) else {}
+        ui_patch = ui_patch if isinstance(ui_patch, dict) else {}
+        root = str(getattr(self.app, "project_root", "") or "")
+        if not root:
+            self._send_json(400, {"ok": False, "message": "还没打开工程，无法导出"})
+            return
+        raw_name = str(data.get("name") or "").strip() or "textbox_export"
+        if not re.fullmatch(r"[\w\-]{1,40}", raw_name):
+            self._send_json(400, {"ok": False,
+                                  "message": "导出名只能含字母/数字/下划线/短横线"})
+            return
+        try:
+            cfg = _load_project_config(root) or {}
+            size = cfg.get("canvas_size") or [1280, 720]
+            width = int(size[0]) if isinstance(size, (list, tuple)) and size else 1280
+            png = _textbox_png(root, dlg_patch, ui_patch, width, None)
+        except Exception as e:   # noqa: BLE001 - 统一回给前端一句人话
+            self._send_json(500, {"ok": False, "message": f"导出面板失败：{e}"})
+            return
+        out_dir = os.path.join(root, "images")
+        try:
+            os.makedirs(out_dir, exist_ok=True)
+            path = os.path.join(out_dir, raw_name + ".png")
+            with open(path, "wb") as f:
+                f.write(png)
+        except OSError as e:
+            self._send_json(500, {"ok": False, "message": f"写入图片失败：{e}"})
+            return
+        self._send_json(200, {"ok": True, "path": path, "name": raw_name,
+                              "url": "/api/asset/images/" + raw_name,
+                              "bytes": len(png), "width": width})
 
     def _get_asset(self, path: str) -> None:
         """读单个素材字节（缩略图/试听）。

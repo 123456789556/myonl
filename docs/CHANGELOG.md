@@ -2,6 +2,18 @@
 
 > 只记 release 级变化，一句话 + 证据链接。单项细节见 git 历史（原 archive/ 已删除）。
 
+## 2026-11-15（对话框皮肤：一张图自适应 + 画布可视化 + 反导出成品）
+
+**为什么不是「贴一张 textbox.png」**：主流教程（Ren'Py + Photopea）的做法是固定尺寸 PNG 整张替换，面板尺寸或分辨率一变就变形。MYONL 改为「一张 PNG 按九宫格切片自适应」：四角不缩放、边与中段拉伸，渐变蒙版与图案填充由引擎计算（不用回 PS 重做），编辑器里可直接在画布上拖位置/高度，最后还能把当前设计**导出成成品 `textbox.png`**（可当 `panel_image`，也能给别的引擎用）。
+
+**引擎**：新增 `engine/dialog_skin.py`（纯函数：切边归一 / 九宫格 / 垂直渐变 / 乘法染色 / 纹理平铺 / 合成 / 缓存 / 纯色兜底）；`config.dialogue.default` 新增 10 个皮肤键（`panel_image / panel_slice / panel_tint / panel_fade / panel_fade_bottom / panel_texture / panel_texture_alpha / panel_alpha / pad_x / pad_y`），**全部留空 = 与旧版逐像素一致**，老工程零变化；1080p 边距等比缩放对列表值同样生效。
+
+**编辑器**：新增「对话框皮肤」页签（5 套预设、九宫格四边、顶部/底部羽化、纹理强度、内边距、素材下拉）、预览画布拖拽（拖本体改纵向位置、拖上边缘改高度）、`POST /api/ui-design/export-textbox` 落盘 `images/<名>.png`（导出名清洗，`../evil` 返回 400）。
+
+**示例素材**：`tools/p53_sample_skins.py` 生成 `games/教程示例/images/textbox.png`（640×170 玻璃面板）与 `paper.png`（64×64 可平铺纸纹），九宫格拉伸对照图 `screenshots/p53-dialog-skin.png`。
+
+**证据**：`tests/test_p53_dialog_skin.py` 24 条（纯函数 / 配置合并 / 渲染 / 白名单清洗 / 导出尺寸 / 端到端 HTTP 写回与落盘 / 前端接线）；全量 `pytest -q -m "not slow"` 1033 passed + 1 skipped；pyright 112 = 基线；engine 覆盖率 80%+ 通过；说明文档 `docs/变更说明-P53-对话框皮肤.md`。
+
 ## 2026-11-10（发行与门面收口 / P0：英文区域 Windows 打包被打断）
 
 **P0 修复：英文区域 Windows 上「打包」直接失败**。GitHub `windows-latest` runner 是英文区域，控制台编码 cp1252；`engine/packaging.py` 打包第一步 `print("开始打包：…")` 抛 `UnicodeEncodeError: 'charmap' codec can't encode characters`，流程在产物写出之前就中断，用户看到的是「打包失败」。修复：新增 `packaging.ensure_tolerant_console()`（只把 stdout/stderr 的编码错误处理降级为 `replace`，不改编码、不碰产物、不碰已写入的 UTF-8 文件），在 `pack_project()` 入口与 `pack.py main()` 各调用一次。证据：`PYTHONIOENCODING=cp1252` 复现——修复前 exit 1（栈顶 `packaging.py:427`），修复后 exit 0、产物 22.77 MB；CI 侧同源证据 = run `42353120797` 第 5 步 `FAIL 'charmap' codec`，前 4 步（解压 / 开编辑器 / 改一句 / 运行预览）全绿。新增 `tests/test_console_encoding.py` 4 条守护（含「不加保护确实会崩」的前提用例、中文控制台原样输出、stdout 为 `None` 的冻结窗口场景）。

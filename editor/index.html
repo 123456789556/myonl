@@ -431,7 +431,7 @@
       <div class="modal-hint" style="margin-top:0">调整游戏内各分组 UI 的几何、间距与配色，右侧实时预览（按当前分组渲染）。保存后写回当前项目的 <b>config.json</b>（只改这里列出的键，其余配置原样保留）；「界面开关」写入 <b>settings.json</b> 作为玩家默认值。</div>
       <div class="ui-design-tabs" id="uidTabs">
         <button class="uid-tab active" data-scene="dialog" data-panel="uidPanelDlg">对话框</button>
-        <button class="uid-tab" data-scene="dialog" data-panel="uidPanelName">名字框</button>
+        <button class="uid-tab" data-scene="dialog" data-panel="uidPanelName">名字框</button><button class="uid-tab" data-scene="dialog" data-panel="uidPanelSkin">对话框皮肤</button>
         <button class="uid-tab" data-scene="choices" data-panel="uidPanelChoice">选项按钮</button>
         <button class="uid-tab" data-scene="quickbar" data-panel="uidPanelQuick">快捷栏</button>
         <button class="uid-tab" data-scene="menu" data-panel="uidPanelMenu">游戏内菜单</button>
@@ -462,6 +462,8 @@
             <div class="ui-dl row"><span>名字与正文间距（name_gap）</span>
               <input id="uidNameGap" type="range" min="0" max="40" step="1"><span class="uid-val" id="uidNameGapVal">8</span></div>
           </div>
+          <!-- P53 对话框皮肤：控件由 editor_uidesign.js 注入（保持入口文件行数目标） -->
+          <div class="uid-panel" id="uidPanelSkin" style="display:none"></div>
           <!-- 选项按钮 -->
           <div class="uid-panel" id="uidPanelChoice" style="display:none">
             <div class="ui-dl row"><span>行宽（width）</span>
@@ -536,18 +538,15 @@
           </div>
           <div class="modal-actions" style="margin-top:12px">
             <button class="icon-btn" id="uidReset" title="Reset to Default · 恢复引擎默认 UI 尺寸">恢复引擎默认</button>
-            <button class="icon-btn" id="uidClose" title="Close · 关闭 UI 设计面板">关闭</button>
+            <button class="icon-btn" id="uidClose" title="Close · 关闭 UI 设计面板">关闭</button><button class="icon-btn" id="uidExport" title="把当前对话框设计导出成成品 PNG，写进项目 images/">导出 textbox.png</button>
             <button id="uidSave">保存到项目配置</button>
           </div>
           <div class="modal-err" id="uidErr"></div>
           <div class="modal-hint" id="uidPathHint"></div>
         </div>
         <div class="ui-design-preview">
-          <div class="uid-preview-head">
-            <span>实时预览（按当前分组渲染，与引擎同帧）</span>
-            <button type="button" class="icon-btn" id="uidZoom" title="放大预览（Esc 关闭）">⤢ 放大</button>
-          </div>
-          <div class="preview-img-wrap" id="uidPreviewWrap"><div class="preview-placeholder">调节参数后自动预览</div></div>
+          <div class="uid-preview-head"><span>实时预览（按当前分组渲染，与引擎同帧）</span><button type="button" class="icon-btn" id="uidZoom" title="放大预览（Esc 关闭）">⤢ 放大</button></div>
+          <div class="preview-img-wrap" id="uidPreviewWrap"><div class="preview-placeholder" id="uidPreviewHint">调节参数后自动预览</div></div>
         </div>
       </div>
     </div>

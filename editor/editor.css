@@ -1739,3 +1739,19 @@ input[type="color"] {
   .menubar .mb-brand, .menubar .mb-search .mb-kbd { display: none; }
   .menubar .mb-search { min-width: 120px; flex: 1 1 120px; margin-left: 8px; }
 }
+
+/* P53：对话框皮肤——预览画布上的拖拽热区 + 预设库（深色底、蓝色主色） */
+.uid-stage { position: relative; width: 100%; display: none; }
+.uid-stage.on { display: block; }
+.uid-stage img { width: 100%; height: auto; display: block; cursor: zoom-in; border-radius: var(--r-md); }
+.uid-drag-body { position: absolute; display: none; cursor: move; border-radius: 6px; outline: 1px dashed rgba(137, 180, 250, 0.55); }
+.uid-stage.on .uid-drag-body { display: block; }
+.uid-drag-body:hover { outline-color: var(--blue); background: rgba(137, 180, 250, 0.10); }
+.uid-drag-body.dragging, .uid-drag-edge.dragging { outline: 1px solid var(--blue); background: rgba(137, 180, 250, 0.16); }
+.uid-drag-edge { position: absolute; left: 0; right: 0; height: 12px; display: none; cursor: ns-resize; }
+.uid-stage.on .uid-drag-edge { display: block; }
+.uid-drag-edge::before { content: ""; position: absolute; left: 50%; top: 3px; width: 46px; height: 4px; transform: translateX(-50%); border-radius: 2px; background: var(--blue); opacity: 0.85; }
+.uid-presets { display: flex; flex-wrap: wrap; gap: var(--sp-2); margin: 8px 0 10px; }
+.uid-preset { padding: 5px 10px; border-radius: var(--r-sm); border: 1px solid var(--surface0); background: var(--mantle); color: var(--text); font-size: 12px; cursor: pointer; }
+.uid-preset:hover { border-color: var(--blue); color: var(--blue); }
+.uid-preset.active { border-color: var(--blue); background: rgba(137, 180, 250, 0.14); color: var(--blue); }

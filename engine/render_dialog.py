@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING, Any
 
 import pygame
 
-from . import richtext
+from . import dialog_skin, richtext
 from .render_utils import (
     CHOICE_ROW_HEIGHT,
 )
@@ -53,6 +53,7 @@ class DialogMixin:
         _ui_hidden: Any
         _voice_busy: Any
         _reduce_effects: Any
+        _load_image: Any
 
     def _tw_visible_len(self) -> int:
         """打字机全文的可视字符数（P46：富文本标记不占字数；纯文本与原 len 一致）。"""
@@ -225,7 +226,8 @@ class DialogMixin:
         else:
             height = int(dlg.get("height", 180))
             top = h - height
-            margin = int(dlg.get("margin", 24))
+            # P53：贴图皮肤可另加左右内边距（pad_x），默认 0 与旧版完全一致
+            margin = int(dlg.get("margin", 24)) + int(dlg.get("pad_x", 0) or 0)
             line_gap = 0
         # P51：玩家可调几何——布局与绘制共用同一偏移（off_x/off_y）
         off_x = int(dlg.get("offset_x", 0))
@@ -247,8 +249,9 @@ class DialogMixin:
         if kind == "nvl":
             start_y = top + int(dlg.get("narration_y", 16))
         else:
+            # P53：贴图皮肤的纵向上内边距（pad_y）同名字行与正文一起下移，默认 0
             start_y = top + int(dlg.get("name_y", 12)) + self._font.get_height() \
-                + int(dlg.get("name_gap", 8))
+                + int(dlg.get("name_gap", 8)) + int(dlg.get("pad_y", 0) or 0)
         # P46：折行按去标记纯文本计算（与旧版式一致），样式由 rich 行逐片段绘制
         lines = self._wrap_text_cached(richtext.strip(shown), self._font, w - margin * 2)
         rich = self._rich_segments(shown, lines)
@@ -285,6 +288,17 @@ class DialogMixin:
     def _dialog_top(self) -> int:
         """对话框顶 y：跟随 config dialogue.default.height（P0-1，选项/UI 区域边界同源）。"""
         return self.size[1] - int(self.config.dialogue("default").get("height", 180))
+
+    def _dialog_skin_surface(self, dlg: dict, rect) -> pygame.Surface | None:
+        """P53：按 panel_* 配置合成对话框贴图面板；没配图/图缺失返回 None（走旧路径）。
+
+        合成与缓存在 dialog_skin.surface_for 里做：本层只提供素材加载与像素化开关。
+        """
+        cache = getattr(self, "_skin_cache", None)
+        if cache is None:
+            cache = self._skin_cache = {}
+        return dialog_skin.surface_for(dlg, rect.width, rect.height, self._load_image,
+                                       bool(self.config.pixelated()), cache)
 
     def _draw_dialog(self, history, characters, pending) -> None:
         w, h = self.size
@@ -331,14 +345,19 @@ class DialogMixin:
             off_y = int(dlg.get("offset_y", 0))
             pw = int(dlg.get("panel_width", 0))
             pixel_scale = self.config.pixel_scale()
-            if radius > 0:
+            # P53：贴图与圆角面板共用同一块矩形几何
+            if pw > 0:
+                pw = max(0, min(pw, w))
+                rect = pygame.Rect((w - pw) // 2 + off_x, top + off_y, pw, height - 8)
+            else:
+                rect = pygame.Rect(18 + off_x, top + off_y, w - 36, height - 8)
+            skin = self._dialog_skin_surface(dlg, rect)
+            if skin is not None:
+                # P53：贴图皮肤（九宫格 + 渐变 + 纹理）——自行画的面板，无阴影/描边
+                self._screen.blit(skin, rect.topleft)
+            elif radius > 0:
                 # P44-D 轻量化：默认无边框的圆角面板，只有鼠标悬停时才显示状态边框
                 # P51：像素化面板（低分辨率+NEAREST）；玩家偏移/宽度作用于面板矩形
-                if pw > 0:
-                    pw = max(0, min(pw, w))
-                    rect = pygame.Rect((w - pw) // 2 + off_x, top + off_y, pw, height - 8)
-                else:
-                    rect = pygame.Rect(18 + off_x, top + off_y, w - 36, height - 8)
                 shadow_rect = rect.move(4, 6)
                 shadow = self._rounded_panel(
                     shadow_rect, self.config.theme_color("shadow"), 70, radius,
@@ -391,7 +410,8 @@ class DialogMixin:
         # P44-D：角色名纯文本、无外框，固定在该说话栏左上角（nvl 为全屏栏左上）
         if char is not None:
             name_y = (int(dlg.get("top", 200)) - line_h) if kind == "nvl" else \
-                (h - int(dlg.get("height", 180)) + int(dlg.get("name_y", 12)))
+                (h - int(dlg.get("height", 180)) + int(dlg.get("name_y", 12))
+                 + int(dlg.get("pad_y", 0) or 0))
             self._draw_text_with_shadow(str(char), self._font, layout["name_color"],
                                         (margin, name_y))
         # P46：正文按 config 对齐（left 顶格默认 / center / right），旁白与角色台词同规范；

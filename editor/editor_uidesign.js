@@ -29,6 +29,13 @@
     {id: "uidOffsetY", key: "offset_y", section: "dialogue"},
     {id: "uidPanelWidth", key: "panel_width", section: "dialogue"},
     {id: "uidHeight", key: "height", section: "dialogue"},
+    // P53 对话框皮肤（贴图九宫格 / 渐变蒙版 / 纹理 / 内边距）
+    {id: "uidPanelFade", key: "panel_fade", section: "dialogue"},
+    {id: "uidFadeBottom", key: "panel_fade_bottom", section: "dialogue"},
+    {id: "uidPanelAlpha", key: "panel_alpha", section: "dialogue"},
+    {id: "uidTexAlpha", key: "panel_texture_alpha", section: "dialogue"},
+    {id: "uidPadX", key: "pad_x", section: "dialogue"},
+    {id: "uidPadY", key: "pad_y", section: "dialogue"},
     // 名字框（dialogue.default）
     {id: "uidNameY", key: "name_y", section: "dialogue"},
     {id: "uidNameGap", key: "name_gap", section: "dialogue"},
@@ -79,8 +86,19 @@
     {id: "uidThemeSuccess", key: "success"},
   ];
 
-  function rgbToHex(v) {
-    const arr = Array.isArray(v) && v.length >= 3 ? v : [255, 255, 255];
+  // P53：皮肤控件——九宫格四边合成 panel_slice 数组，贴图/纹理是字符串键
+  const UID_SKIN_SLICE_IDS = ["uidSliceL", "uidSliceT", "uidSliceR", "uidSliceB"];
+  const UID_SKIN_STR_IDS = {"uidPanelImage": "panel_image", "uidPanelTexture": "panel_texture"};
+  function uidNum(id) { const el = $(id); return el ? Number(el.value) || 0 : 0; }
+  function uidSetRange(id, v) {
+    const el = $(id);
+    if (!el) return;
+    el.value = String(v == null ? 0 : v);
+    const valEl = $(id + "Val");
+    if (valEl) valEl.textContent = el.value;
+  }
+
+  function rgbToHex(v) {    const arr = Array.isArray(v) && v.length >= 3 ? v : [255, 255, 255];
     const h = (n) => Math.max(0, Math.min(255, Math.round(Number(n) || 0)))
       .toString(16).padStart(2, "0");
     return "#" + h(arr[0]) + h(arr[1]) + h(arr[2]);
@@ -171,6 +189,12 @@
         ? null
         : hexToRgb(el ? el.value : "#ffffff");
     }
+    // P53：皮肤——九宫格四边合成 [左,上,右,下]，贴图/纹理名去空白
+    out.dialogue.panel_slice = UID_SKIN_SLICE_IDS.map((id) => uidNum(id));
+    for (const [id, key] of Object.entries(UID_SKIN_STR_IDS)) {
+      const el = $(id);
+      out.dialogue[key] = el ? String(el.value || "").trim() : "";
+    }
     // 1080p 预设：画布尺寸（顶层 canvas_size，保存后下一帧生效）
     const cv = $("uidCanvas");
     if (cv) {
@@ -225,6 +249,15 @@
       const sec = data[f.section] || {};
       set(f.id, sec[f.key], f.isBool, f.isString);
     }
+    // P53：九宫格四边（单值 → 四边同宽；数组 → 逐边回填）
+    const slice = (data.dialogue && data.dialogue.panel_slice != null)
+      ? data.dialogue.panel_slice : 0;
+    const sliceArr = Array.isArray(slice) ? slice : [slice, slice, slice, slice];
+    UID_SKIN_SLICE_IDS.forEach((id, i) => uidSetRange(id, Number(sliceArr[i]) || 0));
+    for (const [id, key] of Object.entries(UID_SKIN_STR_IDS)) {
+      const el = $(id);
+      if (el) el.value = String((data.dialogue && data.dialogue[key]) || "");
+    }
     // 画布尺寸（含非预设值时临时加一项，避免下拉显示空白）
     // 配色：GET 一定返回 theme；恢复默认时另走 uidThemeDefaults
     if (data.theme) {
@@ -263,6 +296,81 @@
 
   let lastPreviewUrl = "";   // 保留当前预览 blob，供「放大」复用
 
+  // ===== P53：画布拖拽（预览图即画布，拖对话框改位置/高度，不用填数字） =====
+  function uidCanvasSize() {
+    const raw = ($("uidCanvas") && $("uidCanvas").value) || "1280x720";
+    const parts = String(raw).split("x");
+    return [parseInt(parts[0], 10) || 1280, parseInt(parts[1], 10) || 720];
+  }
+
+  function uidPanelRect() {
+    const [cw, ch] = uidCanvasSize();
+    const height = Math.max(40, uidNum("uidHeight"));
+    const offX = uidNum("uidOffsetX");
+    const offY = uidNum("uidOffsetY");
+    const pw = uidNum("uidPanelWidth");
+    const w = pw > 0 ? Math.min(pw, cw) : cw - 36;
+    const left = pw > 0 ? (cw - w) / 2 + offX : 18 + offX;
+    return {left, top: ch - height + offY, w, h: Math.max(1, height - 8), cw, ch};
+  }
+
+  function uidPositionStage() {
+    const body = $("uidDragBody");
+    const edge = $("uidDragTop");
+    if (!body || !edge) return;
+    if (uidScene !== "dialog") { body.style.display = "none"; edge.style.display = "none"; return; }
+    body.style.display = "";
+    edge.style.display = "";
+    const r = uidPanelRect();
+    const px = (v, base) => (v / base) * 100 + "%";
+    body.style.left = px(r.left, r.cw);
+    body.style.top = px(r.top, r.ch);
+    body.style.width = px(r.w, r.cw);
+    body.style.height = px(r.h, r.ch);
+    edge.style.left = px(r.left, r.cw);
+    edge.style.width = px(r.w, r.cw);
+    edge.style.top = px(r.top, r.ch);
+  }
+
+  let uidDrag = null;
+
+  function uidDragStart(mode, e) {
+    const stage = $("uidStage");
+    if (!stage || uidScene !== "dialog") return;
+    const box = stage.getBoundingClientRect();
+    if (!box.height) return;
+    e.preventDefault();
+    uidDrag = {
+      mode, y: e.clientY, off0: uidNum("uidOffsetY"), h0: uidNum("uidHeight"),
+      stageH: box.height, ch: uidCanvasSize()[1],
+    };
+    document.body.style.userSelect = "none";
+  }
+
+  function uidDragMove(e) {
+    if (!uidDrag) return;
+    const dy = ((e.clientY - uidDrag.y) / uidDrag.stageH) * uidDrag.ch;
+    if (uidDrag.mode === "move") {
+      const v = Math.max(-160, Math.min(160, uidDrag.off0 + dy));
+      uidSetRange("uidOffsetY", Math.round(v / 2) * 2);
+    } else {
+      const v = Math.max(100, Math.min(400, uidDrag.h0 - dy));
+      uidSetRange("uidHeight", Math.round(v / 4) * 4);
+    }
+    uidPositionStage();
+    uidSchedulePreview();
+  }
+
+  function uidDragEnd() {
+    if (!uidDrag) return;
+    uidDrag = null;
+    document.body.style.userSelect = "";
+    const b = $("uidDragBody");
+    const t = $("uidDragTop");
+    if (b) b.classList.remove("dragging");
+    if (t) t.classList.remove("dragging");
+  }
+
   async function uidPreview() {
     const payload = uidGetConfig();
     payload.scene = uidScene;
@@ -278,18 +386,26 @@
       if (lastPreviewUrl) { try { URL.revokeObjectURL(lastPreviewUrl); } catch (e) {} }
       const url = URL.createObjectURL(blob);
       lastPreviewUrl = url;
-      const img = new Image();
-      img.alt = "UI 设计预览";
-      img.src = url;
-      img.title = "点击放大";
-      $("uidPreviewWrap").innerHTML = "";
-      $("uidPreviewWrap").appendChild(img);
+      const img = $("uidStageImg");
+      if (img) {
+        img.alt = "UI 设计预览";
+        img.title = "点击放大";
+        img.src = url;
+      }
+      const stage = $("uidStage");
+      if (stage) stage.classList.add("on");
+      const hint = $("uidPreviewHint");
+      if (hint) hint.style.display = "none";
       const zoomImg = $("uidZoomImg");
       if (zoomImg && $("uidZoomMask") && $("uidZoomMask").style.display !== "none") {
         zoomImg.src = url;   // 放大状态下调参数也能实时更新
       }
+      uidPositionStage();
     } catch (e) {
-      $("uidPreviewWrap").innerHTML = `<div class="preview-placeholder">预览失败：${e}</div>`;
+      const stage = $("uidStage");
+      if (stage) stage.classList.remove("on");
+      const hint = $("uidPreviewHint");
+      if (hint) { hint.style.display = ""; hint.textContent = "预览失败：" + e; }
     }
   }
 
@@ -313,13 +429,15 @@
     document.querySelectorAll(".uid-panel").forEach(p => { p.style.display = "none"; });
     if (panel) panel.style.display = "block";
     uidScene = tabEl.dataset.scene;
+    uidPositionStage();
     uidSchedulePreview();
   }
 
   async function openUIDesign() {
     $("uidErr").textContent = "";
     $("uidPathHint").textContent = "";
-    $("uidPreviewWrap").innerHTML = `<div class="preview-placeholder">加载中…</div>`;
+    const hint = $("uidPreviewHint");
+    if (hint) { hint.style.display = ""; hint.textContent = "加载中…"; }
     try {
       const resp = await fetch("/api/ui-design");
       const data = await resp.json();
@@ -328,6 +446,7 @@
       uidThemeCleared = new Set();
       uidApplyLoaded(data);
       $("uiDesignModal").style.display = "flex";
+      uidLoadImageNames();
       // 打开时回到对话框分组，预览对话框场景
       const firstTab = document.querySelector("#uidTabs .uid-tab");
       if (firstTab) uidSelectTab(firstTab);
@@ -335,6 +454,149 @@
     } catch (e) {
       $("uidErr").textContent = "读取 UI 配置失败：" + e;
       $("uiDesignModal").style.display = "flex";
+    }
+  }
+
+  // P53：贴图/纹理候选来自项目素材库（只列文件名）
+  async function uidLoadImageNames() {
+    const list = $("uidImageList");
+    if (!list) return;
+    try {
+      const resp = await fetch("/api/assets");
+      const data = await resp.json();
+      const names = ((data.assets || {}).images) || [];
+      list.innerHTML = names.map((n) =>
+        '<option value="' + String(n) + '"></option>').join("");
+    } catch (e) { /* 素材库读不到不影响设计面板 */ }
+  }
+
+  // P53：预设库——一键套一组参数，不用一个个拖滑杆
+  const UID_PRESETS = [
+    {name: "极简无框", dlg: {radius: 0, height: 170, panel_width: 0, offset_x: 0,
+      offset_y: 0, panel_image: "", panel_slice: [0, 0, 0, 0], panel_fade: 50,
+      panel_fade_bottom: 0, panel_alpha: 150, panel_texture: "",
+      panel_texture_alpha: 0, pad_x: 8, pad_y: 0}},
+    {name: "玻璃卡片", dlg: {radius: 18, height: 200, panel_width: 1080, offset_x: 0,
+      offset_y: -20, panel_image: "", panel_slice: [0, 0, 0, 0], panel_fade: 0,
+      panel_alpha: 215, pad_x: 14, pad_y: 6}},
+    {name: "贴图九宫格", dlg: {panel_image: "textbox", panel_slice: [28, 12, 28, 12],
+      panel_fade: 0, panel_fade_bottom: 0, panel_alpha: 255, panel_texture_alpha: 0,
+      pad_x: 10, pad_y: 4}},
+    {name: "纸张纹理", dlg: {radius: 12, height: 190, panel_width: 0, panel_texture: "paper",
+      panel_texture_alpha: 90, panel_alpha: 230, panel_fade: 0, pad_x: 10, pad_y: 4}},
+    {name: "电影字幕", dlg: {radius: 0, height: 150, panel_width: 0, offset_y: 0,
+      panel_image: "", panel_fade: 70, panel_fade_bottom: 0, panel_alpha: 170,
+      panel_texture_alpha: 0, pad_x: 0, pad_y: 0}},
+  ];
+
+  // P53：皮肤分页控件与预览画布结构由 JS 注入（入口 HTML 保持精简，行数门禁不变）
+  function uidBuildSkinControls() {
+    const box = $("uidPanelSkin");
+    if (!box) return;
+    const range = (id, key, max, label) =>
+      '<div class="ui-dl row"><span>' + label + "（" + key + '）</span>' +
+      '<input id="' + id + '" type="range" min="0" max="' + max + '" step="' +
+      (max > 200 ? "1" : "2") + '"><span class="uid-val" id="' + id + 'Val">0</span></div>';
+    box.innerHTML =
+      '<div class="modal-hint" style="margin-top:0">别人的做法是「一张固定尺寸 PNG 整张替换」；' +
+      "这里是「一张 PNG 按九宫格自适应」——四角不拉伸、边与中段拉伸，分辨率或面板尺寸一变也不变形。" +
+      "渐变与纹理在引擎里叠加，不用回 PS 重做图。</div>" +
+      '<div class="uid-presets" id="uidSkinPresets"></div>' +
+      '<div class="ui-dl row"><span>贴图（panel_image）</span>' +
+      '<input id="uidPanelImage" type="text" list="uidImageList" ' +
+      'placeholder="textbox（留空 = 引擎绘制）">' +
+      '<datalist id="uidImageList"></datalist></div>' +
+      range("uidSliceL", "slice 左", 200, "九宫格 左") +
+      range("uidSliceT", "slice 上", 200, "九宫格 上") +
+      range("uidSliceR", "slice 右", 200, "九宫格 右") +
+      range("uidSliceB", "slice 下", 200, "九宫格 下") +
+      range("uidPanelFade", "panel_fade", 120, "顶部渐变羽化") +
+      range("uidFadeBottom", "panel_fade_bottom", 120, "底部渐变羽化") +
+      range("uidPanelAlpha", "panel_alpha", 255, "面板不透明度") +
+      '<div class="ui-dl row"><span>纹理（panel_texture）</span>' +
+      '<input id="uidPanelTexture" type="text" list="uidImageList" ' +
+      'placeholder="paper（留空 = 不叠）"></div>' +
+      range("uidTexAlpha", "panel_texture_alpha", 255, "纹理强度") +
+      range("uidPadX", "pad_x", 140, "左右内边距") +
+      range("uidPadY", "pad_y", 80, "内部上边距");
+  }
+
+  function uidBuildStage() {
+    const wrap = $("uidPreviewWrap");
+    if (!wrap || $("uidStage")) return;
+    wrap.insertAdjacentHTML("afterbegin",
+      '<div class="uid-stage" id="uidStage">' +
+      '<img id="uidStageImg" alt="UI 设计预览" title="点击放大">' +
+      '<div class="uid-drag-body" id="uidDragBody" title="拖动：上下移动对话框"></div>' +
+      '<div class="uid-drag-edge" id="uidDragTop" title="拖上边缘：改对话框高度"></div>' +
+      "</div>");
+  }
+  uidBuildSkinControls();
+  uidBuildStage();
+
+  function uidIdForKey(key) {
+    for (const f of UID_FIELDS) {
+      if (f.key === key) return f.id;
+    }
+    for (const [id, k] of Object.entries(UID_SKIN_STR_IDS)) {
+      if (k === key) return id;
+    }
+    return "";
+  }
+
+  function uidApplyPreset(preset) {
+    for (const [key, val] of Object.entries((preset && preset.dlg) || {})) {
+      if (key === "panel_slice") {
+        const arr = Array.isArray(val) ? val : [val, val, val, val];
+        UID_SKIN_SLICE_IDS.forEach((id, i) => uidSetRange(id, Number(arr[i]) || 0));
+        continue;
+      }
+      const id = uidIdForKey(key);
+      const el = id ? $(id) : null;
+      if (!el) continue;
+      if (el.tagName === "SELECT") el.value = String(val);
+      else if (el.type === "range") uidSetRange(id, val);
+      else el.value = String(val);
+    }
+    uidPositionStage();
+    uidSchedulePreview();
+    toast("已套用预设：" + (preset ? preset.name : ""));
+  }
+
+  function uidBuildSkinPanel() {
+    const box = $("uidSkinPresets");
+    if (!box) return;
+    box.innerHTML = UID_PRESETS.map((p, i) =>
+      '<button type="button" class="uid-preset" data-preset="' + i + '">' + p.name +
+      "</button>").join("");
+    box.addEventListener("click", (e) => {
+      const t = e.target.closest(".uid-preset");
+      if (!t) return;
+      box.querySelectorAll(".uid-preset").forEach((b) => b.classList.remove("active"));
+      t.classList.add("active");
+      uidApplyPreset(UID_PRESETS[Number(t.dataset.preset)] || UID_PRESETS[0]);
+    });
+  }
+  uidBuildSkinPanel();
+
+  // P53：导出成品面板 PNG（写进项目 images/，可直接当 panel_image 回填，
+  // 也能拿去给其它引擎/工具用——产出的是资产，不是配置）
+  async function uidExportTextbox() {
+    $("uidErr").textContent = "";
+    try {
+      const payload = uidGetConfig();
+      const raw = String((payload.dialogue && payload.dialogue.panel_image) || "").trim();
+      payload.name = (raw || "textbox_export").replace(/[^\w-]/g, "_");
+      const resp = await postJSON("/api/ui-design/export-textbox", payload);
+      if (!resp.ok) {
+        $("uidErr").textContent = resp.message || "导出失败";
+        return;
+      }
+      $("uidPathHint").textContent = "已导出：" + (resp.path || "") +
+        "（可直接当 panel_image，也给别的引擎用）";
+      toast("已导出成品面板 PNG");
+    } catch (e) {
+      $("uidErr").textContent = "导出请求失败：" + e;
     }
   }
 
@@ -365,7 +627,11 @@
     uidApplyLoaded({
       ui: {pixelated: true, pixel_scale: 4, corner_radius: 10},
       dialogue: {radius: 10, offset_x: 0, offset_y: 0, panel_width: 0, height: 180,
-                 name_y: 12, name_gap: 8},
+                 name_y: 12, name_gap: 8,
+                 // P53：皮肤回到「无贴图」——引擎绘制的圆角面板，旧行为
+                 panel_image: "", panel_slice: 0, panel_tint: null,
+                 panel_fade: 0, panel_fade_bottom: 0, panel_texture: "",
+                 panel_texture_alpha: 0, panel_alpha: 255, pad_x: 0, pad_y: 0},
       choices: {width: 420, row_height: 52, dialog_gap: 40, radius: 8},
       quickbar: {button_width: 64, button_height: 26, gap: 8, margin_x: 24,
                  margin_y: 10, alpha: 185, radius: 15, position: "bottom", align: "right"},
@@ -437,4 +703,38 @@
       uidSchedulePreview();
     });
   }
+
+  // ===== P53：皮肤控件接线（九宫格四边 / 贴图名 / 纹理名 / 导出按钮） =====
+  UID_SKIN_SLICE_IDS.concat(Object.keys(UID_SKIN_STR_IDS)).forEach((id) => {
+    const el = $(id);
+    if (!el) return;
+    const onChange = () => {
+      const valEl = $(id + "Val");
+      if (valEl) valEl.textContent = el.value;
+      uidSchedulePreview();
+    };
+    el.addEventListener("input", onChange);
+    el.addEventListener("change", onChange);
+  });
+  const uidExportBtn = $("uidExport");
+  if (uidExportBtn) uidExportBtn.addEventListener("click", uidExportTextbox);
+
+  // 画布拖拽：拖对话框本体 = 上下移动；拖上边缘 = 改高度
+  const uidDragBodyEl = $("uidDragBody");
+  const uidDragTopEl = $("uidDragTop");
+  if (uidDragBodyEl) {
+    uidDragBodyEl.addEventListener("mousedown", (e) => {
+      uidDragBodyEl.classList.add("dragging");
+      uidDragStart("move", e);
+    });
+    uidDragBodyEl.addEventListener("click", (e) => e.stopPropagation());
+  }
+  if (uidDragTopEl) {
+    uidDragTopEl.addEventListener("mousedown", (e) => {
+      uidDragTopEl.classList.add("dragging");
+      uidDragStart("resize", e);
+    });
+  }
+  document.addEventListener("mousemove", uidDragMove);
+  document.addEventListener("mouseup", uidDragEnd);
 })();

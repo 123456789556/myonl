@@ -154,6 +154,19 @@ DEFAULTS = {
                 "symbol_size": 10,
                 "full_width": True,
             },
+            # P53 对话框皮肤（可选）：不填 = 引擎画的圆角/渐变面板，行为与旧版一致。
+            # 填了 panel_image 就改走「贴图 + 九宫格」路径——同一张 PNG 任意宽高不变形，
+            # 渐变与纹理由引擎叠加，不用回 PS 重新做图。
+            "panel_image": "",       # 贴图名（images/<名>.png，如 "textbox"）
+            "panel_slice": 0,        # 九宫格四边：单值四边同宽，或 [左,上,右,下]
+            "panel_tint": None,      # 染色 [r,g,b]（乘法）；None/缺省 = 不改色
+            "panel_fade": 0,         # 顶部渐变羽化（像素，0=不羽化）
+            "panel_fade_bottom": 0,  # 底部渐变羽化（像素）
+            "panel_texture": "",     # 纹理图名（平铺叠加，模拟「图案填充」）
+            "panel_texture_alpha": 0,  # 纹理强度（0=不叠）
+            "panel_alpha": 255,      # 整块面板不透明度
+            "pad_x": 0,              # 贴图附加的左右文字内边距
+            "pad_y": 0,              # 贴图附加的纵向上内边距
         },
         "nvl": {              # NVL 旁白：整屏文字，无底部条
             "bg_alpha": 90,   # 全屏半透明底
@@ -237,7 +250,12 @@ _DIALOGUE_SCALE_KEYS = frozenset({
     "height", "margin", "border_width", "radius", "offset_x", "offset_y",
     "panel_width", "name_y", "name_gap", "narration_y", "top", "bottom",
     "line_gap", "capture_height", "line_height", "symbol_size",
+    # P53 皮肤：贴图九宫格四边、渐变羽化、文字内边距，同样是像素几何
+    "panel_slice", "panel_fade", "panel_fade_bottom", "pad_x", "pad_y",
 })
+
+# P53 皮肤：接受列表值的键（九宫格四边 / 染色 RGB），其余列表值不落盘
+_DIALOGUE_LIST_KEYS = frozenset({"panel_slice", "panel_tint"})
 
 
 def _scale_dialogue_geometry(node: dict, scale: float) -> dict:
@@ -246,8 +264,13 @@ def _scale_dialogue_geometry(node: dict, scale: float) -> dict:
         return node
     out = {}
     for key, val in node.items():
-        if key in _DIALOGUE_SCALE_KEYS and isinstance(val, (int, float)) and not isinstance(val, bool):
+        if (key in _DIALOGUE_SCALE_KEYS and isinstance(val, (int, float))
+                and not isinstance(val, bool)):
             out[key] = int(round(val * scale))
+        elif (key in _DIALOGUE_SCALE_KEYS and isinstance(val, (list, tuple))
+              and val and all(isinstance(v, (int, float)) and not isinstance(v, bool)
+                              for v in val)):
+            out[key] = [int(round(float(v) * scale)) for v in val]
         elif isinstance(val, dict):
             out[key] = _scale_dialogue_geometry(val, scale)
         else:
@@ -445,6 +468,11 @@ class Config:
             elif isinstance(base_val, dict) and isinstance(val, dict):
                 # 嵌套字典（如 curtain）深度合并
                 out[key] = _deep_merge(base_val, val)
+            # P53 皮肤：九宫格四边 [l,t,r,b] 与染色 [r,g,b] 是列表值，逐项转 int
+            elif (key in _DIALOGUE_LIST_KEYS and isinstance(val, (list, tuple))
+                  and val and all(isinstance(v, (int, float)) and not isinstance(v, bool)
+                                  for v in val)):
+                out[key] = [int(v) for v in val]
             elif isinstance(val, (int, float)) and not isinstance(val, bool):
                 out[key] = int(val)
         return _scale_dialogue_geometry(out, self.ui_scale())
