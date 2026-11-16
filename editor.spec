@@ -30,6 +30,11 @@ datas += [
 # 引擎自带素材与空包模板：缺了它，发行包里「新建游戏」拿不到内置背景/立绘/音效，
 # 新建出来的工程就是白板（用户反馈：素材只在别的示例工程里）。
 datas += [(os.path.join(ROOT, "engine", "templates"), "engine/templates")]
+# P54：手机版播放器（导出手机版要把它拷进产物目录；漏了发行包里就导出失败）
+datas += [
+    (os.path.join(ROOT, "web", name), "web")
+    for name in ("myonl-core.js", "myonl-layout.js", "myonl-player.js")
+]
 # 桌宠分层素材：发行版 editor.exe --pet 与源码版必须是同一只 Mooki（缺图会退回代码绘制）
 datas += [(os.path.join(ROOT, "brand", "mooki_layers"), "brand/mooki_layers")]
 datas += collect_data_files("pythonnet")
@@ -50,6 +55,7 @@ hiddenimports = [
     "engine.newgame",
     "engine.expr",
     "engine.ui",
+    "engine.webpack",   # P54：导出手机版（懒加载，frozen 下必须显式声明）
     "engine.pet",   # 桌宠（编辑器实验功能；frozen 时 editor.exe --pet 启动，不进游戏包）
 ]
 

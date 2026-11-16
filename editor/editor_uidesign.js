@@ -544,6 +544,56 @@
       range("uidPadY", "pad_y", 80, "内部上边距");
   }
 
+  // P54：手机版导出放在弹窗底部（不是皮肤页签里）——切页签也不影响它，作者不会找不到
+  function uidBuildWebExport() {
+    const hint = $("uidPathHint");
+    if (!hint || $("uidExportWeb")) return;
+    hint.insertAdjacentHTML("afterend",
+      '<div class="uid-web"><div class="modal-hint" style="margin-top:0">手机版：把当前工程编成静态网页包，' +
+      "手机竖屏、横屏都能跑（转屏自动重排），整包可上传 itch.io 或任意静态托管。</div>" +
+      '<div class="ui-dl row"><span>手机版（H5）</span>' +
+      '<button type="button" class="btn" id="uidExportWeb">导出手机版</button>' +
+      '<span class="uid-val" id="uidExportWebMsg"></span></div></div>');
+    const btn = $("uidExportWeb");
+    if (btn) btn.addEventListener("click", uidExportWeb);
+  }
+  uidBuildWebExport();
+
+  // P54：导出手机版（竖屏 / 横屏都能跑）——产物落在 <发行根>/web/<工程名>，
+  // 后端同时把目录挂到 /web-preview/ 上，点一下就能在浏览器里真跑一遍
+  async function uidExportWeb() {
+    const btn = $("uidExportWeb");
+    const msg = $("uidExportWebMsg");
+    if (!btn || !msg) return;
+    btn.disabled = true;
+    msg.textContent = "编译中…";
+    try {
+      const resp = await postJSON("/api/export-web", {});
+      if (!resp.ok) { msg.textContent = resp.message || "导出失败"; return; }
+      const url = new URL(resp.url, window.location.href).href;
+      msg.innerHTML = "";
+      const a = document.createElement("a");
+      a.href = url;
+      a.target = "_blank";
+      a.rel = "noopener";
+      a.textContent = "打开手机版预览";
+      msg.appendChild(a);
+      msg.appendChild(document.createTextNode(
+        "（" + (resp.instructions || 0) + " 条指令 / " + (resp.images || 0) + " 张素材）"));
+      const notes = [];
+      if (resp.missing && resp.missing.length) notes.push("缺素材：" + resp.missing.join("、"));
+      if (resp.unsupported && resp.unsupported.length) {
+        notes.push("桌面有、手机端暂不支持：" + resp.unsupported.join("、"));
+      }
+      if (notes.length) msg.appendChild(document.createTextNode("　" + notes.join("；")));
+      toast("已导出手机版（竖屏 / 横屏都能跑）");
+    } catch (e) {
+      msg.textContent = "导出请求失败：" + e;
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
   function uidBuildStage() {
     const wrap = $("uidPreviewWrap");
     if (!wrap || $("uidStage")) return;

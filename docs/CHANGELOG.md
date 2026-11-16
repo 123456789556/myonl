@@ -2,6 +2,22 @@
 
 > 只记 release 级变化，一句话 + 证据链接。单项细节见 git 历史（原 archive/ 已删除）。
 
+## 2026-11-16（手机版：同一个工程编成 H5，竖屏横屏都能跑）
+
+**为什么**：Ren'Py 的出口是桌面，出不了竖屏 H5、上不了 itch.io 网页区和微信/抖音小游戏。所以把「手机播放器」做成正式出口，而不是给 Ren'Py 老用户做桌面平替。
+
+**分工是硬约束**：Python 端只当**编译器**（剧本语法只有 `engine/parser.py` 一份）→ 出 `pack.json`；JS 端只当**播放器**（执行同一套 IR，不实现语法）。以后包微信/抖音小游戏只是给播放器加壳。
+
+**新增**：`engine/webpack.py`（`build_web()` + `py -3 -m engine.webpack`，只拷剧本真正引用到的图，缺素材记 `missing` 不硬失败）；`web/myonl-core.js`（IR 执行器 + 变量插值/比较/存档/未知指令不崩）；`web/myonl-layout.js`（布局纯函数：短边 1080、长宽按真实窗口比例、字号按短边、极端比例夹 0.42~2.2）；`web/myonl-player.js`（canvas 背景/立绘/面板/打字机/选项/标题/结局，面板高度随台词行数，皮肤沿用 P53 九宫格语义）。
+
+**编辑器**：「界面设计」弹窗新增**导出手机版**按钮 → `POST /api/export-web` 编到 `<发行根>/web/<工程名>/`，并把产物挂到 `GET /web-preview/...` 供浏览器直接跑（路径 realpath 前缀校验，`../` 被拒）。
+
+**转屏**：监听 `resize`/`orientationchange` 重算画布并重排台词，已显示字数按比例续上（不重播、不跳字）；横竖屏字号差 ≤4px。
+
+**证据**：`web/test/vm-smoke.js`、`web/test/layout-smoke.js` node 全通过；`tools/web_shot.py` 在真实 Chromium 里竖屏 390×844 与横屏 844×390 各跑一遍剧情并断言首句/立绘/选项/分支/转屏/自动存档；`tests/test_webpack.py` 11 条（编译器 + node 冒烟 + 编辑器导出与越界防护）；`pytest -q -m "not slow"` **1047 passed + 1 skipped**；pyright **112 = 基线**；说明 `docs/变更说明-P54-手机版.md`。
+
+**未做（如实记）**：音频（`@music/@play/@stop` 归 unsupported）、多存档槽、历史回看/快进、立绘位移参数、微信/抖音小游戏封装。
+
 ## 2026-11-15（对话框皮肤：一张图自适应 + 画布可视化 + 反导出成品）
 
 **为什么不是「贴一张 textbox.png」**：主流教程（Ren'Py + Photopea）的做法是固定尺寸 PNG 整张替换，面板尺寸或分辨率一变就变形。MYONL 改为「一张 PNG 按九宫格切片自适应」：四角不缩放、边与中段拉伸，渐变蒙版与图案填充由引擎计算（不用回 PS 重做），编辑器里可直接在画布上拖位置/高度，最后还能把当前设计**导出成成品 `textbox.png`**（可当 `panel_image`，也能给别的引擎用）。

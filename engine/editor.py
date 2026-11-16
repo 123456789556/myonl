@@ -705,6 +705,7 @@ class _EditorHandler(BaseHTTPRequestHandler):
         ("POST", "/api/ui-design"): "_ui_design_set",
         ("POST", "/api/ui-design/preview"): "_ui_design_preview",
         ("POST", "/api/ui-design/export-textbox"): "_ui_design_export_textbox",
+        ("POST", "/api/export-web"): "_export_web",
         # 桌宠（实验）：start / stop / status（源码模式可用；发行包后续接入）
         ("POST", "/api/pet"): "_pet_control",
         ("GET", "/api/complete"): "_complete",
@@ -786,6 +787,9 @@ class _EditorHandler(BaseHTTPRequestHandler):
         parsed = urlparse(self.path)
         if parsed.path.startswith("/api/asset/"):
             self._get_asset(parsed.path)
+            return
+        if parsed.path.startswith("/web-preview/"):
+            self._serve_web_preview(parsed.path)
             return
         self._dispatch("GET", parsed)
 
@@ -1417,6 +1421,77 @@ class _EditorHandler(BaseHTTPRequestHandler):
         self._send_json(200, {"ok": True, "path": path, "name": raw_name,
                               "url": "/api/asset/images/" + raw_name,
                               "bytes": len(png), "width": width})
+
+    def _export_web(self, parsed=None) -> None:
+        """P54：把当前工程编译成「手机网页包」（竖屏/横屏都能跑）。
+
+        和打包 exe 是两条腿：exe 给桌面、静态网页包给手机和 itch.io 这类平台。
+        编译器在 engine/webpack.py，播放器在 web/，这里只负责串起来 + 给个预览地址。
+        """
+        from . import webpack as webpack_mod
+
+        data = self._read_json()
+        root = str(getattr(self.app, "project_root", "") or "")
+        if not root or not os.path.isdir(root):
+            self._send_json(400, {"ok": False, "message": "还没打开工程，无法导出"})
+            return
+        folder = os.path.basename(os.path.normpath(root))
+        pack_root_fn = getattr(self.app, "pack_root", None)   # 类型上 app 可能是 None
+        if not callable(pack_root_fn):
+            self._send_json(500, {"ok": False, "message": "编辑器没有发行根，无法导出"})
+            return
+        out = os.path.join(str(pack_root_fn()), "dist", "web", folder)
+        title = str(data.get("title") or "").strip()
+        try:
+            stat = webpack_mod.build_web(root, out, title=title)
+        except Exception as e:   # noqa: BLE001 — 统一回一句人话
+            self._send_json(500, {"ok": False, "message": f"导出手机版失败：{e}"})
+            return
+        self._send_json(200, {
+            "ok": True,
+            "out": stat["out"],
+            "url": "/web-preview/" + folder + "/index.html",
+            "instructions": stat["instructions"],
+            "images": stat["images"],
+            "missing": stat["missing"],
+            "unsupported": stat["unsupported"],
+        })
+
+    def _serve_web_preview(self, path: str) -> None:
+        """服务「导出手机版」的产物目录，让作者点一下就真在浏览器里跑起来。
+
+        只认 /web-preview/<工程文件夹>/<相对路径>，且整条路径必须落在
+        <pack_root>/web 里，防止 ../ 之类的越界读取。
+        """
+        rel = path[len("/web-preview/"):]
+        pack_root_fn = getattr(self.app, "pack_root", None)
+        base = os.path.join(str(pack_root_fn()) if callable(pack_root_fn) else "", "dist", "web")
+        try:
+            target = _safe_within(base, unquote(rel))
+        except ValueError:
+            self._send_json(400, {"error": "预览路径不合法"})
+            return
+        if not os.path.isfile(target):
+            self._send_json(404, {"error": "预览文件不存在，先点一次「导出手机版」"})
+            return
+        ext = os.path.splitext(target)[1].lower()
+        mime = {".html": "text/html; charset=utf-8", ".js": "text/javascript; charset=utf-8",
+                ".json": "application/json; charset=utf-8", ".png": "image/png",
+                ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".webp": "image/webp",
+                ".ogg": "audio/ogg", ".mp3": "audio/mpeg", ".wav": "audio/wav"}.get(
+                    ext, "application/octet-stream")
+        try:
+            with open(target, "rb") as f:
+                body = f.read()
+        except OSError as e:
+            self._send_json(500, {"error": f"读预览文件失败：{e}"})
+            return
+        self.send_response(200)
+        self.send_header("Content-Type", mime)
+        self.send_header("Content-Length", str(len(body)))
+        self.send_header("Cache-Control", "no-store")
+        self.end_headers()
+        self.wfile.write(body)
 
     def _get_asset(self, path: str) -> None:
         """读单个素材字节（缩略图/试听）。
