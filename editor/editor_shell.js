@@ -658,11 +658,16 @@
   var keybarEl = null;
   var KB_KEYS = [
     ["at", "@", "@", null],
+    ["bg", "@bg", "@bg ", null],
+    ["show", "@show", "@show ", null],
+    ["chapter", "@chapter", "@chapter ", null],
+    ["voice", "@voice", "@voice ", null],
     ["choice", "@choice:", "@choice:\n    ", null],
     ["if", "@if", "@if ", null],
     ["set", "@set", "@set ", null],
     ["label", "@label", "@label ", null],
-    ["show", "@show", "@show ", null],
+    ["transition", "@transition", "@transition ", null],
+    ["fg", "@fg", "@fg ", null],
     ["arrow", "→", "-> ", null],
     ["indent", "缩进", null, "indent"],
     ["newline", "换行", "\n", null],

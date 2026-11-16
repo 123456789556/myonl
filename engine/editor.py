@@ -521,6 +521,8 @@ _ASSET_COMPLETE = [
     (re.compile(r"^@music\s"), "audio"),
     (re.compile(r"^@sfx\s"), "audio"),
     (re.compile(r"^@voice\s"), "audio"),
+    (re.compile(r"^@fg\s"), "images"),        # P73 起 @fg 也吃图片名
+    (re.compile(r"^@cg\s"), "images"),
 ]
 _SHOW_EXPR = re.compile(r"^@show\s+(\S+)\s")  # @show 已到表情参数位置
 

@@ -18,7 +18,7 @@ from .sdl_env import dummy_video
 _DIRECTIVES = [
     "@character", "@bg", "@music", "@sfx", "@voice", "@video", "@show", "@hide",
     "@choice:", "@label", "@jump", "@if", "@elif", "@else:", "@set", "@end", "@include",
-    "@chapter",
+    "@chapter", "@fg", "@anim", "@camera", "@transition", "@plug", "@wait", "@nvl",
 ]
 
 # 扫描剧本提取角色/标签/变量名

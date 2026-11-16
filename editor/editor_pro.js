@@ -536,6 +536,7 @@
     show: "立绘", hide: "隐藏", character: "角色", label: "标签", jump: "跳转",
     set: "变量", if: "条件", choice: "选项", end: "结束", cg: "CG",
     camera: "镜头", transition: "转场", plug: "插件",
+    fg: "前景", anim: "补间", chapter: "章节",
   };
 
   function relOf(file) {
@@ -572,6 +573,18 @@
         return `条件 ${c.var || ""} ${c.op || ""} ${c.value === undefined ? "" : c.value}`;
       }
       case "choice": return "选项 " + (ins.options || []).map(o => o.text).join(" / ");
+      case "fg": {
+        const n = ins.name || "";
+        return (n === "无" || n === "none") ? "清除前景" : "前景 " + n;
+      }
+      case "anim": {
+        const tgt = ins.to === undefined ? "" : String(ins.to);
+        const secs = ins.secs === undefined ? "" : ` ${ins.secs}s`;
+        return `补间 ${ins.char || ""} ${ins.param || ""}→${tgt}${secs}`;
+      }
+      case "chapter": return "章节 " + (ins.title || "");
+      case "transition": return "转场 " + (ins.kind || "dissolve");
+      case "camera": return "镜头 " + (ins.kind || "zoom");
       case "end": return "结束";
       default: return ins.op;
     }
