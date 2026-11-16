@@ -44,8 +44,12 @@ jobs:
           distribution: temurin
           java-version: "17"
 
-      - name: 装 Android SDK
-        uses: android-actions/setup-android@v3
+      - name: 用 runner 自带 Android SDK
+        run: |
+          echo "ANDROID_HOME=$ANDROID_HOME"
+          echo "ANDROID_SDK_ROOT=$ANDROID_SDK_ROOT"
+          ls "$ANDROID_HOME/platforms" | tail -5
+          ls "$ANDROID_HOME/build-tools" | tail -5
 
       - name: 装引擎依赖
         run: |
