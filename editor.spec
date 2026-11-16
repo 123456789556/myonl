@@ -56,6 +56,7 @@ hiddenimports = [
     "engine.expr",
     "engine.ui",
     "engine.webpack",   # P54：导出手机版（懒加载，frozen 下必须显式声明）
+    "engine.portable",  # P56：导出可迁移包（同上）
     "engine.pet",   # 桌宠（编辑器实验功能；frozen 时 editor.exe --pet 启动，不进游戏包）
 ]
 

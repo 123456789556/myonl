@@ -26,7 +26,7 @@ import tempfile
 import threading
 import uuid
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
-from urllib.parse import parse_qs, unquote, urlparse
+from urllib.parse import parse_qs, quote, unquote, urlparse
 
 from . import packaging
 from .newgame import create_game
@@ -706,6 +706,7 @@ class _EditorHandler(BaseHTTPRequestHandler):
         ("POST", "/api/ui-design/preview"): "_ui_design_preview",
         ("POST", "/api/ui-design/export-textbox"): "_ui_design_export_textbox",
         ("POST", "/api/export-web"): "_export_web",
+        ("POST", "/api/export-portable"): "_export_portable",
         # 桌宠（实验）：start / stop / status（源码模式可用；发行包后续接入）
         ("POST", "/api/pet"): "_pet_control",
         ("GET", "/api/complete"): "_complete",
@@ -790,6 +791,9 @@ class _EditorHandler(BaseHTTPRequestHandler):
             return
         if parsed.path.startswith("/web-preview/"):
             self._serve_web_preview(parsed.path)
+            return
+        if parsed.path.startswith("/portable-file/"):
+            self._serve_portable_file(parsed.path)
             return
         self._dispatch("GET", parsed)
 
@@ -1456,6 +1460,94 @@ class _EditorHandler(BaseHTTPRequestHandler):
             "missing": stat["missing"],
             "unsupported": stat["unsupported"],
         })
+
+    def _export_portable(self, parsed=None) -> None:
+        """P56：把当前工程导成「别的引擎能吃的文件」（Ren'Py 工程 / 通用 JSON）。
+
+        这是防锁死的一层：作者随时可以把剧本+素材带走，不被 MYONL 自己的播放器绑住。
+        body 里 engine=renpy|json|both，默认 both。
+        """
+        import zipfile
+
+        from . import portable as portable_mod
+
+        data = self._read_json()
+        root = str(getattr(self.app, "project_root", "") or "")
+        if not root or not os.path.isdir(root):
+            self._send_json(400, {"ok": False, "message": "还没打开工程，无法导出"})
+            return
+        engine = str(data.get("engine") or "both").strip().lower()
+        if engine not in ("renpy", "json", "both"):
+            self._send_json(400, {"ok": False, "message": "engine 只能是 renpy / json / both"})
+            return
+        pack_root_fn = getattr(self.app, "pack_root", None)
+        if not callable(pack_root_fn):
+            self._send_json(500, {"ok": False, "message": "编辑器没有发行根，无法导出"})
+            return
+        folder = os.path.basename(os.path.normpath(root))
+        out = os.path.join(str(pack_root_fn()), "dist", "portable", folder)
+        try:
+            res = portable_mod.build_portable(root, out, engine=engine)
+        except Exception as e:   # noqa: BLE001 — 统一回一句人话
+            self._send_json(500, {"ok": False, "message": f"导出可迁移包失败：{e}"})
+            return
+
+        items = []
+        for stat in res["stats"]:
+            zip_path = os.path.join(str(pack_root_fn()), "dist", "portable",
+                                    f"{folder}-{stat['engine']}.zip")
+            if os.path.isfile(zip_path):
+                os.remove(zip_path)
+            with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
+                for base, _dirs, files in os.walk(stat["out"]):
+                    for name in files:
+                        full = os.path.join(base, name)
+                        arc = os.path.join(folder + "-" + stat["engine"],
+                                           os.path.relpath(full, stat["out"]))
+                        zf.write(full, arc.replace(os.sep, "/"))
+            items.append({
+                "engine": stat["engine"],
+                "out": stat["out"],
+                "zip": zip_path,
+                "zip_mb": round(os.path.getsize(zip_path) / (1024 * 1024), 2),
+                "instructions": stat["instructions"],
+                "images": stat["images"],
+                "missing": stat["missing"],
+                "unsupported": stat["unsupported"],
+                "url": "/portable-file/" + f"{folder}-{stat['engine']}.zip",
+            })
+        self._send_json(200, {"ok": True, "out": res["out"], "items": items})
+
+    def _serve_portable_file(self, path: str) -> None:
+        """下载导出的可迁移包 zip（只有 dist/portable 下的 *.zip 放行）。"""
+        rel = unquote(path[len("/portable-file/"):])
+        pack_root_fn = getattr(self.app, "pack_root", None)
+        base = os.path.join(str(pack_root_fn()) if callable(pack_root_fn) else "",
+                            "dist", "portable")
+        try:
+            target = _safe_within(base, rel)
+        except ValueError:
+            self._send_json(400, {"error": "下载路径不合法"})
+            return
+        if not target.lower().endswith(".zip") or not os.path.isfile(target):
+            self._send_json(404, {"error": "可迁移包不存在，先点一次「导出可迁移包」"})
+            return
+        try:
+            with open(target, "rb") as f:
+                body = f.read()
+        except OSError as e:
+            self._send_json(500, {"error": f"读导出包失败：{e}"})
+            return
+        self.send_response(200)
+        self.send_header("Content-Type", "application/zip")
+        self.send_header("Content-Length", str(len(body)))
+        # 中文文件名走 RFC 5987，直接塞进 filename= 会被浏览器截成空串
+        self.send_header("Content-Disposition",
+                         "attachment; filename*=UTF-8''" +
+                         quote(os.path.basename(target), safe=""))
+        self.send_header("Cache-Control", "no-store")
+        self.end_headers()
+        self.wfile.write(body)
 
     def _serve_web_preview(self, path: str) -> None:
         """服务「导出手机版」的产物目录，让作者点一下就真在浏览器里跑起来。

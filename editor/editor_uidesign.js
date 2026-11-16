@@ -544,20 +544,56 @@
       range("uidPadY", "pad_y", 80, "内部上边距");
   }
 
-  // P54：手机版导出放在弹窗底部（不是皮肤页签里）——切页签也不影响它，作者不会找不到
+  // P54/P56：手机版与可迁移包都放在弹窗底部（不是皮肤页签里）——切页签也不影响，作者不会找不到
   function uidBuildWebExport() {
     const hint = $("uidPathHint");
     if (!hint || $("uidExportWeb")) return;
     hint.insertAdjacentHTML("afterend",
-      '<div class="uid-web"><div class="modal-hint" style="margin-top:0">手机版：把当前工程编成静态网页包，' +
-      "手机竖屏、横屏都能跑（转屏自动重排），整包可上传 itch.io 或任意静态托管。</div>" +
+      '<div class="uid-web"><div class="modal-hint" style="margin-top:0">手机端：把当前工程编成静态网页包，' +
+      "竖屏横屏都能跑（转屏自动重排），整包可上传 itch.io 或任意静态托管。可迁移包：导成 Ren'Py 工程或通用 " +
+      'JSON，随时能带走、换引擎。</div>' +
       '<div class="ui-dl row"><span>手机版（H5）</span>' +
       '<button type="button" class="btn" id="uidExportWeb">导出手机版</button>' +
-      '<span class="uid-val" id="uidExportWebMsg"></span></div></div>');
+      '<span class="uid-val" id="uidExportWebMsg"></span></div>' +
+      '<div class="ui-dl row"><span>可迁移包</span>' +
+      '<button type="button" class="btn" id="uidExportPortable">导出 Ren' +
+      "'Py + JSON</button>" +
+      '<span class="uid-val" id="uidExportPortableMsg"></span></div></div>');
     const btn = $("uidExportWeb");
     if (btn) btn.addEventListener("click", uidExportWeb);
+    const btn2 = $("uidExportPortable");
+    if (btn2) btn2.addEventListener("click", uidExportPortable);
   }
   uidBuildWebExport();
+
+  // P56：导出可迁移包（Ren'Py 工程 + 通用 JSON）——产物落在 <发行根>/dist/portable/<工程名>，
+  // 每种引擎一个 zip，点链接直接下载
+  async function uidExportPortable() {
+    const btn = $("uidExportPortable");
+    const msg = $("uidExportPortableMsg");
+    if (!btn || !msg) return;
+    btn.disabled = true;
+    msg.textContent = "导出中…";
+    try {
+      const resp = await postJSON("/api/export-portable", {engine: "both"});
+      if (!resp.ok) { msg.textContent = resp.message || "导出失败"; return; }
+      msg.innerHTML = "";
+      (resp.items || []).forEach((it, i) => {
+        if (i) msg.appendChild(document.createTextNode("　"));
+        const a = document.createElement("a");
+        a.href = new URL(it.url, window.location.href).href;
+        a.textContent = it.engine === "renpy" ? "下载 Ren'Py 工程" : "下载通用 JSON";
+        msg.appendChild(a);
+        msg.appendChild(document.createTextNode(
+          "（" + (it.instructions || 0) + " 条指令 / " + (it.images || 0) + " 张素材 / " + (it.zip_mb || 0) + " MB）"));
+      });
+      toast("已导出可迁移包（Ren'Py + JSON）");
+    } catch (e) {
+      msg.textContent = "导出请求失败：" + e;
+    } finally {
+      btn.disabled = false;
+    }
+  }
 
   // P54：导出手机版（竖屏 / 横屏都能跑）——产物落在 <发行根>/web/<工程名>，
   // 后端同时把目录挂到 /web-preview/ 上，点一下就能在浏览器里真跑一遍

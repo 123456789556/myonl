@@ -2,6 +2,18 @@
 
 > 只记 release 级变化，一句话 + 证据链接。单项细节见 git 历史（原 archive/ 已删除）。
 
+## 2026-11-16（全面转手机端 + 可迁移导出：Ren'Py 工程 / 通用 JSON）
+
+**方向**：手机端 = 主线，桌面端 = 并行出口。README 首段、编辑器文案、导出按钮位置一起改口径，不只是写一句标语。
+
+**新增 `engine/portable.py`**：一个工程三种去处——`dist/web/`（H5，P54）、`dist/portable/<工程>/renpy/`（Ren'Py 工程：`game/script.rpy` + `game/images/`，解压丢进 SDK 即可跑）、`dist/portable/<工程>/json/`（`game.json` + `assets/` + 格式说明，任何引擎照表读 IR）。CLI `py -3 -m engine.portable <工程> --engine renpy|json|both`。
+
+**转换规则（重点是"不假装"）**：中文图名/label/角色统一换成 `bg1/s1/label_1/c1` ASCII 短名，原名进注释；剧本在首个 label 之前的散指令收进合成 `label start`（原 start → `start_orig` + jump）；桌面专属指令（music/video/camera/anim/transition/plug…）只进 `unsupported`，不在 .rpy 里造假效果；对话框皮肤不投影（Ren'Py 有自己的 textbox）。
+
+**编辑器**：弹窗底部两排按钮——「导出手机版」+「导出 Ren'Py + JSON」；`POST /api/export-portable`、`GET /portable-file/<名>.zip`（realpath 校验，`../` 400、非 zip 404、中文文件名走 RFC 5987）。
+
+**验证**：`tests/test_portable.py` 8 条（label 不重复 / image 都指向真图 / ASCII 化 / `@music` 不进 rpy / 缺素材进告警 / JSON 带格式说明 / 双目标 / 路由+下载+越界）；真实 Chromium 里两个按钮都点通。**未验**：Ren'Py 侧没真跑（本机无 SDK）、APK 真机安装。说明 `docs/变更说明-P56-手机化与可迁移导出.md`。
+
 ## 2026-11-16（安卓打包：Capacitor 壳 + GitHub Actions 出 APK）
 
 **为什么**：H5 包只能"用浏览器打开"，装不上桌面。安卓这层做成**壳**——网页包一行不改，塞进 Capacitor，APK 交给 GitHub Actions 的机器编（本机没有 JDK/Android SDK，也就不用装）。

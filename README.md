@@ -11,6 +11,19 @@
 写几行中文脚本，做出一部能玩、能存档、能打包的视觉小说。
 
 > **这是一个引擎工具（给创作者用），不是游戏作品**；仓库里的小样板只是可以随便改的起点。
+> **主线已经是手机端**：同一个工程 → 竖屏/横屏都能跑的网页包 → 安卓 APK；桌面端是并行出口，不是唯一出口。
+
+## 手机端优先（现在的主线）
+
+1. **写**：`script.gal` 纯文本，编辑器里左边写右边实时预览；
+2. **出手机版**：编辑器「界面设计 → 导出手机版」，编成静态网页包（`pack.json` + 播放器 + 只用到的素材），
+   竖屏 390×844 和横屏 844×390 都满屏、转屏自动重排，整包可传 itch.io 或任意静态托管；
+3. **装到安卓**：`tools/build_android.py` 套 Capacitor 壳，GitHub Actions 直接出 `app-debug.apk`
+   （`.github/workflows/android-apk.yml`，Actions 页面手动填工程即可）。
+
+**不被锁死**：编辑器「导出可迁移包」把同一个工程导成 **Ren'Py 工程**（`game/script.rpy` + 图片，
+解压丢进 Ren'Py SDK 就能跑）或**通用 JSON**（`game.json` + `assets/`，任何引擎照表实现 op 即可读）。
+
 > Windows 10 21H2+ / Windows 11 · Python 3.9+ · pygame-ce · MIT · 完全离线
 
 ![对话与选项](docs/images/dialogue-choices.jpg)
