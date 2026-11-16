@@ -2033,3 +2033,13 @@ input[type="color"] {
 .m-card-body { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
 .m-card-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .m-card-go { position: static; flex: 0 0 auto; margin-left: 4px; }
+
+/* 横屏（844×390）时引导卡别压在正文正中：靠右贴边，左边留着看剧本 */
+@media (min-width: 700px) and (max-height: 520px) {
+  .ob-card {
+    left: auto; right: 14px; bottom: calc(72px + env(safe-area-inset-bottom));
+    transform: none; width: min(400px, 62vw); max-height: 62dvh; overflow-y: auto;
+  }
+  .m-tabbar { height: calc(46px + env(safe-area-inset-bottom)); }
+  .m-tab { font-size: 13px; }
+}
