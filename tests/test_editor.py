@@ -1085,7 +1085,9 @@ def test_editor_css_抽离冒烟(server):
     status, _, raw = _get(port, "/")
     html = raw.decode("utf-8")
     assert status == 200
-    assert '<link rel="stylesheet" href="/editor.css">' in html
+    # P65 起前端资源带 ?v= 版本号（手机浏览器会缓存，改版必须换 URL 才生效）
+    assert 'href="/editor.css' in html
+    assert 'rel="manifest"' in html  # 手机端「添加到主屏幕」后全屏靠它
     assert "<style>" not in html  # 内联样式块已全部外置
 
     status, resp, raw = _get(port, "/editor.css")

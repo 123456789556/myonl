@@ -13,6 +13,10 @@ ROOT = os.path.abspath(SPECPATH)
 datas = [
     (os.path.join(ROOT, "editor", "index.html"), "editor"),
     (os.path.join(ROOT, "editor", "editor.css"), "editor"),
+    # P65：手机端 PWA（添加到主屏幕后全屏），漏带就报 500
+    (os.path.join(ROOT, "editor", "manifest.webmanifest"), "editor"),
+    (os.path.join(ROOT, "editor", "icon-192.png"), "editor"),
+    (os.path.join(ROOT, "editor", "icon-512.png"), "editor"),
 ]
 # 前端模块（拆分后的主脚本 / 场景 / 角色 / 档位）：漏掉任何一个，发行包打开编辑器即 500
 datas += [

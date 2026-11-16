@@ -476,6 +476,86 @@
       if (run) run.click();
     });
 
+    // P65：手机端底部 tab。真机上「右上 4 个浮圆按钮 + 三行顶栏」把正文挤成半屏，
+    // 改成一条纯文字 tab：剧本 / 素材 / 外观 / 预览 / 导出（不放 emoji，图标风格不统一反而乱）。
+    var tabbar = document.createElement("div");
+    tabbar.className = "m-tabbar";
+    tabbar.innerHTML =
+      '<button type="button" class="m-tab active" data-tab="script">剧本</button>' +
+      '<button type="button" class="m-tab" data-tab="assets">素材</button>' +
+      '<button type="button" class="m-tab" data-tab="look">外观</button>' +
+      '<button type="button" class="m-tab" data-tab="preview">预览</button>' +
+      '<button type="button" class="m-tab" data-tab="export">导出</button>';
+    document.body.appendChild(tabbar);
+
+    function setTab(which) {
+      tabbar.querySelectorAll(".m-tab").forEach(function (b) {
+        b.classList.toggle("active", b.dataset.tab === which);
+      });
+    }
+
+    tabbar.addEventListener("click", function (e) {
+      var btn = e.target.closest ? e.target.closest(".m-tab") : null;
+      if (!btn) return;
+      var which = btn.dataset.tab;
+      setTab(which);
+      if (which === "script") { closeDrawers(); return; }
+      if (which === "assets") { toggleDrawer("mobile-asset-open"); return; }
+      if (which === "preview") { toggleDrawer("mobile-preview-open"); return; }
+      if (which === "look") {
+        closeDrawers();
+        var ui = $("btnUIDesign");
+        if (ui) ui.click();
+        return;
+      }
+      if (which === "export") {
+        closeDrawers();
+        var ui2 = $("btnUIDesign");
+        if (ui2) ui2.click();       // 导出在「界面设计」弹窗里，手机端一步到位
+        return;
+      }
+    });
+
+    // 顶栏「⋯」：展开/收起工具条（默认收起，正文优先）
+    var mainEl2 = document.querySelector(".main") || document.body;
+    var more = document.createElement("button");
+    more.className = "icon-btn";
+    more.id = "mToolsToggle";
+    more.type = "button";
+    more.title = "展开工具条";
+    more.innerHTML = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" '
+      + 'stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">'
+      + '<circle cx="5" cy="12" r="1.4"/><circle cx="12" cy="12" r="1.4"/>'
+      + '<circle cx="19" cy="12" r="1.4"/></svg>';
+    var fsBtn = document.createElement("button");
+    fsBtn.className = "icon-btn";
+    fsBtn.id = "mFullscreen";
+    fsBtn.type = "button";
+    fsBtn.title = "全屏（隐藏浏览器工具栏）";
+    fsBtn.innerHTML = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" '
+      + 'stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true">'
+      + '<path d="M4 9V5h4M16 5h4v4M20 15v4h-4M8 19H4v-4"/></svg>';
+    var mbActs = document.querySelector(".menubar .mb-acts");
+    var anchor = mbActs || document.querySelector(".menubar");
+    if (anchor) {
+      anchor.parentNode.insertBefore(fsBtn, anchor);
+      anchor.parentNode.insertBefore(more, anchor);
+      more.addEventListener("click", function () {
+        var open = mainEl2.classList.toggle("m-tools-open");
+        more.classList.toggle("active", open);
+        more.title = open ? "收起工具条" : "展开工具条";
+        if (open) closeDrawers();
+      });
+      fsBtn.addEventListener("click", function () {
+        // 手机上「竖屏必须全屏」：进全屏后浏览器工具栏消失，视口高度才是整块屏幕。
+        var el = document.documentElement;
+        var req = el.requestFullscreen || el.webkitRequestFullscreen || el.msRequestFullscreen;
+        if (!req) return;
+        var p = req.call(el);
+        if (p && p.then) p.catch(function () {});
+      });
+    }
+
     document.addEventListener("keydown", function (e) {
       if (e.key === "Escape") closeDrawers();
     });
@@ -496,6 +576,32 @@
       });
     }
   }
+
+  // P65 诊断口：手机上的定位偏差必须靠数据判，不靠猜。
+  // 加 ?diag=1 才显示（普通用户看不到，验收脚本和真机排查用）。
+  (function setupDiag() {
+    if (location.search.indexOf("diag=1") < 0) return;
+    var d = document.createElement("div");
+    d.style.cssText = "position:fixed;left:0;top:0;z-index:9999;background:#000c;"
+      + "color:#7f7;font:11px/1.5 monospace;padding:6px;white-space:pre;pointer-events:none";
+    document.body.appendChild(d);
+    setInterval(function () {
+      var t = document.querySelector(".m-tabbar");
+      var r = t ? t.getBoundingClientRect() : null;
+      var cs = t ? getComputedStyle(t) : null;
+      d.textContent = [
+        "inner " + window.innerWidth + "x" + window.innerHeight,
+        "vv " + (window.visualViewport
+          ? Math.round(window.visualViewport.width) + "x" + Math.round(window.visualViewport.height)
+            + " s" + window.visualViewport.scale.toFixed(2) : "-"),
+        "dpr " + (window.devicePixelRatio || 1),
+        "body " + document.body.scrollHeight + " doc " + document.documentElement.scrollHeight,
+        "tab " + (r ? "top" + Math.round(r.top) + " h" + Math.round(r.height)
+          + " gap" + Math.round(window.innerHeight - r.bottom) : "-"),
+        "css " + (cs ? cs.height + " / bottom " + cs.bottom : "-"),
+      ].join("\n");
+    }, 400);
+  })();
 
   function syncMobileLayout() {
     if (mobileMQ.matches) {

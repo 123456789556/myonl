@@ -507,6 +507,21 @@
     return r && p.x >= r.x && p.x <= r.x + r.w && p.y >= r.y && p.y <= r.y + r.h;
   }
 
+  // P65：手机上「竖屏必须全屏」。点「开始」这一下是用户手势，浏览器允许进全屏；
+  // 进了全屏浏览器工具栏/地址栏才消失，画面才是整块屏幕（真机上工具栏吃掉 250px）。
+  let fsAsked = false;
+  function tryFullscreen() {
+    if (fsAsked) return;
+    fsAsked = true;
+    const el = document.documentElement;
+    const req = el.requestFullscreen || el.webkitRequestFullscreen || el.msRequestFullscreen;
+    if (!req) return;   // 桌面浏览器/被禁用时不弹窗，静默跳过
+    try {
+      const p = req.call(el);
+      if (p && p.catch) p.catch(() => {});
+    } catch (e) { /* 全屏不是必需能力，失败就算了 */ }
+  }
+
   function onTap(e) {
     e.preventDefault();
     if (state.error) return;
@@ -516,6 +531,7 @@
     if (state.scene === "game" && inRect(p, muteRect())) return toggleMute();
 
     if (state.scene === "title") {
+      tryFullscreen();
       if (state.continueRect && inRect(p, state.continueRect)) return startGame(true);
       return startGame(false);
     }

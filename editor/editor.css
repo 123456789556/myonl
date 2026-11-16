@@ -1892,4 +1892,45 @@ input[type="color"] {
   .top-bar .top-btn { flex: 0 0 auto; }
   .editor-tabs { height: 36px; }
   .status-bar { font-size: 11px; }
+
+  /* ============ P65：手机端分层 ============
+     真机实测：菜单栏 + 两排图标 + 标签页 + 面包屑 + 格式条吃掉 1/3 屏幕才轮到正文，
+     这是把桌面 IDE 硬塞进 390 宽，怎么调都是废物。改成「默认只留一行，要用的才展开」：
+     - 顶栏只留「文件」一个菜单 + 文件名 + ⋯（其余菜单和工具条都收起来）
+     - 底部一条 tab：剧本 / 素材 / 外观 / 预览 / 导出（纯文字，不放 emoji 图标）
+     - 原来右侧 4 个浮圆按钮退役（跟 tab 重复，还挡字） */
+  .editor-toolbar, #richToolbar { display: none !important; }
+  .main.m-tools-open .editor-toolbar { display: flex !important; }
+  .main.m-tools-open #richToolbar { display: flex !important; }
+  .mobile-dock { display: none !important; }
+  /* 最左活动栏（📁🗂️⚙️?）在手机上会把顶栏挤成一排图标：它的功能已由底部 tab 覆盖 */
+  .activity-bar { display: none !important; }
+  /* 手机上顶部只剩「文件」一个菜单：编辑/视图/运行/帮助的功能都在 ⋯ 工具条和 tab 里 */
+  .menubar .menu-item:not([data-menu="file"]) { display: none !important; }
+  .menubar { padding: 0 6px; gap: 2px; }
+  /* 搜索框 / 品牌字 / 面包屑在手机上只占高度，不给信息（工程路径手机上也改不了） */
+  .menubar .mb-search, .menubar .mb-brand, .breadcrumb { display: none !important; }
+  /* 新手引导卡片别压到底部 tab 上 */
+  .ob-card { bottom: calc(96px + env(safe-area-inset-bottom)) !important; }
+
+  .m-tabbar {
+    display: flex; position: fixed; left: 0; right: 0; bottom: 30px; z-index: 84;
+    background: var(--mantle); border-top: 1px solid var(--surface0);
+    padding-bottom: env(safe-area-inset-bottom);
+    height: calc(52px + env(safe-area-inset-bottom));
+  }
+  .m-tab {
+    flex: 1; display: flex; align-items: center; justify-content: center;
+    background: none; border: none; color: var(--subtext0); font-size: 14px;
+    font-family: inherit; padding: 0; cursor: pointer; position: relative;
+    transition: color .15s ease;
+  }
+  .m-tab.active { color: var(--blue); font-weight: 600; }
+  .m-tab.active::after {
+    content: ""; position: absolute; left: 50%; transform: translateX(-50%);
+    top: 0; width: 22px; height: 2px; border-radius: 2px; background: var(--blue);
+  }
+  /* tab 栏和键盘快捷条占位：让正文能滚到最后一行 */
+  .left-pane { padding-bottom: 140px; }
+  .m-keybar.show { bottom: calc(82px + env(safe-area-inset-bottom)); }
 }

@@ -1,0 +1,17 @@
+{
+  "name": "MYONL 编辑器",
+  "short_name": "MYONL",
+  "description": "在手机上做视觉小说：写剧本、导素材、看预览、导出单文件。",
+  "start_url": "/",
+  "scope": "/",
+  "display": "fullscreen",
+  "display_override": ["fullscreen", "standalone", "minimal-ui"],
+  "orientation": "any",
+  "background_color": "#0b0d14",
+  "theme_color": "#0b0d14",
+  "lang": "zh-CN",
+  "icons": [
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" }
+  ]
+}

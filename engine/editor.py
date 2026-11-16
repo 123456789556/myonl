@@ -679,6 +679,10 @@ class _EditorHandler(BaseHTTPRequestHandler):
     _ROUTES = {
         ("GET", "/"): "_serve_index",
         ("GET", "/editor.css"): "_serve_editor_css",
+        # P65：手机端要能「添加到主屏幕」后全屏（无浏览器工具栏），这是 manifest + 图标
+        ("GET", "/manifest.webmanifest"): "_serve_manifest",
+        ("GET", "/icon-192.png"): "_serve_icon192",
+        ("GET", "/icon-512.png"): "_serve_icon512",
         ("GET", "/editor_pro.js"): "_serve_pro_js",
         # 场景视图（可视化编辑）：独立模块，源码/场景互不覆盖
         ("GET", "/editor_scene.js"): "_serve_scene_js",
@@ -853,6 +857,17 @@ class _EditorHandler(BaseHTTPRequestHandler):
 
     def _serve_editor_css(self, parsed=None) -> None:
         self._serve_editor_file("editor.css", "text/css; charset=utf-8")
+
+    # ---- P65：手机端 PWA（添加到主屏幕后全屏，不显示浏览器工具栏）----
+
+    def _serve_manifest(self, parsed=None) -> None:
+        self._serve_editor_file("manifest.webmanifest", "application/manifest+json; charset=utf-8")
+
+    def _serve_icon192(self, parsed=None) -> None:
+        self._serve_editor_file("icon-192.png", "image/png")
+
+    def _serve_icon512(self, parsed=None) -> None:
+        self._serve_editor_file("icon-512.png", "image/png")
 
     def _serve_pro_js(self, parsed=None) -> None:
         self._serve_editor_file("editor_pro.js", "application/javascript; charset=utf-8")

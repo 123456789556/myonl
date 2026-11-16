@@ -2204,6 +2204,11 @@
           const note = resp.overwritten ? "（已覆盖同名文件）"
             : (resp.renamed_from ? "（重名，改存为 " + resp.name + "）" : "");
           msgs.push("已导入 " + resp.path + note);
+          // P64：手机拍的照片动辄 3–8 MB，导出成单文件会直接翻倍
+          if (category === "images" && f.size > 1536 * 1024) {
+            msgs.push("「" + resp.name + "」有 " + (f.size / 1048576).toFixed(1)
+              + " MB，发出去的单文件会跟着变大（导出时会自动缩到 1600 边内）");
+          }
           imported.push({ category, name: resp.name, path: resp.path });
           assetCat = category;
           okCount++;
@@ -2377,6 +2382,33 @@
     importFiles(assetFile.files, lastImportPoint);
     assetFile.value = "";
   });
+
+  // P64：手机素材导入。手机上「点 ＋ 选文件」和电脑不是一个手感：
+  // 相册里全是图、还常常想现场拍一张。所以窄屏多给一个「拍照」入口，
+  // 走 capture=environment 直接开相机，拍完当素材导入。
+  (function setupCaptureImport() {
+    if (!window.matchMedia("(max-width:860px)").matches) return;
+    const cam = document.createElement("input");
+    cam.type = "file";
+    cam.accept = "image/*";
+    cam.capture = "environment";
+    cam.style.display = "none";
+    cam.id = "assetCam";
+    document.body.appendChild(cam);
+    const anchor = $("assetImportBtn");
+    if (!anchor || !anchor.parentNode) return;
+    const btn = document.createElement("button");
+    btn.className = "icon-btn";
+    btn.id = "assetCamBtn";
+    btn.title = "拍一张当素材";
+    btn.textContent = "◉";
+    anchor.parentNode.insertBefore(btn, anchor.nextSibling);
+    btn.addEventListener("click", () => cam.click());
+    cam.addEventListener("change", () => {
+      importFiles(cam.files, lastImportPoint);
+      cam.value = "";
+    });
+  })();
   $("assetRefresh").addEventListener("click", refreshAssets);
   $("assetCollapse").addEventListener("click", () => setAssetOpen(false));
 
@@ -3071,19 +3103,37 @@
       target: "previewWrap" },
   ];
 
+  // P65：手机上不是三列，前面那套「左边/中间/右边」的说明对不上界面，得换一套。
+  const OB_STEPS_MOBILE = [
+    { title: "底部五个 tab",
+      desc: "剧本：写台词；素材：放图和音乐；外观：调对话框长什么样；预览：直接在手机里试玩；导出：得到一个 html，发给谁都能打开。",
+      target: "m-tabbar" },
+    { title: "写第一行",
+      desc: "每行以 @ 开头。旁白写「@ 放学后的教室只剩两个人。」，角色台词写「@[林晚] 你还不走？」。",
+      target: "source", insert: "@ 主角 你好。" },
+    { title: "看效果 / 发出去",
+      desc: "点底部「预览」试玩；满意了点「导出」，选「导出一个文件」，手机里存成 html，微信/浏览器都能打开。",
+      target: "m-tabbar" },
+  ];
+  const obSteps = () => (
+    window.matchMedia && window.matchMedia("(max-width:860px)").matches
+      ? OB_STEPS_MOBILE : OB_STEPS
+  );
+
   function obMarkDone() {
     try { localStorage.setItem(OB_KEY, "1"); localStorage.setItem("gal_welcome_done", "1"); } catch (e) {}
   }
   // T3：首次启动弹一次欢迎卡（沿用本引导 obCard）；「帮助 → 新手引导」可随时重开。
 
   function obRender() {
-    const s = OB_STEPS[obStep];
+    const steps = obSteps();
+    const s = steps[obStep];
     obCard.dataset.step = String(obStep + 1);
-    obStepTag.textContent = `第 ${obStep + 1} / ${OB_STEPS.length} 步`;
+    obStepTag.textContent = `第 ${obStep + 1} / ${steps.length} 步`;
     obTitle.textContent = s.title;
     obDesc.textContent = s.desc;
     obPrev.style.visibility = obStep === 0 ? "hidden" : "visible";
-    obNext.textContent = obStep === OB_STEPS.length - 1 ? "完成" : "下一步";
+    obNext.textContent = obStep === steps.length - 1 ? "完成" : "下一步";
     if (s.insert && !source.value.includes(s.insert)) {
       const ins = (source.value && !source.value.endsWith("\n") ? "\n" : "") + s.insert + "\n";
       setSourceValue(source.value + ins, source.value.length + ins.length, source.value.length + ins.length);
@@ -3124,7 +3174,7 @@
   obSkip.addEventListener("click", () => obClose(true));
   obPrev.addEventListener("click", () => { if (obStep > 0) { obStep--; obRender(); } });
   obNext.addEventListener("click", () => {
-    if (obStep < OB_STEPS.length - 1) { obStep++; obRender(); } else { obClose(true); }
+    if (obStep < obSteps().length - 1) { obStep++; obRender(); } else { obClose(true); }
   });
   window.addEventListener("resize", () => { if (obCard.style.display !== "none") obRender(); });
   $("btnGuide").addEventListener("click", () => {
