@@ -127,6 +127,14 @@
     bg: "",
     cg: "",                // P63：全屏 CG 名（空 = 没在放）
     sprites: [],
+    fg: null,              // P73：@fg 前景贴图
+    anim: {},              // P73：@anim 补间（逐参数插值，绘制时才取当前值）
+    video: null,           // P73：@video 帧序列背景
+    pendingVoice: "",      // P73：@voice 等下一句台词一起播
+    trans: null,           // P73：@transition 待用于下一张背景
+    transMode: "dissolve", // 正在播的转场方式
+    transDir: "左",
+    chapter: null,         // P73：@chapter 章节卡 {title, until}
     waitUntil: 0,
     ended: false,
     continueRect: null,
@@ -293,6 +301,27 @@
     if (p && p.catch) p.catch(() => {});
   }
 
+  // 语音通道（P73）：单独一条，换句时把上一条掐掉，别两句话叠着响
+  let voiceAudio = null;
+  function stopVoice() {
+    if (voiceAudio) {
+      try { voiceAudio.pause(); } catch (e) { /* 已结束就算了 */ }
+      voiceAudio = null;
+    }
+  }
+  function playVoice(name) {
+    stopVoice();
+    if (!name) return;
+    const src = audioSrc(name);
+    if (!src) { console.warn("[MYONL] 找不到语音：" + name); return; }
+    const a = new Audio(src);
+    a.volume = Math.min(1, bgmVolume + 0.15);   // 语音比 BGM 稍微响一点
+    if (!audioOn) a.muted = true;
+    const p = a.play();
+    if (p && p.catch) p.catch(() => { /* 自动播放被拦就静默 */ });
+    voiceAudio = a;
+  }
+
   // 右上角喇叭：逻辑坐标下 ~43 个屏幕像素，游戏内常驻
   function muteRect() {
     const s = Math.min(160, Math.max(60, Math.round(Math.min(L.viewW, L.viewH) * 0.11)));
@@ -396,13 +425,36 @@
         if (state.bg && state.bg !== (ev.image || "")) {
           state.fadeFromBg = state.bg;          // 记下旧背景做交叉淡入
           state.fadeT0 = performance.now();
-          state.fadeDur = 280;
+          const tr = state.trans;
+          state.trans = null;                  // 只对紧接着这一张生效
+          if (tr && tr.kind === "dissolve") {
+            state.fadeDur = Math.max(120, (Number(tr.args[0]) || 0.3) * 1000);
+            state.transMode = "dissolve";
+          } else if (tr && (tr.kind === "wipe" || tr.kind === "slide")) {
+            state.fadeDur = Math.max(120, (Number(tr.args[1]) || 0.3) * 1000);
+            state.transMode = tr.kind;
+            state.transDir = tr.args[0] || "左";
+          } else {
+            state.fadeDur = 280;               // 没写 @transition：默认短淡入
+            state.transMode = "dissolve";
+          }
         }
         state.bg = ev.image || "";
         state.cg = "";          // 切回背景：CG 退场
+        state.video = null;     // 视频背景也停（和桌面端 @bg 清 video 一致）
         break;
       case "cg":
         state.cg = ev.name || "";
+        break;
+      case "fg":
+        state.fg = ev.fg || null;
+        break;
+      case "anim":
+        state.anim = Object.assign({}, vm.state.anim);
+        break;
+      case "video":
+        state.video = {name: ev.name || "", fps: ev.fps || 24,
+                       t0: performance.now()};
         break;
       case "camera":
         applyCamera(ev.kind || "", ev.args || []);
@@ -412,11 +464,26 @@
         state.sprites = (ev.sprites || []).slice();
         break;
       case "say":
+        stopVoice();                                  // 换句就掐掉上一句语音
         state.say = ev;
         ctx.font = `${L.fs}px ${FACE}`;
         state.lines = wrap(ev.text, L.textW);
         state.typeStart = performance.now();
         state.typedBefore = 0;
+        break;
+      case "voice":
+        // @voice 写在台词后面（parser 只允许紧跟台词），执行顺序也是 say → voice
+        playVoice(ev.sound || "");
+        break;
+      case "chapter":
+        state.chapter = {title: ev.title || "", t0: performance.now(),
+                         dur: Math.max(400, (Number(ev.secs) || 2) * 1000)};
+        state.waitUntil = state.chapter.t0 + state.chapter.dur;
+        break;
+      case "transition":
+        // 记下"下一张背景怎么进场"，@bg 时才用得上
+        state.trans = {kind: ev.kind || "dissolve",
+                       args: (ev.args || []).slice()};
         break;
       case "choice":
         state.choice = ev.options || [];
@@ -449,7 +516,8 @@
       applyEvent(ev);
       if (!ev) break;
       if (ev.type === "say" || ev.type === "choice" ||
-          ev.type === "wait" || ev.type === "end") break;
+          ev.type === "wait" || ev.type === "end" ||
+          ev.type === "chapter") break;   // 章节卡是独立演出，别让台词抢在它前面出来
     }
   }
 
@@ -485,10 +553,13 @@
       vm.restart();
       try { localStorage.removeItem(saveKey()); } catch (e) { /* ignore */ }
     }
-    // 读档后补一次"当前画面"：让 bg/立绘/CG/镜头先对上，再继续推进
+    // 读档后补一次"当前画面"：让 bg/立绘/CG/镜头/前景先对上，再继续推进
     state.bg = vm.state.bg || "";
     state.cg = vm.state.cg || "";
     state.sprites = (vm.state.sprites || []).slice();
+    state.fg = vm.state.fg || null;
+    state.anim = vm.state.anim || {};
+    state.video = vm.state.video || null;
     const zoom = Number(vm.state.cameraZoom) || 1;
     if (zoom !== cam.zoom && zoom !== 1) {
       cam.zoomFrom = cam.zoom; cam.zoomTo = zoom;
@@ -533,6 +604,8 @@
     const p = point(e);
 
     if (UI.open) return onMenuTap(p);
+    // 章节卡 / @wait 期间不响应翻页（这是演出节奏，不是玩家该跳过的）
+    if (state.waitUntil > performance.now()) return;
     // 菜单键在喇叭左边：点它开菜单，不翻页
     if (state.scene === "game" && inRect(p, menuRect())) return openMenu();
 
@@ -606,7 +679,40 @@
     }
   }
 
+  // ---------- 帧序列背景（P73）----------
+  // @video 名 fps= → images/videos/名_001.png 起连续编号，按 fps 循环播。
+  // 帧图懒加载；还没加载完就把上一帧继续贴着，避免黑一下。
+  const videoCache = {};
+  function videoFrameImg() {
+    const v = state.video;
+    if (!v || !v.name) return null;
+    const seq = (pack && pack.videos && pack.videos[v.name]) || null;
+    if (!seq || !seq.length) return null;
+    const fps = v.fps > 0 ? v.fps : 24;
+    const len = seq.length;
+    const raw = Math.floor(((performance.now() - (v.t0 || 0)) / 1000) * fps);
+    const idx = ((raw % len) + len) % len;
+    const key = v.name + "#" + idx;
+    let img = videoCache[key];
+    if (!img) {
+      img = new Image();
+      img.src = seq[idx];
+      videoCache[key] = img;
+    }
+    if (img.complete && img.naturalWidth) return img;
+    for (let d = 1; d < len; d++) {
+      const prev = videoCache[v.name + "#" + ((idx - d + len) % len)];
+      if (prev && prev.complete && prev.naturalWidth) return prev;
+    }
+    return null;
+  }
+
   function drawBackground() {
+    // @video 帧序列在的话，它先顶上背景位置（静态 bg 被它盖住，和桌面端一致）
+    if (state.video) {
+      const frameImg = videoFrameImg();
+      if (frameImg) { blitCover(frameImg, 1); return; }
+    }
     // 交叉淡入：旧背景先铺满，新背景按进度盖上去 —— 硬切太生硬
     let t = 1;
     if (state.fadeDur > 0) {
@@ -617,7 +723,25 @@
     const img = state.bg && assets[state.bg];
     if (prev && t < 1) blitCover(prev, 1);
     if (img) {
-      blitCover(img, prev && t < 1 ? t : 1);
+      // @transition wipe / slide：新图按方向推进来；dissolve 就是普通淡入
+      const mode = state.transMode || "dissolve";
+      if (prev && t < 1 && mode !== "dissolve") {
+        ctx.save();
+        ctx.beginPath();
+        const dir = state.transDir || "左";
+        if (dir === "左" || dir === "右") {
+          const w = L.viewW * t;
+          ctx.rect(dir === "左" ? 0 : L.viewW - w, 0, w, L.viewH);
+        } else {
+          const h = L.viewH * t;
+          ctx.rect(0, dir === "上" ? 0 : L.viewH - h, L.viewW, h);
+        }
+        ctx.clip();
+        blitCover(img, 1);
+        ctx.restore();
+      } else {
+        blitCover(img, prev && t < 1 ? t : 1);
+      }
       return;
     }
     const g = ctx.createLinearGradient(0, 0, 0, L.viewH);
@@ -630,21 +754,66 @@
     ctx.restore();
   }
 
+  // @anim 的当前显示值：逐参数补间取进度。@anim 的 x/y 是「1280 宽基准的像素」，
+  // 和桌面端同一套数字，所以这里除缩放系数后面统一换算。
+  function animDisp(char) {
+    const out = {x: 0, y: 0, alpha: 1, scale: 1};
+    const rec = state.anim && state.anim[char];
+    if (!rec) return out;
+    const now = performance.now();
+    for (const p in rec) {
+      if (!(p in out)) continue;
+      const a = rec[p];
+      const k = a.secs > 0 ? Math.max(0, Math.min(1, (now - a.t0) / (a.secs * 1000))) : 1;
+      out[p] = a.from + (a.to - a.from) * k;
+    }
+    return out;
+  }
+
   function drawSprites() {
     const list = state.sprites || [];
     if (!list.length) return;
     const n = list.length;
     const baseH = L.spriteH;
+    const k = L.viewW / 1280;   // 剧本里的像素值以桌面 1280 为基准
     list.forEach((sp, i) => {
       const key = sp.expr ? `${sp.char}_${sp.expr}` : sp.char;
       const img = assets[key] || assets[sp.char];
       if (!img) return;
-      const h = baseH;
+      const disp = animDisp(sp.char);
+      const h = baseH * (disp.scale > 0 ? disp.scale : 1);
       const w = img.width * (h / img.height);
       const slotW = L.viewW / n;
-      const cx = slotW * (i + 0.5);
-      ctx.drawImage(img, cx - w / 2, L.viewH - h, w, h);
+      const cx = slotW * (i + 0.5) + disp.x * k;
+      const bottom = L.viewH + disp.y * k;
+      const alpha = Math.max(0, Math.min(1, disp.alpha));
+      if (alpha <= 0) return;
+      if (alpha < 1) ctx.globalAlpha = alpha;
+      ctx.drawImage(img, cx - w / 2, bottom - h, w, h);
+      if (alpha < 1) ctx.globalAlpha = 1;
     });
+  }
+
+  // ---------- 前景贴图（P73）----------
+  // @fg 是压在场景最上的一层（桌面端在立绘/CG 之上、UI 之下），常用于雨雪、光效、
+  // 蒙版这类整屏 PNG。x/y 同样是 1280 基准像素；alpha 是整层透明度。
+  // 竖屏下不能像桌面 720p 那样原样贴（1280×720 按宽缩到手机宽只剩顶上一小条），
+  // 所以这里 cover 铺满再居中裁，x/y 仍按 1280 基准当偏移用。
+  function drawFg() {
+    const fg = state.fg;
+    if (!fg || !fg.name) return;
+    const img = assets[fg.name];
+    if (!img) return;
+    const k = L.viewW / 1280;
+    const a = Math.max(0, Math.min(1, fg.alpha === undefined ? 1 : fg.alpha));
+    if (a <= 0) return;
+    const s = Math.max(L.viewW / img.width, L.viewH / img.height);
+    const w = img.width * s;
+    const h = img.height * s;
+    if (a < 1) ctx.globalAlpha = a;
+    ctx.drawImage(img, (L.viewW - w) / 2 + (fg.x || 0) * k,
+                  (L.viewH - h) / 2 + (fg.y || 0) * k, w, h);
+    if (a < 1) ctx.globalAlpha = 1;
   }
 
   // ---------- CG（P63）----------
@@ -1058,7 +1227,43 @@
     drawBackground();
     drawSprites();
     drawCg();
+    drawFg();
     ctx.restore();
+  }
+
+  // ---------- 章节卡（P73）----------
+  // @chapter 标题 [秒数]：黑场 + 居中大标题，淡入淡出，播完自动继续。
+  function drawChapter() {
+    const c = state.chapter;
+    if (!c) return;
+    const el = (performance.now() - c.t0) / c.dur;
+    if (el >= 1) { state.chapter = null; return; }
+    const fade = 0.16;
+    const a = el < fade ? el / fade : (el > 1 - fade ? (1 - el) / fade : 1);
+    const W = L.viewW;
+    const H = L.viewH;
+    ctx.save();
+    ctx.globalAlpha = Math.max(0, Math.min(1, a));
+    ctx.fillStyle = "#08090f";
+    ctx.fillRect(0, 0, W, H);
+    const fs = Math.round(Math.min(W, H) * 0.075);
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillStyle = "#f4f6ff";
+    ctx.font = `600 ${fs}px ${FACE}`;
+    wrap(c.title || "", W * 0.82).slice(0, 3).forEach((line, i, arr) => {
+      ctx.fillText(line, W / 2, H * 0.5 + (i - (arr.length - 1) / 2) * fs * 1.4);
+    });
+    ctx.globalAlpha = Math.max(0, Math.min(1, a)) * 0.75;
+    ctx.strokeStyle = "#4f8cff";
+    ctx.lineWidth = Math.max(2, Math.round(W * 0.008));
+    const lw = W * 0.16;
+    ctx.beginPath();
+    ctx.moveTo(W / 2 - lw, H * 0.5 + fs * 0.9);
+    ctx.lineTo(W / 2 + lw, H * 0.5 + fs * 0.9);
+    ctx.stroke();
+    ctx.restore();
+    ctx.textAlign = "left";
   }
 
   function frame() {
@@ -1075,6 +1280,7 @@
       drawEnding();
     } else {
       drawScene();
+      drawChapter();
       drawChoiceVeil();
       drawDialogue(vis);
       drawChoices(vis);
@@ -1160,6 +1366,17 @@
     : fetch("pack.json", {cache: "no-store"})
         .then((r) => { if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); });
 
+  // 启动遮罩：模板里那块 #boot（纯黑 + 一颗脉动的蓝点 + 作品名）。
+  // 素材加载完就撤掉；出错也要撤，否则一块黑屏挡住错误文字。
+  function dismissBoot() {
+    var el = document.getElementById("boot");
+    if (!el) return;
+    el.classList.add("gone");
+    setTimeout(function () {
+      if (el.parentNode) el.parentNode.removeChild(el);
+    }, 360);
+  }
+
   bootPack
     .then((data) => {
       pack = data;
@@ -1173,10 +1390,12 @@
       if (pack.unsupported && pack.unsupported.length) {
         console.warn("[MYONL] 桌面端有、手机端暂不支持：" + pack.unsupported.join("、"));
       }
+      dismissBoot();
     })
     .catch((err) => {
       state.error = "加载失败：" + err.message
         + "。单文件版可直接双击打开；分目录版需要静态服务器（file:// 取不到 pack.json）。";
+      dismissBoot();
     });
   // ---------- 菜单 / 存档 / 设置（P69）----------
   /* 全部 canvas 自绘：单文件导出版和分目录版共用同一份逻辑，DOM 覆盖层在单文件里会丢样式。
@@ -1249,6 +1468,9 @@
     state.bg = vm.state.bg || "";
     state.cg = vm.state.cg || "";
     state.sprites = (vm.state.sprites || []).slice();
+    state.fg = vm.state.fg || null;
+    state.anim = vm.state.anim || {};
+    state.video = vm.state.video || null;
     if (vm.state.music) playMusic(vm.state.music, 0, 0);
     next();
   }

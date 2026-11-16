@@ -2,6 +2,16 @@
 
 > 只记 release 级变化，一句话 + 证据链接。单项细节见 git 历史（原 archive/ 已删除）。
 
+## 2026-11-16（P72 + P73：手机端装得上、演得全）
+
+**两件事**：① 导出的网页包/单文件现在带 PWA —— manifest + 192/512/maskable 图标 + iOS 全屏 meta + 启动遮罩，「添加到主屏幕」就是没有地址栏的 App。② 桌面端有、手机端一直不支持的 6 条演出指令全补上：`@fg` 前景贴图（cover 铺满）、`@anim` 立绘补间（x/y 1280 基准 + scale 底部中心锚 + alpha）、`@video` 帧序列背景（帧图一起打进包、fps 循环、懒加载）、`@voice` 独立语音通道（换句掐上一条）、`@chapter` 黑场章节卡（期间挡点击）、`@transition` dissolve 淡入 / wipe·slide 按方向 clip 推进。
+
+**顺带修**：`@fg 无` 从来没真清过前景 —— parser 归一成 `name="无"`，`runtime.py` 只认 `reset` 字段，于是桌面端一直"设了一张叫『无』的图"再静默跳过；四处（runtime / webpack 收集 / 前端 VM / demo 预检）统一认 `无`。`webpack` 的 unsupported 清单里还塞着 parser 根本不产出的 `play`/`stop`/`shake`，删掉后清单如实为空。`_collect_image_names` 之前不收 `@fg` 的图。
+
+**踩坑留档**：PIL `Image.new("RGBA") + Draw(img,"RGBA")` 是直接替换像素、不混 alpha，半透明会变纯白实心 —— 必须 `Image.new("RGB", 底色) + Draw(...,"RGBA")`。`next()` 遇到 `chapter` 必须 break，否则台词抢在章节卡前面出来。`@voice` 只能紧跟在台词之后，播放顺序是 say → voice。
+
+**证据**：`pwa-boot.png` / `pwa-play.png`（遮罩淡出、`#boot` 已移除、三处 PWA 头全 True、无 console error）、`p73-anim-early.png`（立绘偏左滑入）、`p73-fg.png`（斜雨铺满且不盖对话框）、`p73-video-a/b.png`（两帧换色）、`p73b-01.png`（章节卡）、`p73b-06.png`（wipe 半屏分界）；单文件 774824 B；`pytest -m "not slow"` 1091 passed + 1 skipped。详见 `docs/变更说明-P72-P73-PWA与手机端全指令.md`。
+
 ## 2026-11-16（P71：UI 设计区有整屏缩略图了——调参数能看见手机上变成什么样）
 
 **症状**：P70 让选项七项参数真能调了，但调的时候只有右边的数字在变，没有任何参照物。要知道 620 和 800 在手机上差多少，得先导出、再跑、再看一眼。

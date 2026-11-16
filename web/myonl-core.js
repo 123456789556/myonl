@@ -19,7 +19,17 @@
   const OPS = new Set([
     "character", "bg", "cg", "show", "hide", "say", "choice", "jump", "label",
     "set", "if", "wait", "end", "nvl", "music", "sfx", "camera", "stop", "play",
+    "fg", "anim", "video",   // P73：前景贴图 / 立绘补间 / 帧序列背景（之前只有桌面端有）
+    "voice", "chapter", "transition",   // P73：语音 / 章节卡 / 转场（之前只 console.warn）
   ]);
+
+  // @anim 没写起始值时的缺省显示值（与桌面端 renderer 的 disp 默认一致）
+  const ANIM_DEF = {x: 0, y: 0, alpha: 1, scale: 1};
+
+  function nowMs() {
+    return typeof performance !== "undefined" && performance.now
+      ? performance.now() : Date.now();
+  }
 
   function formatValue(v) {
     if (v === true) return "真";
@@ -78,6 +88,9 @@
       sprites: [],       // [{char, expr, anim}]
       music: "",         // P62：当前背景音乐名（存档带上，读档能续上）
       cameraZoom: 1,     // P64：@camera zoom 的持久缩放（reset 回 1.0，和桌面端 runtime 一致）
+      fg: null,          // P73：@fg 前景贴图 {name,x,y,alpha}；null = 没在放
+      anim: {},          // P73：@anim 补间 {char: {param: {from,to,secs,t0}}}
+      video: null,       // P73：@video 帧序列背景 {name,fps}；@bg 时清空
       ended: false,
       warnings: [],      // 不支持的指令：不崩，记下来给作者看
       choice: null,      // 当前挂起的选项
@@ -146,6 +159,7 @@
           case "bg":
             state.bg = ins.image || "";
             state.cg = "";                    // 切回背景：CG 退场（和桌面端语义一致）
+            state.video = null;               // 同时停掉帧序列视频
             return {type: "bg", image: state.bg};
           case "cg":
             state.cg = ins.name || "";
@@ -197,6 +211,20 @@
                     fadein: ins.fadein || 0, fadeout: ins.fadeout || 0};
           case "sfx":
             return {type: "sfx", sound: ins.sound || ""};
+          case "voice":
+            // 语音：紧跟着的那句 @[角色] 台词开播，播放器负责接住
+            return {type: "voice", sound: ins.sound || ""};
+          case "chapter": {
+            // 章节卡（黑场 + 大标题），独立演出，播完才继续
+            const secs = Number(ins.secs);
+            return {type: "chapter", title: ins.title || "",
+                    secs: secs > 0 ? secs : 2.0};
+          }
+          case "transition": {
+            // 假装下一张背景怎么进来：dissolve 淡入 / wipe·slide 按方向推入
+            const args = (ins.args || []).slice();
+            return {type: "transition", kind: ins.kind || "dissolve", args: args};
+          }
           case "camera": {
             // 与桌面端 runtime 同一套语义：zoom 的终值持久（进存档），pan/shake 是瞬时的
             const kind = ins.kind || "";
@@ -204,6 +232,44 @@
             if (kind === "zoom") state.cameraZoom = Number(args[1]) || 1;
             else if (kind === "reset") state.cameraZoom = 1;
             return {type: "camera", kind: kind, args: args};
+          }
+          case "video": {
+            // 帧序列背景（images/videos/名字_001.png 起连续编号），fps 缺省 24
+            const fpsRaw = Number(ins.fps);
+            state.video = {name: ins.name || "",
+                           fps: fpsRaw > 0 ? fpsRaw : 24, t0: nowMs()};
+            return {type: "video", name: state.video.name, fps: state.video.fps};
+          }
+          case "fg": {
+            // 前景贴图：@fg 无 / reset 清掉；否则整条替换（和桌面端 runtime 一致）
+            const fgName = String(ins.name || "");
+            if (ins.reset || fgName === "无" || fgName === "none") state.fg = null;
+            else {
+              state.fg = {name: ins.name || "", x: Number(ins.x) || 0,
+                          y: Number(ins.y) || 0,
+                          alpha: ins.alpha === undefined || ins.alpha === null
+                            ? 1 : Number(ins.alpha)};
+            }
+            return {type: "fg", fg: state.fg ? Object.assign({}, state.fg) : null};
+          }
+          case "anim": {
+            // 立绘参数补间：起点缺省时接着上一次的终点（桌面端 Timeline 也是这么接的）
+            const ch = ins.char || "";
+            const p = ins.param || "x";
+            const toRaw = Number(ins.to);
+            const to = isNaN(toRaw) ? 0 : toRaw;
+            const secs = Math.max(0, Number(ins.secs) || 0);
+            const rec = state.anim[ch] || (state.anim[ch] = {});
+            const prev = rec[p];
+            let from;
+            if (ins.from === undefined || ins.from === null) {
+              from = prev ? prev.to : (ANIM_DEF[p] === undefined ? 0 : ANIM_DEF[p]);
+            } else {
+              const f = Number(ins.from);
+              from = isNaN(f) ? 0 : f;
+            }
+            rec[p] = {from: from, to: to, secs: secs, t0: nowMs()};
+            return {type: "anim", char: ch, param: p, from: from, to: to, secs: secs};
           }
           case "end":
             state.ended = true;
@@ -231,9 +297,18 @@
     }
 
     function save() {
+      // @anim 只存终值：补间过程不重放，读档直接落到结果画面（和桌面端一致）
+      const finals = {};
+      for (const c in state.anim) {
+        const d = finals[c] = {};
+        for (const p in state.anim[c]) d[p] = state.anim[c][p].to;
+      }
       return JSON.stringify({pc: state.pc, vars: state.vars, bg: state.bg,
                              cg: state.cg, music: state.music,
-                             cameraZoom: state.cameraZoom,
+                             cameraZoom: state.cameraZoom, fg: state.fg,
+                             video: state.video ? {name: state.video.name,
+                                                   fps: state.video.fps} : null,
+                             animFinal: finals,
                              sprites: state.sprites, ended: state.ended,
                              framePc: frame.pc, frameRoot: frame.root});
     }
@@ -246,6 +321,18 @@
         state.cg = s.cg || "";
         state.music = s.music || "";
         state.cameraZoom = Number(s.cameraZoom) || 1;
+        state.fg = s.fg || null;
+        state.video = s.video ? {name: s.video.name || "",
+                                 fps: Number(s.video.fps) || 24, t0: nowMs()} : null;
+        state.anim = {};
+        const finals = s.animFinal || {};
+        for (const c in finals) {
+          const d = state.anim[c] = {};
+          for (const p in finals[c]) {
+            const v = Number(finals[c][p]) || 0;
+            d[p] = {from: v, to: v, secs: 0, t0: 0};
+          }
+        }
         state.sprites = s.sprites || [];
         state.ended = !!s.ended;
         frame = {ins: instrs, pc: Math.max(0, Number(s.pc) || 0), root: true};
@@ -263,6 +350,9 @@
       state.cg = "";
       state.music = "";
       state.cameraZoom = 1;
+      state.fg = null;
+      state.video = null;
+      state.anim = {};
       state.sprites = [];
       state.ended = false;
       state.choice = null;

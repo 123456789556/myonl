@@ -175,4 +175,49 @@ ev = vmC.next();
 assert.strictEqual(ev.kind, "reset");
 assert.strictEqual(vmC.state.cameraZoom, 1);      // reset 回 1.0
 
+// ---- 9. P73：@fg 前景贴图 / @anim 补间 / @video 帧序列 ----
+const vmF = createVM({ins: [
+  {op: "bg", image: "bg_a"},
+  {op: "fg", name: "雨", x: 0, y: 12, alpha: 0.8},
+  {op: "anim", char: "甲", param: "x", from: 0, to: 120, secs: 0.4},
+  {op: "say", char: null, text: "来了"},
+  {op: "fg", reset: true},
+  {op: "video", name: "海浪", fps: 24},
+  {op: "say", char: null, text: "海"},
+  {op: "bg", image: "bg_b"},        // 切回静态背景：视频要停
+  {op: "end"},
+]});
+vmF.next();                                        // bg
+ev = vmF.next();                                   // fg
+assert.strictEqual(ev.type, "fg");
+assert.strictEqual(vmF.state.fg.name, "雨");
+assert.strictEqual(vmF.state.fg.alpha, 0.8);
+assert.strictEqual(vmF.state.fg.y, 12);
+ev = vmF.next();                                   // anim
+assert.strictEqual(ev.type, "anim");
+assert.strictEqual(ev.param, "x");
+assert.strictEqual(vmF.state.anim["甲"].x.to, 120);
+assert.strictEqual(vmF.state.anim["甲"].x.from, 0);
+// 存档只留终值：中间过程不重放
+const savedF = vmF.save();
+assert.ok(savedF.indexOf("animFinal") > 0);
+ev = vmF.next();                                   // say
+assert.strictEqual(ev.type, "say");
+ev = vmF.next();                                   // fg reset
+assert.strictEqual(vmF.state.fg, null);
+ev = vmF.next();                                   // video
+assert.strictEqual(ev.type, "video");
+assert.strictEqual(vmF.state.video.name, "海浪");
+assert.strictEqual(vmF.state.video.fps, 24);
+ev = vmF.next();                                   // say
+assert.strictEqual(ev.type, "say");
+ev = vmF.next();                                   // bg 切回背景
+assert.strictEqual(vmF.state.video, null);
+// 读档：fg / anim 终值 / video 都要复原
+const vmG = createVM({ins: [{op: "say", char: null, text: "x"}, {op: "end"}]});
+assert.ok(vmG.load(savedF));
+assert.strictEqual(vmG.state.fg.name, "雨");
+assert.strictEqual(vmG.state.anim["甲"].x.to, 120);
+assert.strictEqual(vmG.state.anim["甲"].x.from, 120);   // 读档后起点=终点，直接落到结果画面
+
 console.log("vm-smoke: 全部通过");

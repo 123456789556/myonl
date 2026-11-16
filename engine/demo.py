@@ -729,7 +729,9 @@ def _precheck_resources(script_path: str, assets_root: str) -> None:
             elif op == "cg":
                 check_image(ins.get("name"), f"@cg {ins.get('name')}", line, file)
             elif op == "fg":
-                check_image(ins.get("name"), f"@fg {ins.get('name')}", line, file)
+                # @fg 无 是清前景，不是素材名
+                if str(ins.get("name") or "") not in ("无", "none"):
+                    check_image(ins.get("name"), f"@fg {ins.get('name')}", line, file)
             elif op == "show":
                 char, expr = ins.get("char"), ins.get("expr")
                 check_image(f"{char}_{expr}", f"@show {char} {expr}", line, file)

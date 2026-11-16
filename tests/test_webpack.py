@@ -95,21 +95,22 @@ def test_缺素材不硬失败(tmp_path):
 
 @pytest.mark.integration
 def test_桌面专属指令如实标注(tmp_path):
-    """P62 起 music/sfx、P63 起 cg、P64 起 camera 手机端已实现；仍不实现的必须如实列出来。"""
+    """P62 music/sfx、P63 cg、P64 camera、P73 fg/anim/video/voice/chapter/transition
+    手机端都已实现；真不实现的才该列出来（现在这清单是空的）。"""
     proj = tmp_path / "带音乐工程"
     proj.mkdir()
     (proj / "script.gal").write_text(
         "@character 甲 #ffffff\n@label start\n@music bgm\n@cg 结尾图\n@camera zoom 1.0 1.2\n"
-        "@video 开场\n@[甲] 你好\n@end\n",
+        "@video 开场\n@fg 雨\n@anim 甲 x=0~40 0.3\n@[甲] 你好\n@voice 台词1\n@end\n",
         encoding="utf-8")
     out = tmp_path / "web"
     stat = W.build_web(str(proj), str(out))
-    assert "music" not in stat["unsupported"], "music 已经支持了，不该再报不支持"
-    assert "cg" not in stat["unsupported"], "cg 已经支持了，不该再报不支持"
-    assert "camera" not in stat["unsupported"], "camera 已经支持了（zoom/pan/shake/reset）"
-    assert "video" in stat["unsupported"], "桌面有、手机端没有的指令必须标注"
+    for done in ("music", "cg", "camera", "video", "fg", "anim", "voice"):
+        assert done not in stat["unsupported"], f"{done} 已经支持了，不该再报不支持"
+    # @video 的帧序列不在工程里：要如实报"缺素材"，而不是偷偷当没写
+    assert "开场" in stat["missing"], "缺帧序列没被发现"
     pack = json.loads((out / "pack.json").read_text(encoding="utf-8"))
-    assert "video" in pack["unsupported"]
+    assert pack["videos"] == {}, "没有帧文件时 videos 应为空表而不是缺键"
 
 
 # ============ 2. JS 侧：node 直接跑（不需要浏览器）============

@@ -23,9 +23,41 @@ import shutil
 import sys
 
 from . import parser as parser_mod
+from . import pwa
 from .data import resolve_audio
 from .data import resolve_image
 from .data import DataError
+
+# 启动遮罩：加载 pack.json 与素材的那一两秒不能给一块纯黑（手机上看像卡死）。
+# 两套模板共用这一段，所以抽成常量：f-string 里插入变量，大括号不用双写。
+_BOOT_CSS = """
+  #boot { position: fixed; inset: 0; z-index: 9; background: #0b0d12;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 14px; transition: opacity .32s ease; }
+  #boot.gone { opacity: 0; pointer-events: none; }
+  #boot .dot { width: 10px; height: 10px; border-radius: 50%; background: #4f8cff;
+    animation: bootpulse 1.5s ease-out infinite; }
+  #boot .bt { max-width: 78vw; text-align: center;
+    font: 500 15px/1.5 -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+    color: #8a90a2; letter-spacing: .05em; }
+  @keyframes bootpulse {
+    0% { box-shadow: 0 0 0 0 rgba(79,140,255,.42); }
+    100% { box-shadow: 0 0 0 18px rgba(79,140,255,0); }
+  }
+"""
+
+# 单文件（file://）也能被 iOS / Android 当成 App：apple-mobile-web-app 这套 meta
+# 在 file:// 下照常生效，service worker 不行（那需要 https）。
+_APPLE_META = """<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="{short}">
+<meta name="format-detection" content="telephone=no">"""
+
+
+def _boot_html(title: str) -> str:
+    safe = (title or "MYONL").replace("<", "&lt;").replace(">", "&gt;")
+    return f'<div id="boot"><span class="dot"></span><span class="bt">{safe}</span></div>'
 
 def _web_src() -> str:
     """播放器源码目录：源码版在仓库 web/，打 exe 后在 PyInstaller 的 _MEIPASS/web。"""
@@ -100,6 +132,12 @@ def _walk(node, add) -> None:
             char = str(node.get("char") or "")
             expr = str(node.get("expr") or "")
             add(f"{char}_{expr}" if char and expr else char)
+        elif op == "fg":
+            # P73：前景贴图（雨雪/光效/蒙版），手机端已能画，图片必须一起带走
+            # @fg 无 是「清掉前景」，不是素材名，别当缺失报给作者
+            nm = str(node.get("name") or "")
+            if not node.get("reset") and nm not in ("无", "none"):
+                add(nm)
         for key in ("body", "else", "options", "ins"):
             val = node.get(key)
             if isinstance(val, list):
@@ -131,6 +169,8 @@ def _collect_audio_names(ins: list) -> list[str]:
                 add(node.get("track"))
             elif op == "sfx":
                 add(node.get("sound"))
+            elif op == "voice":
+                add(node.get("sound"))
             for key in ("body", "else", "options", "ins"):
                 val = node.get(key)
                 if isinstance(val, (list, dict)):
@@ -141,6 +181,65 @@ def _collect_audio_names(ins: list) -> list[str]:
 
     walk(ins)
     return names
+
+
+def _collect_video_names(ins: list) -> list[str]:
+    """从 IR 里收集帧序列视频名（`@video 名 fps=`）—— 帧在 images/videos/名_001.png 起。"""
+    names: list[str] = []
+
+    def walk(node):
+        if isinstance(node, dict):
+            if node.get("op") == "video":
+                n = str(node.get("name") or "").strip()
+                if n and n not in names:
+                    names.append(n)
+            for key in ("body", "else", "options", "ins"):
+                val = node.get(key)
+                if isinstance(val, (list, dict)):
+                    walk(val)
+        elif isinstance(node, list):
+            for child in node:
+                walk(child)
+
+    walk(ins)
+    return names
+
+
+FRAME_EXTS = (".png", ".webp")
+
+
+def _copy_video_frames(root: str, assets_dir: str, names: list[str]):
+    """拷帧序列进网页包：assets/videos/名_001.png…；返回 (manifest, 缺帧名)。"""
+    seq_root = os.path.join(root, "images", "videos")
+    manifest: dict[str, list[str]] = {}
+    missing: list[str] = []
+    for name in names:
+        frames: list[str] = []
+        idx = 1
+        while True:
+            hit = None
+            for ext in FRAME_EXTS:
+                p = os.path.join(seq_root, f"{name}_{idx:03d}{ext}")
+                if os.path.isfile(p):
+                    hit = p
+                    break
+            if not hit:
+                break
+            frames.append(hit)
+            idx += 1
+        if not frames:
+            missing.append(name)
+            continue
+        dst_dir = os.path.join(assets_dir, "videos")
+        os.makedirs(dst_dir, exist_ok=True)
+        rels: list[str] = []
+        for i, path in enumerate(frames, 1):
+            ext = os.path.splitext(path)[1].lower()
+            dst_name = f"{name}_{i:03d}{ext}"
+            shutil.copyfile(path, os.path.join(dst_dir, dst_name))
+            rels.append("assets/videos/" + dst_name)
+        manifest[name] = rels
+    return manifest, missing
 
 
 def build_web(project_root: str, out_dir: str, *, title: str = "") -> dict:
@@ -189,12 +288,15 @@ def build_web(project_root: str, out_dir: str, *, title: str = "") -> dict:
         shutil.copyfile(src, os.path.join(assets_dir, dst_name))
         audio_manifest[name] = "assets/" + dst_name
 
-    log = []
-    # P62：music / sfx 已实现；P63：cg 全屏演出；P64：camera（zoom/pan/shake/reset）
-    for op in ("play", "stop", "video", "fg", "shake", "anim"):
-        if _has_op(ins, op):
-            log.append(op)
+    # P73：@video 帧序列背景。之前手机端直接不支持，导出来那段就是黑的。
+    video_manifest, video_missing = _copy_video_frames(
+        root, assets_dir, _collect_video_names(ins))
+    missing.extend(video_missing)
 
+    log = []
+    # P62：music / sfx；P63：cg；P64：camera（zoom/pan/shake/reset）；
+    # P73：fg 前景贴图、anim 立绘补间、video 帧序列 都已在播放器实现，不再列缺
+    # play / stop 是空壳 op（parser 从不产出），列进去只会让人以为砍了功能
     pack = {
         "version": 1,
         "title": title or str(cfg.get("window_title") or os.path.basename(root)),
@@ -203,6 +305,7 @@ def build_web(project_root: str, out_dir: str, *, title: str = "") -> dict:
         "config": picked,
         "assets": manifest,
         "audio": audio_manifest,
+        "videos": video_manifest,
         "ins": ins,
         # P67：作者选定的画面方向（any / portrait / landscape），播放器据此提示转屏
         "orientation": str(cfg.get("orientation") or "any"),
@@ -222,6 +325,15 @@ def build_web(project_root: str, out_dir: str, *, title: str = "") -> dict:
     with open(os.path.join(out, "index.html"), "w", encoding="utf-8") as f:
         f.write(html)
 
+    # P72：PWA —— 主屏图标 + manifest。导出的网页包丢到任意静态服务，
+    # 玩家「添加到主屏幕」后就是全屏 App（没有地址栏挤画面）。
+    pwa_files: list[str] = []
+    try:
+        pwa_files = list(pwa.write_bundle(out, pack["title"],
+                                         str(cfg.get("orientation") or "any"))["files"])
+    except Exception:  # noqa: BLE001 —— 图标生不出来不该拦导出
+        pwa_files = []
+
     return {
         "out": out,
         "title": pack["title"],
@@ -230,6 +342,7 @@ def build_web(project_root: str, out_dir: str, *, title: str = "") -> dict:
         "audio": len(audio_manifest),
         "missing": missing,
         "unsupported": log,
+        "pwa": pwa_files,
     }
 
 
@@ -261,7 +374,8 @@ def _shrink_image(blob: bytes) -> tuple[bytes, str] | None:
 
         im = Image.open(io.BytesIO(blob))
         if max(im.size) > SHRINK_MAX_EDGE:
-            im.thumbnail((SHRINK_MAX_EDGE, SHRINK_MAX_EDGE), Image.LANCZOS)
+            im.thumbnail((SHRINK_MAX_EDGE, SHRINK_MAX_EDGE),
+                         Image.Resampling.LANCZOS)
         buf = io.BytesIO()
         im.save(buf, "WEBP", quality=SHRINK_QUALITY, method=4)
         small = buf.getvalue()
@@ -325,6 +439,27 @@ def build_single(project_root: str, out_file: str, *, title: str = "") -> dict:
                 continue
             audio[name] = f"data:{mime};base64," + base64.b64encode(blob).decode("ascii")
         pack["audio"] = audio
+
+        # P73：@video 的帧序列同样要内联，否则单文件版里视频背景是空的
+        videos: dict[str, list] = {}
+        for name, rels in (pack.get("videos") or {}).items():
+            arr: list[str] = []
+            for rel in rels:
+                path = os.path.join(tmp, rel.replace("/", os.sep))
+                mime = MIME_BY_EXT.get(os.path.splitext(path)[1].lower(),
+                                       "application/octet-stream")
+                try:
+                    with open(path, "rb") as f:
+                        blob = f.read()
+                except OSError:
+                    continue
+                if len(blob) > SHRINK_OVER_BYTES and mime == "image/png":
+                    shrunk = _shrink_image(blob)
+                    if shrunk:
+                        blob, mime = shrunk
+                arr.append(f"data:{mime};base64," + base64.b64encode(blob).decode("ascii"))
+            videos[name] = arr
+        pack["videos"] = videos
         pack["single"] = True
 
         scripts = []
@@ -364,6 +499,16 @@ def _render_single_html(title: str, pack_json: str, player_scripts: str,
                         orientation: str = "any") -> str:
     safe = (title or "MYONL").replace("<", "&lt;").replace(">", "&gt;")
     orient = orientation if orientation in ("portrait", "landscape") else "any"
+    short = (title or "MYONL").strip()[:12] or "MYONL"
+    short_esc = short.replace("<", "&lt;").replace(">", "&gt;")
+    man_uri = pwa.inline_manifest(title or "MYONL", orient)
+    icon_uri = ""
+    try:
+        icon_uri = pwa.icon_data_uri(pwa.APPLE_TOUCH_SIZE)
+    except Exception:  # noqa: BLE001
+        icon_uri = ""
+    icon_link = (f'<link rel="apple-touch-icon" href="{icon_uri}">\n'
+                 f'<link rel="icon" type="image/png" href="{icon_uri}">') if icon_uri else ""
     return f"""<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
@@ -371,15 +516,19 @@ def _render_single_html(title: str, pack_json: str, player_scripts: str,
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
 <meta name="theme-color" content="#14161f">
 <meta name="myonl-orientation" content="{orient}">
+{_APPLE_META.format(short=short_esc)}
+<link rel="manifest" href="{man_uri}">
+{icon_link}
 <title>{safe}</title>
 <style>
   html, body {{ margin: 0; padding: 0; background: #0b0d12; overflow: hidden;
     -webkit-tap-highlight-color: transparent; user-select: none; }}
   #stage {{ position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; }}
-  #game {{ display: block; background: #000; box-shadow: 0 0 40px rgba(0,0,0,.6); }}
+  #game {{ display: block; background: #000; box-shadow: 0 0 40px rgba(0,0,0,.6); }}{_BOOT_CSS}
 </style>
 </head>
 <body>
+{_boot_html(title)}
 <div id="stage"><canvas id="game"></canvas></div>
 <script>window.__MYONL_PACK__={pack_json};</script>
 {player_scripts}
@@ -401,19 +550,11 @@ def _characters(ins: list) -> list:
     return out
 
 
-def _has_op(node, op) -> bool:
-    if isinstance(node, dict):
-        if node.get("op") == op:
-            return True
-        return any(_has_op(v, op) for k, v in node.items() if k in ("body", "else", "options"))
-    if isinstance(node, list):
-        return any(_has_op(v, op) for v in node)
-    return False
-
-
 def _render_html(title: str, orientation: str = "any") -> str:
     safe = (title or "MYONL").replace("<", "&lt;").replace(">", "&gt;")
     orient = orientation if orientation in ("portrait", "landscape") else "any"
+    short = (title or "MYONL").strip()[:12] or "MYONL"
+    short_esc = short.replace("<", "&lt;").replace(">", "&gt;")
     return f"""<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
@@ -421,15 +562,20 @@ def _render_html(title: str, orientation: str = "any") -> str:
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
 <meta name="theme-color" content="#14161f">
 <meta name="myonl-orientation" content="{orient}">
+{_APPLE_META.format(short=short_esc)}
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" type="image/png" href="icons/icon-192.png">
 <title>{safe}</title>
 <style>
   html, body {{ margin: 0; padding: 0; background: #0b0d12; overflow: hidden;
     -webkit-tap-highlight-color: transparent; user-select: none; }}
   #stage {{ position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; }}
-  #game {{ display: block; background: #000; box-shadow: 0 0 40px rgba(0,0,0,.6); }}
+  #game {{ display: block; background: #000; box-shadow: 0 0 40px rgba(0,0,0,.6); }}{_BOOT_CSS}
 </style>
 </head>
 <body>
+{_boot_html(title)}
 <div id="stage"><canvas id="game"></canvas></div>
 <script src="myonl-core.js"></script>
 <script src="myonl-layout.js"></script>

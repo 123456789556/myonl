@@ -284,8 +284,8 @@ class Runtime:
                     event["from"] = ins["from"]
                 return self._emit(event)
             if op == "fg":
-                # @fg reset 不带 name，清前景；其余写进 state 保持当前画面
-                if ins.get("reset"):
+                # @fg 无 是「清掉前景贴图」（parser 把 无/none 归一成 name="无"）
+                if ins.get("reset") or str(ins.get("name") or "") in ("无", "none"):
                     st["fg"] = None
                 else:
                     st["fg"] = {"name": ins["name"], "x": ins["x"],

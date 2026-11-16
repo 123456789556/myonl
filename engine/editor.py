@@ -1706,7 +1706,10 @@ class _EditorHandler(BaseHTTPRequestHandler):
         `--script games/x/script.gal` 启动时这两个根不是一回事，
         素材列表已经按作品目录扫，取图也必须用同一个根，否则列表有、点开 404。
         """
-        for root in (self._current_project_root(), self.app.data_root):
+        roots = [self._current_project_root()]
+        if self.app is not None:
+            roots.append(self.app.data_root)
+        for root in roots:
             if not root:
                 continue
             found = _find_asset_file(root, category, name)
