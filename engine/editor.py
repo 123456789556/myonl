@@ -704,6 +704,8 @@ class _EditorHandler(BaseHTTPRequestHandler):
         # P67：游戏画面方向（any / portrait / landscape），存进工程 config.json
         ("GET", "/api/orientation"): "_get_orientation",
         ("POST", "/api/orientation"): "_set_orientation",
+        # P67：工作台卡片缩略图（工程 icon.png，没有就退到 images/ 第一张）
+        ("GET", "/api/thumb"): "_serve_thumb",
         # 角色库（characters.json，项目级角色资产）
         ("GET", "/api/characters"): "_characters_get",
         # V4：角色引用计数（扫描工程内全部 .gal，跨 @include 文件）
@@ -2052,6 +2054,50 @@ class _EditorHandler(BaseHTTPRequestHandler):
             self._send_json(500, {"ok": False, "message": f"写配置失败：{exc}"})
             return
         self._send_json(200, {"ok": True, "orientation": value})
+
+    def _serve_thumb(self, parsed=None) -> None:
+        """工作台卡片缩略图：工程 icon.png；没有就用 images/ 里第一张图；都没有 → 404。
+
+        只认 games/ 的直接子目录，路径不合法一律 404（不告诉对方目录在哪）。
+        """
+        q = parse_qs(parsed.query if parsed else "")
+        folder = str((q.get("folder") or [""])[0]).strip()
+        games = self._games_dir()
+        if not folder or "/" in folder or "\\" in folder or folder in (".", ".."):
+            self._send_json(404, {"ok": False, "message": "没有这张图"})
+            return
+        base = os.path.realpath(games or "")
+        proj = os.path.realpath(os.path.join(base, folder))
+        if os.path.dirname(proj) != base or not os.path.isdir(proj):
+            self._send_json(404, {"ok": False, "message": "没有这张图"})
+            return
+        cand = os.path.join(proj, "icon.png")
+        if not os.path.isfile(cand):
+            cand = ""
+            img_dir = os.path.join(proj, "images")
+            if os.path.isdir(img_dir):
+                for name in sorted(os.listdir(img_dir)):
+                    if os.path.splitext(name)[1].lower() in (".png", ".jpg", ".jpeg", ".webp"):
+                        cand = os.path.join(img_dir, name)
+                        break
+        if not cand or not os.path.isfile(cand):
+            self._send_json(404, {"ok": False, "message": "没有这张图"})
+            return
+        ext = os.path.splitext(cand)[1].lower()
+        ctype = {".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg",
+                 ".webp": "image/webp"}.get(ext, "image/png")
+        try:
+            with open(cand, "rb") as f:
+                blob = f.read()
+        except OSError:
+            self._send_json(404, {"ok": False, "message": "没有这张图"})
+            return
+        self.send_response(200)
+        self.send_header("Content-Type", ctype)
+        self.send_header("Content-Length", str(len(blob)))
+        self.send_header("Cache-Control", "no-store")
+        self.end_headers()
+        self.wfile.write(blob)
 
     def _switch_project(self, parsed=None) -> None:
         """切换工程：POST {folder}。工作台卡片点进去 → 当前项目改指到 games/<folder>。"""

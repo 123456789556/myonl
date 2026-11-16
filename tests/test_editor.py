@@ -11,6 +11,7 @@ import os
 import socket
 import sys
 import threading
+import urllib.parse
 
 import pytest
 
@@ -1174,3 +1175,27 @@ def test_工作台_列出工程并拒绝越界切换(server):
         status, raw = _post(port, "/api/project", {"folder": bad})
         assert status == 400, bad
         assert json.loads(raw)["ok"] is False
+
+
+def test_工作台缩略图_有就给图没有就404(server):
+    port, root = server
+    d = os.path.join(root, "games", "丙")
+    os.makedirs(os.path.join(d, "images"), exist_ok=True)
+    with open(os.path.join(d, "script.gal"), "w", encoding="utf-8") as f:
+        f.write("@ 一\n")
+    # 1×1 透明 PNG（够验字节流，不依赖 PIL）
+    png = bytes.fromhex(
+        "89504e470d0a1a0a0000000d49484452000000010000000108060000001f15c489"
+        "0000000a49444154789c6360000002000154a24f5e0000000049454e44ae426082"
+    )
+    with open(os.path.join(d, "images", "a.png"), "wb") as f:
+        f.write(png)
+
+    q = urllib.parse.quote("丙")
+    status, _h, raw = _get(port, f"/api/thumb?folder={q}")
+    assert status == 200
+    assert raw[:4] == b"\x89PNG"
+
+    for bad in ("../", "丙/../丙", "", "不存在的工程"):
+        status, _h, _raw = _get(port, "/api/thumb?folder=" + urllib.parse.quote(bad))
+        assert status == 404, bad

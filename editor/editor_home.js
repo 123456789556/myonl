@@ -55,10 +55,13 @@
   }
 
   function card(p) {
-    return '<button type="button" class="m-home-card" data-folder="' +
-      p.folder.replace(/"/g, "&quot;") + '">' +
-      '<span class="m-card-name">' + p.name.replace(/</g, "&lt;") + '</span>' +
-      '<span class="m-card-meta">' + p.ins + ' 条指令 · ' + p.assets + ' 个素材 · ' + ago(p.mtime) + '</span>' +
+    var folder = p.folder.replace(/"/g, "&quot;");
+    return '<button type="button" class="m-home-card" data-folder="' + folder + '">' +
+      '<span class="m-card-thumb" data-folder="' + folder + '"></span>' +
+      '<span class="m-card-body">' +
+        '<span class="m-card-name">' + p.name.replace(/</g, "&lt;") + '</span>' +
+        '<span class="m-card-meta">' + p.ins + ' 条指令 · ' + p.assets + ' 个素材 · ' + ago(p.mtime) + '</span>' +
+      '</span>' +
       '<span class="m-card-go">›</span></button>';
   }
 
@@ -68,9 +71,22 @@
     var cards = projects.map(card).join("");
     list.innerHTML = cards +
       '<button type="button" class="m-home-card m-home-new" id="mHomeNew">' +
-        '<span class="m-card-name">＋ 新建作品</span>' +
-        '<span class="m-card-meta">空剧本，一行示例台词，够你先看到画面</span>' +
+        '<span class="m-card-thumb m-card-thumb-new">＋</span>' +
+        '<span class="m-card-body">' +
+          '<span class="m-card-name">新建作品</span>' +
+          '<span class="m-card-meta">空剧本，一行示例台词，够你先看到画面</span>' +
+        '</span>' +
       '</button>';
+    // 缩略图单独请求：拿不到就留个空底，不阻塞列表
+    list.querySelectorAll(".m-card-thumb[data-folder]").forEach(function (th) {
+      var f = th.dataset.folder;
+      var img = new Image();
+      img.onload = function () {
+        th.style.backgroundImage = 'url("/api/thumb?folder=' + encodeURIComponent(f) + '")';
+        th.classList.add("has");
+      };
+      img.src = "/api/thumb?folder=" + encodeURIComponent(f);
+    });
     list.querySelectorAll(".m-home-card[data-folder]").forEach(function (b) {
       b.addEventListener("click", function () { openProject(b.dataset.folder, b); });
     });

@@ -333,3 +333,5 @@ T6 剧本/配置热重载（--hot-reload）、T8 字体缓存（对话绘制 -76
 > 定位：MYONL 是**引擎工具**，示例游戏（标准模板《晚风与约定》）只作可改样板，不作为产品交付。
 
 历史：git 提交记录（原 `docs/archive/` 104 篇已于 2026-11-01 删除，可用 `git log --all -- docs/archive` 找回）
+
+**P67 补**：工作台卡片加缩略图（`GET /api/thumb`，优先 `icon.png`，退到 `images/` 第一张），卡片变「左图右文」；全量 `1085 passed + 1 skipped`。
