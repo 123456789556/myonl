@@ -18,7 +18,7 @@
 
   const OPS = new Set([
     "character", "bg", "show", "hide", "say", "choice", "jump", "label",
-    "set", "if", "wait", "end", "nvl", "music", "stop", "play",
+    "set", "if", "wait", "end", "nvl", "music", "sfx", "stop", "play",
   ]);
 
   function formatValue(v) {
@@ -75,6 +75,7 @@
       vars: {},
       bg: "",
       sprites: [],       // [{char, expr, anim}]
+      music: "",         // P62：当前背景音乐名（存档带上，读档能续上）
       ended: false,
       warnings: [],      // 不支持的指令：不崩，记下来给作者看
       choice: null,      // 当前挂起的选项
@@ -184,6 +185,12 @@
           }
           case "wait":
             return {type: "wait", seconds: Number(ins.seconds) || 0};
+          case "music":
+            state.music = ins.track || "";
+            return {type: "music", track: ins.track || "",
+                    fadein: ins.fadein || 0, fadeout: ins.fadeout || 0};
+          case "sfx":
+            return {type: "sfx", sound: ins.sound || ""};
           case "end":
             state.ended = true;
             return {type: "end", final: true};
@@ -211,6 +218,7 @@
 
     function save() {
       return JSON.stringify({pc: state.pc, vars: state.vars, bg: state.bg,
+                             music: state.music,
                              sprites: state.sprites, ended: state.ended,
                              framePc: frame.pc, frameRoot: frame.root});
     }
@@ -220,6 +228,7 @@
         const s = typeof json === "string" ? JSON.parse(json) : json;
         state.vars = s.vars || {};
         state.bg = s.bg || "";
+        state.music = s.music || "";
         state.sprites = s.sprites || [];
         state.ended = !!s.ended;
         frame = {ins: instrs, pc: Math.max(0, Number(s.pc) || 0), root: true};
@@ -234,6 +243,7 @@
     function restart(atLabel) {
       state.vars = {};
       state.bg = "";
+      state.music = "";
       state.sprites = [];
       state.ended = false;
       state.choice = null;

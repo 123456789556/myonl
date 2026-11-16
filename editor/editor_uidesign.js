@@ -642,7 +642,10 @@
       msg.appendChild(a);
       msg.appendChild(document.createTextNode(
         "（" + resp.kb + " KB · " + (resp.instructions || 0) + " 条指令 / "
-        + (resp.images || 0) + " 张素材）— 手机浏览器直接打开就能玩，也可以发给别人"));
+        + (resp.images || 0) + " 张素材"
+        + (resp.audio ? " / " + resp.audio + " 段音频" : "")
+        + (resp.saved_kb ? " · 压缩省 " + resp.saved_kb + " KB" : "")
+        + "）— 手机浏览器直接打开就能玩，也可以发给别人"));
       toast("已导出单文件游戏");
     } catch (e) {
       msg.textContent = "导出请求失败：" + e;

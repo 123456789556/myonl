@@ -1621,6 +1621,8 @@ class _EditorHandler(BaseHTTPRequestHandler):
             "kb": round(stat["bytes"] / 1024),
             "instructions": stat["instructions"],
             "images": stat["images"],
+            "audio": stat.get("audio", 0),
+            "saved_kb": round(stat.get("saved", 0) / 1024),
             "missing": stat["missing"],
         })
 

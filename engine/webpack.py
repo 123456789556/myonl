@@ -23,6 +23,7 @@ import shutil
 import sys
 
 from . import parser as parser_mod
+from .data import resolve_audio
 from .data import resolve_image
 from .data import DataError
 
@@ -105,6 +106,37 @@ def _walk(node, add) -> None:
             _walk(child, add)
 
 
+def _collect_audio_names(ins: list) -> list[str]:
+    """从 IR 里收集音乐/音效名（`@music 曲名` → music/track，`@sfx 名` → sfx/sound）。
+
+    单文件版没声音是之前最大的短板：作者写了 @music，播出来是哑的。
+    """
+    names: list[str] = []
+
+    def add(n):
+        n = str(n or "").strip()
+        if n and n not in names:
+            names.append(n)
+
+    def walk(node):
+        if isinstance(node, dict):
+            op = node.get("op")
+            if op == "music":
+                add(node.get("track"))
+            elif op == "sfx":
+                add(node.get("sound"))
+            for key in ("body", "else", "options", "ins"):
+                val = node.get(key)
+                if isinstance(val, (list, dict)):
+                    walk(val)
+        elif isinstance(node, list):
+            for child in node:
+                walk(child)
+
+    walk(ins)
+    return names
+
+
 def build_web(project_root: str, out_dir: str, *, title: str = "") -> dict:
     """编译一个项目成竖屏网页包；返回统计（含缺失素材清单）。"""
     root = os.path.abspath(project_root)
@@ -138,8 +170,22 @@ def build_web(project_root: str, out_dir: str, *, title: str = "") -> dict:
         g: d for g, d in (cfg.get("dialogue") or {}).items() if isinstance(d, dict)
     }
 
+    # P62：音频（@music / @sfx）也拷进来。之前只收图片，带音乐的工程编出来是哑的。
+    audio_manifest: dict[str, str] = {}
+    for name in _collect_audio_names(ins):
+        try:
+            src = resolve_audio(root, name)
+        except DataError:
+            missing.append(name)
+            continue
+        ext = os.path.splitext(src)[1].lower()
+        dst_name = name + ext
+        shutil.copyfile(src, os.path.join(assets_dir, dst_name))
+        audio_manifest[name] = "assets/" + dst_name
+
     log = []
-    for op in ("music", "play", "stop", "video", "cg", "fg", "camera", "shake", "anim"):
+    # P62：music / sfx 已在手机端实现（播放器用 Audio 播 data URI 或游戏内音频文件）
+    for op in ("play", "stop", "video", "cg", "fg", "camera", "shake", "anim"):
         if _has_op(ins, op):
             log.append(op)
 
@@ -150,6 +196,7 @@ def build_web(project_root: str, out_dir: str, *, title: str = "") -> dict:
         "characters": _characters(ins),
         "config": picked,
         "assets": manifest,
+        "audio": audio_manifest,
         "ins": ins,
         # 桌面端有、移动端暂不实现的指令：告给作者，不假装支持
         "unsupported": log,
@@ -172,6 +219,7 @@ def build_web(project_root: str, out_dir: str, *, title: str = "") -> dict:
         "title": pack["title"],
         "instructions": len(ins),
         "images": len(manifest),
+        "audio": len(audio_manifest),
         "missing": missing,
         "unsupported": log,
     }
@@ -181,7 +229,40 @@ MIME_BY_EXT = {
     ".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg",
     ".webp": "image/webp", ".gif": "image/gif", ".svg": "image/svg+xml",
     ".bmp": "image/bmp",
+    ".ogg": "audio/ogg", ".mp3": "audio/mpeg", ".wav": "audio/wav",
+    ".m4a": "audio/mp4", ".aac": "audio/aac",
 }
+
+# P62：单文件里图片多大就够用。超过阈值的图缩到 SHRINK_MAX_EDGE 内重编码。
+SHRINK_OVER_BYTES = 300 * 1024
+SHRINK_MAX_EDGE = 1600
+SHRINK_QUALITY = 82
+
+
+def _shrink_image(blob: bytes) -> tuple[bytes, str] | None:
+    """把大图压小：缩到最大边 1600 内，存 WebP。不值得（压不下 10% / 没 PIL）返回 None。
+
+    不改变逻辑尺寸，只降像素与码率——单文件里一张 2 MB 立绘能让整包卡在加载。
+    """
+    try:
+        from PIL import Image
+    except ImportError:
+        return None
+    try:
+        import io
+
+        im = Image.open(io.BytesIO(blob))
+        if max(im.size) > SHRINK_MAX_EDGE:
+            im.thumbnail((SHRINK_MAX_EDGE, SHRINK_MAX_EDGE), Image.LANCZOS)
+        buf = io.BytesIO()
+        im.save(buf, "WEBP", quality=SHRINK_QUALITY, method=4)
+        small = buf.getvalue()
+    except Exception:   # noqa: BLE001 — 压不动就老实原样，别让导出因此失败
+        return None
+    if len(small) >= len(blob) * 0.9:
+        return None
+    return small, "image/webp"
+
 
 
 def _js_safe(text: str) -> str:
@@ -205,6 +286,7 @@ def build_single(project_root: str, out_file: str, *, title: str = "") -> dict:
             pack = json.load(f)
 
         assets: dict[str, str] = {}
+        saved = 0
         for name, rel in (pack.get("assets") or {}).items():
             path = os.path.join(tmp, rel.replace("/", os.sep))
             ext = os.path.splitext(path)[1].lower()
@@ -214,8 +296,27 @@ def build_single(project_root: str, out_file: str, *, title: str = "") -> dict:
                     blob = f.read()
             except OSError:
                 continue
+            # P62：大图压一道再内嵌。base64 本身还要再涨 37%，不压会更夸张。
+            if len(blob) > SHRINK_OVER_BYTES and ext in (".png", ".jpg", ".jpeg", ".bmp"):
+                shrunk = _shrink_image(blob)
+                if shrunk:
+                    saved += len(blob) - len(shrunk[0])
+                    blob, mime = shrunk
             assets[name] = f"data:{mime};base64," + base64.b64encode(blob).decode("ascii")
         pack["assets"] = assets
+
+        audio: dict[str, str] = {}
+        for name, rel in (pack.get("audio") or {}).items():
+            path = os.path.join(tmp, rel.replace("/", os.sep))
+            mime = MIME_BY_EXT.get(os.path.splitext(path)[1].lower(),
+                                   "application/octet-stream")
+            try:
+                with open(path, "rb") as f:
+                    blob = f.read()
+            except OSError:
+                continue
+            audio[name] = f"data:{mime};base64," + base64.b64encode(blob).decode("ascii")
+        pack["audio"] = audio
         pack["single"] = True
 
         scripts = []
@@ -242,6 +343,8 @@ def build_single(project_root: str, out_file: str, *, title: str = "") -> dict:
         "title": pack["title"],
         "instructions": stat["instructions"],
         "images": len(assets),
+        "audio": len(audio),
+        "saved": saved,
         "missing": stat["missing"],
         "unsupported": stat["unsupported"],
         "bytes": size,
@@ -337,7 +440,11 @@ def main(argv: list[str] | None = None) -> int:
             return 1
         print(f"已生成单文件游戏：{s['out']}")
         print(f"  标题：{s['title']}　指令 {s['instructions']} 条　素材 {s['images']} 张"
-              f"　{s['bytes'] / 1024:.0f} KB")
+              + (f"　音频 {s['audio']} 条" if s.get("audio") else "")
+              + f"　{s['bytes'] / 1024:.0f} KB")
+        if s.get("saved"):
+            print(f"  大图压缩省下 {s['saved'] / 1024:.0f} KB（原图每张超 "
+                  f"{SHRINK_OVER_BYTES // 1024} KB 的会转 WebP）")
         if s["missing"]:
             print(f"  [缺素材 {len(s['missing'])}]：" + "、".join(s["missing"]))
         print("  玩法：手机浏览器直接打开这个 .html，或把它发给别人")
@@ -349,7 +456,8 @@ def main(argv: list[str] | None = None) -> int:
         print(f"失败：{e}")
         return 1
     print(f"已生成竖屏网页包：{stat['out']}")
-    print(f"  标题：{stat['title']}　指令 {stat['instructions']} 条　素材 {stat['images']} 张")
+    print(f"  标题：{stat['title']}　指令 {stat['instructions']} 条　素材 {stat['images']} 张"
+          + (f"　音频 {stat['audio']} 条" if stat.get("audio") else ""))
     if stat["missing"]:
         print(f"  [缺素材 {len(stat['missing'])}]：" + "、".join(stat["missing"]))
     if stat["unsupported"]:

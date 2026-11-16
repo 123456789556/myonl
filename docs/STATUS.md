@@ -4,11 +4,11 @@
 > 历史计划与变更说明只保留在 git 历史（原 docs/archive 已于 2026-11-01 删除）。
 > 维护规则：人只改上面的四行；自动数字区由 py -3 tools/status.py --write 生成。
 
-- **版本**：v1.0.0-rc8（**手机端为主线**：同一工程 → 竖屏/横屏 H5 网页包 → 安卓 APK；桌面端降为并行出口）。rc8 相对 rc7 的实质变化：P54 H5 播放器、P55 Capacitor 安卓壳 + GitHub Actions 出 APK（已跑通，产物 `myonl-debug-apk` 3.24 MB）、P56 可迁移导出（Ren'Py 工程 / 通用 JSON）。发行包 `dist/release/MYONL引擎-v1.0.0-rc8.zip` 46.5MB 已重打并冒烟（`editor.exe -h` / `--demo-worker` exit 0），**尚未上传到 GitHub Release**。
-- **在做**：P61 单文件导出（`build_single` 把图片 base64 内嵌 + 播放器内联 + pack 内联成 `window.__MYONL_PACK__`，产物是一个 .html，`file://` 双击就能玩、能发给别人）已完成并验收。入口三处：菜单「文件 → 导出一个 HTML」、UI 设计弹窗「单文件」、CLI `--single`。下一步：音频也内嵌、大图降质控制体积。
+- **版本**：v1.0.0-rc9（**手机端为主线**：同一工程 → 竖屏/横屏 H5 网页包 → 安卓 APK；桌面端降为并行出口）。rc9 相对 rc8 的实质变化：P57 可视化 UI 拖拽、P58 触控与画布缩放、P59 手机主界面、P60 手机输入与工具条、P61 单文件导出、P62 音频内嵌 + 大图压缩。发行包 `dist/release/MYONL引擎-v1.0.0-rc9.zip` 已重打并冒烟（`editor.exe -h` / `--demo-worker` exit 0），**尚未上传到 GitHub Release**。
+- **在做**：P62 音频内嵌 + 大图压缩（`@music`/`@sfx` 现在真的出声：编译器把 `audio/` 里的文件收进 `pack["audio"]`，单文件转 data URI；播放器用 `Audio` 播、支持 `fadein/fadeout`、右上角有静音键、读档能续上音乐。单文件里超过 300 KB 的图会缩到 1600 边内转 WebP）。已完成并验收。
 - **质量门槛**：干净 Windows（无 Python）下可做出并打包可玩 demo；H5 播放器在真实 Chromium 竖屏 390×844 / 横屏 844×390 + 转屏 + 自动存档全过；安卓 APK 由 CI 产出（gradlew assembleDebug 绿）。
 - **本机限制**：无 JDK / 无 Android SDK / 无 gh CLI / 无 Ren'Py SDK——所以 **APK 只能在 CI 里编**、**Ren'Py 导出工程没在 Ren'Py 里真跑过**；Actions 日志需 token（已改成失败时写 `::error::` 注解，匿名可读）。
-- **后续待办**：① 真机装一次 APK（转屏 / 返回键 / 字体） ② 手机端补音频（当前最大体验缺口） ③ rc8 附件上传 Release（先删旧 rc7 附件） ④ Ren'Py 侧按 lint 报错修中文变量名（**用户已说不必做**） ⑤ 收集早期使用者反馈。
+- **后续待办**：① 真机装一次 APK（转屏 / 返回键 / 字体） ② rc9 附件上传 Release（先删旧 rc7 附件） ③ 手机端 `@cg`/`@video` 仍未实现（会进 unsupported） ④ 收集早期使用者反馈。
 
 <!-- auto:begin -->
 <!-- 自动数字区：由 tools/status.py 写入，勿手改 -->

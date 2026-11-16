@@ -84,6 +84,104 @@ def test_script_闭合序列被转义():
     assert "</SCRIPT" not in W._js_safe("</SCRIPT>")
 
 
+# ---- P62：音频内嵌 ----
+
+
+def _make_project(tmp_path, script, *, audio=(), images=()):
+    """造一个最小工程（剧本 + 需要的音频/图片）。"""
+    proj = tmp_path / "proj"
+    proj.mkdir()
+    (proj / "script.gal").write_text(script, encoding="utf-8")
+    if audio:
+        d = proj / "audio"
+        d.mkdir()
+        for name in audio:
+            (d / name).write_bytes(b"OggS\x00fake-audio-bytes")
+    if images:
+        d2 = proj / "images"
+        d2.mkdir()
+        for name in images:
+            (d2 / name).write_bytes(b"\x89PNG\r\n\x1a\nfake")
+    return proj
+
+
+def test_音频被收集进_pack(tmp_path):
+    proj = _make_project(
+        tmp_path,
+        "@character 甲 #ffffff\n@music bgm_a\n@label start\n@[甲] 你好\n@sfx se_1\n@end\n",
+        audio=("bgm_a.ogg", "se_1.ogg"))
+    out = tmp_path / "web"
+    stat = W.build_web(str(proj), str(out))
+    assert stat["audio"] == 2, stat
+    pack = json.loads((out / "pack.json").read_text(encoding="utf-8"))
+    assert set(pack["audio"]) == {"bgm_a", "se_1"}
+    assert os.path.isfile(out / "assets" / "bgm_a.ogg")
+    # 已经实现了，不该再报"暂不支持"
+    assert "music" not in pack["unsupported"]
+
+
+def test_单文件里音频是_data_uri(tmp_path):
+    proj = _make_project(
+        tmp_path,
+        "@character 甲 #ffffff\n@music bgm_a\n@label start\n@[甲] 你好\n@end\n",
+        audio=("bgm_a.ogg",))
+    out = tmp_path / "g.html"
+    stat = W.build_single(str(proj), str(out))
+    html = _read(out)
+    assert "data:audio/ogg;base64," in html
+    assert stat["audio"] == 1
+
+
+def test_缺音频不硬失败(tmp_path):
+    proj = _make_project(
+        tmp_path,
+        "@character 甲 #ffffff\n@music 没有这首\n@label start\n@[甲] 你好\n@end\n",
+        audio=())
+    out = tmp_path / "g.html"
+    stat = W.build_single(str(proj), str(out))
+    assert os.path.isfile(out)
+    assert "没有这首" in stat["missing"]
+
+
+# ---- P62：大图压缩 ----
+
+
+def test_大图会被压小(tmp_path):
+    pytest.importorskip("PIL")
+    import random
+    from PIL import Image
+
+    proj = tmp_path / "proj"
+    (proj / "images").mkdir(parents=True)
+    px = bytearray()
+    rnd = random.Random(3)
+    for _ in range(1200 * 1200):
+        px += bytes((rnd.randrange(256), rnd.randrange(256), rnd.randrange(256)))
+    Image.frombytes("RGB", (1200, 1200), bytes(px)).save(proj / "images" / "noise.png")
+    (proj / "script.gal").write_text(
+        "@character 甲 #ffffff\n@bg noise\n@label start\n@[甲] 你好\n@end\n", encoding="utf-8")
+
+    out = tmp_path / "g.html"
+    stat = W.build_single(str(proj), str(out))
+    assert stat["saved"] > 100 * 1024, stat
+    assert "data:image/webp;base64," in _read(out)
+
+
+def test_小图保持原样(tmp_path):
+    pytest.importorskip("PIL")
+    from PIL import Image
+
+    proj = tmp_path / "proj"
+    (proj / "images").mkdir(parents=True)
+    Image.new("RGB", (40, 40), (1, 2, 3)).save(proj / "images" / "tiny.png")
+    (proj / "script.gal").write_text(
+        "@character 甲 #ffffff\n@bg tiny\n@label start\n@[甲] 你好\n@end\n", encoding="utf-8")
+    out = tmp_path / "g.html"
+    stat = W.build_single(str(proj), str(out))
+    assert stat["saved"] == 0
+    assert "data:image/png;base64," in _read(out)
+
+
 @pytest.mark.integration
 def test_缺素材时仍能生成(tmp_path):
     """把一个素材改名，导出不该抛异常，只是少一张图。"""

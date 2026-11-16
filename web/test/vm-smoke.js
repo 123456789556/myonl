@@ -92,4 +92,28 @@ const vm5 = createVM({ins: [{op: "jump", target: "不存在"}, {op: "end"}]});
 ev = vm5.next();
 assert.strictEqual(ev.type, "end");
 
+// ---- 6. P62：音乐 / 音效会吐事件，且音乐名进存档 ----
+const vm6 = createVM({ins: [
+  {op: "music", track: "bgm_a", fadein: 0.5},
+  {op: "sfx", sound: "se_1"},
+  {op: "say", char: null, text: "有声音吗"},
+  {op: "end"},
+]});
+ev = vm6.next();
+assert.strictEqual(ev.type, "music");
+assert.strictEqual(ev.track, "bgm_a");
+assert.strictEqual(ev.fadein, 0.5);
+ev = vm6.next();
+assert.strictEqual(ev.type, "sfx");
+assert.strictEqual(ev.sound, "se_1");
+assert.strictEqual(vm6.state.music, "bgm_a");       // 存档要能续上音乐
+ev = vm6.next();
+assert.strictEqual(ev.type, "say");
+
+// 读档后 music 还在
+const savedMus = vm6.save();
+const vm7 = createVM({ins: [{op: "say", char: null, text: "x"}, {op: "end"}]});
+assert.ok(vm7.load(savedMus));
+assert.strictEqual(vm7.state.music, "bgm_a");
+
 console.log("vm-smoke: 全部通过");

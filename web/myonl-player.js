@@ -147,6 +147,96 @@
     }
   }
 
+  // ---------- 音频（P62） ----------
+  // 单文件里音频是 data URI，分目录版是 assets/xxx.ogg，同一个 Audio 构造能吃两种。
+  // 浏览器自动播放策略：第一次 @music 一定发生在玩家点过「开始」之后，不会被拦。
+  let bgm = null;          // 当前背景音乐（单例，切曲即停旧的）
+  let audioOn = true;      // 右上角小喇叭
+  let bgmVolume = 1;
+
+  function audioSrc(name) {
+    return (pack.audio && pack.audio[name]) || "";
+  }
+
+  function fadeTo(audio, to, seconds, done) {
+    const from = audio.volume;
+    const ms = Math.max(1, (Number(seconds) || 0) * 1000);
+    const t0 = performance.now();
+    const tick = () => {
+      const k = Math.min(1, (performance.now() - t0) / ms);
+      audio.volume = Math.max(0, Math.min(1, from + (to - from) * k));
+      if (k < 1) requestAnimationFrame(tick);
+      else if (done) done();
+    };
+    requestAnimationFrame(tick);
+  }
+
+  function playMusic(track, fadein, fadeout) {
+    const src = audioSrc(track);
+    if (!src) { console.warn("[MYONL] 找不到音乐：" + track); return; }
+    const old = bgm;
+    if (old && !old.paused) {
+      if (fadeout) {
+        fadeTo(old, 0, fadeout, () => { try { old.pause(); } catch (e) {} });
+      } else {
+        try { old.pause(); } catch (e) {}
+      }
+    }
+    const a = new Audio(src);
+    a.loop = true;
+    a.volume = fadein ? 0 : bgmVolume;
+    if (!audioOn) a.muted = true;
+    const p = a.play();
+    if (p && p.catch) p.catch(() => { /* 被自动播放拦了就静默，别打断游戏 */ });
+    if (fadein) fadeTo(a, bgmVolume, fadein);
+    bgm = a;
+  }
+
+  function playSfx(name) {
+    const src = audioSrc(name);
+    if (!src) { console.warn("[MYONL] 找不到音效：" + name); return; }
+    const a = new Audio(src);
+    a.volume = bgmVolume;
+    if (!audioOn) a.muted = true;
+    const p = a.play();
+    if (p && p.catch) p.catch(() => {});
+  }
+
+  // 右上角喇叭：逻辑坐标下 ~43 个屏幕像素，游戏内常驻
+  function muteRect() {
+    const s = Math.min(160, Math.max(60, Math.round(Math.min(L.viewW, L.viewH) * 0.11)));
+    const m = Math.round(Math.min(L.viewW, L.viewH) * 0.03);
+    return { x: L.viewW - s - m, y: m, w: s, h: s };
+  }
+
+  function drawMute() {
+    if (state.scene !== "game" || state.error) return;
+    const r = muteRect();
+    ctx.save();
+    ctx.globalAlpha = audioOn ? 0.5 : 0.85;
+    roundRect(r.x, r.y, r.w, r.h, Math.round(r.h / 4), "rgba(12,14,20,.84)");
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = audioOn ? "#dfe6f5" : "#8a91a3";
+    ctx.font = `${Math.round(r.h * 0.46)}px sans-serif`;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText("♪", r.x + r.w / 2, r.y + r.h / 2 + 1);
+    if (!audioOn) {           // 静音：音符上加一道斜杠（别做成 ×，玩家会以为点了退出）
+      ctx.strokeStyle = "#8a91a3";
+      ctx.lineWidth = Math.max(2, Math.round(r.h * 0.06));
+      ctx.beginPath();
+      ctx.moveTo(r.x + r.w * 0.22, r.y + r.h * 0.76);
+      ctx.lineTo(r.x + r.w * 0.78, r.y + r.h * 0.24);
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  function toggleMute() {
+    audioOn = !audioOn;
+    if (bgm) bgm.muted = !audioOn;
+  }
+
   // ---------- 素材 ----------
   function loadAssets() {
     const names = Object.keys(pack.assets || {});
@@ -236,6 +326,12 @@
         state.scene = "ending";
         autoSave();
         break;
+      case "music":
+        playMusic(ev.track, ev.fadein, ev.fadeout);
+        break;
+      case "sfx":
+        playSfx(ev.sound);
+        break;
       default:
         break;
     }
@@ -278,6 +374,8 @@
     // 读档后补一次"当前画面"：让 bg/立绘先对上，再继续推进
     state.bg = vm.state.bg || "";
     state.sprites = (vm.state.sprites || []).slice();
+    // P62：音乐也要续上（存档只记名字，不记播放进度——重头放，玩家基本感知不到）
+    if (fromSave && vm.state.music) playMusic(vm.state.music, 0, 0);
     next();
   }
 
@@ -298,6 +396,9 @@
     e.preventDefault();
     if (state.error) return;
     const p = point(e);
+
+    // 喇叭优先：点它只静音，不翻页
+    if (state.scene === "game" && inRect(p, muteRect())) return toggleMute();
 
     if (state.scene === "title") {
       if (state.continueRect && inRect(p, state.continueRect)) return startGame(true);
@@ -610,6 +711,7 @@
       drawSprites();
       drawDialogue(vis);
       drawChoices(vis);
+      drawMute();
       if (state.waitUntil && performance.now() >= state.waitUntil) {
         state.waitUntil = 0;
         next();
@@ -631,6 +733,10 @@
         choiceRects: state.choiceRects, sprites: state.sprites, bg: state.bg,
         lines: state.lines, ended: state.ended, error: state.error,
       };
+    },
+    get audio() {
+      return bgm ? {paused: bgm.paused, muted: bgm.muted, volume: bgm.volume,
+                    on: audioOn} : null;
     },
     tap: (x, y) => {
       const box = canvas.getBoundingClientRect();

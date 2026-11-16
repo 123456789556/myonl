@@ -2,6 +2,14 @@
 
 > 只记 release 级变化，一句话 + 证据链接。单项细节见 git 历史（原 archive/ 已删除）。
 
+## 2026-11-16（P62：让声音真的响，让包别太大）
+
+**音频**：`@music` / `@sfx` 之前在手机端是哑的（编译器不收 `audio/`，内核把这两个 op 丢进"暂不支持"）。现在 `_collect_audio_names()` 收 `music/track` 与 `sfx/sound` → `pack["audio"]`，单文件转 `data:audio/...`；内核吐 `music`/`sfx` 事件并把曲名进存档；播放器用 `Audio` 播、支持 `fadein/fadeout`、右上角静音键、读档续上音乐。`unsupported` 里去掉 music/sfx。
+
+**体积**：单文件里超过 300 KB 的图缩到 1600 边内转 WebP（quality 82），压不下 10% 就不换，没 Pillow 就跳过。实测 16 MB 噪声 PNG → 单文件 2 MB，省 15 MB。
+
+**验证**：临时工程带 `@music`+`@sfx` → `MYONL_DEBUG.audio` 显示在播、点喇叭 `muted=true`；小图 `saved==0` 仍走 PNG；缺音频进 `missing` 不抛异常。新增 5 条 pytest + vm-smoke 的 music/sfx/存档断言，全量 `1082 passed + 1 skipped`。教程示例单文件 83 KB，`unsupported` 空。版本升 rc9，PyInstaller 打进 157 个 PIL 模块（exe 里压缩也可用）。
+
 ## 2026-11-16（P61：做出来的东西能交出去了——单文件导出）
 
 **为什么**：之前的「导出手机版」是一堆文件（index.html + pack.json + 3 个 js + assets/），手机上打不开、微信发不了人。链路断在最后一步。
