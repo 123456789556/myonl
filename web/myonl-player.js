@@ -674,9 +674,37 @@
 
   /* 面板高度跟着台词行数走：一句话就不要一个大空盒子（至少 3 行高，最多 5 行）。 */
   function panelRect() {
-    const rows = Math.max(3, Math.min(L.maxTextRows, (state.lines || []).length || 3));
+    const rows = Math.max(2, Math.min(L.maxTextRows, (state.lines || []).length || 2));
     const h = Math.min(L.viewH * 0.46, L.padY * 2 + rows * L.lineH + Math.round(L.fs * 0.7));
     return {x: L.panelX, y: L.viewH - h - L.bottom, w: L.panelW, h: h, rows: rows};
+  }
+
+  /* 「#rrggbb + 透明度」：角色色要能当半透明底/描边用 */
+  function hexA(hex, alpha) {
+    const m = /^#?([0-9a-f]{6})$/i.exec(String(hex || "").trim());
+    if (!m) return "rgba(79,140,255," + alpha + ")";
+    const v = parseInt(m[1], 16);
+    return "rgba(" + ((v >> 16) & 255) + "," + ((v >> 8) & 255) + "," + (v & 255) + "," + alpha + ")";
+  }
+
+  /* 面板底色：原来是一块死黑（rgba(10,12,18,.90)）压在背景上，边缘像贴了张黑纸。
+     改为自上而下的深色渐变 + 顶部一道极淡的高光线，和底下的背景有过渡。 */
+  function panelFill(x, y, w, h) {
+    const g = ctx.createLinearGradient(0, y, 0, y + h);
+    g.addColorStop(0, "rgba(20,23,32,.92)");
+    g.addColorStop(1, "rgba(9,11,16,.96)");
+    return g;
+  }
+
+  function panelHairline(x, y, w, r) {
+    ctx.save();
+    ctx.strokeStyle = "rgba(255,255,255,.08)";
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(x + r, y + 0.5);
+    ctx.lineTo(x + w - r, y + 0.5);
+    ctx.stroke();
+    ctx.restore();
   }
 
   function drawPanel(vis) {
@@ -685,10 +713,11 @@
     const y = rect.y;
     const w = rect.w;
     const h = rect.h;
+    const radius = Math.max(vis.radius, 16);
     const skin = vis.panel.image && assets[vis.panel.image];
     // 先垫一层不透明底：贴图皮肤本体常是半透明 PNG，不垫的话背景/立绘会透上来，
     // 台词就不好读了（桌面端皮肤是在底板上叠的，这里保持同样的观感）。
-    roundRect(x, y, w, h, vis.radius, "rgba(10,12,18,.90)");
+    roundRect(x, y, w, h, radius, panelFill(x, y, w, h));
     if (skin) {
       ctx.save();
       ctx.globalAlpha = vis.panel.alpha;
@@ -707,8 +736,9 @@
         ctx.restore();
       }
     } else {
-      roundRect(x, y, w, h, vis.radius, vis.surface, vis.bgAlpha);
+      roundRect(x, y, w, h, radius, vis.surface, vis.bgAlpha);
     }
+    panelHairline(x, y, w, radius);
     return rect;
   }
 
@@ -723,8 +753,23 @@
       const plateH = L.nameSize + 22;
       const plateX = rect.x + Math.round(L.marginX * 0.6);
       const plateY = rect.y - plateH - 14;
-      roundRect(plateX, plateY, tw + 52, plateH, plateH / 2, "rgba(12,14,20,.92)", 0.92);
-      ctx.fillStyle = say.color || "#fff";
+      const tint = say.color || vis.accent;
+      // 名字牌跟着角色色走：淡色底 + 同色描边，比原来一律黑底更像"这个人说话"
+      roundRect(plateX, plateY, tw + 52, plateH, plateH / 2, hexA(tint, 0.30));
+      ctx.save();
+      ctx.strokeStyle = hexA(tint, 0.62);
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      const rrp = plateH / 2;
+      ctx.moveTo(plateX + rrp, plateY);
+      ctx.arcTo(plateX + tw + 52, plateY, plateX + tw + 52, plateY + plateH, rrp);
+      ctx.arcTo(plateX + tw + 52, plateY + plateH, plateX, plateY + plateH, rrp);
+      ctx.arcTo(plateX, plateY + plateH, plateX, plateY, rrp);
+      ctx.arcTo(plateX, plateY, plateX + tw + 52, plateY, rrp);
+      ctx.closePath();
+      ctx.stroke();
+      ctx.restore();
+      ctx.fillStyle = "#ffffff";
       ctx.textBaseline = "middle";
       ctx.fillText(say.char, plateX + 26, plateY + plateH / 2);
     }
@@ -752,16 +797,17 @@
 
     // 继续提示：打字完成 / 没有选项时
     if (!state.choice && shown >= totalChars(state.lines)) {
-      const ax = rect.x + rect.w - Math.round(L.fs * 1.2);
-      const ay = rect.y + rect.h - Math.round(L.fs * 0.9)
-        + Math.sin(performance.now() / 320) * Math.round(L.fs * 0.14);
+      const ax = rect.x + rect.w - Math.round(L.fs * 1.3);
+      const ay = rect.y + rect.h - Math.round(L.fs * 1.1);
+      // 一个会呼吸的小圆点，比原来的实心三角安静
+      const pulse = 0.55 + 0.45 * (0.5 + 0.5 * Math.sin(performance.now() / 380));
+      ctx.save();
+      ctx.globalAlpha = pulse;
       ctx.fillStyle = vis.accent;
       ctx.beginPath();
-      ctx.moveTo(ax - 16, ay - 10);
-      ctx.lineTo(ax + 16, ay - 10);
-      ctx.lineTo(ax, ay + 10);
-      ctx.closePath();
+      ctx.arc(ax, ay, Math.max(4, Math.round(L.fs * 0.28)), 0, Math.PI * 2);
       ctx.fill();
+      ctx.restore();
     }
   }
 
@@ -783,18 +829,26 @@
 
     state.choice.forEach((opt, i) => {
       const y = startY + i * (bh + gap);
-      roundRect(x, y, bw, bh, Math.round(bh / 6), "rgba(18,22,34,.96)");
-      ctx.strokeStyle = vis.accent;
-      ctx.lineWidth = 3;
-      const rr = Math.min(Math.round(bh / 6), bw / 2, bh / 2);
+      const r = 14;
+      // 按钮不再用 3px 蓝框圈住（太像表单）：淡底 + 1px 细边 + 左侧一道 accent 竖条
+      const g2 = ctx.createLinearGradient(0, y, 0, y + bh);
+      g2.addColorStop(0, "rgba(32,38,54,.94)");
+      g2.addColorStop(1, "rgba(20,24,36,.96)");
+      roundRect(x, y, bw, bh, r, g2);
+      ctx.save();
+      ctx.strokeStyle = "rgba(255,255,255,.14)";
+      ctx.lineWidth = 1;
       ctx.beginPath();
-      ctx.moveTo(x + rr, y);
-      ctx.arcTo(x + bw, y, x + bw, y + bh, rr);
-      ctx.arcTo(x + bw, y + bh, x, y + bh, rr);
-      ctx.arcTo(x, y + bh, x, y, rr);
-      ctx.arcTo(x, y, x + bw, y, rr);
+      ctx.moveTo(x + r, y);
+      ctx.arcTo(x + bw, y, x + bw, y + bh, r);
+      ctx.arcTo(x + bw, y + bh, x, y + bh, r);
+      ctx.arcTo(x, y + bh, x, y, r);
+      ctx.arcTo(x, y, x + bw, y, r);
       ctx.closePath();
       ctx.stroke();
+      ctx.fillStyle = vis.accent;
+      ctx.fillRect(x + 1, y + Math.round(bh * 0.28), 3, Math.round(bh * 0.44));
+      ctx.restore();
       ctx.fillStyle = vis.textColor;
       ctx.font = `500 ${L.fs}px ${FACE}`;
       ctx.textAlign = "center";

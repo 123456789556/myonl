@@ -1,0 +1,46 @@
+# P68 · 手机编辑器「去 IDE 化」+ 播放器换皮
+
+> 一句话：P65 只是把桌面那套三列布局**藏起来**，露出来的部分仍是 VS Code 的壳 ——
+> 文件标签条、八段挤成一行的状态栏、三个不等高的顶栏按钮、一块死黑对话框。
+> 这一期把这些全换成手机该有的样子。
+
+## 一、编辑器外壳
+
+| 项 | 改前 | 改后 |
+|---|---|---|
+| 文件标签条 `.editor-tabs` | `script.gal × +` 占 34px，手机上只开一个文件 | `display:none`，正文直接顶到顶栏下 |
+| 状态栏 | `✓已保存｜就绪｜第18行｜语法检查通过·25条指令｜剧本文本｜⚠0｜UTF-8｜MYONL v1.0.0-rc10`，右端出屏 | 只留 `#status` + `#sbLine`，26px；行号靠右、状态靠左 |
+| 状态文案 | 长句 | 窄屏 `通过 · 25 条`（`editor_main.js` 按 `matchMedia` 分流） |
+| 顶栏 | 三元素不等高，`justify-content:space-between` 让「文件」离 `‹` 隔一截 | `height:50px / gap:6px / justify-content:flex-start`；`‹`、`文件`、`⛶`、`⋯` 统一 34×34 圆角 10 浅底胶囊 |
+| 正文 | 13.5–14px / 行高 1.6 / 行号槽 50px | 15px / 行高 28px（绝对值）/ 行号槽 34px + 右边界线；`textarea#source` 与 `.hl-layer` **必须同参**，否则高亮错位 |
+| 左侧 13px 灰竖带 | `.file-pane` 用 `left:46px + translateX(-110%)`，右边缘停在 13px 处露出来 | `left:0 + width:min(86vw,340px) + translateX(-102%)` |
+| 引导卡 | 三个按钮并列、圆角随意 | 16px 圆角、主按钮唯一（34px 高、圆角 10），其余降级成裸文字、右对齐 |
+
+**踩坑**：编辑器不是 CodeMirror，是 `textarea#source` + `.hl-layer` 叠层。
+第一版按 `.cm-editor/.cm-content/.cm-line` 写 CSS，全部 no-op。
+真实生效的是 `textarea#source` 与 `.line-numbers`，且行号必须用 **px 行高**（比例行高会因字号不同而错位）。
+
+## 二、播放器（游戏内）
+
+- **对话框面板**：`rgba(10,12,18,.90)` 死黑底 → 自上而下深色渐变（`rgba(20,23,32,.92)` → `rgba(9,11,16,.96)`）+ 顶部 1px 高光线；圆角下限提到 16。
+- **名字牌**：一律黑底黑字 → 跟着角色色走（同色 30% 底 + 62% 描边 + 白字）。
+- **选项按钮**：3px 蓝框圈住（像表单）→ 淡深底 + 1px 细边 + 左侧一道 accent 竖条，圆角 14。
+- **继续提示**：实心三角上下跳 → 呼吸小圆点。
+- **面板高度**：最少 3 行 → 最少 2 行（一句话不再配一个大空盒子）。
+
+## 三、教程示例的占位素材
+
+`bg_教室.png` / `bg_天台.png` 原来是两块 4321 字节的土黄色纯色块 —— 竖屏 cover 放大后就是一整屏土黄，第一印象全毁。
+换成 **抽象氛围图**（深蓝夜色渐变 + 柔光斑 + 暗角，1200×1200，无任何硬边几何）：任何比例 cover 裁切都不会出现抽象方块，也不会与 UI 抢注意力。
+
+## 四、验证
+
+- `390×844` 深 / 浅 + `844×390` 深三张截图（`screenshots/p68-portrait-dark.png`、`p68-portrait-light.png`、`p68-landscape-dark.png`）；
+  实测 `tabs 0/0`（已隐藏）、`menubar 0/50`、`status 818/26`、状态栏文案 `第 18 行｜通过 · 25 条`。
+- 播放器 `play-portrait-title/dialogue/choice.png` + `play-landscape-*`（`_tools/tmp/play68.py` 出图）。
+- 全量 `1085 passed + 1 skipped, 32 deselected`（76.96s）。
+- `node --check` 四个 JS 全过；`node web/test/layout-smoke.js` / `vm-smoke.js` 全过。
+
+## 五、防缓存
+
+`editor/index.html` 四个资源 `?v=p65` → `?v=p68`（不换号手机浏览器会继续吃旧样式）。

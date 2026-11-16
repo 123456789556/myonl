@@ -2043,3 +2043,83 @@ input[type="color"] {
   .m-tabbar { height: calc(46px + env(safe-area-inset-bottom)); }
   .m-tab { font-size: 13px; }
 }
+
+/* ==================== P68：手机编辑器的「去 IDE 化」====================
+   P65 只是把桌面那套"藏起来"，露出来的部分仍是 VS Code 的骨架：
+   文件标签条（手机上只开一个文件，纯占位）、八段挤成一行的状态栏、
+   三个不等高的顶栏按钮。这一轮把这层壳换成手机该有的样子。 */
+@media (max-width: 860px), (max-height: 520px) {
+  /* 1. 文件标签条：手机单文件，34px 白占 */
+  .editor-tabs { display: none !important; }
+
+  /* 2. 状态栏：只留「已保存 / 第 N 行」，其余是桌面调试信息 */
+  .statusbar {
+    height: 26px; padding: 0 14px; gap: 8px; font-size: 11.5px;
+    background: var(--crust); color: var(--subtext0);
+  }
+  .statusbar > .sb-item:not(#status):not(#sbLine) { display: none !important; }
+  .statusbar > .sb-sep,
+  .statusbar > select,
+  .statusbar > .spacer { display: none !important; }
+  .statusbar #status { font-size: 11.5px; }
+  .statusbar #sbLine { margin-left: auto; color: var(--overlay0); }
+
+  /* 3. 顶栏：按钮统一 34×34 圆角 10，「文件」做成等高胶囊 */
+  .menubar { height: 50px; padding: 0 10px; gap: 6px; }
+  .menubar .icon-btn { width: 34px; height: 34px; border-radius: 10px; }
+  .menubar .menu-item {
+    height: 34px; display: inline-flex; align-items: center; padding: 0 12px;
+    border-radius: 10px; font-size: 14px;
+  }
+
+  /* 4. 正文：行号槽收窄、字号行高按手机读书习惯（编辑器是 textarea + 高亮层，两者必须同参）*/
+  textarea#source, .hl-layer { font-size: 15px; line-height: 1.9; }
+  textarea#source { padding: 12px 14px 44px 10px; }
+  .line-numbers { width: 34px; font-size: 11px; line-height: 1.9; padding: 12px 6px 12px 0; }
+
+  /* 5. 引导卡：主按钮只有一个，其余降级成文字 */
+  .ob-card { padding: 14px 16px 12px; border-radius: 16px; }
+  .ob-actions { justify-content: flex-end; gap: 6px; margin-top: 10px; }
+  .ob-actions .icon-btn { background: none; border: none; color: var(--subtext0); font-size: 13px; }
+  .ob-actions #obNext { height: 34px; padding: 0 18px; border-radius: 10px; font-size: 14px; }
+  .ob-step-tag { font-size: 11px; color: var(--overlay0); }
+  .ob-title { font-size: 16px; margin: 4px 0 6px; }
+  .ob-desc { font-size: 13.5px; line-height: 1.75; color: var(--subtext1); }
+}
+
+/* P68 续：顶栏左对齐（原来 space-between 让「文件」离 ‹ 隔一截）、藏掉折叠槽、行号提亮 */
+@media (max-width: 860px), (max-height: 520px) {
+  .menubar { justify-content: flex-start; }
+  .menubar .spacer { display: none; }
+  .line-numbers { color: var(--overlay1); border-right: 1px solid var(--surface0); }
+  .statusbar #status { color: var(--green, #69db7c); }
+}
+
+/* P68 续2：抽屉真正藏出屏外（原来 -110% 位移露出 13px，屏幕上多一条灰竖带）*/
+@media (max-width: 860px), (max-height: 520px) {
+  .file-pane {
+    left: 0 !important; width: min(86vw, 340px) !important;
+    transform: translateX(-102%) !important;
+  }
+  .main.mobile-tree-open .file-pane { transform: none !important; }
+
+  /* 顶栏「文件」给一层底，和图标按钮成为一排同等分量的控件 */
+  .menubar .menu-item { background: var(--surface0); }
+  .menubar .menu-item:hover { background: var(--surface1); }
+
+  /* 底部 tab 与正文之间来一条分界线，别糊在一起 */
+  .m-tabbar { border-top: 1px solid var(--surface0); }
+}
+
+/* 三个图标也来一层同款浅底，顶栏变成一排等分量的胶囊 */
+@media (max-width: 860px), (max-height: 520px) {
+  .menubar .icon-btn { background: var(--surface0); }
+  .menubar .icon-btn:hover { background: var(--surface1); }
+  .menubar .icon-btn.active { background: var(--blue); color: #fff; }
+}
+
+/* P68 续3：行号与正文必须同px行高（用比例行高时字号不同就会错位）*/
+@media (max-width: 860px), (max-height: 520px) {
+  textarea#source, .hl-layer { font-size: 15px; line-height: 28px; }
+  .line-numbers { font-size: 11px; line-height: 28px; padding: 12px 6px 12px 0; }
+}
