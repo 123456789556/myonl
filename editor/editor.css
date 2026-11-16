@@ -2123,3 +2123,21 @@ input[type="color"] {
   textarea#source, .hl-layer { font-size: 15px; line-height: 28px; }
   .line-numbers { font-size: 11px; line-height: 28px; padding: 12px 6px 12px 0; }
 }
+
+/* P68c：横屏（844×390）上顶栏+tabs+状态栏吃掉 122px，正文只剩 8 行 —— 压窄成套高度 */
+@media (max-height: 520px) and (orientation: landscape), (max-height: 520px) {
+  .menubar { height: 42px !important; padding: 0 8px !important; }
+  .menubar .menu-item, .menubar .icon-btn { height: 30px !important; }
+  .menubar .icon-btn { width: 30px !important; }
+  .statusbar { height: 22px !important; font-size: 11px !important; }
+  .m-tabbar { height: calc(42px + env(safe-area-inset-bottom)) !important; }
+  .m-tab { font-size: 14px !important; }
+  textarea#source, .hl-layer { line-height: 24px !important; padding-top: 8px !important; }
+  .line-numbers { line-height: 24px !important; padding-top: 8px !important; }
+}
+
+/* 横屏再省一格：状态栏在横屏直接不显示（行号不重要），tab 贴底，正文 306px 约 12 行 */
+@media (max-height: 520px) {
+  .statusbar { display: none !important; }
+  .m-tabbar { bottom: 0 !important; }
+}
