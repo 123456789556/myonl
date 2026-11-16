@@ -43,7 +43,16 @@ jobs:
           OPENBLAS_NUM_THREADS: "1"
           OMP_NUM_THREADS: "1"
           MKL_NUM_THREADS: "1"
-        run: python -m pytest -q -m "not slow"
+        run: |
+          python -m pytest -q -m "not slow" --tb=line 2>&1 | Tee-Object -FilePath pytest-out.txt
+          $code = $LASTEXITCODE
+          if ($code -ne 0) {
+            # 失败清单写成 ::error:: 注解——日志要 token 才能读，注解匿名就能读
+            Select-String -LiteralPath pytest-out.txt -Pattern '^FAILED ', 'failed,', 'passed,' |
+              Select-Object -First 30 |
+              ForEach-Object { "::error::$($_.Line)" }
+          }
+          exit $code
 
       - name: slow 用例（真实打包 / 全渲染 / 性能）
         if: github.event_name == 'workflow_dispatch'
