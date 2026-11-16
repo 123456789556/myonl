@@ -2,6 +2,22 @@
 
 > 只记 release 级变化，一句话 + 证据链接。单项细节见 git 历史（原 archive/ 已删除）。
 
+## 2026-11-16（P74：手机连电脑 / 插线互传 / AI 预留 / 全身立绘）
+
+**事情的原样**：编辑器本来就是跑在电脑上的 HTTP 服务，手机是它的浏览器客户端 —— 手机打开同一地址就在改电脑上那份工程，协同不缺机制，缺的是「手机怎么找到地址」。
+
+**手机连接（不用线）**：`engine/mobile_link.py` 探测局域网 IPv4（UDP connect 试探出口，过滤 127.*），用 `segno` 把地址画成浅底深码的 PNG data URI，编辑器新增 `GET /api/mobile-link`。设置中心里一张卡片：二维码 + 地址 + 复制 + 重新探测。本机实测 `http://10.20.152.240:8790/`。
+
+**插线推成品**：`adb_state()` / `adb_push()` 找 `MYONL_ADB` 或 `_tools/platform-tools/adb.exe`，`adb devices` 带 12s 超时、`TEMP` 指到同级目录（默认 `%TEMP%` 会被拒），推前先 `shell mkdir -p /sdcard/Download/MYONL`。**没设备就如实报「插好后打开 USB 调试」，不假装成功**。
+
+**AI 预留**：配置落在 `~/.myonl/ai.json`（用户目录，不进工程 / 导出包 / git）。`payload()` 只回掩码，任何情况下不回明文；空 key = 沿用旧值，`clear_key:true` 才清；`base_url` 必须 http(s)，数值夹紧；写盘 tmp + `os.replace` + 尽力 `chmod 600`；`ping()` 只打 `/models`，不烧 token。失败一律 HTTP 200 + `ok:false`（「还没配好」不是接口错误）。
+
+**全身立绘 + 常驻微动**：竖屏脚底改贴「对话框上沿」（`panelY - 6`）、身高上限 `min(0.86 屏高, panelY-6)` —— 之前贴屏幕底边，下半身被面板盖住，等于又变回半身；横屏仍贴底边保持人够大。`idleMotion()` 加 ±1.1% 呼吸 + ±0.9% 微摆，以脚底中心为锚先落点再 rotate 再 scale，相位按槽位错开。**这不是 Cubism Live2D**：那要 `.moc3` + 专有许可 SDK + 美术绑骨骼，MIT 引擎内置有法律问题；要做的是分层立绘（body / eyes_open / eyes_closed / mouth_*）驱动眨眼口型，需要作者自己出分层素材。示例立绘换成全身图（368×1400 / 382×1400，按 alpha 包围盒裁贴边）。
+
+**顺手修**：手机上 `.center-page.split` 的 `left:auto; width:56%` 特异性高于全屏规则 → 设置中心只在右侧占三分之二、左边一片空白（窄屏强制整屏）；`.set-tabs` 固定 132px 竖列吃掉三分之一屏宽（窄屏改顶部横排）；19 处 `var(--yellow)` + 3 处 `var(--peach)` 全是提示/徽标/选中框语义 → 换冷色（黄→天空蓝、橙→紫），红色只留给真错误。
+
+**测试**：`tests/test_p74_mobile_link.py` 13 条（`[pytest.mark.unit]`，进门禁）。注意 `pytestmark` 必须是**列表**，单值会被门禁判为漏声明；本机续跑全套要 `OPENBLAS_NUM_THREADS=1`，否则 6% 处 `OpenBLAS memory allocation` 直接中断。全套 **1105 passed / 1 skipped**，pyright 112 = 基线。
+
 ## 2026-11-16（P72 + P73：手机端装得上、演得全）
 
 **两件事**：① 导出的网页包/单文件现在带 PWA —— manifest + 192/512/maskable 图标 + iOS 全屏 meta + 启动遮罩，「添加到主屏幕」就是没有地址栏的 App。② 桌面端有、手机端一直不支持的 6 条演出指令全补上：`@fg` 前景贴图（cover 铺满）、`@anim` 立绘补间（x/y 1280 基准 + scale 底部中心锚 + alpha）、`@video` 帧序列背景（帧图一起打进包、fps 循环、懒加载）、`@voice` 独立语音通道（换句掐上一条）、`@chapter` 黑场章节卡（期间挡点击）、`@transition` dissolve 淡入 / wipe·slide 按方向 clip 推进。

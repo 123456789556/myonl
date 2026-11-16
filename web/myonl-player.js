@@ -769,12 +769,25 @@
     return out;
   }
 
+  // P74：立绘的常驻微动（呼吸 + 微摆）。
+  // 静态 PNG 贴在屏幕上就是「一张画」；真正让角色像活着的是几处几百分点的小动作：
+  // 纵向轻轻一起一伏（呼吸）、以脚底为轴极小幅度地晃（重心）。这两个都在 ±1% 量级，
+  // 不抢演出——@anim 的位移/缩放叠在它上面，不受影响。
+  // 相位按槽位错开，两个角色不会像机器人一样同步。
+  function idleMotion(i, t) {
+    const ph = i * 1.9;
+    const breath = Math.sin(t * 1.05 + ph) * 0.011;   // ±1.1% 纵向
+    const sway = Math.sin(t * 0.58 + ph) * 0.009;     // ±0.9%（0.15° 级）
+    return { breath, sway };
+  }
+
   function drawSprites() {
     const list = state.sprites || [];
     if (!list.length) return;
     const n = list.length;
     const baseH = L.spriteH;
     const k = L.viewW / 1280;   // 剧本里的像素值以桌面 1280 为基准
+    const nowT = performance.now() / 1000;
     list.forEach((sp, i) => {
       const key = sp.expr ? `${sp.char}_${sp.expr}` : sp.char;
       const img = assets[key] || assets[sp.char];
@@ -784,12 +797,20 @@
       const w = img.width * (h / img.height);
       const slotW = L.viewW / n;
       const cx = slotW * (i + 0.5) + disp.x * k;
-      const bottom = L.viewH + disp.y * k;
+      // 脚底锚点：竖屏贴「对话框上沿」（全身可见），横屏贴底边（人被面板压住小腿，
+      // 换取人物够大）。@anim 的 y 偏移在这个基准上叠加。
+      const bottom = (L.landscape ? L.viewH : L.panelY - 6) + disp.y * k;
       const alpha = Math.max(0, Math.min(1, disp.alpha));
       if (alpha <= 0) return;
+      const idle = idleMotion(i, nowT);
+      ctx.save();
       if (alpha < 1) ctx.globalAlpha = alpha;
-      ctx.drawImage(img, cx - w / 2, bottom - h, w, h);
-      if (alpha < 1) ctx.globalAlpha = 1;
+      // 以脚底中心为锚：先落点，再微摆，再呼吸缩放——顺序决定缩放不会把脚抬离地面
+      ctx.translate(cx, bottom);
+      ctx.rotate(idle.sway);
+      ctx.scale(1 - idle.breath * 0.55, 1 + idle.breath);
+      ctx.drawImage(img, -w / 2, -h, w, h);
+      ctx.restore();
     });
   }
 

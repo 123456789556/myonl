@@ -62,7 +62,15 @@
       padY: padY,
       textW: panelW - padX * 2,
       maxTextRows: 5,          // 面板最多 5 行，再多等玩家点（不缩字）
-      spriteH: Math.round(viewH * (landscape ? 0.94 : 0.72)),
+      // P74：竖屏立绘从 0.72 提到 0.86，但真正的上限是「对话框上沿」——
+      // 全身立绘要让人从头到脚都看见，脚就不能落到底边（那里被对话框盖住）。
+      // 所以身高取 min(屏高比例, panelY - 6)，头顶不会顶出屏幕。
+      // P74：竖屏立绘从 0.72 提到 0.86，但上限是「对话框上沿」——
+      // 竖屏看的是全身（脚要落在面板之上，不能被面板盖掉）；
+      // 横屏反过来要人「大」，贴底边让人被对话框压住小腿，这是横屏 galgame 的标准构图。
+      spriteH: Math.round(landscape
+        ? viewH * 0.94
+        : Math.min(viewH * 0.86, viewH - panelH - bottom - 6)),
       choiceW: Math.round(landscape ? Math.min(viewW * 0.62, 900) : viewW - marginX * 4),
       // P58：选项按钮按手指来算——最小 120 逻辑 px（1080 短边下约 43 CSS px，接近 44pt 触摸推荐值）
       choiceH: Math.round(clamp(fs * 2.8, 120, 170)),

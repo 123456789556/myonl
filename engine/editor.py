@@ -741,6 +741,8 @@ class _EditorHandler(BaseHTTPRequestHandler):
         ("GET", "/editor_shell.js"): "_serve_shell_js",
         # P65：手机端工作台（工程卡片第一层）
         ("GET", "/editor_home.js"): "_serve_home_js",
+        # P74：设置里的「手机连接 / 插线推送 / AI 助手」面板
+        ("GET", "/editor_link.js"): "_serve_link_js",
         # P67：游戏画面方向（any / portrait / landscape），存进工程 config.json
         ("GET", "/api/orientation"): "_get_orientation",
         ("POST", "/api/orientation"): "_set_orientation",
@@ -764,6 +766,15 @@ class _EditorHandler(BaseHTTPRequestHandler):
         ("POST", "/api/export-web"): "_export_web",
         ("POST", "/api/export-single"): "_export_single",
         ("POST", "/api/export-portable"): "_export_portable",
+        # P74：手机 ↔ 电脑。协同本身就是「同一个 HTTP 服务 + 手机浏览器」，
+        # 这里只解决「手机怎么找到地址」和「插线怎么把成品送过去」。
+        ("GET", "/api/mobile-link"): "_mobile_link",
+        ("GET", "/api/adb"): "_adb_get",
+        ("POST", "/api/adb"): "_adb_push",
+        # P74：AI 助手配置（预留；key 只存用户目录，不进工程/导出包）
+        ("GET", "/api/ai"): "_ai_get",
+        ("POST", "/api/ai"): "_ai_set",
+        ("POST", "/api/ai/ping"): "_ai_ping",
         # 桌宠（实验）：start / stop / status（源码模式可用；发行包后续接入）
         ("POST", "/api/pet"): "_pet_control",
         ("GET", "/api/complete"): "_complete",
@@ -1007,6 +1018,9 @@ class _EditorHandler(BaseHTTPRequestHandler):
     def _serve_home_js(self, parsed=None) -> None:
         self._serve_editor_file("editor_home.js", "application/javascript; charset=utf-8")
 
+    def _serve_link_js(self, parsed=None) -> None:
+        self._serve_editor_file("editor_link.js", "application/javascript; charset=utf-8")
+
     def _check(self, parsed=None) -> None:
         data = self._read_json()
         text = data.get("text", "")
@@ -1151,6 +1165,73 @@ class _EditorHandler(BaseHTTPRequestHandler):
             auto_insert=data.get("auto_insert"),
         )
         self._send_json(200 if result.get("ok") else 400, result)
+
+    # ==================== P74：手机连接 / 插线推送 / AI 预留 ====================
+
+    def _server_port(self) -> int:
+        addr = getattr(self.server, "server_address", ())
+        if isinstance(addr, tuple) and len(addr) > 1:
+            try:
+                return int(addr[1])
+            except (TypeError, ValueError):
+                pass
+        return 8790
+
+    def _mobile_link(self, parsed=None) -> None:
+        """「手机连接」卡片：局域网地址 + 二维码。
+
+        手机打开同一个地址就是同一个编辑器、同一份工程 —— 协同不需要另做一套同步。
+        """
+        from . import mobile_link
+
+        root = str(getattr(self.app, "project_root", "") or "")
+        self._send_json(200, mobile_link.link_payload(
+            self._server_port(), os.path.basename(os.path.normpath(root)) if root else ""))
+
+    def _adb_get(self, parsed=None) -> None:
+        from . import mobile_link
+
+        self._send_json(200, mobile_link.adb_state())
+
+    def _adb_push(self, parsed=None) -> None:
+        """把导出的单文件推到手机的 Download/MYONL/（需要插线 + USB 调试）。"""
+        from . import mobile_link
+
+        data = self._read_json()
+        root = str(getattr(self.app, "project_root", "") or "")
+        pack_root_fn = getattr(self.app, "pack_root", None)
+        if not root or not callable(pack_root_fn):
+            self._send_json(400, {"ok": False, "message": "还没打开工程"})
+            return
+        folder = os.path.basename(os.path.normpath(root))
+        single = os.path.join(str(pack_root_fn()), "dist", "single", folder + ".html")
+        if not os.path.isfile(single):
+            self._send_json(400, {"ok": False,
+                                  "message": "还没导出单文件：先在「导出」里导一次，再推到手机"})
+            return
+        mode = str(data.get("mode") or "simple").strip()
+        if mode == "simple":     # 只检测，不推
+            self._send_json(200, mobile_link.adb_state())
+            return
+        self._send_json(200, mobile_link.adb_push(single))
+
+    def _ai_get(self, parsed=None) -> None:
+        from . import ai as ai_mod
+
+        self._send_json(200, ai_mod.payload())
+
+    def _ai_set(self, parsed=None) -> None:
+        from . import ai as ai_mod
+
+        # 同样回 200：ok=false 表示「没存成」，原因在 message 里，前端照读
+        self._send_json(200, ai_mod.save(self._read_json()))
+
+    def _ai_ping(self, parsed=None) -> None:
+        from . import ai as ai_mod
+
+        # 一律 200：连不上是「配置还没填好」这种正常状态，不是接口错误，
+        # 回 400 只会让浏览器控制台飘红。
+        self._send_json(200, ai_mod.ping())
 
     # ==================== P51/P52：UI 设计区（独立于剧本编辑） ====================
 
