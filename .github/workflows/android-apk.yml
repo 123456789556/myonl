@@ -1,0 +1,85 @@
+name: 安卓 APK
+
+# 把 MYONL 工程编成网页包 → 套 Capacitor 安卓壳 → 出 debug APK。
+# 触发：Actions 页面手动填工程路径，或推 tag（v*）自动跑一次示例工程。
+on:
+  workflow_dispatch:
+    inputs:
+      project:
+        description: "工程目录（相对仓库根，如 games/教程示例）"
+        default: "games/教程示例"
+        required: false
+      app_name:
+        description: "桌面显示的应用名"
+        default: "教程示例"
+        required: false
+      app_id:
+        description: "包名（如 com.myonl.demo）"
+        default: "com.myonl.demo"
+        required: false
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 装 Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: 装 Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: 装 JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: 装 Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: 装引擎依赖
+        run: |
+          python -m pip install --upgrade pip
+          pip install pygame-ce
+
+      - name: 编译网页包
+        env:
+          PROJECT: ${{ github.event.inputs.project || 'games/教程示例' }}
+        run: |
+          python -m engine.webpack "$PROJECT" -o build/web/game --title android-build
+          ls -R build/web/game | head -40
+
+      - name: 生成安卓工程
+        env:
+          APP_NAME: ${{ github.event.inputs.app_name || '教程示例' }}
+          APP_ID: ${{ github.event.inputs.app_id || 'com.myonl.demo' }}
+        run: |
+          python tools/build_android.py --www build/web/game --out android-app \
+            --app-name "$APP_NAME" --app-id "$APP_ID" --install
+
+      - name: 编译 debug APK
+        working-directory: android-app/android
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleDebug --no-daemon
+
+      - name: 上传 APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: myonl-debug-apk
+          path: android-app/android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+
+      - name: 检查转屏设置
+        run: |
+          grep -n "screenOrientation" android-app/android/app/src/main/AndroidManifest.xml

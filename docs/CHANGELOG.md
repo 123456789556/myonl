@@ -2,6 +2,18 @@
 
 > 只记 release 级变化，一句话 + 证据链接。单项细节见 git 历史（原 archive/ 已删除）。
 
+## 2026-11-16（安卓打包：Capacitor 壳 + GitHub Actions 出 APK）
+
+**为什么**：H5 包只能"用浏览器打开"，装不上桌面。安卓这层做成**壳**——网页包一行不改，塞进 Capacitor，APK 交给 GitHub Actions 的机器编（本机没有 JDK/Android SDK，也就不用装）。
+
+**新增**：`tools/build_android.py`（生成 Capacitor 工程：`capacitor.config.json` / `package.json` / `www/`，可选 `--install` 跑 `npm i` + `cap add android` + `cap sync`，`--build` 出 debug APK；appId 与网页包完整性都有校验）；`.github/workflows/android-apk.yml`（手动触发填工程路径/应用名/包名，或推 `v*` tag 自动跑；上传 `myonl-debug-apk` artifact）。
+
+**横竖屏的真开关**：`AndroidManifest.xml` 打补丁 —— `android:screenOrientation="fullSensor"`（四向都跟传感器，不锁 portrait/landscape）、`android:configChanges` 补 `orientation|screenSize`（转屏不重建 Activity，WebView 不重载，剧本不会被打回标题）。补丁幂等。
+
+**验证到哪**：脚手架 + `npm install` + `cap add android` + `cap sync` 在本机实跑通过（`android/app/src/main/assets/public/` 里三个 js 与 pack.json 都在，Manifest 补丁已验证）；`tests/test_android_pack.py` 12 条；`gradlew assembleDebug` 与真机安装**没验**（本机无 JDK/SDK），Actions 工作流**没跑过**。说明 `docs/变更说明-P55-安卓打包.md`。
+
+**未做（如实记）**：返回键回标题页（需 Capacitor App 插件 JS 侧）、沉浸式全屏/启动图、release 签名包、iOS、微信/抖音小游戏封装。
+
 ## 2026-11-16（手机版：同一个工程编成 H5，竖屏横屏都能跑）
 
 **为什么**：Ren'Py 的出口是桌面，出不了竖屏 H5、上不了 itch.io 网页区和微信/抖音小游戏。所以把「手机播放器」做成正式出口，而不是给 Ren'Py 老用户做桌面平替。
@@ -10,7 +22,7 @@
 
 **新增**：`engine/webpack.py`（`build_web()` + `py -3 -m engine.webpack`，只拷剧本真正引用到的图，缺素材记 `missing` 不硬失败）；`web/myonl-core.js`（IR 执行器 + 变量插值/比较/存档/未知指令不崩）；`web/myonl-layout.js`（布局纯函数：短边 1080、长宽按真实窗口比例、字号按短边、极端比例夹 0.42~2.2）；`web/myonl-player.js`（canvas 背景/立绘/面板/打字机/选项/标题/结局，面板高度随台词行数，皮肤沿用 P53 九宫格语义）。
 
-**编辑器**：「界面设计」弹窗新增**导出手机版**按钮 → `POST /api/export-web` 编到 `<发行根>/web/<工程名>/`，并把产物挂到 `GET /web-preview/...` 供浏览器直接跑（路径 realpath 前缀校验，`../` 被拒）。
+**编辑器**：「界面设计」弹窗新增**导出手机版**按钮 → `POST /api/export-web` 编到 `<发行根>/dist/web/<工程名>/`，并把产物挂到 `GET /web-preview/...` 供浏览器直接跑（路径 realpath 前缀校验，`../` 被拒）。
 
 **转屏**：监听 `resize`/`orientationchange` 重算画布并重排台词，已显示字数按比例续上（不重播、不跳字）；横竖屏字号差 ≤4px。
 
