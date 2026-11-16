@@ -5,7 +5,7 @@
 > 维护规则：人只改上面的四行；自动数字区由 py -3 tools/status.py --write 生成。
 
 - **版本**：v1.0.0-rc8（**手机端为主线**：同一工程 → 竖屏/横屏 H5 网页包 → 安卓 APK；桌面端降为并行出口）。rc8 相对 rc7 的实质变化：P54 H5 播放器、P55 Capacitor 安卓壳 + GitHub Actions 出 APK（已跑通，产物 `myonl-debug-apk` 3.24 MB）、P56 可迁移导出（Ren'Py 工程 / 通用 JSON）。发行包 `dist/release/MYONL引擎-v1.0.0-rc8.zip` 46.5MB 已重打并冒烟（`editor.exe -h` / `--demo-worker` exit 0），**尚未上传到 GitHub Release**。
-- **在做**：P59 手机主界面（窄屏只剩编辑区 + 底部 📁/🗂/👁/▶ 四个悬浮按钮，侧栏/素材/预览变抽屉；顺手收掉 `.asset-pane` 把页面撑到 651 的老毛病）已完成并验收。下一步：顶部工具条收成图标 + 手机键盘快捷工具条（`@` / `@choice:` / 缩进）。
+- **在做**：P60 手机输入与工具条（窄屏工具条只留图标、菜单入口收起、搜索框折叠成图标、Dock 面板 38dvh、新增手机键盘快捷条 `@`/`@choice:`/缩进/撤销）已完成并验收。语音转文字**不做**（手机输入法自带、浏览器 API 与离线定位冲突）。下一步：快捷条按上下文推荐下一句 / 长按弹出全部指令。
 - **质量门槛**：干净 Windows（无 Python）下可做出并打包可玩 demo；H5 播放器在真实 Chromium 竖屏 390×844 / 横屏 844×390 + 转屏 + 自动存档全过；安卓 APK 由 CI 产出（gradlew assembleDebug 绿）。
 - **本机限制**：无 JDK / 无 Android SDK / 无 gh CLI / 无 Ren'Py SDK——所以 **APK 只能在 CI 里编**、**Ren'Py 导出工程没在 Ren'Py 里真跑过**；Actions 日志需 token（已改成失败时写 `::error::` 注解，匿名可读）。
 - **后续待办**：① 真机装一次 APK（转屏 / 返回键 / 字体） ② 手机端补音频（当前最大体验缺口） ③ rc8 附件上传 Release（先删旧 rc7 附件） ④ Ren'Py 侧按 lint 报错修中文变量名（**用户已说不必做**） ⑤ 收集早期使用者反馈。

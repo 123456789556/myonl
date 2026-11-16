@@ -1807,6 +1807,46 @@ input[type="color"] {
   /* 状态栏钉在屏幕最底，悬浮按钮抬到它上面，两者不打架 */
   .statusbar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 83; height: 30px;
     font-size: 11px; overflow-x: auto; white-space: nowrap; }
+
+  /* ---- 顶部工具条 / 菜单栏：手机上只留图标，文字交给菜单 ---- */
+  .editor-toolbar { gap: 4px; padding: 5px 6px; overflow-x: auto; flex-wrap: nowrap;
+    scrollbar-width: none; }
+  .editor-toolbar::-webkit-scrollbar { display: none; }
+  .editor-toolbar .tb-txt { display: none; }
+  .editor-toolbar .tb-spacer { display: none; }
+  .editor-toolbar .tb-btn { height: 32px; padding: 0 9px; flex: 0 0 auto; }
+  .menubar .mb-acts { display: none; }
+  .menubar .mb-search { width: 34px; min-width: 34px; flex: 0 0 34px; padding: 0 8px; overflow: hidden; }
+  .menubar .mb-search input { width: 0; opacity: 0; pointer-events: none; }
+  .menubar .mb-search.open { width: min(72vw, 300px); min-width: 0; flex: 1 1 auto; }
+  .menubar .mb-search.open input { width: 100%; opacity: 1; pointer-events: auto; }
+  .menubar .mb-search .mb-kbd { display: none; }
+
+  /* 底部 Dock 面板：手机上别占满半屏 */
+  .dock { height: 38dvh !important; max-height: 38dvh; }
+
+  /* ---- 手机键盘快捷条：@ / @choice: / 缩进这些高频输入不能靠手打 ---- */
+  .m-keybar { display: none; }
+  /* 键盘快捷条出现时，浮动按钮让位（状态栏还在，快捷条压在它上面） */
+  .m-keybar.show {
+    display: flex; position: fixed; left: 0; right: 0; bottom: 30px; z-index: 86;
+    gap: 6px; padding: 6px 8px; overflow-x: auto; white-space: nowrap;
+    background: #151a24; border-top: 1px solid #2a3345;
+    scrollbar-width: none; -webkit-overflow-scrolling: touch;
+  }
+  .m-keybar::-webkit-scrollbar { display: none; }
+  .m-kb {
+    flex: 0 0 auto; height: 36px; min-width: 38px; padding: 0 10px; border-radius: 8px;
+    background: #222a38; color: #cfe0ff; border: 1px solid #2f3a4d;
+    font-size: 13px; font-family: "Consolas", "Courier New", monospace; cursor: pointer;
+  }
+  .m-kb:active { background: #2b3648; }
+  .m-kb.act { background: #2f6df6; border-color: #2f6df6; color: #fff;
+    font-family: inherit; }
+  /* 键盘弹起来时，浮动按钮和状态栏让位，别跟快捷条叠 */
+  body.m-typing .mobile-dock,
+  body.m-kb-open .mobile-dock,
+  body.m-kb-open .statusbar { display: none; }
   .left-pane { width: 100%; min-width: 0; border-right: none; }
   .right-pane {
     position: fixed; left: 0; right: 0; bottom: 0; width: 100vw; max-width: 100vw;

@@ -449,15 +449,130 @@
     document.addEventListener("keydown", function (e) {
       if (e.key === "Escape") closeDrawers();
     });
+
+    // 搜索框在手机上收成一个图标，点一下才展开（不然 390 宽塞不下菜单 + 搜索 + 入口）
+    var sWrap = $("mbSearchWrap");
+    if (sWrap) {
+      sWrap.addEventListener("click", function () {
+        if (!mobileMQ.matches || sWrap.classList.contains("open")) return;
+        sWrap.classList.add("open");
+        var inp = $("mbSearchInput");
+        if (inp) { setTimeout(function () { inp.focus(); }, 0); }
+      });
+      document.addEventListener("click", function (e) {
+        if (!sWrap.classList.contains("open")) return;
+        if (sWrap.contains(e.target)) return;
+        sWrap.classList.remove("open");
+      });
+    }
   }
 
   function syncMobileLayout() {
     if (mobileMQ.matches) {
       buildMobileUI();
+      buildKeybar();
     } else {
       closeDrawers();
+      if (keybarEl) keybarEl.classList.remove("show");
+      document.body.classList.remove("m-kb-open");
     }
   }
+  // ---- 手机键盘快捷条：@ 系列指令 + 缩进 + 撤销。手机上打 "@choice:" 太慢。----
+  var keybarEl = null;
+  var KB_KEYS = [
+    ["at", "@", "@", null],
+    ["choice", "@choice:", "@choice:\n    ", null],
+    ["if", "@if", "@if ", null],
+    ["set", "@set", "@set ", null],
+    ["label", "@label", "@label ", null],
+    ["show", "@show", "@show ", null],
+    ["arrow", "→", "-> ", null],
+    ["indent", "缩进", null, "indent"],
+    ["newline", "换行", "\n", null],
+    ["undo", "撤销", null, "undo"]
+  ];
+
+  function insertAtCursor(text) {
+    var e = $("source");
+    if (!e) return;
+    e.focus();
+    var s = e.selectionStart;
+    if (typeof s !== "number") s = e.value.length;
+    var t = e.selectionEnd;
+    if (typeof t !== "number") t = s;
+    e.setRangeText(text, s, t, "end");
+    e.dispatchEvent(new Event("input", { bubbles: true }));
+    e.dispatchEvent(new Event("keyup", { bubbles: true }));
+  }
+
+  function indentCurrentLine() {
+    var e = $("source");
+    if (!e) return;
+    e.focus();
+    var s = e.selectionStart || 0;
+    var lineStart = e.value.lastIndexOf("\n", s - 1) + 1;
+    e.setRangeText("    ", lineStart, lineStart, "end");
+    e.selectionStart = e.selectionEnd = s + 4;
+    e.dispatchEvent(new Event("input", { bubbles: true }));
+  }
+
+  // 键盘弹起时（尤其 iOS 不缩 viewport）把快捷条顶到键盘上方，dock / 状态栏让位
+  function syncKeyboardOffset() {
+    var vv = window.visualViewport;
+    var gap = 0;
+    if (vv) gap = Math.max(0, window.innerHeight - (vv.height + vv.offsetTop));
+    var kbOpen = gap > 80;
+    if (keybarEl) keybarEl.style.bottom = (kbOpen ? Math.round(gap) : 30) + "px";
+    document.body.classList.toggle("m-kb-open", kbOpen);
+  }
+
+  function buildKeybar() {
+    if (keybarEl) return;
+    keybarEl = document.createElement("div");
+    keybarEl.className = "m-keybar";
+    KB_KEYS.forEach(function (k) {
+      var b = document.createElement("button");
+      b.type = "button";
+      b.id = "m-kb-" + k[0];
+      b.className = "m-kb" + (k[2] ? "" : " act");
+      b.textContent = k[1];
+      // pointerdown + preventDefault：点快捷键时输入框不能失焦，否则插入位置丢失
+      b.addEventListener("pointerdown", function (ev) { ev.preventDefault(); });
+      b.addEventListener("click", function () {
+        if (k[3] === "indent") indentCurrentLine();
+        else if (k[3] === "undo") { try { document.execCommand("undo"); } catch (err) {} }
+        else insertAtCursor(k[2]);
+        syncKeyboardOffset();
+      });
+      keybarEl.appendChild(b);
+    });
+    document.body.appendChild(keybarEl);
+
+    var src = $("source");
+    if (src) {
+      src.addEventListener("focus", function () {
+        if (!mobileMQ.matches) return;
+        keybarEl.classList.add("show");
+        document.body.classList.add("m-typing");
+        syncKeyboardOffset();
+      });
+      src.addEventListener("blur", function () {
+        // 点快捷条本身不该收起来（pointerdown 已 preventDefault，正常不会失焦）
+        setTimeout(function () {
+          if (document.activeElement === src || keybarEl.contains(document.activeElement)) return;
+          keybarEl.classList.remove("show");
+          document.body.classList.remove("m-typing", "m-kb-open");
+          if (keybarEl) keybarEl.style.bottom = "30px";
+        }, 60);
+      });
+    }
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener("resize", syncKeyboardOffset);
+      window.visualViewport.addEventListener("scroll", syncKeyboardOffset);
+    }
+  }
+
+  // 所有函数/变量都就位后再初始化一次（var 提升会让早调用拿到 undefined）
   if (mobileMQ.addEventListener) mobileMQ.addEventListener("change", syncMobileLayout);
   else if (mobileMQ.addListener) mobileMQ.addListener(syncMobileLayout);
   syncMobileLayout();
