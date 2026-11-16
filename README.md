@@ -3,7 +3,7 @@
 **简体中文** | [English](README.en.md)
 
 [![tests](https://github.com/123456789556/myonl/actions/workflows/tests.yml/badge.svg?branch=main)](https://github.com/123456789556/myonl/actions/workflows/tests.yml)
-![Release](https://img.shields.io/badge/release-v1.0.0--rc10-blue)
+![Release](https://img.shields.io/badge/release-v1.0.0--rc11-blue)
 ![Windows](https://img.shields.io/badge/Windows-10%2021H2%2B%20%7C%2011-0078D4)
 ![Python](https://img.shields.io/badge/Python-3.9%2B-3776AB)
 ![License](https://img.shields.io/badge/License-MIT-green)
@@ -15,16 +15,33 @@
 
 ## 手机端优先（现在的主线）
 
-1. **写**：`script.gal` 纯文本，编辑器里左边写右边实时预览；
-2. **出手机版**：编辑器「界面设计 → 导出手机版」，编成静态网页包（`pack.json` + 播放器 + 只用到的素材），
-   竖屏 390×844 和横屏 844×390 都满屏、转屏自动重排，整包可传 itch.io 或任意静态托管；
-3. **装到安卓**：`tools/build_android.py` 套 Capacitor 壳，GitHub Actions 直接出 `app-debug.apk`
-   （`.github/workflows/android-apk.yml`，Actions 页面手动填工程即可）。
+同一个工程，三条出口：**手机网页包**（竖屏 390×844 / 横屏 844×390 都满屏，转屏自动重排）、
+**安卓 APK**（`tools/build_android.py` 套 Capacitor 壳，`.github/workflows/android-apk.yml` 出 `app-debug.apk`）、
+**桌面目录**（双击即玩，目标机不装 Python）。桌面端保留重度编辑与打包，不再是唯一出口。
 
-**不被锁死**：编辑器「导出可迁移包」把同一个工程导成 **Ren'Py 工程**（`game/script.rpy` + 图片，
-解压丢进 Ren'Py SDK 就能跑）或**通用 JSON**（`game.json` + `assets/`，任何引擎照表实现 op 即可读）。
+**手机上的编辑器是一个"应用"，不是一张塞进 390px 的 IDE**：
+
+1. 打开先进「我的作品」——工程卡片（名字 / `49 条指令 · 21 个素材 · 11 天前`）+ 虚线「＋ 新建作品」，
+   点开卡片才进编辑器，顶栏「‹ 作品」随时退回；
+2. 编辑器只有 **一行顶栏**（作品 / 文件 / 全屏 / 更多）+ 正文 + 底部 **五个纯文字页签**
+   （剧本 · 素材 · 外观 · 预览 · 导出）。菜单栏、活动栏、搜索框、面包屑、文件标签条、富文本工具条都不在手机上出现；
+3. 正文按读书而不是按代码排：15px / 行高 28px / 行号槽 34px；状态栏只留「已保存」和「第 N 行」；
+4. 设置是底部弹层（不是全屏弹窗）：深色 / 浅色、游戏画面方向（跟随 / 竖屏 / 横屏）、返回作品列表；
+5. 横过来就换一套排法：顶栏同样一行，页签收窄到 46px，工作台卡片排两列，引导卡贴右边不被正文压住。
+
+**不被锁死**：编辑器把同一个工程还能导成 **Ren'Py 工程**（`game/script.rpy` + 图片，解压丢进 Ren'Py SDK 即可跑）
+或**通用 JSON**（`game.json` + `assets/`，任何引擎照表实现 op 即可读）。
 
 > Windows 10 21H2+ / Windows 11 · Python 3.9+ · pygame-ce · MIT · 完全离线
+
+### 最近四期（手机端从"能跑"到"能看"）
+
+| 版本 | 做了什么 |
+|---|---|
+| P65 | 窄屏只留一行顶栏 + 底部五个纯文字页签，退役 `.mobile-dock`；加 `manifest.webmanifest`（`display:fullscreen`）与图标；播放器点「开始」顺带请求全屏 |
+| P66 | 手机端先进「我的作品」工作台（`GET /api/home`、`POST /api/project`），有缩略图、有 `‹ 作品` 退回 |
+| P67 | 窄屏判定改成条件组 `(max-width:860px), (max-height:520px)`——横过来仍是手机布局；设置里可定工程方向 |
+| P68 | 去 IDE 化：藏文件标签条、状态栏收成一行、顶栏四个 34×34 胶囊、正文按读书排；播放器对话框换渐变底、名字牌跟角色色、选项去粗蓝框；示例背景换成抽象氛围图 |
 
 ![对话与选项](docs/images/dialogue-choices.jpg)
 
