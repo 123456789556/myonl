@@ -20,8 +20,12 @@
   const canvas = document.getElementById("game");
   const ctx = canvas.getContext("2d");
   const FACE = '"PingFang SC", "Source Han Sans SC", "Microsoft YaHei", system-ui, sans-serif';
-  const SPEED = 32;                   // 打字机：字/秒
+  const BASE_CPS = 32;                // 打字机基准：字/秒（设置里可调）
 
+  // 玩家设置（本机 localStorage，与游戏无关）：文字速度 / 字号 / 音量 / 自动翻页
+  const PREF = {speed: 1, text: 1, vol: 0.7, auto: 0};
+  const PREF_KEY = "myonl:prefs";
+  const UI = {open: false, view: "menu", rects: [], t0: 0};
   let pack = null;
   let vm = null;
   const assets = {};
@@ -132,6 +136,7 @@
   // ---------- 画布尺寸 ----------
   function fit() {
     L = LAYOUT.layoutFor(window.innerWidth, window.innerHeight);
+    applyTextScale();
     const dpr = Math.max(1, Math.min(3, window.devicePixelRatio || 1));
     const sw = window.innerWidth;
     const sh = window.innerHeight;
@@ -156,7 +161,7 @@
     state.typedBefore = Math.min(before, total);
     state.typeStart = performance.now();
     // 让续显从"已显示的位置"接着走，而不是从头再来
-    state.typeStart -= (state.typedBefore / SPEED) * 1000;
+    state.typeStart -= (state.typedBefore / cps()) * 1000;
   }
 
   window.addEventListener("resize", fit);
@@ -380,7 +385,7 @@
     const total = totalChars(state.lines);
     if (!total) return 0;
     const elapsed = (performance.now() - state.typeStart) / 1000;
-    return Math.min(total, Math.max(0, Math.floor(elapsed * SPEED)));
+    return Math.min(total, Math.max(0, Math.floor(elapsed * cps())));
   }
 
   // ---------- 事件 ----------
@@ -527,6 +532,10 @@
     if (state.error) return;
     const p = point(e);
 
+    if (UI.open) return onMenuTap(p);
+    // 菜单键在喇叭左边：点它开菜单，不翻页
+    if (state.scene === "game" && inRect(p, menuRect())) return openMenu();
+
     // 喇叭优先：点它只静音，不翻页
     if (state.scene === "game" && inRect(p, muteRect())) return toggleMute();
 
@@ -553,7 +562,7 @@
 
     // 打字机未完 → 一次全显（玩家不想等）
     if (typedCount() < totalChars(state.lines)) {
-      state.typeStart = performance.now() - (totalChars(state.lines) / SPEED) * 1000;
+      state.typeStart = performance.now() - (totalChars(state.lines) / cps()) * 1000;
       return;
     }
     if (state.waitUntil && performance.now() < state.waitUntil) return;
@@ -1039,15 +1048,27 @@
       drawDialogue(vis);
       drawChoices(vis);
       drawMute();
+      drawMenuButton();
       if (state.waitUntil && performance.now() >= state.waitUntil) {
         state.waitUntil = 0;
         next();
       }
+      // 自动翻页：只在打字读完、没有选项、没有 @wait 时走
+      if (PREF.auto > 0 && !state.choice && !(state.waitUntil > 0)) {
+        const total = totalChars(state.lines);
+        if (total && typedCount() >= total) {
+          const doneAt = state.typeStart + (total / cps()) * 1000;
+          if (now - doneAt >= PREF.auto * 1000) { autoSave(); next(); }
+        }
+      }
     }
+    if (UI.open) drawMenu();
     requestAnimationFrame(frame);
   }
 
   // ---------- 启动 ----------
+  loadPrefs();
+  bgmVolume = PREF.vol;
   fit();
   requestAnimationFrame(frame);
 
@@ -1126,4 +1147,390 @@
       state.error = "加载失败：" + err.message
         + "。单文件版可直接双击打开；分目录版需要静态服务器（file:// 取不到 pack.json）。";
     });
+  // ---------- 菜单 / 存档 / 设置（P69）----------
+  /* 全部 canvas 自绘：单文件导出版和分目录版共用同一份逻辑，DOM 覆盖层在单文件里会丢样式。
+     设置只存本机 localStorage（离线作品没有服务器），键名不分游戏——换作品也沿用同一套手感。*/
+
+  function loadPrefs() {
+    try {
+      const v = JSON.parse(localStorage.getItem(PREF_KEY) || "{}");
+      if (typeof v.speed === "number") PREF.speed = v.speed;
+      if (typeof v.text === "number") PREF.text = v.text;
+      if (typeof v.vol === "number") PREF.vol = v.vol;
+      if (typeof v.auto === "number") PREF.auto = v.auto;
+    } catch (e) { /* 隐私模式禁读 */ }
+  }
+
+  function savePrefs() {
+    try { localStorage.setItem(PREF_KEY, JSON.stringify(PREF)); } catch (e) { /* 禁写 */ }
+  }
+
+  function cps() { return BASE_CPS * PREF.speed; }
+
+  /* 字号放大后不能只是字变大：行高、名字牌、可用行数都要跟着改，否则会挤出面板 */
+  function applyTextScale() {
+    if (PREF.text === 1) return;
+    const k = PREF.text;
+    L.fs = Math.round(L.fs * k);
+    L.lineH = Math.round(L.lineH * k);
+    L.nameSize = Math.round(L.nameSize * k);
+    L.maxTextRows = k > 1 ? 4 : 6;
+    L.textW = L.panelW - L.padX * 2;
+  }
+
+  function slotBase() {
+    const t = (pack && pack.title) || "untitled";
+    const s2 = (pack && pack.script) || "";
+    return t + ":" + s2;
+  }
+  function slotKey(i) { return "myonl:slot:" + slotBase() + ":" + i; }
+  function slotCount() { return 6; }
+
+  function previewLine() {
+    if (!state.say) return "";
+    const who = state.say.char ? state.say.char + "：" : "";
+    return (who + (state.say.text || "")).slice(0, 18);
+  }
+
+  function readSlot(i) {
+    try { return JSON.parse(localStorage.getItem(slotKey(i)) || "null"); } catch (e) { return null; }
+  }
+
+  function writeSlot(i) {
+    if (!vm) return;
+    const d = {s: vm.save(), t: Date.now(), say: previewLine(), bg: state.bg || ""};
+    try { localStorage.setItem(slotKey(i), JSON.stringify(d)); } catch (e) { /* 满了/禁写 */ }
+    UI.t0 = performance.now();
+  }
+
+  function loadSlot(i) {
+    const d = readSlot(i);
+    if (!d || !d.s) return;
+    UI.open = false;
+    state.scene = "game";
+    state.ended = false;
+    state.say = null;
+    state.lines = [];
+    state.choice = null;
+    state.choiceRects = [];
+    state.waitUntil = 0;
+    vm.load(d.s);
+    state.bg = vm.state.bg || "";
+    state.cg = vm.state.cg || "";
+    state.sprites = (vm.state.sprites || []).slice();
+    if (vm.state.music) playMusic(vm.state.music, 0, 0);
+    next();
+  }
+
+  function openMenu() { UI.open = true; UI.view = "menu"; UI.t0 = performance.now(); }
+
+  function stamp(t) {
+    const d = new Date(t || 0);
+    const p2 = (n) => (n < 10 ? "0" : "") + n;
+    return (d.getMonth() + 1) + "-" + p2(d.getDate()) + " " + p2(d.getHours()) + ":" + p2(d.getMinutes());
+  }
+
+  function menuBtnSize() {
+    return Math.min(160, Math.max(64, Math.round(Math.min(L.viewW, L.viewH) * 0.105)));
+  }
+
+  /* 菜单键放在喇叭左边：右上角本来就是"两个键"的位置，玩家不用记新手势 */
+  function menuRect() {
+    const s2 = menuBtnSize();
+    const m = Math.round(Math.min(L.viewW, L.viewH) * 0.03);
+    const mr = muteRect();
+    return {x: mr.x - s2 - Math.round(m * 0.5), y: m, w: s2, h: s2};
+  }
+
+  function drawMenuButton() {
+    if (state.scene !== "game" || state.error) return;
+    const r = menuRect();
+    ctx.save();
+    ctx.globalAlpha = 0.5;
+    roundRect(r.x, r.y, r.w, r.h, Math.round(r.h / 4), "rgba(12,14,20,.84)");
+    ctx.globalAlpha = 1;
+    ctx.strokeStyle = "#dfe6f5";
+    ctx.lineWidth = Math.max(2, Math.round(r.h * 0.052));
+    const cx = r.x + r.w / 2;
+    const cy = r.y + r.h / 2;
+    const half = r.w * 0.17;
+    for (let i = -1; i <= 1; i++) {
+      ctx.beginPath();
+      ctx.moveTo(cx - half, cy + i * r.h * 0.19);
+      ctx.lineTo(cx + half, cy + i * r.h * 0.19);
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  /* 横屏只有 390 高，5 个按钮按竖屏的尺寸会顶到屏幕上下边 */
+  function menuRowH() { return Math.round(L.fs * (L.landscape ? 2.1 : 2.7)); }
+  function setRowH() { return Math.round(L.fs * (L.landscape ? 2.0 : 2.4)); }
+
+  /* 面板高度跟着内容走：写死 74% 会在底部留一大片空，还漏出后面的对话框 */
+  function menuPanel() {
+    const land = L.landscape;
+    const w = land ? Math.min(L.viewW * 0.58, 860) : L.viewW * 0.88;
+    const pad = Math.round(w * 0.055);
+    const headH = Math.round(L.fs * 2.2);
+    const footH = Math.round(L.fs * 2.3);
+    const gap = Math.round(L.fs * 0.55);
+    let bodyH;
+    if (UI.view === "menu") {
+      bodyH = Math.round(L.fs * 0.3) + 5 * (menuRowH() + gap);
+    } else if (UI.view === "settings") {
+      bodyH = Math.round(L.fs * 0.3) + 4 * (setRowH() + gap);
+    } else {
+      const rows = land ? 2 : 3;
+      const ch = Math.round(L.fs * (land ? 5.4 : 4.6));
+      bodyH = Math.round(L.fs * 0.4) + rows * (ch + gap);
+    }
+    const h = Math.min(headH + bodyH + footH + pad, L.viewH * (land ? 0.96 : 0.94));
+    return {x: (L.viewW - w) / 2, y: (L.viewH - h) / 2, w: w, h: h, pad: pad, headH: headH};
+  }
+
+  function hit(id, x, y, w, h) { UI.rects.push({id: id, x: x, y: y, w: w, h: h}); }
+
+  function uiButton(id, x, y, w, h, label, opts) {
+    const o = opts || {};
+    const on = !!o.on;
+    const r = Math.round(Math.min(h / 2, 18));
+    roundRect(x, y, w, h, r, on ? (o.accent || "#4f8cff") : "rgba(255,255,255,.075)");
+    if (!on) {
+      ctx.save();
+      ctx.strokeStyle = "rgba(255,255,255,.12)";
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(x + r, y);
+      ctx.arcTo(x + w, y, x + w, y + h, r);
+      ctx.arcTo(x + w, y + h, x, y + h, r);
+      ctx.arcTo(x, y + h, x, y, r);
+      ctx.arcTo(x, y, x + w, y, r);
+      ctx.closePath();
+      ctx.stroke();
+      ctx.restore();
+    }
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillStyle = on ? "#fff" : (o.dim ? "rgba(240,244,255,.45)" : "rgba(240,244,255,.92)");
+    ctx.font = (o.weight || 600) + " " + (o.fs || Math.round(h * 0.30)) + "px " + FACE;
+    ctx.fillText(label, x + w / 2, y + h / 2 + 1);
+    ctx.textAlign = "left";
+    ctx.textBaseline = "alphabetic";
+    if (o.disabled) return;
+    hit(id, x, y, w, h);
+  }
+
+  function drawMenuList(x, y, w, p) {
+    const rowH = menuRowH();
+    const gap = Math.round(L.fs * 0.55);
+    const items = [
+      ["resume", "继续游戏"],
+      ["toSave", "保存进度"],
+      ["toLoad", "读取进度"],
+      ["toSet", "设置"],
+      ["toTitle", "回到标题"],
+    ];
+    let yy = y + gap;
+    for (const pair of items) {
+      const id = pair[0];
+      const label = pair[1];
+      const accent = id === "resume";
+      uiButton(id, x, yy, w, rowH, label, {on: accent, weight: accent ? 700 : 500});
+      yy += rowH + gap;
+    }
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillStyle = "rgba(240,244,255,.34)";
+    ctx.font = "400 " + Math.round(L.fs * 0.5) + "px " + FACE;
+    ctx.fillText("进度保存在本机浏览器里 · 换设备不会同步", p.x + p.w / 2, p.y + p.h - Math.round(L.fs * 1.1));
+    ctx.textAlign = "left";
+  }
+
+  function drawSlotCard(id, x, y, w, h, d, saving, no) {
+    const empty = !d;
+    const r = Math.round(Math.min(h / 6, 16));
+    roundRect(x, y, w, h, r, empty ? "rgba(255,255,255,.045)" : "rgba(255,255,255,.075)");
+    ctx.strokeStyle = "rgba(255,255,255,.10)";
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.arcTo(x + w, y, x + w, y + h, r);
+    ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r);
+    ctx.arcTo(x, y, x + w, y, r);
+    ctx.closePath();
+    ctx.stroke();
+
+    const ix = x + Math.round(w * 0.055);
+    ctx.textAlign = "left";
+    ctx.textBaseline = "top";
+    ctx.fillStyle = empty ? "rgba(240,244,255,.38)" : "rgba(240,244,255,.96)";
+    ctx.font = "600 " + Math.round(L.fs * 0.56) + "px " + FACE;
+    ctx.fillText(no + " 号档", ix, y + Math.round(h * 0.11));
+
+    ctx.font = "400 " + Math.round(L.fs * 0.46) + "px " + FACE;
+    if (empty) {
+      ctx.fillStyle = "rgba(240,244,255,.30)";
+      ctx.fillText(saving ? "空 · 点这里存" : "空", ix, y + Math.round(h * 0.40));
+    } else {
+      ctx.fillStyle = "rgba(240,244,255,.72)";
+      ctx.fillText(String(d.say || "（存档）").slice(0, 16), ix, y + Math.round(h * 0.34));
+      ctx.fillStyle = "rgba(240,244,255,.34)";
+      ctx.font = "400 " + Math.round(L.fs * 0.38) + "px " + FACE;
+      ctx.fillText(stamp(d.t), ix, y + h - Math.round(L.fs * 0.70));
+    }
+    ctx.textBaseline = "alphabetic";
+    if (!saving && empty) return;
+    hit(id, x, y, w, h);
+  }
+
+  function drawSlots(x, y, w, p) {
+    const land = L.landscape;
+    const cols = land ? 3 : 2;
+    const gap = Math.round(L.fs * 0.55);
+    const cw = (w - gap * (cols - 1)) / cols;
+    const ch = Math.round(L.fs * (land ? 5.4 : 4.6));
+    const saving = UI.view === "save";
+    for (let i = 0; i < slotCount(); i++) {
+      const rr = Math.floor(i / cols);
+      const cc = i % cols;
+      const bx = x + cc * (cw + gap);
+      const by = y + Math.round(L.fs * 0.4) + rr * (ch + gap);
+      drawSlotCard("s" + i, bx, by, cw, ch, readSlot(i), saving, i + 1);
+    }
+  }
+
+  function drawSettings(x, y, w, p) {
+    const groups = [
+      ["文字速度", "speed", ["慢", "中", "快"], [0.6, 1, 1.6], PREF.speed],
+      ["字号", "text", ["小", "中", "大"], [0.9, 1, 1.15], PREF.text],
+      ["音量", "vol", ["小", "中", "大"], [0.4, 0.7, 1], PREF.vol],
+      ["自动翻页", "auto", ["关", "3 秒", "6 秒"], [0, 3, 6], PREF.auto],
+    ];
+    const rowH = setRowH();
+    const gap = Math.round(L.fs * 0.5);
+    let yy = y + gap;
+    for (const g of groups) {
+      const label = g[0], key = g[1], labels = g[2], vals = g[3], cur = g[4];
+      ctx.textAlign = "left";
+      ctx.textBaseline = "middle";
+      ctx.fillStyle = "rgba(240,244,255,.92)";
+      ctx.font = "500 " + Math.round(L.fs * 0.56) + "px " + FACE;
+      ctx.fillText(label, x, yy + rowH / 2);
+
+      const segW = Math.round(w * 0.44);
+      const sx = x + w - segW;
+      const btnGap = Math.round(L.fs * 0.34);
+      const bw = (segW - btnGap * 2) / 3;
+      const bh = Math.round(L.fs * 1.5);
+      for (let i = 0; i < 3; i++) {
+        uiButton(key + ":" + i, sx + i * (bw + btnGap), yy + (rowH - bh) / 2, bw, bh,
+                 labels[i], {on: Math.abs(cur - vals[i]) < 0.001, fs: Math.round(bh * 0.42)});
+      }
+      yy += rowH + gap;
+    }
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillStyle = "rgba(240,244,255,.32)";
+    ctx.font = "400 " + Math.round(L.fs * 0.48) + "px " + FACE;
+    ctx.fillText("设置存在本机 · 换作品也沿用", p.x + p.w / 2, p.y + p.h - Math.round(L.fs * 1.0));
+    ctx.textAlign = "left";
+  }
+
+  function drawMenu() {
+    const p = menuPanel();
+    const vis = visual();
+    const a = Math.min(1, (performance.now() - UI.t0) / 160);
+    UI.rects = [];
+
+    ctx.save();
+    ctx.fillStyle = "rgba(4,6,12," + (0.82 * a) + ")";
+    ctx.fillRect(0, 0, L.viewW, L.viewH);
+    ctx.globalAlpha = a;
+    ctx.translate(0, (1 - a) * Math.round(L.viewH * 0.03));
+
+    const rr = Math.round(p.w * 0.035);
+    roundRect(p.x, p.y, p.w, p.h, rr, "rgba(17,20,29,.98)");
+    ctx.strokeStyle = "rgba(255,255,255,.10)";
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(p.x + rr, p.y);
+    ctx.arcTo(p.x + p.w, p.y, p.x + p.w, p.y + p.h, rr);
+    ctx.arcTo(p.x + p.w, p.y + p.h, p.x, p.y + p.h, rr);
+    ctx.arcTo(p.x, p.y + p.h, p.x, p.y, rr);
+    ctx.arcTo(p.x, p.y, p.x + p.w, p.y, rr);
+    ctx.closePath();
+    ctx.stroke();
+
+    const pad = p.pad;
+    const headH = p.headH;
+    const titles = {menu: "菜单", save: "保存进度", load: "读取进度", settings: "设置"};
+    ctx.textAlign = "left";
+    ctx.textBaseline = "middle";
+    ctx.fillStyle = "#f2f5ff";
+    ctx.font = "700 " + Math.round(L.fs * 0.86) + "px " + FACE;
+    ctx.fillText(titles[UI.view] || "菜单", p.x + pad, p.y + headH / 2 + Math.round(L.fs * 0.1));
+
+    const xw = Math.round(L.fs * 1.1);
+    uiButton(UI.view === "menu" ? "close" : "back",
+             p.x + p.w - pad - xw, p.y + headH / 2 - xw / 2, xw, xw,
+             UI.view === "menu" ? "×" : "‹", {fs: Math.round(xw * 0.62)});
+
+    const innerX = p.x + pad;
+    const innerW = p.w - pad * 2;
+    const top = p.y + headH;
+
+    if (UI.view === "menu") drawMenuList(innerX, top, innerW, p);
+    else if (UI.view === "save" || UI.view === "load") drawSlots(innerX, top, innerW, p);
+    else drawSettings(innerX, top, innerW, p);
+
+    ctx.restore();
+  }
+
+  function act(id) {
+    if (id === "close") { UI.open = false; return; }
+    if (id === "back") { UI.view = "menu"; return; }
+    if (id === "resume") { UI.open = false; return; }
+    if (id === "toSave") { UI.view = "save"; return; }
+    if (id === "toLoad") { UI.view = "load"; return; }
+    if (id === "toSet") { UI.view = "settings"; return; }
+    if (id === "toTitle") {
+      autoSave();
+      UI.open = false;
+      state.scene = "title";
+      return;
+    }
+    if (/^s[0-9]$/.test(id)) {
+      const i = Number(id.slice(1));
+      if (UI.view === "save") writeSlot(i);
+      else loadSlot(i);
+      return;
+    }
+    const parts = String(id).split(":");
+    if (parts.length !== 2) return;
+    const key = parts[0];
+    const i = Number(parts[1]) || 0;
+    if (key === "speed") PREF.speed = [0.6, 1, 1.6][i];
+    else if (key === "text") { PREF.text = [0.9, 1, 1.15][i]; savePrefs(); fit(); return; }
+    else if (key === "vol") {
+      PREF.vol = [0.4, 0.7, 1][i];
+      bgmVolume = PREF.vol;
+      if (bgm) bgm.volume = PREF.vol;
+    } else if (key === "auto") PREF.auto = [0, 3, 6][i];
+    savePrefs();
+  }
+
+  function onMenuTap(p) {
+    for (const r of UI.rects) {
+      if (p.x >= r.x && p.x <= r.x + r.w && p.y >= r.y && p.y <= r.y + r.h) {
+        act(r.id);
+        return;
+      }
+    }
+    const pn = menuPanel();
+    const inside = p.x >= pn.x && p.x <= pn.x + pn.w && p.y >= pn.y && p.y <= pn.y + pn.h;
+    if (!inside) UI.open = false;
+  }
+
 })();
