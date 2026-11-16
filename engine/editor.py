@@ -246,6 +246,29 @@ def _project_orientation(root: str) -> str:
     value = str(_load_project_config(root).get("orientation") or "any").strip().lower()
     return value if value in ("any", "portrait", "landscape") else "any"
 
+
+def _preview_canvas_size(root: str, portrait: bool) -> tuple:
+    """预览画布尺寸：尊重工程配的 canvas_size，只按方向摆正长短边。
+
+    以前不管工程是竖屏还是横屏都按 1280×720 出图，手机上看预览就是一条被压扁的横带。
+    """
+    size = (1280, 720)
+    try:
+        cs = _load_project_config(root).get("canvas_size")
+        if isinstance(cs, (list, tuple)) and len(cs) == 2:
+            w, h = int(cs[0]), int(cs[1])
+            if w > 0 and h > 0:
+                size = (w, h)
+    except (TypeError, ValueError):
+        pass
+    w, h = size
+    if portrait and w > h:
+        return (h, w)
+    if not portrait and h > w:
+        return (h, w)
+    return (w, h)
+
+
 def _write_text_atomic(path: str, text: str) -> None:
     """先写同目录临时文件再原子替换：写一半失败时原文件仍是上一版，不留半截剧本。"""
     dir_ = os.path.dirname(os.path.abspath(path))
@@ -1053,6 +1076,16 @@ class _EditorHandler(BaseHTTPRequestHandler):
         # 同一标签页新序号一到，旧预览即为过期；渲染循环每帧检查一次
         _preview_note_seq(client, seq)
         stale = lambda: _preview_is_stale(client, seq)
+        # 预览画布跟着工程方向走：竖屏工程（手机优先）不能拿 1280×720 去缩放，
+        # 那会把画面压扁，还会让人以为背景没渲染
+        proj_root = self._current_project_root()
+        portrait = data.get("portrait")
+        orient = _project_orientation(proj_root)
+        if orient == "portrait":
+            portrait = True
+        elif orient == "landscape":
+            portrait = False
+        size = _preview_canvas_size(proj_root, bool(portrait))
         try:
             # 临时剧本写在正在编辑的文件目录内，使 @include 基准正确
             base_dir = _rel_edit_dir(self.app.project_root, rel) if rel \
@@ -1060,7 +1093,9 @@ class _EditorHandler(BaseHTTPRequestHandler):
         except ValueError as e:
             self._send_json(400, {"ok": False, "message": str(e)})
             return
-        cache_key = _preview_cache_key(text, base_dir, self.app.project_root, frames)
+        # 素材根必须是工程目录（剧本所在目录）：以前传的是启动目录，
+        # 于是 @bg / @show 全都找不到图片，预览里只剩一个灰色人影
+        cache_key = _preview_cache_key(text, base_dir, proj_root, frames, size)
         cached = _preview_cache_get(cache_key)
         if cached is not None:
             self._send_png(cached)
@@ -1097,8 +1132,8 @@ class _EditorHandler(BaseHTTPRequestHandler):
                     if stale():
                         self._send_no_content()
                         return
-                    png = _preview_png(tmp_path, self.app.project_root, frames,
-                                       cancel=stale)
+                    png = _preview_png(tmp_path, proj_root, frames,
+                                       cancel=stale, size=size)
                 finally:
                     if acquired:
                         _preview_lock.release()

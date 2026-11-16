@@ -176,14 +176,19 @@ class SpriteMixin:
             if disp and disp.get("alpha", 1.0) < 1.0:
                 scaled = scaled.copy()   # 缓存里的 Surface 不能就地改 alpha
                 scaled.set_alpha(int(255 * max(0.0, min(1.0, disp["alpha"]))))
-            target.blit(scaled, rect)
-            # ⑬ 立绘底部 8% 高度渐隐（仅立绘层，不动 CG/背景）
+            # ⑬ 立绘底部 8% 渐隐：让立绘自己变透明、露出背景。
+            # 原先是往画面上盖一条「黑色渐隐」——背景一亮就成一块黑砖压在脚上，
+            # 竖屏预览里特别明显。用 BLEND_RGBA_MULT 只乘 alpha，不动颜色。
             fade_h = max(4, int(rect.height * 0.08))
-            fade = pygame.Surface((rect.width, fade_h), pygame.SRCALPHA)
-            for j in range(fade_h):
-                alpha = int(255 * (1 - j / fade_h))
-                pygame.draw.line(fade, (0, 0, 0, alpha), (0, j), (rect.width, j))
-            target.blit(fade, (rect.x, rect.bottom - fade_h))
+            if rect.height > fade_h + 4:
+                scaled = scaled.copy()
+                fade = pygame.Surface((rect.width, fade_h), pygame.SRCALPHA)
+                for j in range(fade_h):
+                    a = int(255 * (1 - j / fade_h))   # 顶部不透明 → 脚底透明
+                    pygame.draw.line(fade, (255, 255, 255, a), (0, j), (rect.width, j))
+                scaled.blit(fade, (0, rect.height - fade_h),
+                            special_flags=pygame.BLEND_RGBA_MULT)
+            target.blit(scaled, rect)
 
     def _apply_sprite_anim(self, rect, disp):
         """把补间显示值叠加到立绘 rect：scale 以底部中心为锚，再平移 x/y。"""
@@ -228,18 +233,22 @@ class SpriteMixin:
         """
         w, _h = self.size
         area_bottom = self._dialog_top()
+        # 头顶留边：竖屏（手机）时立绘撑满会顶到画面上边缘、头发被切掉，
+        # 竖屏给 3.5% 屏高、横屏给 2%，再从脚底往上排
+        top_gap = int(round(_h * (0.035 if _h > w else 0.02)))
         sw, sh = size
         pos = sp.get("pos")
         if pos is None and "scale" not in sp:
             slot_w = w / count
             center_x = int(w - (index + 0.5) * slot_w)
-            k = min(int(slot_w) / sw if sw else 1.0, area_bottom / sh if sh else 1.0)
+            avail = max(1, area_bottom - top_gap)
+            k = min(int(slot_w) / sw if sw else 1.0, avail / sh if sh else 1.0)
             tw, th = max(1, int(sw * k)), max(1, int(sh * k))
             return pygame.Rect(center_x - tw // 2, area_bottom - th, tw, th)
         scale = float(sp.get("scale") or 1.0)
         tw, th = max(1, int(sw * scale)), max(1, int(sh * scale))
         margin = int(round(SPRITE_MARGIN * self._ui_scale))  # T10 视觉比例
-        max_w, max_h = w - 2 * margin, area_bottom
+        max_w, max_h = w - 2 * margin, max(1, area_bottom - top_gap)
         k = min(1.0, max_w / tw if tw else 1.0, max_h / th if th else 1.0)
         tw, th = max(1, int(tw * k)), max(1, int(th * k))
         if pos == "左":

@@ -123,6 +123,19 @@ def _scale_to_fit(img, max_w, max_h):
     return pygame.transform.smoothscale(img, (max(1, int(w * s)), max(1, int(h * s))))
 
 
+def _scale_to_cover(img, w, h):
+    """等比放大到铺满 (w, h)（可超出，由 blit 裁掉）。
+
+    背景用 cover 而不是 contain：竖屏工程配横屏背景图时，contain 会等比缩进、
+    上下补黑，上半屏全是黑的，看着像背景没加载。
+    """
+    sw, sh = img.get_size()
+    if sw <= 0 or sh <= 0 or w <= 0 or h <= 0:
+        return img
+    s = max(w / sw, h / sh)
+    return pygame.transform.smoothscale(img, (max(1, int(sw * s)), max(1, int(sh * s))))
+
+
 def _wrap_text(text, font, max_width, measure=None):
     """按宽度折行（字符级，不做词级断行），保留显式换行。
 

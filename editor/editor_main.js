@@ -649,7 +649,8 @@
         method: "POST",
         headers: {"Content-Type": "application/json"},
         body: JSON.stringify({text, frames: 30, path: curPath,
-                              client: previewClient, seq: reqSeq}),
+                              client: previewClient, seq: reqSeq,
+                              portrait: window.innerWidth < window.innerHeight}),
         signal: ctrl.signal,
       }).then(async r => {
         if (r.status === 422) {

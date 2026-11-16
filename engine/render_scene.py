@@ -11,6 +11,7 @@ from typing import TYPE_CHECKING
 import pygame
 import random
 from .render_utils import (
+    _scale_to_cover,
     _scale_to_fit,
     CAM_PAN_RATIO,
     CAM_ZOOM_SECONDS,
@@ -212,8 +213,10 @@ class SceneMixin:
             # ④ 占位改为深色渐变（画面上不写文件名，开发者侧日志已有）
             self._draw_bg_placeholder((0, 0, w, h), target)
             return
-        scaled = _scale_to_fit(img, w, h)
+        scaled = _scale_to_cover(img, w, h)
         target.fill((0, 0, 0))
+        # cover 后图可能比画布大，负偏移让 pygame 自己裁掉多余部分：
+        # 竖屏工程配横屏背景图时，以前是「等比缩进 + 上下补黑」，上半屏全黑看着像没加载
         target.blit(scaled, ((w - scaled.get_width()) // 2,
                              (h - scaled.get_height()) // 2))
 

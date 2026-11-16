@@ -167,7 +167,7 @@ def test_preview_content_hash_cache(server, monkeypatch):
     port, _ = server
     calls = []
 
-    def fake_png(script_path, assets_root, max_frames=30, cancel=None):
+    def fake_png(script_path, assets_root, max_frames=30, cancel=None, size=None):
         calls.append(script_path)
         return b"\x89PNG-cache"
 
@@ -190,7 +190,7 @@ def test_preview_stale_request_skipped(server, monkeypatch):
     port, _ = server
     called = []
 
-    def fake_png(script_path, assets_root, max_frames=30, cancel=None):
+    def fake_png(script_path, assets_root, max_frames=30, cancel=None, size=None):
         called.append(script_path)
         return b"\x89PNG-stale"
 
@@ -1221,3 +1221,27 @@ def test_保存只写改过的键不铺默认值():
     kept2 = _prune_echoed_defaults(echoed, old, DEFAULTS)
     assert kept2["font"]["title"] == 90
     assert kept2["line_height"]["body"] == 1.6
+
+# ===== P74 手机适配：预览画布方向 =====
+def test_预览画布按方向摆正长短边(tmp_path):
+    """竖屏工程要出 720x1280，横屏是 1280x720 —— 以前永远是 1280x720。"""
+    root = str(tmp_path)
+    assert editor_mod._preview_canvas_size(root, True) == (720, 1280)
+    assert editor_mod._preview_canvas_size(root, False) == (1280, 720)
+
+
+def test_预览画布尊重自定义尺寸只交换长短边(tmp_path):
+    (tmp_path / "config.json").write_text(
+        json.dumps({"canvas_size": [1920, 1080]}), encoding="utf-8")
+    root = str(tmp_path)
+    assert editor_mod._preview_canvas_size(root, True) == (1080, 1920)
+    assert editor_mod._preview_canvas_size(root, False) == (1920, 1080)
+
+
+def test_预览缓存键区分画布尺寸():
+    """同一个剧本竖版和横版不能共用缓存，否则转屏后拿到上一张。"""
+    from engine.editor_preview import _preview_cache_key
+    a = _preview_cache_key("t", "b", "a", 30, (720, 1280))
+    b = _preview_cache_key("t", "b", "a", 30, (1280, 720))
+    c = _preview_cache_key("t", "b", "a", 30, None)
+    assert a != b and a != c and b != c

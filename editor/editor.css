@@ -284,7 +284,7 @@ textarea#source::selection { background: var(--surface1); }
   overflow: hidden; cursor: grab; min-width: 0;
 }
 .asset-card:hover { border-color: var(--blue); }
-.asset-card img { width: 100%; height: 74px; object-fit: cover; display: block; background: var(--crust); }
+.asset-card img { width: 100%; height: 110px; object-fit: contain; display: block; background: var(--crust); }
 .asset-card .ph {
   width: 100%; height: 74px; display: flex; align-items: center; justify-content: center;
   color: var(--overlay0); font-size: 22px; background: var(--crust);
@@ -2510,4 +2510,45 @@ input[type="color"] {
 /* P74：设置中心 page 形态下，窄屏内容的左右 padding 收一点，别把字挤成一条 */
 @media (max-width: 640px) {
   .cp-body .set-pane { padding: 12px 12px; border-radius: var(--r-lg); }
+}
+/* P74 手机适配三处（按 390×844 实拍发现的问题改） */
+
+/* 1) 导出页：点「导出」看到的是半屏 UI 预览 + 一排参数，导出按钮被挤到下面。
+     参数区 .uid-panel 已经藏了，但预览块 .ui-design-preview 漏了 —— 一起藏。 */
+.center-page.mode-export .ui-design-preview { display: none !important; }
+
+/* 2) 素材卡缩略图：原来是 object-fit:cover 固定 74px 高 —— 全身立绘按正中裁，
+     卡片里只剩一截裙子，连脸都看不见。改成 contain + 110px：
+     素材页要回答的是「这张图长什么样」，完整比铺满有用。 */
+
+/* 3) 外观页顶部那段说明在小屏上占掉三分之一屏，且被截断；
+     手机上收成 2 行，进页面先看到 tab 和预览。 */
+@media (max-width: 640px) {
+  .center-page .modal-hint {
+    display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  /* 素材晾衣绳靠鼠标悬停滑下，手机没有 hover —— 它只会压在预览图上，
+     而素材在底部 tab 里本来就有入口 */
+  .clothesline, .cl-trigger { display: none !important; }
+  /* 预览图在手机上要顶到边：留 6px 够看出是张图，不留 20px 白框。
+     竖屏预览是 720×1280 的竖图，如果让它按原比例撑，会把下面工具条和
+     「后续流程」整条挤出可视区（实测溢出 32px），所以必须让容器先夹住高度 */
+  .preview-img-wrap {
+    padding: 6px !important; min-height: 0 !important;
+    /* 竖图会按内容撑高，把工具条和「后续流程」推出可视区；直接按视口夹死 */
+    max-height: calc(100vh - 210px) !important;
+  }
+  .preview-img-wrap img {
+    width: auto; height: auto; max-width: 100%; max-height: 100%;
+    object-fit: contain;
+  }
+  /* 底部 tab 栏是浮在内容上的，留出它的高度，末尾那条「后续流程」才不会被压住 */
+  .right-pane { padding-bottom: 56px; }
+  /* 外观页的分组 tab（对话框/名字框/皮肤/选项/快捷键…）在 390 宽里溢出一截，
+     最后一个直接看不见；手机上改成换行排，六个都在，不用横推 */
+  .center-page .ui-design-tabs {
+    flex-wrap: wrap !important; overflow: visible !important;
+    gap: 6px; row-gap: 6px;
+  }
 }

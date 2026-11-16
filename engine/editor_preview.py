@@ -55,14 +55,15 @@ class _FastForwardClock:
         return 16
 
 
-def _preview_cache_key(text: str, base_dir: str, assets_root: str, frames: int) -> tuple:
+def _preview_cache_key(text: str, base_dir: str, assets_root: str, frames: int,
+                       size=None) -> tuple:
     digest = hashlib.sha256((text or "").encode("utf-8")).hexdigest()
     try:
         frame_count = int(frames)
     except (TypeError, ValueError):
         frame_count = -1
     return (os.path.realpath(base_dir), os.path.realpath(assets_root),
-            frame_count, digest)
+            frame_count, digest, tuple(size) if size else None)
 
 
 def _preview_cache_get(key: tuple):
@@ -148,7 +149,7 @@ def _completions(line: str, full_text: str = "") -> list:
 
 @dummy_video
 def _preview_png(script_path: str, assets_root: str, max_frames: int = 30,
-                 cancel=None) -> bytes:
+                 cancel=None, size=None) -> bytes:
     """无窗口跑剧本 auto 钩子，返回当前帧 PNG bytes。
 
     用 dummy 视频驱动，复用 Runtime + Renderer（demo.run 内部会关闭 Renderer，
@@ -162,7 +163,7 @@ def _preview_png(script_path: str, assets_root: str, max_frames: int = 30,
     # 预览离屏跑：注入虚拟时钟替代 60FPS 限帧，避免每帧真实睡眠（画面结果不变）
     clock = _FastForwardClock()
     ren = Renderer(assets_root=assets_root,          # T10：画布尺寸从 config.json 读取
-                   clock=clock, now_ms=lambda: clock.now)
+                   clock=clock, now_ms=lambda: clock.now, size=size)
     png_path = ""
     try:
         rt.load(script_path)
