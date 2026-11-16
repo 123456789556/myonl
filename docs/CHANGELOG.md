@@ -2,6 +2,16 @@
 
 > 只记 release 级变化，一句话 + 证据链接。单项细节见 git 历史（原 archive/ 已删除）。
 
+## 2026-11-16（P63：CG 全屏、存档不串、缺图当面说）
+
+**`@cg` 上手机**：之前编译器不收 CG 图、内核 OPS 里没有 `cg`、`unsupported` 里还老实列着它——不是坏，是没做。现在 `_walk` 收 `name`、`OPS` 加 `cg`、`case "cg"` 吐事件并写 `state.cg`（进存档）、播放器 `drawCg()` cover 铺满（画在立绘上、对话框下），语义同桌面端：`@cg` 上图一直盖着，下一条 `@bg` 退场。缺图时画"CG 素材缺失：xxx"。
+
+**存档 key**：原来只有标题，两个同名工程会互抢进度。改成 标题 + 剧本名 + 指令条数。
+
+**缺素材提示**：导出接口一直返回 `missing` 但前端没显示，作者以为没问题、别人看到空白。现在弹窗红字 + 菜单 toast 都报。
+
+**验证**：CG 进 `assets`、单文件 59 KB、点一次后 `cg=cg_拥抱` 且左上角取色是 CG 颜色、`@bg` 后清空、读档还在。全量 `1083 passed + 1 skipped`。
+
 ## 2026-11-16（P62：让声音真的响，让包别太大）
 
 **音频**：`@music` / `@sfx` 之前在手机端是哑的（编译器不收 `audio/`，内核把这两个 op 丢进"暂不支持"）。现在 `_collect_audio_names()` 收 `music/track` 与 `sfx/sound` → `pack["audio"]`，单文件转 `data:audio/...`；内核吐 `music`/`sfx` 事件并把曲名进存档；播放器用 `Audio` 播、支持 `fadein/fadeout`、右上角静音键、读档续上音乐。`unsupported` 里去掉 music/sfx。

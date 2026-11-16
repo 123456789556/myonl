@@ -167,6 +167,30 @@ def test_大图会被压小(tmp_path):
     assert "data:image/webp;base64," in _read(out)
 
 
+# ---- P63：@cg 全屏演出 ----
+
+
+def test_cg_图会被收集并内嵌(tmp_path):
+    """@cg 之前根本没收集，导到手机上就是空白。"""
+    proj = tmp_path / "proj"
+    (proj / "images").mkdir(parents=True)
+    (proj / "images" / "cg_拥抱.png").write_bytes(b"\x89PNG\r\n\x1a\nfake")
+    (proj / "script.gal").write_text(
+        "@character 甲 #ffffff\n@bg bg_a\n@label start\n@[甲] 好\n"
+        "@cg cg_拥抱\n@ 看这一幕\n@bg bg_a\n@end\n", encoding="utf-8")
+    out = tmp_path / "web"
+    stat = W.build_web(str(proj), str(out))
+    pack = json.loads((out / "pack.json").read_text(encoding="utf-8"))
+    assert "cg_拥抱" in pack["assets"], "CG 图必须进素材表"
+    assert "cg" not in pack["unsupported"], "cg 已实现，不该再报不支持"
+    assert "bg_a" in stat["missing"]      # 背景确实不存在，如实记录
+
+    single = tmp_path / "g.html"
+    W.build_single(str(proj), str(single))
+    html = _read(single)
+    assert "cg_拥抱" in html and "data:image/png;base64," in html
+
+
 def test_小图保持原样(tmp_path):
     pytest.importorskip("PIL")
     from PIL import Image

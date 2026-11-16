@@ -17,7 +17,7 @@
   "use strict";
 
   const OPS = new Set([
-    "character", "bg", "show", "hide", "say", "choice", "jump", "label",
+    "character", "bg", "cg", "show", "hide", "say", "choice", "jump", "label",
     "set", "if", "wait", "end", "nvl", "music", "sfx", "stop", "play",
   ]);
 
@@ -74,6 +74,7 @@
       pc: 0,
       vars: {},
       bg: "",
+      cg: "",            // P63：当前全屏 CG（空 = 没在放）
       sprites: [],       // [{char, expr, anim}]
       music: "",         // P62：当前背景音乐名（存档带上，读档能续上）
       ended: false,
@@ -143,7 +144,11 @@
           case "set": execSet(ins); break;
           case "bg":
             state.bg = ins.image || "";
+            state.cg = "";                    // 切回背景：CG 退场（和桌面端语义一致）
             return {type: "bg", image: state.bg};
+          case "cg":
+            state.cg = ins.name || "";
+            return {type: "cg", name: state.cg};
           case "show": {
             const entry = {char: ins.char, expr: ins.expr || "", anim: ins.anim || ""};
             const idx = state.sprites.findIndex((s) => s.char === entry.char);
@@ -218,7 +223,7 @@
 
     function save() {
       return JSON.stringify({pc: state.pc, vars: state.vars, bg: state.bg,
-                             music: state.music,
+                             cg: state.cg, music: state.music,
                              sprites: state.sprites, ended: state.ended,
                              framePc: frame.pc, frameRoot: frame.root});
     }
@@ -228,6 +233,7 @@
         const s = typeof json === "string" ? JSON.parse(json) : json;
         state.vars = s.vars || {};
         state.bg = s.bg || "";
+        state.cg = s.cg || "";
         state.music = s.music || "";
         state.sprites = s.sprites || [];
         state.ended = !!s.ended;
@@ -243,6 +249,7 @@
     function restart(atLabel) {
       state.vars = {};
       state.bg = "";
+      state.cg = "";
       state.music = "";
       state.sprites = [];
       state.ended = false;

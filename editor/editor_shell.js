@@ -31,6 +31,10 @@
         a.rel = "noopener";
         a.click();
         say("已导出单文件（" + d.kb + " KB）——手机浏览器直接打开就能玩");
+        if (d.missing && d.missing.length) {
+          say("注意：有 " + d.missing.length + " 个素材找不到（" + d.missing.slice(0, 3).join("、")
+            + "），游戏里会是空白");
+        }
       })
       .catch((e) => say("导出失败：" + e));
   }

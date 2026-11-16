@@ -646,6 +646,16 @@
         + (resp.audio ? " / " + resp.audio + " 段音频" : "")
         + (resp.saved_kb ? " · 压缩省 " + resp.saved_kb + " KB" : "")
         + "）— 手机浏览器直接打开就能玩，也可以发给别人"));
+      // P63：缺素材必须当面说清，不然发出去别人看到的是空白
+      if (resp.missing && resp.missing.length) {
+        const warn = document.createElement("div");
+        warn.className = "modal-hint";
+        warn.style.color = "#ff9d9d";
+        warn.textContent = "⚠ 有 " + resp.missing.length + " 个素材找不到，游戏里会是空白："
+          + resp.missing.slice(0, 5).join("、")
+          + (resp.missing.length > 5 ? " …" : "");
+        msg.parentNode.appendChild(warn);
+      }
       toast("已导出单文件游戏");
     } catch (e) {
       msg.textContent = "导出请求失败：" + e;

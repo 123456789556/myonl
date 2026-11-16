@@ -90,6 +90,9 @@ def _walk(node, add) -> None:
         op = node.get("op")
         if op == "bg":
             add(node.get("image"))
+        elif op == "cg":
+            # P63：CG 是全屏大图，之前根本没收集，导到手机端就是一张空白
+            add(node.get("name"))
         elif op == "show":
             char = str(node.get("char") or "")
             expr = str(node.get("expr") or "")
@@ -184,8 +187,8 @@ def build_web(project_root: str, out_dir: str, *, title: str = "") -> dict:
         audio_manifest[name] = "assets/" + dst_name
 
     log = []
-    # P62：music / sfx 已在手机端实现（播放器用 Audio 播 data URI 或游戏内音频文件）
-    for op in ("play", "stop", "video", "cg", "fg", "camera", "shake", "anim"):
+    # P62：music / sfx 已实现；P63：cg 全屏演出也实现了
+    for op in ("play", "stop", "video", "fg", "camera", "shake", "anim"):
         if _has_op(ins, op):
             log.append(op)
 

@@ -36,6 +36,7 @@
     choice: null,
     choiceRects: [],
     bg: "",
+    cg: "",                // P63：全屏 CG 名（空 = 没在放）
     sprites: [],
     waitUntil: 0,
     ended: false,
@@ -303,6 +304,10 @@
     switch (ev.type) {
       case "bg":
         state.bg = ev.image || "";
+        state.cg = "";          // 切回背景：CG 退场
+        break;
+      case "cg":
+        state.cg = ev.name || "";
         break;
       case "show":
       case "hide":
@@ -350,7 +355,14 @@
     }
   }
 
-  function saveKey() { return "myonl:auto:" + ((pack && pack.title) || "untitled"); }
+  // 存档 key：标题 + 剧本名 + 指令条数。只按标题会串档——两个游戏都叫"我的游戏"时，
+  // 后开的那个会读到前一个的存档（进度对不上，甚至跳到不存在的 label）。
+  function saveKey() {
+    const t = (pack && pack.title) || "untitled";
+    const s = (pack && pack.script) || "";
+    const n = (pack && pack.ins && pack.ins.length) || 0;
+    return "myonl:auto:" + t + ":" + s + ":" + n;
+  }
 
   function autoSave() {
     try { localStorage.setItem(saveKey(), vm.save()); } catch (e) { /* 隐私模式禁写 */ }
@@ -363,6 +375,7 @@
     state.choiceRects = [];
     state.waitUntil = 0;
     state.bg = "";
+    state.cg = "";
     state.sprites = [];
     if (fromSave) {
       const saved = localStorage.getItem(saveKey());
@@ -371,8 +384,9 @@
       vm.restart();
       try { localStorage.removeItem(saveKey()); } catch (e) { /* ignore */ }
     }
-    // 读档后补一次"当前画面"：让 bg/立绘先对上，再继续推进
+    // 读档后补一次"当前画面"：让 bg/立绘/CG 先对上，再继续推进
     state.bg = vm.state.bg || "";
+    state.cg = vm.state.cg || "";
     state.sprites = (vm.state.sprites || []).slice();
     // P62：音乐也要续上（存档只记名字，不记播放进度——重头放，玩家基本感知不到）
     if (fromSave && vm.state.music) playMusic(vm.state.music, 0, 0);
@@ -482,6 +496,28 @@
       const cx = slotW * (i + 0.5);
       ctx.drawImage(img, cx - w / 2, L.viewH - h, w, h);
     });
+  }
+
+  // ---------- CG（P63）----------
+  // @cg 是"全屏一张大图"的演出，桌面端一直有，手机端之前是空白。
+  // 语义与桌面端一致：@cg 上图 → 一直盖着（盖住背景和立绘）→ 直到下一条 @bg 才退场。
+  function drawCg() {
+    if (!state.cg) return;
+    const img = assets[state.cg];
+    if (!img) {
+      ctx.fillStyle = "#191c26";
+      ctx.fillRect(0, 0, L.viewW, L.viewH);
+      ctx.fillStyle = "#7f8798";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.font = `400 ${Math.round(Math.min(L.viewW, L.viewH) * 0.036)}px ${FACE}`;
+      ctx.fillText("CG 素材缺失：" + state.cg, L.viewW / 2, L.viewH / 2);
+      return;
+    }
+    const scale = Math.max(L.viewW / img.width, L.viewH / img.height);   // cover
+    const dw = img.width * scale;
+    const dh = img.height * scale;
+    ctx.drawImage(img, (L.viewW - dw) / 2, (L.viewH - dh) / 2, dw, dh);
   }
 
   function roundRect(x, y, w, h, r, fill, alpha) {
@@ -709,6 +745,7 @@
     } else {
       drawBackground();
       drawSprites();
+      drawCg();
       drawDialogue(vis);
       drawChoices(vis);
       drawMute();
@@ -731,6 +768,7 @@
       return {
         scene: state.scene, say: state.say, choice: state.choice,
         choiceRects: state.choiceRects, sprites: state.sprites, bg: state.bg,
+        cg: state.cg,
         lines: state.lines, ended: state.ended, error: state.error,
       };
     },

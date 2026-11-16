@@ -116,4 +116,30 @@ const vm7 = createVM({ins: [{op: "say", char: null, text: "x"}, {op: "end"}]});
 assert.ok(vm7.load(savedMus));
 assert.strictEqual(vm7.state.music, "bgm_a");
 
+// ---- 7. P63：@cg 全屏演出（进存档；下一条 @bg 退场）----
+const vm8 = createVM({ins: [
+  {op: "bg", image: "bg_a"},
+  {op: "cg", name: "cg_拥抱"},
+  {op: "say", char: null, text: "全屏 CG"},
+  {op: "bg", image: "bg_b"},
+  {op: "say", char: null, text: "CG 退场"},
+  {op: "end"},
+]});
+ev = vm8.next();
+assert.strictEqual(ev.type, "bg");
+assert.strictEqual(vm8.state.cg, "");
+ev = vm8.next();
+assert.strictEqual(ev.type, "cg");
+assert.strictEqual(ev.name, "cg_拥抱");
+assert.strictEqual(vm8.state.cg, "cg_拥抱");
+ev = vm8.next();
+assert.strictEqual(ev.type, "say");
+const savedCg = vm8.save();
+const vm9 = createVM({ins: [{op: "say", char: null, text: "x"}, {op: "end"}]});
+assert.ok(vm9.load(savedCg));
+assert.strictEqual(vm9.state.cg, "cg_拥抱");        // 读档时 CG 还在
+ev = vm8.next();
+assert.strictEqual(ev.type, "bg");
+assert.strictEqual(vm8.state.cg, "");               // 切 bg → CG 退场
+
 console.log("vm-smoke: 全部通过");
