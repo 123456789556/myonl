@@ -10,7 +10,7 @@
 
 **编辑器**：新增「对话框皮肤」页签（5 套预设、九宫格四边、顶部/底部羽化、纹理强度、内边距、素材下拉）、预览画布拖拽（拖本体改横纵偏移、拖上边缘改高度、拖左边缘改面板宽度）、`POST /api/ui-design/export-textbox` 落盘 `images/<名>.png`（导出名清洗，`../evil` 返回 400）。**NVL 整屏旁白同样支持皮肤**（整屏矩形走同一套合成，未配图仍是原渐变底）。
 
-**示例素材**：`tools/p53_sample_skins.py` 生成 `games/教程示例/images/textbox.png`（640×170 玻璃面板）与 `paper.png`（64×64 可平铺纸纹），九宫格拉伸对照图 `screenshots/p53-dialog-skin.png`。
+**示例素材**：`tools/p53_sample_skins.py` 生成 `games/教程示例/images/textbox.png`（640×170 玻璃面板）与 `paper.png`（64×64 可平铺纸纹），九宫格拉伸对照图 `screenshots/p53-dialog-skin.png`。**教程示例默认启用**这层皮肤（贴图 + 纸纹 28 + `pad_y:10`），打开即可见；新建模板工程保持原样。
 
 **安全细节**：导出的同名图默认**不覆盖**（409 + 前端确认后才带 `overwrite` 重发，文件写入走临时文件 + `os.replace`，失败不留 `.tmp`）；面板缓存的键是图片对象 `id()`，命中时再核对对象身份并持有强引用，避免 id 复用后拿到上一张图的合成结果。
 

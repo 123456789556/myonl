@@ -239,6 +239,19 @@ def test_renderer_nvl整屏也能贴皮肤(tmp_path):
 # ============ 3. 渲染层 ============
 
 
+def test_教程示例默认皮肤自洽():
+    """示例工程默认外观用的皮肤键必须指向真实存在的素材，别留悬空引用。"""
+    root = os.path.join(_ROOT, "games", "教程示例")
+    with open(os.path.join(root, "config.json"), encoding="utf-8") as f:
+        cfg = json.load(f)
+    dlg = cfg["dialogue"]["default"]
+    assert dlg["panel_image"] == "textbox"
+    assert dlg["panel_slice"] == [28, 20, 28, 20]
+    for name in (dlg["panel_image"], dlg.get("panel_texture")):
+        if name:
+            assert os.path.isfile(os.path.join(root, "images", name + ".png")), name
+
+
 def _project(tmp_path, cfg=None, with_image=True) -> str:
     root = str(tmp_path)
     os.makedirs(os.path.join(root, "images"), exist_ok=True)

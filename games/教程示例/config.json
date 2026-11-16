@@ -119,7 +119,18 @@
       "radius": 18,
       "name_y": 14,
       "name_gap": 10,
-      "narration_y": 20
+      "narration_y": 20,
+      "panel_image": "textbox",
+      "panel_slice": [
+        28,
+        20,
+        28,
+        20
+      ],
+      "panel_texture": "paper",
+      "panel_texture_alpha": 28,
+      "panel_alpha": 235,
+      "pad_y": 10
     },
     "nvl": {
       "bg_alpha": 96,
