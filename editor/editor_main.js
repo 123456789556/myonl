@@ -2685,8 +2685,18 @@
   // ---- 缺素材可视化（本地按素材清单比对，含行号）----
   function scanMissing() {
     if (!assetsReady) return [];
+    // 清单整体为空（服务端 data_root 没指向当前工程目录时会这样）就直接闭嘴：
+    // 宁可暂时不提示，也不要给用户糊一屏「缺素材」红字，而图明明都在磁盘上
+    if (!(assets.images || []).length && !(assets.audio || []).length) return [];
     const lines = source.value.split("\n");
-    const has = (cat, n) => (assets[cat] || []).includes(n);
+    // 素材清单里的名字有时带扩展名、有时不带：两边都归一化再比，
+    // 否则示例工程一打开就满屏红字「缺素材」，明明图都在
+    const bare = (s) => String(s || "").replace(/\.(png|jpg|jpeg|webp|gif|ogg|mp3|wav|m4a)$/i, "");
+    const has = (cat, n) => {
+      const list = assets[cat] || [];
+      const want = bare(n);
+      return list.some((x) => bare(x) === want);
+    };
     const out = [];
     lines.forEach((raw, i) => {
       const line = raw.trim();

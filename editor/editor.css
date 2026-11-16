@@ -2141,3 +2141,159 @@ input[type="color"] {
   .statusbar { display: none !important; }
   .m-tabbar { bottom: 0 !important; }
 }
+
+/* ==================== P68e：手机端侧栏一律改成「全屏页」====================
+   素材抽屉原来只占 84vw，左边露出 50px 的行号栏和半个 ‹ 按钮 —— 纯脏边。
+   手机上点 tab 就等于换页，不该留半截别的界面在旁边。 */
+@media (max-width: 860px), (max-height: 520px) {
+  .main.mobile-asset-open .asset-pane {
+    left: 0 !important; right: 0 !important; top: 0 !important;
+    bottom: calc(84px + env(safe-area-inset-bottom)) !important;
+    width: 100vw !important; max-width: 100vw !important;
+    border-left: none !important; box-shadow: none !important;
+  }
+  .right-pane {
+    top: 0 !important; bottom: calc(84px + env(safe-area-inset-bottom)) !important;
+    height: auto !important; max-height: none !important;
+    box-shadow: none !important;
+  }
+  .main.mobile-tree-open .file-pane { bottom: calc(84px + env(safe-area-inset-bottom)) !important; }
+  /* 素材面板顶上那排分类（图片/角色/音频/字体/视频/动画）在 390 宽放不下，改成可横滚 */
+  .asset-pane .asset-tabs, .asset-pane .tabs, .asset-pane .asset-cats { overflow-x: auto; flex-wrap: nowrap; }
+
+  /* 底部 tab 选中态：原来套一层浅蓝胶囊，字是白的，等于看不清。改回「蓝字 + 细线」 */
+  .m-tab, .m-tab:active, .m-tab.active {
+    background: transparent !important;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .m-tab.active { color: var(--blue) !important; font-weight: 600; }
+  .m-tab.active::after {
+    content: ""; position: absolute; left: 50%; transform: translateX(-50%);
+    top: 0; width: 22px; height: 2px; border-radius: 2px; background: var(--blue);
+  }
+}
+@media (max-height: 520px) {
+  .main.mobile-asset-open .asset-pane { bottom: 42px !important; }
+  .right-pane { bottom: 42px !important; }
+  .main.mobile-tree-open .file-pane { bottom: 42px !important; }
+}
+
+/* ==================== P68f：UI 设计区在手机上重排 ====================
+   原来是桌面属性面板原样塞进来：标签横排超出屏、说明文字三行、label 定宽 168px 把滑块挤扁、
+   「保存到项目配置」跑到屏幕外。手机端改成「一列参数 + 滑块占满 + 预览不进这页」。 */
+@media (max-width: 860px), (max-height: 520px) {
+  .ui-design-body { display: block !important; }
+  .ui-design-form { width: 100% !important; flex: none !important; }
+  .ui-design-preview { display: none !important; }
+
+  .ui-design-tabs {
+    flex-wrap: nowrap !important; overflow-x: auto; gap: 6px;
+    padding: 0 0 8px; -webkit-overflow-scrolling: touch;
+  }
+  .uid-tab { flex: 0 0 auto; height: 34px; padding: 0 13px; font-size: 13px; border-radius: 10px; }
+
+  .ui-dl.row {
+    display: grid !important; grid-template-columns: 1fr auto;
+    grid-template-areas: "lab val" "ctl ctl";
+    gap: 3px 10px; padding: 9px 0; min-height: 0; border-bottom: 1px solid var(--surface0);
+  }
+  .ui-dl.row > span:first-child {
+    grid-area: lab; flex: none !important; text-align: left !important;
+    white-space: normal; font-size: 12.5px; line-height: 1.45; color: var(--subtext1);
+  }
+  .ui-dl.row input[type="range"], .ui-dl.row select, .ui-dl.row input.uid-color {
+    grid-area: ctl; width: 100% !important; max-width: none; height: 32px;
+  }
+  .ui-dl.row input.uid-color { justify-self: start; width: 64px !important; }
+  .uid-val { grid-area: val; text-align: right; font-size: 12.5px; }
+
+  .modal-hint { font-size: 12px; line-height: 1.65; color: var(--overlay1); }
+  .modal-actions { flex-wrap: wrap !important; gap: 8px; }
+  .modal-actions button { height: 42px; flex: 1 1 auto; min-width: 0; }
+
+  /* 「手机端导出」那块独立成卡：这是导出 tab 落地的地方，不再是页面底部一截灰字 */
+  .uid-web {
+    margin-top: 18px; padding: 14px 14px 12px; border-radius: 14px;
+    background: var(--mantle); border: 1px solid var(--surface0);
+  }
+  .uid-web .btn { height: 44px; }
+}
+
+/* 中心页面（UI 设计区 / 设置中心）在手机上必须是「整页」：原来没有 top，高度由内容撑，
+   内容比屏宽就横向溢出，右侧按钮被切一半。 */
+@media (max-width: 860px), (max-height: 520px) {
+  .center-page { top: 0 !important; bottom: calc(84px + env(safe-area-inset-bottom)) !important; }
+  .center-page.split { left: 0 !important; width: 100vw !important; box-shadow: none !important; }
+  .cp-head { height: 46px !important; padding: 0 10px !important; gap: 8px; overflow: hidden; }
+  .cp-title { font-size: 15px !important; }
+  .cp-hint { display: none !important; }
+  .cp-body { padding: 12px 14px 18px !important; overflow-x: hidden !important; }
+
+  .modal-hint {
+    display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical;
+    overflow: hidden; font-size: 12px !important; line-height: 1.6;
+  }
+  /* 四个操作按钮横排挤不下：保存独占一行，其余三等分 */
+  .modal-actions { display: grid !important; grid-template-columns: 1fr 1fr 1fr; gap: 8px !important; }
+  .modal-actions > * { width: 100% !important; font-size: 12px !important; }
+  .modal-actions > #uidSave, .modal-actions > button[id$="Save"] { grid-column: 1 / -1; order: -1; height: 46px !important; }
+}
+@media (max-height: 520px) {
+  .center-page { bottom: 42px !important; }
+}
+
+/* 横向溢出的根：桌面给 .modal-wide 留了 min-width，手机 390 宽装不下就顶到屏幕外。
+   一路 min-width:0 + box-sizing，别让任何一层按桌面宽度撑开。 */
+@media (max-width: 860px), (max-height: 520px) {
+  .cp-body, .cp-body .modal, .cp-body .modal-wide,
+  .ui-design-body, .ui-design-form, .uid-panel, .ui-dl.row {
+    min-width: 0 !important; max-width: 100% !important; box-sizing: border-box !important;
+  }
+  .ui-dl.row input[type="range"] { min-width: 0 !important; }
+  .modal-actions > * { min-width: 0 !important; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+}
+
+/* 预览页：手机上画面必须铺满宽度（原来固定缩略图，四周一圈网格空白），
+   流程/缩略图这些调试信息收小，别和画面抢地方 */
+@media (max-width: 860px), (max-height: 520px) {
+  .preview-wrap { width: 100% !important; padding: 0 !important; }
+  .preview-img-wrap, #previewWrap { width: 100% !important; min-height: 0 !important; }
+  .preview-img-wrap img, #previewWrap img { width: 100% !important; height: auto !important; display: block; }
+  .preview-bar { font-size: 11.5px; padding: 4px 2px !important; }
+  .flow-next { flex-wrap: wrap; font-size: 11px; gap: 4px; }
+  .flow-next .fn-targets { display: flex; flex-wrap: wrap; gap: 4px; }
+}
+
+/* 预览画布区在手机上不要撑满整屏（下面会留一大片空白网格），收到图片自身高度 */
+@media (max-width: 860px), (max-height: 520px) {
+  .preview-img-wrap, #previewWrap {
+    flex: 0 0 auto !important; padding: 0 !important; background: var(--crust) !important;
+    background-image: none !important;
+  }
+}
+
+/* 「导出」不该和「外观」长一模一样：点导出时给中心页面挂 mode-export，
+   只留说明 + 三个导出按钮，UI 参数全部让开 */
+.center-page.mode-export .ui-design-tabs,
+.center-page.mode-export .uid-panel,
+.center-page.mode-export .modal-actions { display: none !important; }
+.center-page.mode-export .uid-web { margin-top: 0 !important; }
+
+/* 导出页顶部那段「调整 UI 几何…」是参数区说明，留在导出页只是噪音；
+   导出卡自己的说明必须留 */
+.center-page.mode-export .modal-hint { display: none !important; }
+.center-page.mode-export .uid-web .modal-hint {
+  display: block !important; -webkit-line-clamp: unset !important;
+  overflow: visible !important; font-size: 12.5px; line-height: 1.7;
+}
+
+/* 横屏顶栏 42px 装不下「品牌 + 五个菜单 + 搜索 + 四个入口」，挤成一堆还向上溢出半行。
+   手机横屏：单行不换行、超出的直接裁掉；‹ 返回靠左，其余入口整体靠右。 */
+@media (max-height: 520px) {
+  .menubar { overflow: hidden !important; flex-wrap: nowrap !important; }
+  .mb-brand { display: none !important; }
+  .menubar #mHomeBack { margin-right: auto !important; }
+}
+@media (max-width: 860px) {
+  .menubar #mHomeBack { margin-right: auto !important; }
+}

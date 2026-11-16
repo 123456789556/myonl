@@ -833,7 +833,9 @@
     const gap = L.choiceGap;
     const n = state.choice.length;
     const totalH = n * bh + (n - 1) * gap;
-    const startY = Math.max(L.marginX, (L.viewH - totalH) / 2);
+    // 选项组压在画面 66% 高度：立绘头顶约在 28%，42% 正好挡住脸；
+    // 往下放到胸口一带，既不压角色也不贴屏幕底边
+    const startY = Math.max(L.marginX, Math.round(L.viewH * 0.66) - totalH / 2);
     const x = (L.viewW - bw) / 2;
 
     state.choice.forEach((opt, i) => {
@@ -869,41 +871,114 @@
     });
   }
 
+  /* 标题页封面：拿工程里第一张背景图模糊铺满，比纯渐变更像"一个故事"而不是启动屏 */
+  function titleCover() {
+    const names = Object.keys(assets);
+    if (!names.length) return null;
+    return assets[names.find(n => /bg/i.test(n)) || names[0]];
+  }
+
+  /* 字号自适应：长标题缩字号比换行更稳（换行会把底部卡片撑高） */
+  function fitFont(text, maxW, fs, weight) {
+    let f = fs;
+    ctx.font = `${weight} ${f}px ${FACE}`;
+    while (f > 12 && ctx.measureText(text).width > maxW) {
+      f -= 1;
+      ctx.font = `${weight} ${f}px ${FACE}`;
+    }
+    return f;
+  }
+
   function drawTitle() {
-    const g = ctx.createLinearGradient(0, 0, 0, L.viewH);
-    g.addColorStop(0, "#171a26");
-    g.addColorStop(1, "#07080d");
-    ctx.fillStyle = g;
-    ctx.fillRect(0, 0, L.viewW, L.viewH);
+    const W = L.viewW, H = L.viewH, u = Math.min(W, H);
+    const land = W > H;
 
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-    ctx.fillStyle = "#f4f6ff";
-    ctx.font = `700 ${Math.round(Math.min(L.viewW, L.viewH) * 0.10)}px ${FACE}`;
-    ctx.fillText(pack.title || "MYONL", L.viewW / 2, L.viewH * (L.landscape ? 0.26 : 0.34));
-    ctx.fillStyle = "rgba(240,244,255,.55)";
-    ctx.font = `400 ${Math.round(Math.min(L.viewW, L.viewH) * 0.030)}px ${FACE}`;
-    ctx.fillText("MYONL · 手机端", L.viewW / 2, L.viewH * (L.landscape ? 0.40 : 0.42));
-
-    const bw = Math.min(L.viewW * 0.62, 620);
-    const bh = Math.round(Math.max(88, Math.min(L.viewH * 0.10, 132)));
-    const by = L.viewH * (L.landscape ? 0.60 : 0.64);
-    roundRect(L.viewW / 2 - bw / 2, by, bw, bh, Math.round(bh / 4), "rgba(79,140,255,.94)");
-    ctx.fillStyle = "#fff";
-    ctx.font = `600 ${Math.round(Math.min(L.viewW, L.viewH) * 0.038)}px ${FACE}`;
-    ctx.fillText("开始新故事", L.viewW / 2, by + bh / 2);
+    const cover = titleCover();
+    if (cover) {
+      // 不糊死：只轻微柔化，否则抽象背景整屏糊成一堵灰墙，什么也看不出来
+      ctx.save();
+      ctx.filter = "blur(3px)";
+      blitCover(cover, 1);
+      ctx.restore();
+      ctx.filter = "none";
+      const rv = ctx.createRadialGradient(W / 2, H * 0.26, 0, W / 2, H * 0.26, Math.max(W, H) * 0.78);
+      rv.addColorStop(0, "rgba(9,11,17,.20)");
+      rv.addColorStop(.60, "rgba(9,11,17,.56)");
+      rv.addColorStop(1, "rgba(9,11,17,.96)");
+      ctx.fillStyle = rv;
+      ctx.fillRect(0, 0, W, H);
+      const gb = ctx.createLinearGradient(0, H * 0.42, 0, H);
+      gb.addColorStop(0, "rgba(9,11,17,0)");
+      gb.addColorStop(1, "rgba(9,11,17,.94)");
+      ctx.fillStyle = gb;
+      ctx.fillRect(0, H * 0.42, W, H * 0.58);
+    } else {
+      const g0 = ctx.createLinearGradient(0, 0, 0, H);
+      g0.addColorStop(0, "#1a1f2e");
+      g0.addColorStop(1, "#07080d");
+      ctx.fillStyle = g0;
+      ctx.fillRect(0, 0, W, H);
+      const rg = ctx.createRadialGradient(W / 2, H * 0.22, 0, W / 2, H * 0.22, Math.max(W, H) * 0.62);
+      rg.addColorStop(0, "rgba(79,140,255,.20)");
+      rg.addColorStop(1, "rgba(79,140,255,0)");
+      ctx.fillStyle = rg;
+      ctx.fillRect(0, 0, W, H);
+    }
 
     let hasSave = false;
     try { hasSave = !!localStorage.getItem(saveKey()); } catch (e) { hasSave = false; }
-    state.continueRect = null;
-    if (hasSave) {
-      const cby = by + bh + Math.round(bh * 0.3);
-      roundRect(L.viewW / 2 - bw / 2, cby, bw, bh, Math.round(bh / 4), "rgba(255,255,255,.10)");
-      ctx.fillStyle = "rgba(240,244,255,.85)";
-      ctx.fillText("继续上次", L.viewW / 2, cby + bh / 2);
-      state.continueRect = {x: L.viewW / 2 - bw / 2, y: cby, w: bw, h: bh};
+
+    // 底部信息卡：标题和按钮收在同一张卡里，别摊在屏幕两头（中间大片空）。
+    // 尺寸一律按 viewW/viewH 的比例算 —— 这两个是物理像素，写死 CSS 值会随 DPR 变形。
+    const k = W / (window.innerWidth || W);
+    const cardX = land ? W * 0.05 : W * 0.037;
+    const cardW = land ? Math.min(W * 0.42, 380 * k) : W * 0.926;
+    const cardH = land ? H * 0.47 : H * 0.242;
+    const cardY = land ? (H - cardH) / 2 : H - cardH - H * 0.022;
+    roundRect(cardX, cardY, cardW, cardH, 20 * k, "rgba(22,26,36,.92)");
+    ctx.fillStyle = "rgba(255,255,255,.09)";
+    ctx.fillRect(cardX + 18 * k, cardY, cardW - 36 * k, Math.max(1, k));
+
+    const pad = 18 * k;
+    const innerX = cardX + pad;
+    const innerW = cardW - pad * 2;
+    const bh = H * (land ? 0.135 : 0.062);
+    const gap = 10 * k;
+    const btnY = cardY + cardH - pad - bh;
+    const subW = hasSave ? Math.min(innerW * 0.36, 128 * k) : 0;
+    state.startRect = {x: innerX, y: btnY, w: innerW - (hasSave ? subW + gap : 0), h: bh};
+    state.continueRect = hasSave
+      ? {x: innerX + innerW - subW, y: btnY, w: subW, h: bh}
+      : null;
+
+    ctx.textAlign = "left";
+    ctx.textBaseline = "alphabetic";
+    ctx.fillStyle = "rgba(240,244,255,.50)";
+    ctx.font = `400 ${Math.round(u * 0.030)}px ${FACE}`;
+    ctx.fillText("视觉小说 · MYONL", innerX, cardY + pad + Math.round(u * 0.030));
+
+    const fs = fitFont(pack.title || "MYONL", innerW, Math.round(u * (land ? 0.112 : 0.125)), 700);
+    ctx.font = `700 ${fs}px ${FACE}`;
+    ctx.fillStyle = "#f7f9ff";
+    ctx.fillText(pack.title || "MYONL", innerX, btnY - bh * 0.58);
+
+    const r1 = state.startRect;
+    roundRect(r1.x, r1.y, r1.w, r1.h, 14 * k, "rgba(79,140,255,.96)");
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillStyle = "#fff";
+    ctx.font = `600 ${Math.round(bh * 0.32)}px ${FACE}`;
+    ctx.fillText("开始新故事", r1.x + r1.w / 2, r1.y + bh / 2 + 1);
+
+    if (state.continueRect) {
+      const r2 = state.continueRect;
+      roundRect(r2.x, r2.y, r2.w, r2.h, 14 * k, "rgba(255,255,255,.10)");
+      ctx.fillStyle = "rgba(240,244,255,.86)";
+      ctx.font = `500 ${Math.round(bh * 0.30)}px ${FACE}`;
+      ctx.fillText("继续上次", r2.x + r2.w / 2, r2.y + bh / 2 + 1);
     }
     ctx.textAlign = "left";
+    ctx.textBaseline = "alphabetic";
   }
 
   function drawEnding() {

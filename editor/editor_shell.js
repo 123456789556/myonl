@@ -507,12 +507,39 @@
         closeDrawers();
         var ui = $("btnUIDesign");
         if (ui) ui.click();
+        // 从「导出」模式切回「外观」：把藏起来的参数区放回来，标题改回
+        var toLook = function () {
+          var cp = document.querySelector(".center-page.open");
+          if (cp && cp.classList.contains("mode-export")) {
+            cp.classList.remove("mode-export");
+            var t = cp.querySelector(".cp-title");
+            if (t) t.textContent = "UI 设计区";
+          }
+        };
+        setTimeout(toLook, 260);
+        setTimeout(toLook, 760);
         return;
       }
       if (which === "export") {
         closeDrawers();
         var ui2 = $("btnUIDesign");
         if (ui2) ui2.click();       // 导出在「界面设计」弹窗里，手机端一步到位
+        // 导出卡在「界面设计」最底下：打开后把中心页面切成「导出」模式，
+        // 只留说明 + 导出按钮，否则用户点导出看到的是一屏 UI 参数，以为点错了
+        var toExport = function () {
+          var cp = document.querySelector(".center-page.open");
+          if (cp) {
+            cp.classList.add("mode-export");
+            var t = cp.querySelector(".cp-title");
+            if (t) t.textContent = "导出";
+          }
+          var card = document.querySelector(".uid-web");
+          if (card && card.scrollIntoView) {
+            card.scrollIntoView({ block: "start", behavior: "smooth" });
+          }
+        };
+        setTimeout(toExport, 260);
+        setTimeout(toExport, 760);   // 弹窗转「中心页面」有一次动画，补一次
         return;
       }
     });

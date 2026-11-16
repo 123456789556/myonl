@@ -1083,9 +1083,16 @@ class _EditorHandler(BaseHTTPRequestHandler):
         self._send_json(200, {"items": items})
 
     def _get_assets(self, parsed=None) -> None:
-        """素材清单（只列文件名，不读内容）。"""
+        """素材清单（只列文件名，不读内容）。
+
+        优先扫「当前剧本所在目录」：`--script games/x/script.gal` 启动时
+        `app.data_root` 还指着仓库根，扫出来是全空的 —— 前端拿着空清单会
+        把每条 @bg / @show 都标成「缺素材」，而图其实都在工程目录里。
+        """
         try:
-            assets = _scan_assets(self.app.data_root)
+            assets = _scan_assets(self._current_project_root())
+            if not any(assets.values()):
+                assets = _scan_assets(self.app.data_root)
         except OSError as e:
             self._send_json(500, {"ok": False, "message": f"扫描素材失败：{e}"})
             return
