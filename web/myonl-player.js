@@ -754,8 +754,8 @@
       const plateX = rect.x + Math.round(L.marginX * 0.6);
       const plateY = rect.y - plateH - 14;
       const tint = say.color || vis.accent;
-      // 名字牌跟着角色色走：淡色底 + 同色描边，比原来一律黑底更像"这个人说话"
-      roundRect(plateX, plateY, tw + 52, plateH, plateH / 2, hexA(tint, 0.30));
+      // 名字牌：深色胶囊保证任何角色色都读得清，角色色只用于描边（纯当标签太淡就看不见字）
+      roundRect(plateX, plateY, tw + 52, plateH, plateH / 2, "rgba(12,14,20,.92)");
       ctx.save();
       ctx.strokeStyle = hexA(tint, 0.62);
       ctx.lineWidth = 1;
@@ -769,13 +769,14 @@
       ctx.closePath();
       ctx.stroke();
       ctx.restore();
-      ctx.fillStyle = "#ffffff";
+      ctx.fillStyle = vis.textColor;
       ctx.textBaseline = "middle";
       ctx.fillText(say.char, plateX + 26, plateY + plateH / 2);
     }
 
     const shown = typedCount();
     let left = shown;
+    ctx.globalAlpha = 1;   // 面板/皮肤绘制可能留下半透明状态，台词必须不透明
     ctx.font = `${L.fs}px ${FACE}`;
     ctx.textBaseline = "top";
     const tx = rect.x + L.padX + vis.panel.padX;
@@ -811,13 +812,19 @@
     }
   }
 
-  function drawChoices(vis) {
-    state.choiceRects = [];
+  /* 选项时的压暗层：要在对话框之前画，否则连台词一起压暗（原来就压在台词上，字看不清）*/
+  function drawChoiceVeil() {
     if (!state.choice) return;
     ctx.save();
+    ctx.globalAlpha = 1;
     ctx.fillStyle = "rgba(6,8,12,.66)";
     ctx.fillRect(0, 0, L.viewW, L.viewH);
     ctx.restore();
+  }
+
+  function drawChoices(vis) {
+    state.choiceRects = [];
+    if (!state.choice) return;
 
     const bw = L.choiceW;
     const bh = L.choiceH;
@@ -951,6 +958,7 @@
       drawEnding();
     } else {
       drawScene();
+      drawChoiceVeil();
       drawDialogue(vis);
       drawChoices(vis);
       drawMute();
