@@ -30,8 +30,11 @@ NODE = shutil.which("node")
 
 
 def _run_node(script_rel: str) -> subprocess.CompletedProcess:
+    # node 一定输出 UTF-8；不显式指定的话 subprocess 会按本机 locale 解（CI 上是 cp1252），
+    # 中文日志就变成乱码、stdout 甚至直接 None，断言全挂——必须钉死 utf-8
     return subprocess.run([NODE, os.path.join(ROOT, script_rel)],
-                          capture_output=True, text=True, timeout=60)
+                          capture_output=True, text=True, encoding="utf-8",
+                          errors="replace", timeout=60)
 
 
 # ============ 1. 编译器：真实项目 ============
