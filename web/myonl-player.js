@@ -130,7 +130,6 @@
     fg: null,              // P73：@fg 前景贴图
     anim: {},              // P73：@anim 补间（逐参数插值，绘制时才取当前值）
     video: null,           // P73：@video 帧序列背景
-    pendingVoice: "",      // P73：@voice 等下一句台词一起播
     trans: null,           // P73：@transition 待用于下一张背景
     transMode: "dissolve", // 正在播的转场方式
     transDir: "左",
