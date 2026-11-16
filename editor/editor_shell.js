@@ -10,6 +10,31 @@
   const mainEl = document.querySelector(".main");
   const dropdown = $("menuDropdown");
 
+  // P61：菜单里也能导出单文件——不用先翻到「UI 设计」弹窗底部
+  function say(msg) {
+    if (typeof window.toast === "function") window.toast(msg);
+    else if (window.__toast) window.__toast(msg);
+  }
+
+  function exportSingleHtml() {
+    fetch("/api/export-single", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: "{}",
+    })
+      .then((r) => r.json())
+      .then((d) => {
+        if (!d.ok) { say(d.message || "导出失败"); return; }
+        var a = document.createElement("a");
+        a.href = new URL(d.url, window.location.href).href;
+        a.target = "_blank";
+        a.rel = "noopener";
+        a.click();
+        say("已导出单文件（" + d.kb + " KB）——手机浏览器直接打开就能玩");
+      })
+      .catch((e) => say("导出失败：" + e));
+  }
+
   // ---- M1.5：内嵌教程（帮助 → 教程 / 说明书；F1）----
   const helpPanel = $("helpPanel");
   const helpListEl = $("helpList");
@@ -159,6 +184,7 @@
       { label: "保存", shortcut: "Ctrl+S", action: () => $("btnSave").click() },
       { label: "新建章节", action: () => $("btnNewChapter").click() },
       { label: "打包发布", shortcut: "Ctrl+P", action: () => $("btnPack").click() },
+      { label: "导出一个 HTML（手机能直接打开）", action: exportSingleHtml },
     ],
     edit: [
       { label: "撤销", shortcut: "Ctrl+Z", action: undo },

@@ -642,8 +642,12 @@
     },
   };
 
-  fetch("pack.json", {cache: "no-store"})
-    .then((r) => { if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); })
+  const bootPack = window.__MYONL_PACK__
+    ? Promise.resolve(window.__MYONL_PACK__)
+    : fetch("pack.json", {cache: "no-store"})
+        .then((r) => { if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); });
+
+  bootPack
     .then((data) => {
       pack = data;
       vm = CORE.createVM(pack);
@@ -657,6 +661,6 @@
     })
     .catch((err) => {
       state.error = "加载失败：" + err.message
-        + "。请用静态服务器打开（file:// 取不到 pack.json）。";
+        + "。单文件版可直接双击打开；分目录版需要静态服务器（file:// 取不到 pack.json）。";
     });
 })();

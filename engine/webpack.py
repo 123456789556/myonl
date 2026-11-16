@@ -177,6 +177,102 @@ def build_web(project_root: str, out_dir: str, *, title: str = "") -> dict:
     }
 
 
+MIME_BY_EXT = {
+    ".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg",
+    ".webp": "image/webp", ".gif": "image/gif", ".svg": "image/svg+xml",
+    ".bmp": "image/bmp",
+}
+
+
+def _js_safe(text: str) -> str:
+    """内联进 <script> 的文本：先掐掉 </script> 这种会提前闭合的序列。"""
+    return text.replace("</script", "<\\/script").replace("</SCRIPT", "<\\/SCRIPT")
+
+
+def build_single(project_root: str, out_file: str, *, title: str = "") -> dict:
+    """把整个游戏编成**一个 .html 文件**：图片转 base64 内嵌，播放器内联。
+
+    为什么单独做一个：网页包是一堆文件（index.html + pack.json + 3 个 js + assets/），
+    手机上没法"点开就玩"，也发不了微信。单文件版可以用手机浏览器直接打开，
+    也能当作品发给别人看——这是「做完能交出去」的唯一形态。
+    """
+    import base64
+    import tempfile
+
+    with tempfile.TemporaryDirectory() as tmp:
+        stat = build_web(project_root, tmp, title=title)
+        with open(os.path.join(tmp, "pack.json"), encoding="utf-8") as f:
+            pack = json.load(f)
+
+        assets: dict[str, str] = {}
+        for name, rel in (pack.get("assets") or {}).items():
+            path = os.path.join(tmp, rel.replace("/", os.sep))
+            ext = os.path.splitext(path)[1].lower()
+            mime = MIME_BY_EXT.get(ext, "application/octet-stream")
+            try:
+                with open(path, "rb") as f:
+                    blob = f.read()
+            except OSError:
+                continue
+            assets[name] = f"data:{mime};base64," + base64.b64encode(blob).decode("ascii")
+        pack["assets"] = assets
+        pack["single"] = True
+
+        scripts = []
+        for name in PLAYER_FILES:
+            with open(os.path.join(tmp, name), encoding="utf-8") as f:
+                scripts.append(f.read())
+
+    pack_json = json.dumps(pack, ensure_ascii=False, separators=(",", ":"))
+    body = "\n".join(
+        "<script>" + _js_safe(s) + "</script>" for s in scripts
+    )
+    html = _render_single_html(pack["title"], _js_safe(pack_json), body)
+
+    out = os.path.abspath(out_file)
+    parent = os.path.dirname(out)
+    if parent:
+        os.makedirs(parent, exist_ok=True)
+    with open(out, "w", encoding="utf-8") as f:
+        f.write(html)
+
+    size = os.path.getsize(out)
+    return {
+        "out": out,
+        "title": pack["title"],
+        "instructions": stat["instructions"],
+        "images": len(assets),
+        "missing": stat["missing"],
+        "unsupported": stat["unsupported"],
+        "bytes": size,
+    }
+
+
+def _render_single_html(title: str, pack_json: str, player_scripts: str) -> str:
+    safe = (title or "MYONL").replace("<", "&lt;").replace(">", "&gt;")
+    return f"""<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<meta name="theme-color" content="#14161f">
+<title>{safe}</title>
+<style>
+  html, body {{ margin: 0; padding: 0; background: #0b0d12; overflow: hidden;
+    -webkit-tap-highlight-color: transparent; user-select: none; }}
+  #stage {{ position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; }}
+  #game {{ display: block; background: #000; box-shadow: 0 0 40px rgba(0,0,0,.6); }}
+</style>
+</head>
+<body>
+<div id="stage"><canvas id="game"></canvas></div>
+<script>window.__MYONL_PACK__={pack_json};</script>
+{player_scripts}
+</body>
+</html>
+"""
+
+
 def _characters(ins: list) -> list:
     """@character 登记的角色（颜色/风格），给播放器决定名字颜色。"""
     out = []
@@ -231,7 +327,21 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("project", help="项目目录，如 games\\\\教程示例")
     ap.add_argument("-o", "--out", default="", help="输出目录，默认 dist\\\\web\\\\<项目名>")
     ap.add_argument("--title", default="", help="覆盖标题")
+    ap.add_argument("--single", default="", help="导出单文件 .html（可直接双击/发微信），传输出路径")
     args = ap.parse_args(argv)
+    if args.single:
+        try:
+            s = build_single(args.project, args.single, title=args.title)
+        except FileNotFoundError as e:
+            print(f"失败：{e}")
+            return 1
+        print(f"已生成单文件游戏：{s['out']}")
+        print(f"  标题：{s['title']}　指令 {s['instructions']} 条　素材 {s['images']} 张"
+              f"　{s['bytes'] / 1024:.0f} KB")
+        if s["missing"]:
+            print(f"  [缺素材 {len(s['missing'])}]：" + "、".join(s["missing"]))
+        print("  玩法：手机浏览器直接打开这个 .html，或把它发给别人")
+        return 0
     out = args.out or os.path.join("dist", "web", os.path.basename(os.path.abspath(args.project)))
     try:
         stat = build_web(args.project, out, title=args.title)

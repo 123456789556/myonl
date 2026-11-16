@@ -706,6 +706,7 @@ class _EditorHandler(BaseHTTPRequestHandler):
         ("POST", "/api/ui-design/preview"): "_ui_design_preview",
         ("POST", "/api/ui-design/export-textbox"): "_ui_design_export_textbox",
         ("POST", "/api/export-web"): "_export_web",
+        ("POST", "/api/export-single"): "_export_single",
         ("POST", "/api/export-portable"): "_export_portable",
         # 桌宠（实验）：start / stop / status（源码模式可用；发行包后续接入）
         ("POST", "/api/pet"): "_pet_control",
@@ -791,6 +792,9 @@ class _EditorHandler(BaseHTTPRequestHandler):
             return
         if parsed.path.startswith("/web-preview/"):
             self._serve_web_preview(parsed.path)
+            return
+        if parsed.path.startswith("/single-file/"):
+            self._serve_single_file(parsed.path)
             return
         if parsed.path.startswith("/portable-file/"):
             self._serve_portable_file(parsed.path)
@@ -1580,6 +1584,67 @@ class _EditorHandler(BaseHTTPRequestHandler):
             return
         self.send_response(200)
         self.send_header("Content-Type", mime)
+        self.send_header("Content-Length", str(len(body)))
+        self.send_header("Cache-Control", "no-store")
+        self.end_headers()
+        self.wfile.write(body)
+
+    def _export_single(self, parsed=None) -> None:
+        """P61：导出一个 .html 单文件游戏（图片内嵌、播放器内联）。
+
+        分目录的网页包发不了、手机上点不开；单文件版可以用手机浏览器直接打开，
+        也能当作品发出去——这是「做完能交出去」的形态。
+        """
+        from . import webpack as webpack_mod
+
+        data = self._read_json()
+        root = str(getattr(self.app, "project_root", "") or "")
+        if not root or not os.path.isdir(root):
+            self._send_json(400, {"ok": False, "message": "还没打开工程，无法导出"})
+            return
+        pack_root_fn = getattr(self.app, "pack_root", None)
+        if not callable(pack_root_fn):
+            self._send_json(500, {"ok": False, "message": "编辑器没有发行根，无法导出"})
+            return
+        folder = os.path.basename(os.path.normpath(root))
+        out = os.path.join(str(pack_root_fn()), "dist", "single", folder + ".html")
+        title = str(data.get("title") or "").strip()
+        try:
+            stat = webpack_mod.build_single(root, out, title=title)
+        except Exception as e:   # noqa: BLE001 — 统一回一句人话
+            self._send_json(500, {"ok": False, "message": f"导出单文件失败：{e}"})
+            return
+        self._send_json(200, {
+            "ok": True,
+            "out": stat["out"],
+            "url": "/single-file/" + folder + ".html",
+            "kb": round(stat["bytes"] / 1024),
+            "instructions": stat["instructions"],
+            "images": stat["images"],
+            "missing": stat["missing"],
+        })
+
+    def _serve_single_file(self, path: str) -> None:
+        """下载/预览单文件游戏：/single-file/<名字>.html"""
+        rel = path[len("/single-file/"):]
+        pack_root_fn = getattr(self.app, "pack_root", None)
+        base = os.path.join(str(pack_root_fn()) if callable(pack_root_fn) else "", "dist", "single")
+        try:
+            target = _safe_within(base, unquote(rel))
+        except ValueError:
+            self._send_json(400, {"error": "路径不合法"})
+            return
+        if not os.path.isfile(target):
+            self._send_json(404, {"error": "还没有这个单文件，先点一次「导出单文件」"})
+            return
+        try:
+            with open(target, "rb") as f:
+                body = f.read()
+        except OSError as e:
+            self._send_json(500, {"error": f"读文件失败：{e}"})
+            return
+        self.send_response(200)
+        self.send_header("Content-Type", "text/html; charset=utf-8")
         self.send_header("Content-Length", str(len(body)))
         self.send_header("Cache-Control", "no-store")
         self.end_headers()

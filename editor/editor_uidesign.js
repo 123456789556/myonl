@@ -609,16 +609,47 @@
       '<div class="ui-dl row"><span>手机版（H5）</span>' +
       '<button type="button" class="btn" id="uidExportWeb">导出手机版</button>' +
       '<span class="uid-val" id="uidExportWebMsg"></span></div>' +
+      '<div class="ui-dl row"><span>单文件</span>' +
+      '<button type="button" class="btn" id="uidExportSingle">导出一个文件</button>' +
+      '<span class="uid-val" id="uidExportSingleMsg"></span></div>' +
       '<div class="ui-dl row"><span>可迁移包</span>' +
       '<button type="button" class="btn" id="uidExportPortable">导出 Ren' +
       "'Py + JSON</button>" +
       '<span class="uid-val" id="uidExportPortableMsg"></span></div></div>');
     const btn = $("uidExportWeb");
     if (btn) btn.addEventListener("click", uidExportWeb);
+    const btn3 = $("uidExportSingle");
+    if (btn3) btn3.addEventListener("click", uidExportSingle);
     const btn2 = $("uidExportPortable");
     if (btn2) btn2.addEventListener("click", uidExportPortable);
   }
   uidBuildWebExport();
+
+  // P61：导出单文件 .html（图片 base64 内嵌、播放器内联）——手机上直接能打开，也能发给别人
+  async function uidExportSingle() {
+    const btn = $("uidExportSingle");
+    const msg = $("uidExportSingleMsg");
+    if (!btn || !msg) return;
+    btn.disabled = true;
+    msg.textContent = "打包中…";
+    try {
+      const resp = await postJSON("/api/export-single", {});
+      if (!resp.ok) { msg.textContent = resp.message || "导出失败"; return; }
+      const a = document.createElement("a");
+      a.href = new URL(resp.url, window.location.href).href;
+      a.textContent = "打开 / 下载这一份";
+      msg.innerHTML = "";
+      msg.appendChild(a);
+      msg.appendChild(document.createTextNode(
+        "（" + resp.kb + " KB · " + (resp.instructions || 0) + " 条指令 / "
+        + (resp.images || 0) + " 张素材）— 手机浏览器直接打开就能玩，也可以发给别人"));
+      toast("已导出单文件游戏");
+    } catch (e) {
+      msg.textContent = "导出请求失败：" + e;
+    } finally {
+      btn.disabled = false;
+    }
+  }
 
   // P56：导出可迁移包（Ren'Py 工程 + 通用 JSON）——产物落在 <发行根>/dist/portable/<工程名>，
   // 每种引擎一个 zip，点链接直接下载
