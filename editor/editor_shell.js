@@ -682,6 +682,16 @@
     if (typeof s !== "number") s = e.value.length;
     var t = e.selectionEnd;
     if (typeof t !== "number") t = s;
+    // 手机上没法把光标精确挪到行尾：点 @bg 若插在一句台词中间，整行就被撕成两半。
+    // 指令键（以 @ 开头）遇到「光标前这一行已有内容」时，先自己换一行再插。
+    if (text && text.charAt(0) === "@") {
+      var lineStart = e.value.lastIndexOf("\n", s - 1) + 1;
+      var prefix = e.value.slice(lineStart, s);
+      if (prefix.trim() !== "") {
+        text = "\n" + text;
+        s = t = s;
+      }
+    }
     e.setRangeText(text, s, t, "end");
     e.dispatchEvent(new Event("input", { bubbles: true }));
     e.dispatchEvent(new Event("keyup", { bubbles: true }));

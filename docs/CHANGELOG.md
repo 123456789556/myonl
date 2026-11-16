@@ -8,6 +8,8 @@
 
 **顺带修**：`@fg 无` 从来没真清过前景 —— parser 归一成 `name="无"`，`runtime.py` 只认 `reset` 字段，于是桌面端一直"设了一张叫『无』的图"再静默跳过；四处（runtime / webpack 收集 / 前端 VM / demo 预检）统一认 `无`。`webpack` 的 unsupported 清单里还塞着 parser 根本不产出的 `play`/`stop`/`shake`，删掉后清单如实为空。`_collect_image_names` 之前不收 `@fg` 的图。
 
+**编辑器的指令入口也跟着补齐**（不然指令做出来了、作者在手机上打不出来）：手机键盘快捷条从 5 个键加到 15 个（`@bg` / `@show` / `@chapter` / `@voice` / `@choice:` / `@if` / `@set` / `@label` / `@transition` / `@fg` / `→` / 缩进 / 换行 / 撤销），输入 `@` 后的补全表补 `fg / anim / camera / transition / plug / wait / nvl`，`@fg` 和 `@cg` 打完空格也会列图片名，卡片总览能认出 `fg / anim / chapter / transition / camera`。顺带：手机上没有 Home/End 键，点 `@bg` 若光标停在一句台词中间会把整行撕开 —— 指令键改为「这一行已有内容就先换一行再插」。
+
 **踩坑留档**：PIL `Image.new("RGBA") + Draw(img,"RGBA")` 是直接替换像素、不混 alpha，半透明会变纯白实心 —— 必须 `Image.new("RGB", 底色) + Draw(...,"RGBA")`。`next()` 遇到 `chapter` 必须 break，否则台词抢在章节卡前面出来。`@voice` 只能紧跟在台词之后，播放顺序是 say → voice。
 
 **证据**：`pwa-boot.png` / `pwa-play.png`（遮罩淡出、`#boot` 已移除、三处 PWA 头全 True、无 console error）、`p73-anim-early.png`（立绘偏左滑入）、`p73-fg.png`（斜雨铺满且不盖对话框）、`p73-video-a/b.png`（两帧换色）、`p73b-01.png`（章节卡）、`p73b-06.png`（wipe 半屏分界）、`p74land-choice.png` + `p74choice-portrait.png`（横/竖屏选项页，按钮上方有「在答什么」那一行）；单文件 774823 B；`pytest -m "not slow"` 1091 passed + 1 skipped。详见 `docs/变更说明-P72-P73-PWA与手机端全指令.md`。
