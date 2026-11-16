@@ -2366,3 +2366,15 @@ input[type="color"] {
 
 /* 浅色主题下胶囊底色几乎和卡片底一样，糊成一片：补一圈极细描边把形状立起来 */
 .m-chip { border: 1px solid var(--surface0); }
+
+/* 选项按钮组的实时预览：一块浅底画布，改参数就重画 */
+.uid-choice-preview {
+  margin-top: 10px; padding: 8px; border-radius: 12px;
+  background: rgba(255,255,255,.04); border: 1px solid var(--surface0);
+  display: flex; justify-content: center;
+}
+.uid-choice-preview canvas { display: block; border-radius: 8px; background: #10131b; }
+.runtime-light .uid-choice-preview, :root[data-theme="light"] .uid-choice-preview {
+  background: #f3f4f6; border-color: #e2e5ea;
+}
+:root[data-theme="light"] .uid-choice-preview canvas { background: #1a2030; }

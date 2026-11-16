@@ -2,6 +2,16 @@
 
 > 只记 release 级变化，一句话 + 证据链接。单项细节见 git 历史（原 archive/ 已删除）。
 
+## 2026-11-16（P70：选项按钮真正可调——三条断链一起修）
+
+**症状**：编辑器「外观 → 选项按钮」怎么调，手机端播放器都不变。查下来是三处同时断：① `_ui_design_get/set/preview` 用 `app.project_root`（`--script` 启动时是仓库根），读的是空配置、写的也是根目录；② 播放器 `drawChoices` 完全不读 `ui.choices`，宽高间距走布局、圆角写死 14；③ `webpack.CONFIG_KEYS` 没有 `ui` / `dialogue`，单文件导出把这两段整个裁掉。
+
+**修法**：三处改用 `_current_project_root()`；播放器新增 `choiceGeom()` 接上 7 个键（width / row_height / gap / dialog_gap / radius / bg / fg，默认值等于原行为）；`CONFIG_KEYS` 补 `ui`、`dialogue`。语义按 pygame 端对齐：`dialog_gap` = 选项组离对话区多远，`gap` = 选项之间的缝。
+
+**编辑器**：「选项按钮」组 4 滑块 → 7 控件（+ 底色 / 文字色，空=跟随主题，后端只收 `#rrggbb`），并加一块 300×132 实时预览（按手机竖屏 1080 宽等比缩放，改参数即重画）。控件全 JS 注入，`index.html` 仍 599 行。
+
+**证据**：`choice-play-tuned-p.png`（800/80/30/gap60/紫底绿字，全部来自编辑器参数）→ 恢复默认后 `play-p-choice.png`；`pytest -m "not slow"` 1084 passed + 1 skipped。详见 `docs/变更说明-P70-选项可调.md`。
+
 ## 2026-11-16（P68：手机编辑器去 IDE 化 + 播放器换皮）
 
 **编辑器**：P65 只是把桌面三列"藏"起来，露出来的仍是 VS Code 的壳 —— 这一期换掉。文件标签条 `display:none`（手机只开一个文件）；状态栏从八段挤一行收成 `已保存 / 第 N 行`，窄屏文案改成 `通过 · N 条`；顶栏四个控件统一 34×34 圆角 10 浅底胶囊并左对齐；正文 15px / 行高 28px（绝对值）/ 行号槽 34px。左侧那条 13px 灰竖带定位到 `.file-pane`（`left:46px + translateX(-110%)` 右边缘停在 13px），改 `left:0 + translateX(-102%)` 后消失。

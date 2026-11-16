@@ -90,7 +90,8 @@ DEFAULTS = {
         # C2：选项组与对话框的间距（720p 基准，随 ui_scale 放大；0=贴着对话框）
         # 2026-11-02：补齐编辑器 UI 设计区需要的完整默认值（渲染层原本写死在 _ui_int 里，
         # 提到 DEFAULTS 后 GET /api/ui-design 不会再对老工程返回 null）。
-        "choices": {"dialog_gap": 40, "width": 420, "row_height": 52, "radius": 8},
+        "choices": {"dialog_gap": 40, "width": 420, "row_height": 52, "radius": 8,
+                    "bg": "", "fg": ""},
         "quickbar": {"button_width": 64, "button_height": 26, "gap": 8, "margin_x": 24,
                      "margin_y": 10, "alpha": 185, "radius": 15,
                      "position": "bottom", "align": "right",

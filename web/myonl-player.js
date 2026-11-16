@@ -833,28 +833,59 @@
     ctx.restore();
   }
 
+  /* 选项几何：编辑器「选项按钮」组里的 4 个数值 + 2 个颜色。
+     数值按 1280 设计稿写，这里换算到当前画布；没写 / 等于默认时和以前完全一样。 */
+  function clampN(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
+
+  function choiceGeom() {
+    const c = cfg("ui.choices", {}) || {};
+    const dw = Number(c.width) || 0;
+    const dh = Number(c.row_height) || 0;
+    const dg = c.dialog_gap !== undefined ? Number(c.dialog_gap)
+      : (c.gap !== undefined ? Number(c.gap) : 40);
+    const dr = Number(c.radius) || 0;
+    const bw = dw ? Math.round(clampN(L.choiceW * (dw / 420), L.viewW * 0.5, L.viewW * 0.94)) : L.choiceW;
+    const bh = dh ? Math.round(clampN(L.choiceH * (dh / 52), L.fs * 2.2, L.fs * 4.2)) : L.choiceH;
+    const dgr = Number.isFinite(dg) ? dg / 40 : 1;   // dialog_gap = 选项组离对话区多远
+    const centerY = Math.round(clampN(L.viewH * (0.66 - (dgr - 1) * 0.12),
+                                      L.viewH * 0.42, L.viewH * 0.82));
+    const sg = c.gap === undefined ? 34 : Number(c.gap);   // gap = 选项之间的缝
+    const gap = Number.isFinite(sg) ? Math.max(0, Math.round(L.choiceGap * (sg / 34))) : L.choiceGap;
+    const radius = dr ? Math.min(Math.round(dr * 1.6), Math.round(bh / 2)) : 14;
+    return {
+      bw: bw, bh: bh, gap: gap, radius: radius, centerY: centerY,
+      bg: String(c.bg || "").trim(),
+      fg: String(c.fg || "").trim(),
+    };
+  }
+
   function drawChoices(vis) {
     state.choiceRects = [];
     if (!state.choice) return;
 
-    const bw = L.choiceW;
-    const bh = L.choiceH;
-    const gap = L.choiceGap;
+    const geom = choiceGeom();
+    const bw = geom.bw;
+    const bh = geom.bh;
+    const gap = geom.gap;
     const n = state.choice.length;
     const totalH = n * bh + (n - 1) * gap;
     // 选项组压在画面 66% 高度：立绘头顶约在 28%，42% 正好挡住脸；
     // 往下放到胸口一带，既不压角色也不贴屏幕底边
-    const startY = Math.max(L.marginX, Math.round(L.viewH * 0.66) - totalH / 2);
+    const startY = Math.max(L.marginX, geom.centerY - totalH / 2);
     const x = (L.viewW - bw) / 2;
 
     state.choice.forEach((opt, i) => {
       const y = startY + i * (bh + gap);
-      const r = 14;
-      // 按钮不再用 3px 蓝框圈住（太像表单）：淡底 + 1px 细边 + 左侧一道 accent 竖条
-      const g2 = ctx.createLinearGradient(0, y, 0, y + bh);
-      g2.addColorStop(0, "rgba(32,38,54,.94)");
-      g2.addColorStop(1, "rgba(20,24,36,.96)");
-      roundRect(x, y, bw, bh, r, g2);
+      const r = geom.radius;
+      // 按钮不用 3px 蓝框圈住（太像表单）：淡底 + 1px 细边 + 左侧一道 accent 竖条
+      if (geom.bg) {
+        roundRect(x, y, bw, bh, r, hexA(geom.bg, 0.94));
+      } else {
+        const g2 = ctx.createLinearGradient(0, y, 0, y + bh);
+        g2.addColorStop(0, "rgba(32,38,54,.94)");
+        g2.addColorStop(1, "rgba(20,24,36,.96)");
+        roundRect(x, y, bw, bh, r, g2);
+      }
       ctx.save();
       ctx.strokeStyle = "rgba(255,255,255,.14)";
       ctx.lineWidth = 1;
@@ -869,7 +900,7 @@
       ctx.fillStyle = vis.accent;
       ctx.fillRect(x + 1, y + Math.round(bh * 0.28), 3, Math.round(bh * 0.44));
       ctx.restore();
-      ctx.fillStyle = vis.textColor;
+      ctx.fillStyle = geom.fg || vis.textColor;
       ctx.font = `500 ${L.fs}px ${FACE}`;
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";

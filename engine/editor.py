@@ -1123,7 +1123,7 @@ class _EditorHandler(BaseHTTPRequestHandler):
                            "panel_image", "panel_slice", "panel_tint",
                            "panel_fade", "panel_fade_bottom", "panel_texture",
                            "panel_texture_alpha", "panel_alpha", "pad_x", "pad_y")
-    _UI_DESIGN_CHOICES_KEYS = ("width", "row_height", "dialog_gap", "radius")
+    _UI_DESIGN_CHOICES_KEYS = ("width", "row_height", "dialog_gap", "radius", "gap", "bg", "fg")
     _UI_DESIGN_QUICKBAR_KEYS = ("button_width", "button_height", "gap", "margin_x",
                                 "margin_y", "alpha", "radius", "position", "align", "icons")
     _UI_DESIGN_MENU_KEYS = ("row_width", "row_height", "top", "radius")
@@ -1152,7 +1152,7 @@ class _EditorHandler(BaseHTTPRequestHandler):
 
         返回磁盘 config.json 的现值；未写键以引擎默认补齐（前端显示"默认"）。
         """
-        root = self.app.project_root
+        root = self._current_project_root()
         cfg = _load_project_config(root)
         if not isinstance(cfg, dict):
             cfg = {}
@@ -1206,7 +1206,7 @@ class _EditorHandler(BaseHTTPRequestHandler):
         ui.choices / ui.quickbar / ui.menu / ui.settings、font、line_height。
         """
         data = self._read_json()
-        root = self.app.project_root
+        root = self._current_project_root()
         try:
             cfg = _load_project_config(root)
             cfg = dict(cfg)  # 浅拷贝：写回不污染内存共享
@@ -1244,8 +1244,16 @@ class _EditorHandler(BaseHTTPRequestHandler):
                     continue
                 sec = dict(ui.get(name) or {})
                 for k in keys:
-                    if k in patch:
-                        sec[k] = patch[k]
+                    if k not in patch:
+                        continue
+                    # 选项按钮的两个颜色：只收 #rrggbb 或空串（空 = 跟随主题）
+                    if name == "choices" and k in ("bg", "fg"):
+                        val = str(patch[k] or "").strip()
+                        if val and not re.fullmatch(r"#[0-9a-fA-F]{6}", val):
+                            continue
+                        sec[k] = val
+                        continue
+                    sec[k] = patch[k]
                 # 快捷栏图标：只接受 {标签: 图片名} 的字符串映射，脏数据不落盘
                 if name == "quickbar" and "icons" in patch:
                     raw = patch.get("icons")
@@ -1403,7 +1411,7 @@ class _EditorHandler(BaseHTTPRequestHandler):
         interface_patch = interface_patch if isinstance(interface_patch, dict) else {}
         try:
             with _preview_lock:
-                png = _ui_design_png(self.app.project_root, ui_patch, dlg_patch,
+                png = _ui_design_png(self._current_project_root(), ui_patch, dlg_patch,
                                      font_patch, lh_patch, scene=scene,
                                      theme_patch=theme_patch, font_file=font_file,
                                      interface_patch=interface_patch)

@@ -44,6 +44,10 @@
     {id: "uidChoiceH", key: "row_height", section: "choices"},
     {id: "uidChoiceGap", key: "dialog_gap", section: "choices"},
     {id: "uidChoiceRadius", key: "radius", section: "choices"},
+    {id: "uidChoiceRowGap", key: "gap", section: "choices"},
+    // 颜色留空 = 跟随主题（写死颜色换主题后会不协调）
+    {id: "uidChoiceBg", key: "bg", section: "choices", isString: true},
+    {id: "uidChoiceFg", key: "fg", section: "choices", isString: true},
     // 快捷栏（ui.quickbar）
     {id: "uidQbW", key: "button_width", section: "quickbar"},
     {id: "uidQbH", key: "button_height", section: "quickbar"},
@@ -136,6 +140,95 @@
       "（回落到引擎兜底色）；保存后写入项目 config.json 的 theme 段。</div>";
   }
   uidBuildThemePanel();
+
+  /* 选项按钮组：两个颜色输入 + 一块实时预览。
+     预览按 1280 设计稿缩到 300 宽，改哪个参数都立刻能看见，不用来回导出。
+     index.html 行数卡在 600，控件一律由 JS 注入。 */
+  function uidDrawChoicePreview() {
+    const cv = $("uidChoicePreview");
+    if (!cv) return;
+    const dpr = Math.min(2, window.devicePixelRatio || 1);
+    const W = 300;
+    const H = 132;
+    cv.width = Math.round(W * dpr);
+    cv.height = Math.round(H * dpr);
+    cv.style.width = W + "px";
+    cv.style.height = H + "px";
+    const g = cv.getContext("2d");
+    g.setTransform(dpr, 0, 0, dpr, 0, 0);
+    g.clearRect(0, 0, W, H);
+    // 画布代表手机竖屏 1080 宽（选项区默认 928 宽 / 137 高 / 间距 34），
+    // 按 300/1080 等比缩到这块小图上——和播放器里的换算完全一致。
+    const k = W / 1080;
+    const baseW = 928;
+    const baseH = 137;
+    const baseGap = 40;
+    const ratioW = uidNum("uidChoiceW") / 420 || 0;
+    const ratioH = uidNum("uidChoiceH") / 52 || 0;
+    const ratioG = uidNum("uidChoiceRowGap") / 34 || 0;
+    const bw = Math.max(20, Math.min(W - 8, baseW * ratioW * k));
+    const bh = Math.max(12, Math.min(56, baseH * ratioH * k));
+    const rad = Math.min(uidNum("uidChoiceRadius") * 1.6 * k, bh / 2);
+    const gap = Math.max(0, baseGap * ratioG * k);
+    const seg = Math.min(2, Math.max(1, Math.floor((H - 8) / (bh + gap))));
+    const x = (W - bw) / 2;
+    const y0 = (H - (seg * bh + (seg - 1) * gap)) / 2;
+    const bgEl = $("uidChoiceBg");
+    const fgEl = $("uidChoiceFg");
+    const bg = bgEl ? String(bgEl.value || "").trim() : "";
+    const fg = fgEl ? String(fgEl.value || "").trim() : "";
+    const pick = (v, dflt) => (/^#[0-9a-fA-F]{6}$/.test(v) ? v : dflt);
+    for (let i = 0; i < seg; i++) {
+      const y = y0 + i * (bh + gap);
+      g.fillStyle = pick(bg, "rgba(32,38,54,.94)");
+      g.beginPath();
+      g.moveTo(x + rad, y);
+      g.arcTo(x + bw, y, x + bw, y + bh, rad);
+      g.arcTo(x + bw, y + bh, x, y + bh, rad);
+      g.arcTo(x, y + bh, x, y, rad);
+      g.arcTo(x, y, x + bw, y, rad);
+      g.closePath();
+      g.fill();
+      g.strokeStyle = "rgba(127,135,152,.5)";
+      g.lineWidth = 1;
+      g.stroke();
+      g.fillStyle = "#4f8cff";
+      g.fillRect(x + 1, y + bh * 0.28, 2, bh * 0.44);
+      g.fillStyle = pick(fg, "#f4f6ff");
+      g.font = "500 12px system-ui, sans-serif";
+      g.textAlign = "center";
+      g.textBaseline = "middle";
+      g.fillText("选项 " + (i + 1), x + bw / 2, y + bh / 2);
+    }
+  }
+
+  function uidBuildChoiceColors() {
+    const box = $("uidPanelChoice");
+    if (!box) return;
+    // 选项之间的缝插在「圆角」后面，位置和参数一一对应
+    const radRow = $("uidChoiceRadius");
+    if (radRow) {
+      radRow.closest(".ui-dl.row").insertAdjacentHTML("afterend",
+        '<div class="ui-dl row"><span>选项间距（gap）</span>' +
+        '<input id="uidChoiceRowGap" type="range" min="0" max="80" step="1">' +
+        '<span class="uid-val" id="uidChoiceRowGapVal">20</span></div>');
+    }
+    box.insertAdjacentHTML("beforeend",
+      '<div class="ui-dl row"><span>按钮底色（bg）</span>' +
+      '<input id="uidChoiceBg" type="text" placeholder="#202636 · 留空跟随主题"></div>' +
+      '<div class="ui-dl row"><span>按钮文字色（fg）</span>' +
+      '<input id="uidChoiceFg" type="text" placeholder="#f4f6ff · 留空跟随主题"></div>' +
+      '<div class="uid-choice-preview"><canvas id="uidChoicePreview"></canvas></div>' +
+      '<div class="modal-hint" style="margin-top:6px">这张预览按 1280 设计稿缩放，' +
+      "改宽度/行高/圆角/间距/颜色都会立刻重画；手机上「选项」页用的是同一套参数。</div>");
+    ["uidChoiceW", "uidChoiceH", "uidChoiceGap", "uidChoiceRadius",
+     "uidChoiceRowGap", "uidChoiceBg", "uidChoiceFg"].forEach(function (id) {
+      const el = $(id);
+      if (el) el.addEventListener("input", uidDrawChoicePreview);
+    });
+    uidDrawChoicePreview();
+  }
+  uidBuildChoiceColors();
 
   // 入口 HTML 行数目标：快捷栏图标 / 字体文件 / 界面开关三块控件由 JS 注入
   function uidBuildExtraPanels() {

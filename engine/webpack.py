@@ -41,7 +41,10 @@ WEB_SRC = _web_src()
 PLAYER_FILES = ("myonl-core.js", "myonl-layout.js", "myonl-player.js")
 
 # 播放器用得上的 config 子集（整份丢过去会让 pack 变大，也没必要）
-CONFIG_KEYS = ("window_title", "theme", "colors", "alphas", "font", "line_height")
+# P70：ui（选项/快捷栏/菜单/设置页的几何与颜色）、dialogue（对话框皮肤）也要带上，
+# 否则编辑器调完 UI 导出后手机端读不到，等于白调。
+CONFIG_KEYS = ("window_title", "theme", "colors", "alphas", "font", "line_height",
+               "ui", "dialogue")
 
 
 def _pick_script(root: str) -> str:

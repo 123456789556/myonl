@@ -137,8 +137,9 @@ def test_ui_design_p52_白名单扩为六组():
     dlg = E._EditorHandler._UI_DESIGN_DLG_KEYS
     assert "name_y" in dlg and "name_gap" in dlg
     # 各新组键齐
+    # P70：选项组扩到 7 个键——gap（选项之间的缝）、bg / fg（按钮底色与文字色）
     assert set(E._EditorHandler._UI_DESIGN_CHOICES_KEYS) == {
-        "width", "row_height", "dialog_gap", "radius"}
+        "width", "row_height", "dialog_gap", "radius", "gap", "bg", "fg"}
     assert set(E._EditorHandler._UI_DESIGN_QUICKBAR_KEYS) == {
         "button_width", "button_height", "gap", "margin_x", "margin_y",
         "alpha", "radius", "position", "align", "icons"}
