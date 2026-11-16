@@ -197,10 +197,48 @@ def _load_project_config(root: str) -> dict:
 
 
 def _write_project_config(root: str, data: dict) -> str:
-    """写工程 config.json（失败抛 OSError 由调用方处理；原子写避免写坏旧配置）。"""
+    """写工程 config.json（失败抛 OSError 由调用方处理；原子写避免写坏旧配置）。
+
+    写盘前做一次瘦身：**这次新增的、且恰好等于引擎默认值的键**不写进去
+    （读取时 `_deep_merge(DEFAULTS, ...)` 会补回来，行为不变）。文件里原本就有的键
+    一律原样保留 —— 那是作者自己写的，不能替他删。
+    不做这一步的话，编辑器保存一次就把六组默认值铺满 config.json，
+    改没改过完全分不出来。
+    """
     path = os.path.join(root, "config.json")
-    _write_text_atomic(path, json.dumps(data, ensure_ascii=False, indent=2) + "\n")
+    from .config import DEFAULTS as _DEFAULTS
+
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            old = json.load(f)
+    except (OSError, ValueError):
+        old = {}
+    slim = _prune_echoed_defaults(data, old if isinstance(old, dict) else {}, _DEFAULTS)
+    _write_text_atomic(path, json.dumps(slim, ensure_ascii=False, indent=2) + "\n")
     return path
+
+
+def _prune_echoed_defaults(new, old, default):
+    """删掉「本次新增、等于默认值」的键；old 里已有的键一律保留。"""
+    if not isinstance(new, dict):
+        return new
+    default = default if isinstance(default, dict) else {}
+    old = old if isinstance(old, dict) else {}
+    out = {}
+    for k, v in new.items():
+        d = default.get(k)
+        if isinstance(v, dict) and isinstance(d, dict):
+            sub = _prune_echoed_defaults(v, old.get(k), d)
+            if sub or isinstance(old.get(k), dict):
+                out[k] = sub if sub else (old.get(k) or {})
+            continue
+        if k in old:
+            out[k] = v
+            continue
+        if d is not None and v == d:
+            continue
+        out[k] = v
+    return out
 
 
 def _project_orientation(root: str) -> str:

@@ -38,6 +38,16 @@
 - **`webpack` 的 unsupported 清单里塞了 `play`/`stop`/`shake`** —— parser 根本不产出这三个 op（`@shake` 已归一成 `camera kind=shake`）。删掉，清单现在如实为空。
 - **`_collect_image_names` 不收 `@fg` 的贴图** —— 加了 fg 收集，但 `@fg 无` 不当素材报缺失。
 
+## 顺带补的一块：编辑器保存不再把默认值铺满 config.json
+
+`_ui_design_set` 的前端会把 `GET /api/ui-design` 拿到的**完整对象**（含全部默认值）原样回传，
+后端照单全收 —— 于是新建工程保存一次，`config.json` 就被六组默认值塞满，
+改没改过完全分不出来，文件也从几行变成上百行。
+
+`_write_project_config` 加了一步瘦身 `_prune_echoed_defaults`：**本次新增的、且恰好等于引擎默认值的键不写盘**
+（读取时 `_deep_merge(DEFAULTS, ...)` 会补回来，行为不变）；**文件里原本就有的键一律原样保留**，
+不替作者删除。测试 `test_保存只写改过的键不铺默认值` 钉住这两条。
+
 ## 顺带补的一块：横屏选项页「在答什么」
 
 补验收截图时才发现横屏 844×390 下选项页几乎是一整屏黑 + 两个按钮：选项出现会藏起对话框（

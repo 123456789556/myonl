@@ -1199,3 +1199,25 @@ def test_工作台缩略图_有就给图没有就404(server):
     for bad in ("../", "丙/../丙", "", "不存在的工程"):
         status, _h, _raw = _get(port, "/api/thumb?folder=" + urllib.parse.quote(bad))
         assert status == 404, bad
+
+
+# 7j. 保存瘦身：前端会把 GET 到的完整对象（含全部默认值）原样回传，
+#     落盘时应把「本次新增且等于默认」的键丢掉，不然保存一次就铺满 config.json。
+def test_保存只写改过的键不铺默认值():
+    from engine.config import DEFAULTS
+    from engine.editor import _prune_echoed_defaults
+
+    echoed = {
+        "window_title": "MYONL",                 # 等于默认，新增 → 丢
+        "font": {"body": 28, "title": 90},       # body 等于默认 → 丢；title 改过 → 留
+        "line_height": {"body": 1.6},            # 等于默认，新增 → 丢
+        "ui": {"choices": {"width": 420}},       # 等于默认，新增 → 丢
+    }
+    kept = _prune_echoed_defaults(echoed, {}, DEFAULTS)
+    assert kept == {"font": {"title": 90}}, kept
+
+    # 文件里原本就有的键（哪怕值恰好等于默认）不能替作者删
+    old = {"font": {"title": 72}, "line_height": {"body": 1.6}}
+    kept2 = _prune_echoed_defaults(echoed, old, DEFAULTS)
+    assert kept2["font"]["title"] == 90
+    assert kept2["line_height"]["body"] == 1.6
