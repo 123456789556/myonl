@@ -34,7 +34,8 @@
   layer.className = "m-home";
   layer.innerHTML =
     '<div class="m-home-head">' +
-      '<div class="m-home-title">我的作品</div>' +
+      '<div><div class="m-home-title">我的作品</div>' +
+      '<div class="m-home-sub" id="mHomeSub">本地保存 · 不上云</div></div>' +
       '<button type="button" class="m-home-gear" id="mHomeSet" title="设置">' +
         '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" ' +
         'stroke-width="1.7" stroke-linecap="round" aria-hidden="true">' +
@@ -54,13 +55,30 @@
     return new Date(ts * 1000).toLocaleDateString();
   }
 
-  function card(p) {
+  function card(p, idx) {
     var folder = p.folder.replace(/"/g, "&quot;");
+    var name = p.name.replace(/</g, "&lt;");
+    if (idx === 0) {
+      // 第一张做成整宽大卡（借 Kazumi 的「今日开播」）：封面铺满 + 底部渐深 + 直接继续编辑
+      return '<button type="button" class="m-home-hero" data-folder="' + folder + '">' +
+        '<span class="m-hero-cover" data-folder="' + folder + '"></span>' +
+        '<span class="m-hero-veil"></span>' +
+        '<span class="m-hero-text">' +
+          '<span class="m-hero-tag">最近编辑</span>' +
+          '<span class="m-hero-name">' + name + '</span>' +
+          '<span class="m-hero-meta">' + ago(p.mtime) + '改过 · ' + p.ins + ' 条指令</span>' +
+        '</span>' +
+        '<span class="m-hero-go">继续编辑</span></button>';
+    }
     return '<button type="button" class="m-home-card" data-folder="' + folder + '">' +
       '<span class="m-card-thumb" data-folder="' + folder + '"></span>' +
       '<span class="m-card-body">' +
-        '<span class="m-card-name">' + p.name.replace(/</g, "&lt;") + '</span>' +
-        '<span class="m-card-meta">' + p.ins + ' 条指令 · ' + p.assets + ' 个素材 · ' + ago(p.mtime) + '</span>' +
+        '<span class="m-card-name">' + name + '</span>' +
+        '<span class="m-card-chips">' +
+          '<span class="m-chip">' + p.ins + ' 条指令</span>' +
+          '<span class="m-chip">' + p.assets + ' 个素材</span>' +
+          '<span class="m-chip m-chip-dim">' + ago(p.mtime) + '</span>' +
+        '</span>' +
       '</span>' +
       '<span class="m-card-go">›</span></button>';
   }
@@ -68,8 +86,9 @@
   function render(projects) {
     var list = $("mHomeList");
     if (!list) return;
-    var cards = projects.map(card).join("");
-    list.innerHTML = cards +
+    var sub = $("mHomeSub");
+    if (sub) sub.textContent = projects.length + " 个作品 · 本地保存 · 不上云";
+    var cards = projects.map(card).join("");    list.innerHTML = cards +
       '<button type="button" class="m-home-card m-home-new" id="mHomeNew">' +
         '<span class="m-card-thumb m-card-thumb-new">＋</span>' +
         '<span class="m-card-body">' +
@@ -78,7 +97,7 @@
         '</span>' +
       '</button>';
     // 缩略图单独请求：拿不到就留个空底，不阻塞列表
-    list.querySelectorAll(".m-card-thumb[data-folder]").forEach(function (th) {
+    list.querySelectorAll(".m-card-thumb[data-folder], .m-hero-cover[data-folder]").forEach(function (th) {
       var f = th.dataset.folder;
       var img = new Image();
       img.onload = function () {
@@ -87,7 +106,7 @@
       };
       img.src = "/api/thumb?folder=" + encodeURIComponent(f);
     });
-    list.querySelectorAll(".m-home-card[data-folder]").forEach(function (b) {
+    list.querySelectorAll(".m-home-card[data-folder], .m-home-hero[data-folder]").forEach(function (b) {
       b.addEventListener("click", function () { openProject(b.dataset.folder, b); });
     });
     var nb = $("mHomeNew");

@@ -2078,15 +2078,23 @@ class _EditorHandler(BaseHTTPRequestHandler):
         if os.path.dirname(proj) != base or not os.path.isdir(proj):
             self._send_json(404, {"ok": False, "message": "没有这张图"})
             return
-        cand = os.path.join(proj, "icon.png")
-        if not os.path.isfile(cand):
-            cand = ""
-            img_dir = os.path.join(proj, "images")
-            if os.path.isdir(img_dir):
-                for name in sorted(os.listdir(img_dir)):
-                    if os.path.splitext(name)[1].lower() in (".png", ".jpg", ".jpeg", ".webp"):
-                        cand = os.path.join(img_dir, name)
-                        break
+        # 卡片图想要的是「这部长什么样」，而不是一张自动生成的字母图标：
+        # 先找 images 里名字带 bg 的画面图，其次 icon.png，最后随便一张图
+        imgs = []
+        img_dir = os.path.join(proj, "images")
+        if os.path.isdir(img_dir):
+            ok = (".png", ".jpg", ".jpeg", ".webp")
+            imgs = [n for n in sorted(os.listdir(img_dir))
+                    if os.path.splitext(n)[1].lower() in ok]
+        cand = ""
+        for name in imgs:
+            if "bg" in name.lower():
+                cand = os.path.join(img_dir, name)
+                break
+        if not cand and os.path.isfile(os.path.join(proj, "icon.png")):
+            cand = os.path.join(proj, "icon.png")
+        if not cand and imgs:
+            cand = os.path.join(img_dir, imgs[0])
         if not cand or not os.path.isfile(cand):
             self._send_json(404, {"ok": False, "message": "没有这张图"})
             return
