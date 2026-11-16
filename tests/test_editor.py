@@ -1138,3 +1138,39 @@ def test_release_readme_只讲双击即用():
     source_readme = open(os.path.join(root, "README.md"), encoding="utf-8").read()
     assert "## 源码开发" in source_readme and "发行包" in source_readme
 
+
+
+# P65：手机端工作台——工程卡片列表 / 点卡片切换工程
+def test_工作台_列出工程并拒绝越界切换(server):
+    port, root = server
+    # 造两个工程：games/甲、games/乙，各有一份剧本
+    for name, ins in (("甲", "@ 一\n@ 二\n"), ("乙", "@ 一\n")):
+        d = os.path.join(root, "games", name)
+        os.makedirs(d, exist_ok=True)
+        with open(os.path.join(d, "script.gal"), "w", encoding="utf-8") as f:
+            f.write(ins)
+        os.makedirs(os.path.join(d, "images"), exist_ok=True)
+        with open(os.path.join(d, "images", "a.png"), "wb") as f:
+            f.write(b"x")
+
+    status, _, raw = _get(port, "/api/home")
+    assert status == 200
+    body = json.loads(raw)
+    assert body["ok"] is True
+    folders = {p["folder"]: p for p in body["projects"]}
+    assert "甲" in folders and "乙" in folders
+    assert folders["甲"]["ins"] == 2          # 只数 @ 开头的行
+    assert folders["甲"]["assets"] == 1       # images/ 下的文件也算素材
+
+    # 切换：正常切换成功，且服务端当前工程真的变了
+    status, raw = _post(port, "/api/project", {"folder": "甲"})
+    assert status == 200
+    assert json.loads(raw)["ok"] is True
+    status, _, raw2 = _get(port, "/api/home")
+    assert json.loads(raw2)["current"] == "甲"
+
+    # 越界：../ 与绝对路径都不许
+    for bad in ("../", "../../Windows", "甲/../乙", ""):
+        status, raw = _post(port, "/api/project", {"folder": bad})
+        assert status == 400, bad
+        assert json.loads(raw)["ok"] is False

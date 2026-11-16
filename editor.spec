@@ -23,7 +23,7 @@ datas += [
     (os.path.join(ROOT, "editor", name), "editor")
     for name in ("editor_utils.js", "editor_pro.js", "editor_main.js", "editor_scene.js",
                  "editor_characters.js", "editor_level.js",
-                 "editor_uidesign.js", "editor_shell.js")
+                 "editor_uidesign.js", "editor_shell.js", "editor_home.js")
 ]
 # M1.5：内嵌教程（编辑器「帮助 → 教程 / 说明书」在发行包里也要能看）
 datas += [

@@ -538,6 +538,19 @@
     var mbActs = document.querySelector(".menubar .mb-acts");
     var anchor = mbActs || document.querySelector(".menubar");
     if (anchor) {
+      // 手机端左上角「‹ 作品」：回工作台（否则进了编辑器就出不去）
+      var back = document.createElement("button");
+      back.className = "icon-btn";
+      back.id = "mHomeBack";
+      back.type = "button";
+      back.title = "返回作品列表";
+      back.innerHTML = '<svg viewBox="0 0 24 24" width="17" height="17" fill="none" '
+        + 'stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">'
+        + '<path d="M14.5 5.5L8 12l6.5 6.5"/></svg>';
+      back.addEventListener("click", function () {
+        if (window.__myonlShowHome) window.__myonlShowHome();
+      });
+      anchor.parentNode.insertBefore(back, anchor.parentNode.firstChild);
       anchor.parentNode.insertBefore(fsBtn, anchor);
       anchor.parentNode.insertBefore(more, anchor);
       more.addEventListener("click", function () {

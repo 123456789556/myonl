@@ -694,6 +694,8 @@ class _EditorHandler(BaseHTTPRequestHandler):
         # T16 域拆分：游戏内 UI 设计区 / 壳层（菜单 + 命令面板 + 教程）
         ("GET", "/editor_uidesign.js"): "_serve_uidesign_js",
         ("GET", "/editor_shell.js"): "_serve_shell_js",
+        # P65：手机端工作台（工程卡片第一层）
+        ("GET", "/editor_home.js"): "_serve_home_js",
         # 角色库（characters.json，项目级角色资产）
         ("GET", "/api/characters"): "_characters_get",
         # V4：角色引用计数（扫描工程内全部 .gal，跨 @include 文件）
@@ -716,6 +718,9 @@ class _EditorHandler(BaseHTTPRequestHandler):
         ("POST", "/api/pet"): "_pet_control",
         ("GET", "/api/complete"): "_complete",
         ("GET", "/api/files"): "_handle_files",
+        # P65：手机端工作台（工程卡片列表 / 点卡片切换工程）
+        ("GET", "/api/home"): "_home",
+        ("POST", "/api/project"): "_switch_project",
         ("GET", "/api/file/read"): "_handle_file_read",
         ("GET", "/api/labels"): "_handle_labels",
         ("GET", "/api/include-target"): "_handle_include_target",
@@ -948,6 +953,9 @@ class _EditorHandler(BaseHTTPRequestHandler):
 
     def _serve_shell_js(self, parsed=None) -> None:
         self._serve_editor_file("editor_shell.js", "application/javascript; charset=utf-8")
+
+    def _serve_home_js(self, parsed=None) -> None:
+        self._serve_editor_file("editor_home.js", "application/javascript; charset=utf-8")
 
     def _check(self, parsed=None) -> None:
         data = self._read_json()
@@ -1947,6 +1955,81 @@ class _EditorHandler(BaseHTTPRequestHandler):
         self.app.data_root = self.app.project_root
         self._send_json(200, {"ok": True, "path": self.app.project_root,
                               "message": f"已创建游戏「{name}」并打开"})
+
+    # ---- P65：手机端第一层「工作台」（工程卡片列表 / 切换工程）----
+
+    def _games_dir(self) -> str | None:
+        """工程所在的 games 目录：当前工程本身在 games/ 下时取它的父目录，否则取 <工程>/games。"""
+        root = self._app_root()
+        if not root:
+            return None
+        proj = os.path.realpath(root)
+        parent = os.path.dirname(proj)
+        return parent if os.path.basename(parent) == "games" else os.path.join(proj, "games")
+
+    def _home(self, parsed=None) -> None:
+        """工作台卡片数据：每个工程的名字 / 指令数 / 素材数 / 修改时间。
+
+        只读磁盘不改状态。字段刻意少——手机一屏只放得下几张卡。
+        """
+        games = self._games_dir()
+        cur = os.path.basename(os.path.realpath(self.app.project_root))
+        rows = []
+        if games and os.path.isdir(games):
+            for child in sorted(os.listdir(games)):
+                d = os.path.join(games, child)
+                script = os.path.join(d, "script.gal")
+                if not os.path.isdir(d) or not os.path.isfile(script):
+                    continue
+                try:
+                    with open(script, encoding="utf-8", errors="replace") as f:
+                        text = f.read()
+                except OSError:
+                    text = ""
+                ins = sum(1 for ln in text.splitlines() if ln.strip().startswith("@"))
+                # 素材按现有工程的目录约定统计（images/ 是图片，audio/ 是音频）
+                assets = 0
+                for sub in ("images", "audio", "fonts", "video"):
+                    ap = os.path.join(d, sub)
+                    if os.path.isdir(ap):
+                        for _root, _dirs, files in os.walk(ap):
+                            assets += len(files)
+                rows.append({
+                    "folder": child,
+                    "name": child,
+                    "ins": ins,
+                    "assets": assets,
+                    "mtime": os.path.getmtime(script),
+                    "current": child == cur,
+                })
+        rows.sort(key=lambda r: (-r["mtime"], r["folder"]))
+        self._send_json(200, {"ok": True, "current": cur, "games_dir": games or "",
+                              "projects": rows})
+
+    def _switch_project(self, parsed=None) -> None:
+        """切换工程：POST {folder}。工作台卡片点进去 → 当前项目改指到 games/<folder>。"""
+        data = self._read_json()
+        folder = str(data.get("folder") or "").strip()
+        games = self._games_dir()
+        if not games:
+            self._send_json(400, {"ok": False, "message": "还没有打开工程"})
+            return
+        base = os.path.realpath(games)
+        target = os.path.realpath(os.path.join(base, folder))
+        # 只允许 games/ 的直接子目录名：挡住 ../、绝对路径、以及「甲/../乙」这类绕路写法
+        if not folder or folder in (".", "..") or "/" in folder or "\\" in folder:
+            self._send_json(400, {"ok": False, "message": "工程名不合法"})
+            return
+        if os.path.dirname(target) != base:
+            self._send_json(400, {"ok": False, "message": "工程名不合法"})
+            return
+        if not os.path.isfile(os.path.join(target, "script.gal")):
+            self._send_json(404, {"ok": False, "message": f"没有这个工程：{folder}"})
+            return
+        self.app.project_root = target
+        self.app.script_path = os.path.join(target, "script.gal")
+        self.app.data_root = target
+        self._send_json(200, {"ok": True, "folder": folder, "message": f"已打开「{folder}」"})
 
     def _browse(self, parsed=None) -> None:
         """弹出系统目录选择器，返回用户所选文件夹绝对路径。

@@ -1935,3 +1935,77 @@ input[type="color"] {
   .left-pane { padding-bottom: 140px; }
   .m-keybar.show { bottom: calc(82px + env(safe-area-inset-bottom)); }
 }
+/* ==================== P65：手机端第一层「工作台」 ====================
+   打开就是工程卡片，点一张才进编辑器。豆包手机版那套逻辑：
+   大标题 + 卡片列表 + 底部小字，一屏能看到自己有什么，不用先学 IDE。 */
+.m-home {
+  position: fixed; inset: 0; z-index: 500; background: var(--base); color: var(--text);
+  padding: calc(18px + env(safe-area-inset-top)) 16px 16px; overflow-y: auto;
+  display: flex; flex-direction: column;
+}
+.m-home-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+.m-home-title { font-size: 22px; font-weight: 600; letter-spacing: .3px; }
+.m-home-gear {
+  width: 38px; height: 38px; border-radius: 50%; border: 1px solid var(--surface0);
+  background: var(--mantle); color: var(--subtext1); display: flex; align-items: center;
+  justify-content: center; padding: 0; cursor: pointer;
+}
+.m-home-gear:active { background: var(--surface0); color: var(--text); }
+.m-home-list { flex: 1; }
+.m-home-card {
+  display: flex; flex-direction: column; gap: 6px; line-height: 1.45; width: 100%; text-align: left;
+  background: var(--mantle); border: 1px solid var(--surface0); border-radius: 14px;
+  padding: 14px 16px; margin-bottom: 10px; color: var(--text); position: relative;
+  font-family: inherit; cursor: pointer;
+}
+.m-home-card:active { background: var(--surface0); transform: scale(.995); }
+.m-card-name { display: block; font-size: 16px; font-weight: 600; line-height: 1.4; }
+.m-card-meta { display: block; font-size: 12px; color: var(--subtext0); line-height: 1.5; }
+.m-card-go { position: absolute; right: 14px; top: 50%; transform: translateY(-50%); color: var(--overlay0); font-size: 18px; }
+.m-home-new { border-style: dashed; border-color: var(--blue); }
+.m-home-new .m-card-name { color: var(--blue); }
+.m-home-new .m-card-meta { color: var(--subtext0); }
+.m-home-card.busy { opacity: .55; }
+.m-home-foot { text-align: center; font-size: 11px; color: var(--overlay0); padding: 10px 0 4px; }
+.m-home-err { padding: 10px 2px; color: var(--red); font-size: 13px; }
+.m-home-toast {
+  position: fixed; left: 50%; bottom: 90px; transform: translateX(-50%);
+  background: rgba(0,0,0,.82); color: #fff; font-size: 13px; padding: 8px 14px;
+  border-radius: 999px; z-index: 600;
+}
+
+/* 设置：底部弹层（手机习惯），不做全屏弹窗 */
+.m-sheet { position: fixed; inset: 0; z-index: 520; }
+.m-sheet-mask { position: absolute; inset: 0; background: rgba(0,0,0,.45); }
+.m-sheet-body {
+  position: absolute; left: 0; right: 0; bottom: 0;
+  background: var(--mantle); border-radius: 18px 18px 0 0;
+  padding: 10px 18px calc(20px + env(safe-area-inset-bottom));
+  border-top: 1px solid var(--surface0);
+  box-shadow: 0 -10px 30px rgba(0,0,0,.35);
+  max-height: 70dvh; overflow-y: auto;
+}
+.m-sheet-grab { width: 36px; height: 4px; border-radius: 2px; background: var(--surface1); margin: 0 auto 12px; }
+.m-sheet-title { font-size: 17px; font-weight: 600; margin-bottom: 6px; }
+.m-set-row {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 0; border-bottom: 1px solid var(--surface0); font-size: 14px;
+}
+.m-seg { display: inline-flex; border: 1px solid var(--surface0); border-radius: 999px; overflow: hidden; }
+.m-seg button {
+  border: none; background: none; color: var(--subtext1); font-size: 13px;
+  padding: 6px 14px; font-family: inherit; cursor: pointer;
+}
+.m-seg button.on { background: var(--blue); color: #fff; }
+.m-set-btn {
+  border: 1px solid var(--surface0); background: var(--base); color: var(--text);
+  border-radius: 8px; padding: 6px 14px; font-size: 13px; font-family: inherit; cursor: pointer;
+}
+.m-set-note { font-size: 11px; color: var(--overlay0); line-height: 1.7; padding: 14px 0 0; }
+
+/* 编辑器的全局 button 规则把高度钉成 28px / 蓝底（给工具条用的），
+   工作台的卡片是 button，必须把高度和配色抢回来，否则被压扁成一坨。 */
+.m-home-card { height: auto; min-height: 62px; background: var(--mantle) !important; color: var(--text); }
+.m-home-gear { height: 38px; background: var(--mantle); color: var(--subtext1); }
+.m-seg button { height: auto; border-radius: 0; }
+.m-set-btn { height: auto; background: var(--base); color: var(--text); }
