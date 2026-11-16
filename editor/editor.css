@@ -2378,3 +2378,9 @@ input[type="color"] {
   background: #f3f4f6; border-color: #e2e5ea;
 }
 :root[data-theme="light"] .uid-choice-preview canvas { background: #1a2030; }
+
+/* 窄屏：底部 tab 条是浮在内容上的，正文滚动区得给它让出一条，
+   否则最后一屏（比如选项预览）永远被压住看不见 */
+@media (max-width: 860px), (max-height: 520px) {
+  .cp-body { padding-bottom: calc(104px + env(safe-area-inset-bottom)); }
+}
