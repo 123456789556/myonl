@@ -394,4 +394,71 @@
   src.addEventListener("input", updateSbLine);
   src.addEventListener("click", updateSbLine);
   src.addEventListener("keyup", updateSbLine);
+
+  // ===== P59：窄屏（手机）布局 —— 侧栏和预览变抽屉，编辑区铺满 =====
+  // 三栏在 390px 宽下每栏只剩 100px，根本没法写剧本。窄屏只留「编辑区 + 底部悬浮按钮」，
+  // 侧栏、右侧预览各自变成从边缘滑出的抽屉，点外面 / Esc 关掉。
+  var mobileMQ = window.matchMedia("(max-width: 860px)");
+  var maskEl = null;
+  var dockEl = null;
+
+  function closeDrawers() {
+    mainEl.classList.remove("mobile-tree-open", "mobile-preview-open", "mobile-asset-open");
+    if (maskEl) maskEl.classList.remove("on");
+  }
+
+  function syncMask() {
+    if (!maskEl) return;
+    var open = mainEl.classList.contains("mobile-tree-open") ||
+               mainEl.classList.contains("mobile-preview-open") ||
+               mainEl.classList.contains("mobile-asset-open");
+    maskEl.classList.toggle("on", open);
+  }
+
+  function toggleDrawer(cls) {
+    var willOpen = !mainEl.classList.contains(cls);
+    closeDrawers();
+    if (willOpen) mainEl.classList.add(cls);
+    syncMask();
+  }
+
+  function buildMobileUI() {
+    if (dockEl) return;
+    maskEl = document.createElement("div");
+    maskEl.className = "mobile-mask";
+    maskEl.addEventListener("click", closeDrawers);
+    document.body.appendChild(maskEl);
+
+    dockEl = document.createElement("div");
+    dockEl.className = "mobile-dock";
+    dockEl.innerHTML =
+      '<button type="button" class="m-dock-btn" id="mDockTree" title="工程文件 / 章节大纲">📁</button>' +
+      '<button type="button" class="m-dock-btn" id="mDockAssets" title="素材库">🗂</button>' +
+      '<button type="button" class="m-dock-btn" id="mDockPreview" title="实时预览">👁</button>' +
+      '<button type="button" class="m-dock-btn m-dock-run" id="mDockRun" title="运行">▶</button>';
+    document.body.appendChild(dockEl);
+
+    $("mDockTree").addEventListener("click", function () { toggleDrawer("mobile-tree-open"); });
+    $("mDockAssets").addEventListener("click", function () { toggleDrawer("mobile-asset-open"); });
+    $("mDockPreview").addEventListener("click", function () { toggleDrawer("mobile-preview-open"); });
+    $("mDockRun").addEventListener("click", function () {
+      var run = $("btnRun");
+      if (run) run.click();
+    });
+
+    document.addEventListener("keydown", function (e) {
+      if (e.key === "Escape") closeDrawers();
+    });
+  }
+
+  function syncMobileLayout() {
+    if (mobileMQ.matches) {
+      buildMobileUI();
+    } else {
+      closeDrawers();
+    }
+  }
+  if (mobileMQ.addEventListener) mobileMQ.addEventListener("change", syncMobileLayout);
+  else if (mobileMQ.addListener) mobileMQ.addListener(syncMobileLayout);
+  syncMobileLayout();
 })();

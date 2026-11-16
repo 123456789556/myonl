@@ -415,7 +415,8 @@ textarea#source::selection { background: var(--surface1); }
 }
 .ob-card {
   position: fixed; left: 50%; bottom: 56px; transform: translateX(-50%);
-  width: 420px; background: var(--mantle); border: 1px solid var(--surface1); border-radius: var(--r-xl);
+  width: 420px; max-width: calc(100vw - 24px);
+  background: var(--mantle); border: 1px solid var(--surface1); border-radius: var(--r-xl);
   padding: 16px 18px; z-index: 402; box-shadow: 0 10px 32px rgba(0,0,0,.5);
 }
 .ob-skip {
@@ -1787,4 +1788,68 @@ input[type="color"] {
   .uid-stage-scroll { max-height: 46dvh; }
  .uid-zoom-hint { display: none; }
   .uid-zoom-btn { height: 34px; min-width: 40px; font-size: 14px; }
+}
+
+/* ---- P59：手机主界面（侧栏 / 预览变抽屉，编辑区铺满） ----
+   三栏在 390px 宽下每栏只剩 100px，写不了剧本。窄屏只留编辑区，
+   侧栏从左滑出、预览从下滑出，点遮罩或 Esc 关掉。 */
+.mobile-dock, .mobile-mask { display: none; }
+
+@media (max-width: 860px) {
+  /* 手机上编辑器不该有横向滚动：任何藏到屏外的面板都会把 layout 宽度撑大，
+     连带 fixed 的遮罩/抽屉一起错位（实测 390 被撑到 651）。 */
+  html, body { overflow-x: hidden; max-width: 100vw; }
+  .splitter { display: none !important; }
+  /* 素材晾衣绳是 hover 触发的悬停面板，触屏上会误展开并压住编辑区；手机改用 🗂 抽屉 */
+  .clothesline, .cl-trigger { display: none !important; }
+  /* 底部悬浮按钮会盖住最后几行，编辑区留出让位高度（按钮 52 + 状态栏 30 + 间距） */
+  .left-pane { padding-bottom: 96px; }
+  /* 状态栏钉在屏幕最底，悬浮按钮抬到它上面，两者不打架 */
+  .statusbar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 83; height: 30px;
+    font-size: 11px; overflow-x: auto; white-space: nowrap; }
+  .left-pane { width: 100%; min-width: 0; border-right: none; }
+  .right-pane {
+    position: fixed; left: 0; right: 0; bottom: 0; width: 100vw; max-width: 100vw;
+    height: 62dvh; z-index: 78; border-left: none; border-top: 1px solid var(--surface0);
+    transform: translateY(103%); transition: transform .18s ease;
+    box-shadow: 0 -8px 24px rgba(0,0,0,.45);
+  }
+  .main.mobile-preview-open .right-pane { transform: none; }
+  .file-pane {
+    position: fixed; left: 46px; top: 0; bottom: 0; width: min(80vw, 330px) !important;
+    max-width: 330px; max-height: none !important; z-index: 80; transform: translateX(-110%);
+    transition: transform .18s ease; border-right: 1px solid var(--surface0);
+    box-shadow: 8px 0 24px rgba(0,0,0,.45);
+  }
+  .main.mobile-tree-open .file-pane { transform: none; }
+  /* 素材面板原本靠绝对定位+transform 藏在屏外，会横向撑宽整个页面（实测把 390 撑到 651，
+     所有 fixed 元素跟着错位）。窄屏改成从右侧滑出的抽屉，平时 display:none 不参与布局。 */
+  .asset-pane { display: none !important; }
+  .main.mobile-asset-open .asset-pane {
+    display: flex !important; position: fixed; right: 0; top: 0; bottom: 0;
+    left: auto; width: min(84vw, 340px); max-width: 340px; z-index: 80;
+    transform: none; box-shadow: -8px 0 24px rgba(0,0,0,.45);
+    border-left: 1px solid var(--surface0);
+  }
+  .mobile-mask {
+    display: block; position: fixed; inset: 0; background: rgba(0,0,0,.42);
+    z-index: 76; opacity: 0; pointer-events: none; transition: opacity .18s ease;
+  }
+  .mobile-mask.on { opacity: 1; pointer-events: auto; }
+  .mobile-dock {
+    display: flex; position: fixed; right: 14px; bottom: calc(40px + env(safe-area-inset-bottom));
+    gap: 10px; z-index: 82;
+  }
+  .m-dock-btn {
+    width: 52px; height: 52px; border-radius: 50%; font-size: 20px;
+    background: #1b2130; color: #cfe0ff; border: 1px solid #2a3345;
+    box-shadow: 0 6px 18px rgba(0,0,0,.5); cursor: pointer;
+  }
+  .m-dock-btn:active { transform: scale(.96); }
+  .m-dock-run { background: #2f6df6; border-color: #2f6df6; color: #fff; }
+  /* 手机上没有 hover，编辑器顶部工具条横向可滚，别折行 */
+  .top-bar { overflow-x: auto; flex-wrap: nowrap; }
+  .top-bar .top-btn { flex: 0 0 auto; }
+  .editor-tabs { height: 36px; }
+  .status-bar { font-size: 11px; }
 }
