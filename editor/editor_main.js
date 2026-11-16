@@ -2387,7 +2387,7 @@
   // 相册里全是图、还常常想现场拍一张。所以窄屏多给一个「拍照」入口，
   // 走 capture=environment 直接开相机，拍完当素材导入。
   (function setupCaptureImport() {
-    if (!window.matchMedia("(max-width:860px)").matches) return;
+    if (!window.matchMedia("(max-width:860px), (max-height:520px)").matches) return;
     const cam = document.createElement("input");
     cam.type = "file";
     cam.accept = "image/*";
@@ -3116,7 +3116,7 @@
       target: "m-tabbar" },
   ];
   const obSteps = () => (
-    window.matchMedia && window.matchMedia("(max-width:860px)").matches
+    window.matchMedia && window.matchMedia("(max-width:860px), (max-height:520px)").matches
       ? OB_STEPS_MOBILE : OB_STEPS
   );
 

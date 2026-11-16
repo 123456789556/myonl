@@ -201,6 +201,8 @@ def build_web(project_root: str, out_dir: str, *, title: str = "") -> dict:
         "assets": manifest,
         "audio": audio_manifest,
         "ins": ins,
+        # P67：作者选定的画面方向（any / portrait / landscape），播放器据此提示转屏
+        "orientation": str(cfg.get("orientation") or "any"),
         # 桌面端有、移动端暂不实现的指令：告给作者，不假装支持
         "unsupported": log,
     }
@@ -213,7 +215,7 @@ def build_web(project_root: str, out_dir: str, *, title: str = "") -> dict:
             raise FileNotFoundError(f"播放器源码缺失：{src}")
         shutil.copyfile(src, os.path.join(out, name))
 
-    html = _render_html(pack["title"])
+    html = _render_html(pack["title"], str(cfg.get("orientation") or "any"))
     with open(os.path.join(out, "index.html"), "w", encoding="utf-8") as f:
         f.write(html)
 
@@ -331,7 +333,8 @@ def build_single(project_root: str, out_file: str, *, title: str = "") -> dict:
     body = "\n".join(
         "<script>" + _js_safe(s) + "</script>" for s in scripts
     )
-    html = _render_single_html(pack["title"], _js_safe(pack_json), body)
+    html = _render_single_html(pack["title"], _js_safe(pack_json), body,
+                               str(pack.get("orientation") or "any"))
 
     out = os.path.abspath(out_file)
     parent = os.path.dirname(out)
@@ -354,14 +357,17 @@ def build_single(project_root: str, out_file: str, *, title: str = "") -> dict:
     }
 
 
-def _render_single_html(title: str, pack_json: str, player_scripts: str) -> str:
+def _render_single_html(title: str, pack_json: str, player_scripts: str,
+                        orientation: str = "any") -> str:
     safe = (title or "MYONL").replace("<", "&lt;").replace(">", "&gt;")
+    orient = orientation if orientation in ("portrait", "landscape") else "any"
     return f"""<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
 <meta name="theme-color" content="#14161f">
+<meta name="myonl-orientation" content="{orient}">
 <title>{safe}</title>
 <style>
   html, body {{ margin: 0; padding: 0; background: #0b0d12; overflow: hidden;
@@ -402,14 +408,16 @@ def _has_op(node, op) -> bool:
     return False
 
 
-def _render_html(title: str) -> str:
+def _render_html(title: str, orientation: str = "any") -> str:
     safe = (title or "MYONL").replace("<", "&lt;").replace(">", "&gt;")
+    orient = orientation if orientation in ("portrait", "landscape") else "any"
     return f"""<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
 <meta name="theme-color" content="#14161f">
+<meta name="myonl-orientation" content="{orient}">
 <title>{safe}</title>
 <style>
   html, body {{ margin: 0; padding: 0; background: #0b0d12; overflow: hidden;

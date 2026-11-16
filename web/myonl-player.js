@@ -937,6 +937,33 @@
     },
   };
 
+  // P67：作者在编辑器「设置」里选了「竖屏 / 横屏」时，玩家拿反了就提示一句。
+  // 不硬锁方向（网页锁方向要全屏权限，各家浏览器不一致），只提示，转过来提示自己消失。
+  let orientChip = null;
+  function syncOrientationHint(want) {
+    if (!want || want === "any") {
+      if (orientChip) { orientChip.remove(); orientChip = null; }
+      return;
+    }
+    const isPortrait = window.innerHeight >= window.innerWidth;
+    const ok = (want === "portrait") === isPortrait;
+    if (ok) {
+      if (orientChip) { orientChip.remove(); orientChip = null; }
+      return;
+    }
+    if (!orientChip) {
+      orientChip = document.createElement("div");
+      orientChip.style.cssText = "position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom));"
+        + "transform:translateX(-50%);z-index:9;padding:9px 16px;border-radius:999px;"
+        + "background:rgba(0,0,0,.78);color:#fff;font:13px/1.4 system-ui,sans-serif;"
+        + "pointer-events:none;white-space:nowrap";
+      document.body.appendChild(orientChip);
+    }
+    orientChip.textContent = want === "portrait"
+      ? "这个作品是竖屏的 · 把手机竖过来 ↕"
+      : "这个作品是横屏的 · 把手机横过来 ↔";
+  }
+
   const bootPack = window.__MYONL_PACK__
     ? Promise.resolve(window.__MYONL_PACK__)
     : fetch("pack.json", {cache: "no-store"})
@@ -950,6 +977,8 @@
     })
     .then(() => {
       fit();
+      syncOrientationHint(pack.orientation);
+      window.addEventListener("resize", () => syncOrientationHint(pack.orientation));
       if (pack.unsupported && pack.unsupported.length) {
         console.warn("[MYONL] 桌面端有、手机端暂不支持：" + pack.unsupported.join("、"));
       }

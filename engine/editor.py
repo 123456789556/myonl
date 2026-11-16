@@ -203,6 +203,11 @@ def _write_project_config(root: str, data: dict) -> str:
     return path
 
 
+def _project_orientation(root: str) -> str:
+    """工程想要的画面方向：any（跟随手机）/ portrait / landscape。读坏了一律当 any。"""
+    value = str(_load_project_config(root).get("orientation") or "any").strip().lower()
+    return value if value in ("any", "portrait", "landscape") else "any"
+
 def _write_text_atomic(path: str, text: str) -> None:
     """先写同目录临时文件再原子替换：写一半失败时原文件仍是上一版，不留半截剧本。"""
     dir_ = os.path.dirname(os.path.abspath(path))
@@ -696,6 +701,9 @@ class _EditorHandler(BaseHTTPRequestHandler):
         ("GET", "/editor_shell.js"): "_serve_shell_js",
         # P65：手机端工作台（工程卡片第一层）
         ("GET", "/editor_home.js"): "_serve_home_js",
+        # P67：游戏画面方向（any / portrait / landscape），存进工程 config.json
+        ("GET", "/api/orientation"): "_get_orientation",
+        ("POST", "/api/orientation"): "_set_orientation",
         # 角色库（characters.json，项目级角色资产）
         ("GET", "/api/characters"): "_characters_get",
         # V4：角色引用计数（扫描工程内全部 .gal，跨 @include 文件）
@@ -1973,7 +1981,8 @@ class _EditorHandler(BaseHTTPRequestHandler):
         只读磁盘不改状态。字段刻意少——手机一屏只放得下几张卡。
         """
         games = self._games_dir()
-        cur = os.path.basename(os.path.realpath(self.app.project_root))
+        # 当前工程按剧本所在目录算（`--script` 启动时 project_root 还是仓库根）
+        cur = os.path.basename(self._current_project_root())
         rows = []
         if games and os.path.isdir(games):
             for child in sorted(os.listdir(games)):
@@ -2004,7 +2013,45 @@ class _EditorHandler(BaseHTTPRequestHandler):
                 })
         rows.sort(key=lambda r: (-r["mtime"], r["folder"]))
         self._send_json(200, {"ok": True, "current": cur, "games_dir": games or "",
+                              "orientation": _project_orientation(self._current_project_root()),
                               "projects": rows})
+
+    # P67：游戏画面方向（不是编辑器自己的方向）—— 导出/预览时按它提示玩家
+    _ORIENTATIONS = ("any", "portrait", "landscape")
+
+    def _current_project_root(self) -> str:
+        """当前工程的根目录 = 剧本所在目录。
+
+        不能用 `app.project_root`：`--script` 启动时它仍是启动时的当前目录，
+        会把配置写到仓库根而不是 games/<工程>。
+        """
+        try:
+            return os.path.dirname(os.path.realpath(self.app.script_path))
+        except (AttributeError, TypeError):
+            return self.app.project_root
+
+    def _get_orientation(self, parsed=None) -> None:
+        self._send_json(200, {"ok": True,
+                              "orientation": _project_orientation(self._current_project_root())})
+
+    def _set_orientation(self, parsed=None) -> None:
+        """POST {orientation} → 写进工程 config.json 的顶层 orientation。"""
+        data = self._read_json()
+        value = str(data.get("orientation") or "").strip().lower()
+        if value not in self._ORIENTATIONS:
+            self._send_json(400, {"ok": False, "message": "只支持 any / portrait / landscape"})
+            return
+        root = self._current_project_root()
+        cfg = _load_project_config(root)
+        if not isinstance(cfg, dict):
+            cfg = {}
+        cfg["orientation"] = value
+        try:
+            _write_project_config(root, cfg)
+        except OSError as exc:
+            self._send_json(500, {"ok": False, "message": f"写配置失败：{exc}"})
+            return
+        self._send_json(200, {"ok": True, "orientation": value})
 
     def _switch_project(self, parsed=None) -> None:
         """切换工程：POST {folder}。工作台卡片点进去 → 当前项目改指到 games/<folder>。"""

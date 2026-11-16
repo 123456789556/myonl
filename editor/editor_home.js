@@ -8,7 +8,7 @@
   var $ = function (id) { return document.getElementById(id); };
 
   var EDIT_KEY = "myonl:editing";
-  var isMobile = function () { return window.matchMedia && window.matchMedia("(max-width:860px)").matches; };
+  var isMobile = function () { return window.matchMedia && window.matchMedia("(max-width:860px), (max-height:520px)").matches; };
   if (!isMobile()) return;
 
   // 编辑器里的「‹ 作品」按钮调它：清掉「已在编辑」标记后重载回工作台
@@ -113,8 +113,9 @@
     layer.style.display = "none";
   }
 
-  // ---- 设置：主题 / 字号 / 关于。做成一页，别学桌面端散在五个地方 ----
+  // ---- 设置：主题 / 游戏方向 / 返回作品列表。做成一页，别学桌面端散在五个地方 ----
   var sheet = null;
+  var orient = "any";
   function openSettings() {
     if (sheet) { sheet.remove(); sheet = null; return; }
     var theme = "dark";
@@ -131,9 +132,16 @@
             '<button type="button" data-v="dark" class="' + (theme === "dark" ? "on" : "") + '">深色</button>' +
             '<button type="button" data-v="light" class="' + (theme === "light" ? "on" : "") + '">浅色</button>' +
           '</span></div>' +
+        '<div class="m-set-row"><span>游戏画面</span>' +
+          '<span class="m-seg" id="mSetOrient">' +
+            '<button type="button" data-v="any" class="' + (orient === "any" ? "on" : "") + '">跟随</button>' +
+            '<button type="button" data-v="portrait" class="' + (orient === "portrait" ? "on" : "") + '">竖屏</button>' +
+            '<button type="button" data-v="landscape" class="' + (orient === "landscape" ? "on" : "") + '">横屏</button>' +
+          '</span></div>' +
         '<div class="m-set-row"><span>作品列表</span>' +
           '<button type="button" class="m-set-btn" id="mSetHome">返回</button></div>' +
-        '<div class="m-set-note">MYONL 编辑器 · 全部本地运行，工程和素材都在你自己的电脑/手机上，不上传任何服务器。</div>' +
+        '<div class="m-set-note">「游戏画面」是给玩家看的：竖屏 / 横屏时，导出的网页会提示对方把手机转过来；选「跟随」就横竖都行。' +
+        'MYONL 编辑器全部本地运行，工程和素材都在你自己的电脑/手机上，不上传任何服务器。</div>' +
       '</div>';
     document.body.appendChild(sheet);
 
@@ -153,10 +161,35 @@
 
     var hb = sheet.querySelector("#mSetHome");
     if (hb) hb.addEventListener("click", function () { window.__myonlShowHome(); });
+
+    var ob = sheet.querySelector("#mSetOrient");
+    if (ob) ob.addEventListener("click", function (e) {
+      var b = e.target.closest ? e.target.closest("button[data-v]") : null;
+      if (!b) return;
+      var v = b.dataset.v;
+      fetch("/api/orientation", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ orientation: v })
+      }).then(function (r) { return r.json(); }).then(function (res) {
+        if (!res.ok) throw new Error(res.message || "存不下来");
+        orient = res.orientation;
+        ob.querySelectorAll("button").forEach(function (x) {
+          x.classList.toggle("on", x.dataset.v === orient);
+        });
+      }).catch(function (err) {
+        var t = document.createElement("div");
+        t.className = "m-home-toast";
+        t.textContent = err.message || "存不下来";
+        document.body.appendChild(t);
+        setTimeout(function () { t.remove(); }, 2000);
+      });
+    });
   }
 
   fetch("/api/home").then(function (r) { return r.json(); }).then(function (res) {
     if (!res.ok) throw new Error("读不到作品列表");
+    orient = res.orientation || "any";
     render(res.projects || []);
   }).catch(function (e) {
     var list = $("mHomeList");

@@ -2,6 +2,16 @@
 
 > 只记 release 级变化，一句话 + 证据链接。单项细节见 git 历史（原 archive/ 已删除）。
 
+## 2026-11-16（P67：横屏也算手机 + 设置里定画面方向）
+
+**横屏**：窄屏判定从 `max-width:860px` 改成一个条件组 `(max-width:860px), (max-height:520px)`——手机横过来 844×390 以前会跌回桌面三列，现在仍是"一行顶栏 + 底部五 tab"；横屏工作台卡片排两列。
+
+**方向设置**：设置弹层加「游戏画面：跟随 / 竖屏 / 横屏」，写进工程 `config.json` 的 `orientation`（`GET/POST /api/orientation`）。导出网页带 `<meta name="myonl-orientation">`，播放器方向不符时底部浮一句"把手机横/竖过来"，转对即消失（不硬锁，锁方向要全屏权限且各浏览器不一致）。
+
+**踩坑**：`--script` 启动时 `app.project_root` 还是仓库根，第一版把 `config.json` 写到了仓库根目录；新增 `_current_project_root()`（= 剧本所在目录）修正，误生成的文件已删。
+
+**验证**：`p67-home-landscape.png`（两列 + tab 贴底）、`p67-set-orient.png`、`p67-orient-hint.png`；全量 `1084 passed + 1 skipped`。
+
 ## 2026-11-16（P66：手机端工作台——先给"我的作品"，再进编辑器）
 
 **问题**：P65 之后打开手机端仍然直接是编辑器源码，新人第一眼是行号和语法色；而且进了编辑器没有出口（没按钮回项目列表）。
