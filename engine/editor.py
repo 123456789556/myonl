@@ -1700,6 +1700,20 @@ class _EditorHandler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(body)
 
+    def _resolve_asset(self, category: str, name: str) -> str | None:
+        """按类别取素材文件：先当前作品目录，再数据目录。
+
+        `--script games/x/script.gal` 启动时这两个根不是一回事，
+        素材列表已经按作品目录扫，取图也必须用同一个根，否则列表有、点开 404。
+        """
+        for root in (self._current_project_root(), self.app.data_root):
+            if not root:
+                continue
+            found = _find_asset_file(root, category, name)
+            if found:
+                return found
+        return None
+
     def _get_asset(self, path: str) -> None:
         """读单个素材字节（缩略图/试听）。
 
@@ -1713,7 +1727,7 @@ class _EditorHandler(BaseHTTPRequestHandler):
                 self._send_json(400, {"ok": False,
                                       "message": "素材地址应为 /api/asset/<名> 或 /api/asset/<类别>/<名>"})
                 return
-            found = _find_asset_file(self.app.data_root, category, name) if _ASSET_NAME.fullmatch(name) else None
+            found = self._resolve_asset(category, name) if _ASSET_NAME.fullmatch(name) else None
         else:
             if not _ASSET_NAME.fullmatch(category):
                 self._send_json(400, {"ok": False, "message": f"非法素材名：{category}"})
@@ -1721,7 +1735,7 @@ class _EditorHandler(BaseHTTPRequestHandler):
             name = category
             found = None
             for cat in ("images", "videos", "anims", "audio", "fonts"):
-                found = _find_asset_file(self.app.data_root, cat, name) or found
+                found = self._resolve_asset(cat, name) or found
                 if found:
                     break
         if not found:

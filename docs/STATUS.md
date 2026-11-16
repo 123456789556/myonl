@@ -4,8 +4,8 @@
 > 历史计划与变更说明只保留在 git 历史（原 docs/archive 已于 2026-11-01 删除）。
 > 维护规则：人只改上面的四行；自动数字区由 py -3 tools/status.py --write 生成。
 
-- **版本**：v1.0.0-rc11（**手机端为主线**：同一工程 → 竖屏/横屏 H5 网页包 → 安卓 APK；桌面端降为并行出口）。rc11 之后已落 P69（播放器菜单 + 6 档存档 + 设置四项）、P70（选项按钮真正可调）。rc10 发行包 `dist/release/MYONL引擎-v1.0.0-rc10.zip` 已重打并冒烟，**尚未上传到 GitHub Release**。
-- **在做**：P70 已完成并验收——修掉选项 UI 的三条断链（编辑器写错目录 / 播放器不读 `ui.choices` / 导出裁掉 `ui`+`dialogue`），选项组扩到 7 个控件 + 实时预览。下一步：真机复验「工作台 / 横屏 / 全屏 / 选项参数」四样（当前 adb 无设备）＋ 给 rc11 补一个 Release zip。
+- **版本**：v1.0.0-rc11（**手机端为主线**：同一工程 → 竖屏/横屏 H5 网页包 → 安卓 APK；桌面端降为并行出口）。rc11 之后已落 P69（播放器菜单 + 6 档存档 + 设置四项）、P70（选项按钮真正可调）、P71（UI 设计区整屏参照预览）。rc10 发行包 `dist/release/MYONL引擎-v1.0.0-rc10.zip` 已重打并冒烟，**尚未上传到 GitHub Release**。
+- **在做**：P71 已完成并验收——UI 设计区加 300×649 整屏缩略图（真实背景 + 当前参数 + 当前分组蓝框 + 170ms 补间），手机竖屏吸顶、横屏右上浮窗、点一下放大；顺带修 `_get_asset` 用 `data_root` 取素材导致点开 404。下一步：真机复验「工作台 / 横屏 / 全屏 / 选项参数」四样（当前 adb 无设备）＋ 给 rc11 补一个 Release zip。
 - **质量门槛**：干净 Windows（无 Python）下可做出并打包可玩 demo；H5 播放器在真实 Chromium 竖屏 390×844 / 横屏 844×390 + 转屏 + 自动存档全过；安卓 APK 由 CI 产出（gradlew assembleDebug 绿）。
 - **本机限制**：无 JDK / 无 Android SDK / 无 gh CLI / 无 Ren'Py SDK——所以 **APK 只能在 CI 里编**、**Ren'Py 导出工程没在 Ren'Py 里真跑过**；Actions 日志需 token（已改成失败时写 `::error::` 注解，匿名可读）。**真机 adb 需另装 platform-tools（`D:\娱乐工作区\_tools\platform-tools`），且必须覆盖 TEMP 才能起 daemon**（默认 `%TEMP%` 写 `adb.log` 会被拒）。
 - **后续待办**：① 真机验完转屏 / 选项 / CG / 静音 / 读档（USB 连接不稳，`.vivo` 投屏会和 adb 抢通道） ② 装一次 APK ③ rc10 附件上传 Release ④ `@video`/`@fg`/`@anim` 仍未实现 ⑤ 收集早期使用者反馈。

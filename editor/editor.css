@@ -2182,9 +2182,18 @@ input[type="color"] {
    原来是桌面属性面板原样塞进来：标签横排超出屏、说明文字三行、label 定宽 168px 把滑块挤扁、
    「保存到项目配置」跑到屏幕外。手机端改成「一列参数 + 滑块占满 + 预览不进这页」。 */
 @media (max-width: 860px), (max-height: 520px) {
-  .ui-design-body { display: block !important; }
+  .ui-design-body { display: flex !important; flex-direction: column; }
   .ui-design-form { width: 100% !important; flex: none !important; }
-  .ui-design-preview { display: none !important; }
+  /* P71：那块 pygame 大图仍然不进这页（太占地方），但整屏参照预览要留在顶部，
+     吸顶贴着，改参数时抬头就能看见往哪动 */
+  .ui-design-preview {
+    display: block !important; width: 100%; margin: 0 0 10px;
+    position: sticky; top: 0; z-index: 6; padding: 6px 0 8px;
+    background: var(--base);
+  }
+  .ui-design-preview .preview-img-wrap { display: none !important; }
+  .ui-design-preview .uid-preview-head { display: none !important; }
+  .ui-design-form { order: 2; }
 
   .ui-design-tabs {
     flex-wrap: nowrap !important; overflow-x: auto; gap: 6px;
@@ -2383,4 +2392,64 @@ input[type="color"] {
    否则最后一屏（比如选项预览）永远被压住看不见 */
 @media (max-width: 860px), (max-height: 520px) {
   .cp-body { padding-bottom: calc(104px + env(safe-area-inset-bottom)); }
+}
+
+/* P71 整屏参照预览：一块代表手机竖屏的缩略画布，改参数实时补间 */
+.uid-preview-stage {
+  margin-top: 12px; padding: 10px; border-radius: 14px;
+  background: rgba(255,255,255,.035); border: 1px solid var(--surface0);
+}
+.uid-preview-stage-tip { font-size: 11px; color: var(--subtext0); margin-bottom: 8px; }
+.uid-preview-stage canvas {
+  display: block; width: 100%; max-width: 300px; margin: 0 auto;
+  border-radius: 10px; background: #0b0d12;
+  box-shadow: 0 8px 24px rgba(0,0,0,.35);
+}
+:root[data-theme="light"] .uid-preview-stage { background: #f6f7f9; border-color: #e2e5ea; }
+/* P71b：手机档让「整屏参照预览」吸在顶部 ——
+   原来这块在窄屏是 display:none，作者调参数根本没有参照物；
+   现在表单在下方滚动，缩略手机一直贴在顶上，改一下就看得见往哪动。 */
+@media (max-width: 860px), (max-height: 520px) {
+  .ui-design-preview {
+    order: 1; display: block !important; width: 100%; margin: 0 0 10px;
+    position: sticky; top: 0; z-index: 6; padding: 6px 0 8px; background: var(--base);
+  }
+  .ui-design-preview .preview-img-wrap,
+  .ui-design-preview .uid-preview-head { display: none !important; }
+  .uid-preview-stage { padding: 6px; margin-top: 0; }
+  .uid-preview-stage-tip { font-size: 10px; margin-bottom: 4px; }
+  .uid-preview-stage canvas {
+    width: 158px !important; height: 342px !important; max-width: none !important;
+  }
+}
+/* 横屏（手机横过来）：屏幕只有 390 高，上下摞一定不够用 —— 改成左右并排，
+   左边参数列、右边缩略手机，滚左边也不影响右边对照。 */
+@media (max-height: 520px) {
+  .ui-design-body { flex-direction: column !important; }
+  /* 横屏编辑页撕不出两栏：缩略手机改成右上浮窗（88x190），点一下能放大 */
+  .ui-design-preview {
+    position: fixed !important; right: 8px; top: 92px;
+    width: 98px !important; margin: 0 !important; padding: 0 !important;
+    background: transparent !important; z-index: 40;
+  }
+  .uid-preview-stage-tip { display: none !important; }
+  .uid-preview-stage { padding: 4px; background: rgba(11,13,18,.72); }
+  .uid-preview-stage canvas {
+    width: 88px !important; height: 190px !important; max-width: none !important;
+  }
+}
+/* P71c：点一下缩略手机 → 整屏放大看细节（再点一下收起） */
+.uid-preview-stage { cursor: zoom-in; }
+.uid-preview-stage.big {
+  position: fixed; inset: 0; z-index: 2000; cursor: zoom-out;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 10px; background: rgba(8, 10, 14, .94); padding: 16px;
+}
+.uid-preview-stage.big .uid-preview-stage-tip {
+  display: block !important; color: #e6e9f0 !important; font-size: 12px !important;
+  margin: 0 !important;
+}
+.uid-preview-stage.big canvas {
+  width: auto !important; height: 80vh !important; max-width: none !important;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, .6);
 }

@@ -141,71 +141,10 @@
   }
   uidBuildThemePanel();
 
-  /* 选项按钮组：两个颜色输入 + 一块实时预览。
-     预览按 1280 设计稿缩到 300 宽，改哪个参数都立刻能看见，不用来回导出。
-     index.html 行数卡在 600，控件一律由 JS 注入。 */
-  function uidDrawChoicePreview() {
-    const cv = $("uidChoicePreview");
-    if (!cv) return;
-    const dpr = Math.min(2, window.devicePixelRatio || 1);
-    const W = 300;
-    const H = 132;
-    cv.width = Math.round(W * dpr);
-    cv.height = Math.round(H * dpr);
-    cv.style.width = W + "px";
-    cv.style.height = H + "px";
-    const g = cv.getContext("2d");
-    g.setTransform(dpr, 0, 0, dpr, 0, 0);
-    g.clearRect(0, 0, W, H);
-    // 画布代表手机竖屏 1080 宽（选项区默认 928 宽 / 137 高 / 间距 34），
-    // 按 300/1080 等比缩到这块小图上——和播放器里的换算完全一致。
-    const k = W / 1080;
-    const baseW = 928;
-    const baseH = 137;
-    const baseGap = 40;
-    const ratioW = uidNum("uidChoiceW") / 420 || 0;
-    const ratioH = uidNum("uidChoiceH") / 52 || 0;
-    const ratioG = uidNum("uidChoiceRowGap") / 34 || 0;
-    const bw = Math.max(20, Math.min(W - 8, baseW * ratioW * k));
-    const bh = Math.max(12, Math.min(56, baseH * ratioH * k));
-    const rad = Math.min(uidNum("uidChoiceRadius") * 1.6 * k, bh / 2);
-    const gap = Math.max(0, baseGap * ratioG * k);
-    const seg = Math.min(2, Math.max(1, Math.floor((H - 8) / (bh + gap))));
-    const x = (W - bw) / 2;
-    const y0 = (H - (seg * bh + (seg - 1) * gap)) / 2;
-    const bgEl = $("uidChoiceBg");
-    const fgEl = $("uidChoiceFg");
-    const bg = bgEl ? String(bgEl.value || "").trim() : "";
-    const fg = fgEl ? String(fgEl.value || "").trim() : "";
-    const pick = (v, dflt) => (/^#[0-9a-fA-F]{6}$/.test(v) ? v : dflt);
-    for (let i = 0; i < seg; i++) {
-      const y = y0 + i * (bh + gap);
-      g.fillStyle = pick(bg, "rgba(32,38,54,.94)");
-      g.beginPath();
-      g.moveTo(x + rad, y);
-      g.arcTo(x + bw, y, x + bw, y + bh, rad);
-      g.arcTo(x + bw, y + bh, x, y + bh, rad);
-      g.arcTo(x, y + bh, x, y, rad);
-      g.arcTo(x, y, x + bw, y, rad);
-      g.closePath();
-      g.fill();
-      g.strokeStyle = "rgba(127,135,152,.5)";
-      g.lineWidth = 1;
-      g.stroke();
-      g.fillStyle = "#4f8cff";
-      g.fillRect(x + 1, y + bh * 0.28, 2, bh * 0.44);
-      g.fillStyle = pick(fg, "#f4f6ff");
-      g.font = "500 12px system-ui, sans-serif";
-      g.textAlign = "center";
-      g.textBaseline = "middle";
-      g.fillText("选项 " + (i + 1), x + bw / 2, y + bh / 2);
-    }
-  }
-
+  /* 选项按钮组：两个颜色输入。 */
   function uidBuildChoiceColors() {
     const box = $("uidPanelChoice");
     if (!box) return;
-    // 选项之间的缝插在「圆角」后面，位置和参数一一对应
     const radRow = $("uidChoiceRadius");
     if (radRow) {
       radRow.closest(".ui-dl.row").insertAdjacentHTML("afterend",
@@ -218,17 +157,304 @@
       '<input id="uidChoiceBg" type="text" placeholder="#202636 · 留空跟随主题"></div>' +
       '<div class="ui-dl row"><span>按钮文字色（fg）</span>' +
       '<input id="uidChoiceFg" type="text" placeholder="#f4f6ff · 留空跟随主题"></div>' +
-      '<div class="uid-choice-preview"><canvas id="uidChoicePreview"></canvas></div>' +
-      '<div class="modal-hint" style="margin-top:6px">这张预览按 1280 设计稿缩放，' +
-      "改宽度/行高/圆角/间距/颜色都会立刻重画；手机上「选项」页用的是同一套参数。</div>");
-    ["uidChoiceW", "uidChoiceH", "uidChoiceGap", "uidChoiceRadius",
-     "uidChoiceRowGap", "uidChoiceBg", "uidChoiceFg"].forEach(function (id) {
-      const el = $(id);
-      if (el) el.addEventListener("input", uidDrawChoicePreview);
-    });
-    uidDrawChoicePreview();
+      '<div class="modal-hint" style="margin-top:6px">颜色填 #rrggbb，留空就跟随主题；' +
+      "右侧那块缩略图就是手机上最终的样子。</div>");
   }
   uidBuildChoiceColors();
+
+  /* ---------------------------------------------------------------
+     P71 整屏参照预览
+     一块 300×649 的画布代表手机竖屏（1080×2338 等比缩），背景取当前作品的
+     第一张 bg，对话框 / 选项 / 快捷栏按当前参数画。改参数时几何从旧值补间到
+     新值（约 180ms），能直接看出往哪长、往哪挪；当前 tab 那一组描蓝框。
+     --------------------------------------------------------------- */
+  const STAGE = {W: 300, H: 649, K: 300 / 1080};
+  const BASE = {vw: 1080, vh: 2338, fs: 49, mx: 38, cw: 928, ch: 137, cg: 34,
+                spriteH: 900, panelH: 468, panelBottom: 96};
+  const stage = {cv: null, g: null, img: null, tried: false,
+                 cur: null, to: null, raf: 0, last: 0};
+
+  function stageNum(id, dflt) {
+    const el = $(id);
+    if (!el) return dflt;
+    const v = Number(el.value);
+    return Number.isFinite(v) ? v : dflt;
+  }
+  function stageStr(id) {
+    const el = $(id);
+    return el ? String(el.value || "").trim() : "";
+  }
+  function stageClamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
+  function stageHex(v) { return /^#[0-9a-fA-F]{6}$/.test(v) ? v : ""; }
+
+  function stageGeom() {
+    const dw = stageNum("uidChoiceW", 420) || 420;
+    const dh = stageNum("uidChoiceH", 52) || 52;
+    const dg = stageNum("uidChoiceGap", 40);
+    const sg = stageNum("uidChoiceRowGap", 34);
+    const dr = stageNum("uidChoiceRadius", 8);
+    const dgr = dg / 40;
+    return {
+      bw: stageClamp(BASE.cw * (dw / 420), BASE.vw * 0.5, BASE.vw * 0.94),
+      bh: stageClamp(BASE.ch * (dh / 52), BASE.fs * 2.2, BASE.fs * 4.2),
+      gap: Math.max(0, BASE.cg * (sg / 34)),
+      radius: Math.min(dr * 1.6, (BASE.ch * (dh / 52)) / 2),
+      cy: stageClamp(BASE.vh * (0.66 - (dgr - 1) * 0.12), BASE.vh * 0.42, BASE.vh * 0.82),
+      panelR: stageNum("uidRadius", 10) * 1.5,
+      panelA: stageNum("uidPanelAlpha", 255) / 255,
+      qbW: stageNum("uidQbW", 92),
+      qbH: stageNum("uidQbH", 32),
+      qbGap: stageNum("uidQbGap", 10),
+      qbMx: stageNum("uidQbMx", 28),
+      qbMy: stageNum("uidQbMy", 10),
+    };
+  }
+
+  function stageCover(g, img, W, H) {
+    const ir = img.width / img.height;
+    const cr = W / H;
+    let w = W;
+    let h = H;
+    let x = 0;
+    let y = 0;
+    if (ir > cr) { w = H * ir; x = (W - w) / 2; } else { h = W / ir; y = (H - h) / 2; }
+    g.drawImage(img, x, y, w, h);
+  }
+
+  function stageRound(g, x, y, w, h, r) {
+    const rr = Math.max(0, Math.min(r, w / 2, h / 2));
+    g.beginPath();
+    g.moveTo(x + rr, y);
+    g.arcTo(x + w, y, x + w, y + h, rr);
+    g.arcTo(x + w, y + h, x, y + h, rr);
+    g.arcTo(x, y + h, x, y, rr);
+    g.arcTo(x, y, x + w, y, rr);
+    g.closePath();
+  }
+
+  function stageDraw() {
+    const cv = stage.cv;
+    if (!cv || !stage.cur) return;
+    const g = stage.g;
+    const k = STAGE.K;
+    const W = STAGE.W;
+    const H = STAGE.H;
+    const v = stage.cur;
+    g.clearRect(0, 0, W, H);
+    // 背板：没有 bg 时用一层深蓝径向渐变，不至于空得像纸
+    const base = g.createRadialGradient(W / 2, H * 0.35, 10, W / 2, H * 0.5, H * 0.9);
+    base.addColorStop(0, "#232a44");
+    base.addColorStop(1, "#0b0d12");
+    g.fillStyle = base;
+    g.fillRect(0, 0, W, H);
+    if (stage.img) stageCover(g, stage.img, W, H);
+    // 暗角 + 底部压深，跟播放器的 drawScene 手感一致
+    const vig = g.createLinearGradient(0, H * 0.55, 0, H);
+    vig.addColorStop(0, "rgba(6,8,12,0)");
+    vig.addColorStop(1, "rgba(6,8,12,.72)");
+    g.fillStyle = vig;
+    g.fillRect(0, 0, W, H);
+
+    // 立绘占位：只是提示「角色大概站这儿」，选项压不压脸一眼能看出来
+    const sh = BASE.spriteH * k;
+    const sw = sh * 0.38;
+    const sx = (W - sw) / 2;
+    const sy = BASE.vh * k - BASE.panelBottom * k - v.panelH * k - sh + 24;
+    g.fillStyle = "rgba(186,200,235,.09)";
+    stageRound(g, sx, sy, sw, sh, sw * 0.28);
+    g.fill();
+    g.strokeStyle = "rgba(186,200,235,.18)";
+    g.lineWidth = 1;
+    g.stroke();
+
+    // 对话框
+    const ph = BASE.panelH * k;
+    const py = H - BASE.panelBottom * k - ph;
+    const pmx = BASE.mx * k;
+    g.fillStyle = "rgba(18,22,32," + (0.55 + 0.45 * v.panelA).toFixed(2) + ")";
+    stageRound(g, pmx, py, W - pmx * 2, ph, v.panelR * k);
+    g.fill();
+    g.strokeStyle = "rgba(255,255,255,.10)";
+    g.lineWidth = 1;
+    g.stroke();
+    // 名字牌 + 两行假台词
+    g.fillStyle = "rgba(79,140,255,.85)";
+    stageRound(g, pmx + 14, py - 26 * k + 6, 74, 26 * k, 8);
+    g.fill();
+    g.fillStyle = "#fff";
+    g.font = "500 " + Math.round(11) + "px system-ui, sans-serif";
+    g.textAlign = "left";
+    g.textBaseline = "middle";
+    g.fillText("角色", pmx + 26, py - 26 * k + 6 + 13 * k);
+    g.fillStyle = "rgba(226,232,245,.72)";
+    const lineY = py + ph * 0.34;
+    const lineW = W - pmx * 2 - 28;
+    g.fillRect(pmx + 14, lineY, lineW * 0.86, 9);
+    g.fillRect(pmx + 14, lineY + 20, lineW * 0.62, 9);
+
+    // 选项
+    const bw = v.bw * k;
+    const bh = v.bh * k;
+    const gap = v.gap * k;
+    const bx = (W - bw) / 2;
+    const chBg = stageHex(stageStr("uidChoiceBg"));
+    const chFg = stageHex(stageStr("uidChoiceFg")) || "#f4f6ff";
+    const total = bh * 2 + gap;
+    const by = v.cy * k - total / 2;
+    for (let i = 0; i < 2; i++) {
+      const y = by + i * (bh + gap);
+      if (chBg) {
+        g.fillStyle = chBg;
+      } else {
+        const grd = g.createLinearGradient(0, y, 0, y + bh);
+        grd.addColorStop(0, "rgba(32,38,54,.94)");
+        grd.addColorStop(1, "rgba(20,24,36,.96)");
+        g.fillStyle = grd;
+      }
+      stageRound(g, bx, y, bw, bh, v.radius * k);
+      g.fill();
+      g.strokeStyle = "rgba(255,255,255,.16)";
+      g.lineWidth = 1;
+      g.stroke();
+      g.fillStyle = "#4f8cff";
+      g.fillRect(bx + 1, y + bh * 0.28, 2, bh * 0.44);
+      g.fillStyle = chFg;
+      g.font = "500 " + Math.max(9, Math.round(BASE.fs * k * 0.92)) + "px system-ui, sans-serif";
+      g.textAlign = "center";
+      g.textBaseline = "middle";
+      g.fillText("选项 " + (i + 1), bx + bw / 2, y + bh / 2);
+    }
+
+    // 快捷栏（右下角胶囊组，贴着屏幕底、叠在对话框上面）
+    const qw = Math.max(v.qbW * k, 10);
+    const qh = Math.max(v.qbH * k, 4);
+    const qg = v.qbGap * k;
+    const qx = W - v.qbMx * k - qw;
+    const qy = H - v.qbMy * k - qh;
+    for (let i = 0; i < 3; i++) {
+      g.fillStyle = "rgba(28,34,48,.9)";
+      stageRound(g, qx - i * (qw + qg), qy, qw, qh, qh / 2);
+      g.fill();
+      g.fillStyle = "rgba(226,232,245,.5)";
+      g.fillRect(qx - i * (qw + qg) + qw / 2 - 7, qy + qh / 2 - 2, 14, 4);
+    }
+
+    // 右上角两枚圆形按钮（菜单 / 静音），和播放器一致
+    for (let i = 0; i < 2; i++) {
+      const cx = W - 22 - i * 30;
+      g.fillStyle = "rgba(20,24,36,.82)";
+      g.beginPath();
+      g.arc(cx, 22, 11, 0, Math.PI * 2);
+      g.fill();
+      g.fillStyle = "rgba(236,240,250,.78)";
+      if (i === 0) {
+        g.fillRect(cx - 5, 19, 10, 1.6);
+        g.fillRect(cx - 5, 22, 10, 1.6);
+        g.fillRect(cx - 5, 25, 10, 1.6);
+      } else {
+        g.beginPath();
+        g.arc(cx, 22, 4, 0, Math.PI * 2);
+        g.fill();
+      }
+    }
+
+    // 当前分组描一道蓝框：告诉作者「你现在调的是哪块」
+    const hot = uidScene === "choices" ? "choice"
+      : uidScene === "dialog" ? "dialog"
+        : uidScene === "quickbar" ? "qb" : "";
+    g.lineWidth = 1.4;
+    g.strokeStyle = "rgba(79,140,255,.95)";
+    if (hot === "choice") {
+      stageRound(g, bx - 6, by - 6, bw + 12, total + 12, (v.radius * k) + 4);
+      g.stroke();
+    } else if (hot === "dialog") {
+      stageRound(g, pmx - 4, py - 4, W - pmx * 2 + 8, ph + 8, (v.panelR * k) + 3);
+      g.stroke();
+    } else if (hot === "qb") {
+      stageRound(g, qx - 2 * (qw + qg) - 6, qy - 6, qw * 3 + qg * 2 + 12, qh + 12, (qh / 2) + 4);
+      g.stroke();
+    }
+  }
+
+  function stageAim() {
+    stage.to = stageGeom();
+    if (!stage.cur) {
+      stage.cur = Object.assign({}, stage.to);
+      stageDraw();
+      return;
+    }
+    if (!stage.raf) {
+      stage.last = performance.now();
+      stage.raf = requestAnimationFrame(stageTick);
+    }
+  }
+
+  function stageTick(t) {
+    const step = Math.min(64, Math.max(1, t - stage.last)) / 170;
+    stage.last = t;
+    let done = true;
+    Object.keys(stage.to).forEach(function (key) {
+      const target = stage.to[key];
+      const cur = stage.cur[key];
+      if (typeof target !== "number") { stage.cur[key] = target; return; }
+      const d = target - cur;
+      if (Math.abs(d) > 0.4) { stage.cur[key] = cur + d * Math.min(1, step * 3); done = false; }
+      else stage.cur[key] = target;
+    });
+    stageDraw();
+    stage.raf = done ? 0 : requestAnimationFrame(stageTick);
+  }
+
+  function stageLoadBg() {
+    if (stage.tried) return;
+    stage.tried = true;
+    fetch("/api/assets").then(function (r) { return r.json(); }).then(function (r) {
+      const list = ((r || {}).assets || {}).images || [];
+      const pick = list.filter(function (n) { return /^bg/i.test(n); })[0] || list[0];
+      if (!pick) return;
+      const im = new Image();
+      im.onload = function () { stage.img = im; stageDraw(); };
+      im.src = "/api/asset/images/" + encodeURIComponent(pick);
+    }).catch(function () {});
+  }
+
+  function uidStageInit() {
+    const host = document.querySelector(".ui-design-preview");
+    if (!host || stage.cv) return;
+    host.insertAdjacentHTML("beforeend",
+      '<div class="uid-preview-stage"><div class="uid-preview-stage-tip">手机上的样子（当前作品背景，' +
+      "改参数会实时动）</div>" +
+      '<canvas id="uidStageCanvas"></canvas></div>');
+    stage.cv = $("uidStageCanvas");
+    if (!stage.cv) return;
+    stage.wrap = stage.cv.parentElement;
+    stage.host = host;
+    // 点一下缩略手机就放大到整屏看细节，再点一下收起
+    // 放大时挂到 body 上：挂在原处会受弹窗容器的包含块限制，铺不满整屏
+    stage.wrap.addEventListener("click", function (ev) {
+      if (!stage.wrap.classList.contains("big") && ev.target === stage.wrap) ev.stopPropagation();
+      const on = stage.wrap.classList.toggle("big");
+      if (on) document.body.appendChild(stage.wrap);
+      else stage.host.appendChild(stage.wrap);
+    });
+    const dpr = Math.min(2, window.devicePixelRatio || 1);
+    stage.cv.width = Math.round(STAGE.W * dpr);
+    stage.cv.height = Math.round(STAGE.H * dpr);
+    stage.g = stage.cv.getContext("2d");
+    stage.g.setTransform(dpr, 0, 0, dpr, 0, 0);
+    // 所有字段（含 JS 注入的）都挂上：改哪个都会重画
+    UID_FIELDS.forEach(function (f) {
+      const el = $(f.id);
+      if (el) el.addEventListener("input", stageAim);
+    });
+    document.querySelectorAll(".uid-tab").forEach(function (btn) {
+      btn.addEventListener("click", function () { setTimeout(stageAim, 0); });
+    });
+    stageLoadBg();
+    stageAim();
+  }
+  uidStageInit();
+
 
   // 入口 HTML 行数目标：快捷栏图标 / 字体文件 / 界面开关三块控件由 JS 注入
   function uidBuildExtraPanels() {
