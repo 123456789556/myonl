@@ -92,7 +92,7 @@ def test_CI工作流存在且步骤齐全():
     path = os.path.join(ROOT, ".github", "workflows", "android-apk.yml")
     assert os.path.isfile(path), "缺 GitHub Actions 工作流"
     text = open(path, encoding="utf-8").read()
-    for token in ("workflow_dispatch", "setup-java", "setup-android", "engine.webpack",
+    for token in ("workflow_dispatch", "setup-java", "ANDROID_HOME", "engine.webpack",
                   "tools/build_android.py", "assembleDebug", "upload-artifact"):
         assert token in text, f"工作流缺 {token}"
     # 必须能手动指定工程，不然只有示例工程能出包
