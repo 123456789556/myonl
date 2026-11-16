@@ -744,6 +744,8 @@
 
   function drawDialogue(vis) {
     if (!state.say || !state.lines) return;
+    // 选项出现时不画对话框：否则上一句面板会压住选项（横屏 390 高时尤其明显）
+    if (state.choice) return;
     const rect = drawPanel(vis);
     const say = state.say;
 
