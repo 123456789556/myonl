@@ -324,7 +324,12 @@ class DialogMixin:
             top_fade = 80
             bottom_fade = 80
             mid_alpha = int(dlg.get("bg_alpha", 90))
-            if h > top_fade + bottom_fade:
+            # P53：NVL 也能贴皮肤——整屏矩形走同一套九宫格/渐变/纹理合成（不画渐变底）
+            nvl_rect = pygame.Rect(0, 0, w, h)
+            nvl_skin = self._dialog_skin_surface(dlg, nvl_rect)
+            if nvl_skin is not None:
+                self._screen.blit(nvl_skin, nvl_rect.topleft)
+            elif h > top_fade + bottom_fade:
                 top_panel = self._make_vgradient(w, top_fade, 0, mid_alpha)
                 mid_panel = pygame.Surface((w, h - top_fade - bottom_fade), pygame.SRCALPHA)
                 mid_panel.fill((0, 0, 0, mid_alpha))

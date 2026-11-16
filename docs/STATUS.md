@@ -12,10 +12,10 @@
 
 <!-- auto:begin -->
 <!-- 自动数字区：由 tools/status.py 写入，勿手改 -->
-- 测试：pytest 无头套件（unit / ui / integration；`-m "not slow"` 日常快跑）
-- 覆盖率门禁：`engine/` ≥ 80%
-- 类型检查：pyright 棘轮（只拦新增错误，不新增类型债）
-- 打包质量门禁：`tools/verify_release_flow.py` 验证改→存→跑→打包→成品链路
+- 测试收集：1068 项（通过数见下方「最近验证」）
+- 覆盖率：80.51%（门禁实测，但为旧提交 4dfdc20，需重跑）
+- pyright：112 个错误 / 基线 112（未超基线）
+- git：79 个提交 · 最新 tag v1.0.0-rc7 · HEAD 4941913 feat: 对话框皮肤 P53——贴图九宫格自适应 + 编辑器画布拖拽 + 导出成品 textbox.png · 工作区有未提交改动
 <!-- auto:end -->
 
 ## 冻结令
@@ -26,6 +26,9 @@ M1 期间，engine/ 只接受「阻塞陌生人上手」的 P0 修复；功能�
 
 | 日期 | 命令 | 结果 |
 |---|---|---|
+| 2026-11-16 | `py -3 -m pytest -q -m "not slow"` / `tools/preflight.ps1` | **1035 passed + 1 skipped**；pyright **112 = 基线**；全量 1067 passed + 1 skipped；覆盖率 **80.49%**（门禁 80% 通过，基线 81.09——新增模块的防御分支拉低，非回归） |
+| 2026-11-16 | `py -3 -m PyInstaller --noconfirm --clean editor.spec` + `tools/build_release_zip.py --verify` | 重打 `dist/editor/editor.exe`（8.1MB）与 `MYONL引擎-v1.0.0-rc7.zip`（46.5MB / 411 文件）；冒烟：`editor.exe -h` exit 0、`--demo-worker` exit 0，「解压即可用」通过 |
+| 2026-11-16 | 发布副本 `MYONL-publish`：`py -3 -m pytest -q -m "not slow"` | **1031 passed + 1 skipped**（镜像 15 个 P53 文件后复跑，提交 `5fff154`） |
 | 2026-11-10 | `$env:PYTHONIOENCODING="cp1252"; py -3 pack.py "games\教程示例"` | **修复前 exit 1**：`UnicodeEncodeError: 'charmap' codec can't encode characters`，栈顶 `engine/packaging.py:427`（与 CI run `42353120797` 同源）；**修复后 exit 0**，中文日志按预期降级成 `?`，产物 **22.77MB** 正常生成 |
 | 2026-11-10 | py -3 -m pytest -q -m "not slow" | **1009 passed + 1 skipped**（新增 `tests/test_console_encoding.py` 4 条；架构门禁 `test_每个测试文件声明分层marker` 通过） |
 | 2026-11-10 | GitHub API 复核 | `release-smoke` 在 `72bf5fe` **failure**（run `42353120797`，第 6 步失败）；`tests` 在 `3bdeb62` 与 `9cc005a` 均 success；`/releases/latest` 返回 `v1.0.0-rc7` |

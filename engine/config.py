@@ -257,6 +257,13 @@ _DIALOGUE_SCALE_KEYS = frozenset({
 # P53 皮肤：接受列表值的键（九宫格四边 / 染色 RGB），其余列表值不落盘
 _DIALOGUE_LIST_KEYS = frozenset({"panel_slice", "panel_tint"})
 
+# P53 皮肤：只在 default 段声明默认值，其余布局（nvl 等）继承同一份
+_DIALOGUE_SKIN_KEYS = frozenset({
+    "panel_image", "panel_slice", "panel_tint", "panel_fade",
+    "panel_fade_bottom", "panel_texture", "panel_texture_alpha",
+    "panel_alpha", "pad_x", "pad_y",
+})
+
 
 def _scale_dialogue_geometry(node: dict, scale: float) -> dict:
     """按 UI 比例缩放对话框几何（递归处理 curtain 等嵌套段）；scale=1 原样返回。"""
@@ -455,6 +462,11 @@ class Config:
             base = default_base  # 未知布局名回落默认布局
         override = (self.data.get("dialogue") or {}).get(name) or {}
         out = dict(base)
+        if base is not default_base:
+            # P53：nvl 等其它布局继承 default 段声明的皮肤键（未配则沿用默认值：
+            # 空贴图 = 走原有渐变/圆角绘制，行为与旧版一致）
+            for _k in _DIALOGUE_SKIN_KEYS:
+                out.setdefault(_k, default_base.get(_k))
         for key, val in override.items():
             # P46：覆盖值类型须与默认值类型一致——字符串键（如 align）接受字符串，
             # 布尔键接受布尔，数字键接受数字；类型不符跳过保留默认（不崩）

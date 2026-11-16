@@ -1751,6 +1751,10 @@ input[type="color"] {
 .uid-drag-edge { position: absolute; left: 0; right: 0; height: 12px; display: none; cursor: ns-resize; }
 .uid-stage.on .uid-drag-edge { display: block; }
 .uid-drag-edge::before { content: ""; position: absolute; left: 50%; top: 3px; width: 46px; height: 4px; transform: translateX(-50%); border-radius: 2px; background: var(--blue); opacity: 0.85; }
+.uid-drag-edge-v { position: absolute; width: 12px; display: none; cursor: ew-resize; }
+.uid-stage.on .uid-drag-edge-v { display: block; }
+.uid-drag-edge-v::before { content: ""; position: absolute; left: 3px; top: 50%; width: 4px; height: 46px; transform: translateY(-50%); border-radius: 2px; background: var(--blue); opacity: 0.85; }
+.uid-drag-edge-v.dragging { outline: 1px solid var(--blue); background: rgba(137, 180, 250, 0.16); }
 .uid-presets { display: flex; flex-wrap: wrap; gap: var(--sp-2); margin: 8px 0 10px; }
 .uid-preset { padding: 5px 10px; border-radius: var(--r-sm); border: 1px solid var(--surface0); background: var(--mantle); color: var(--text); font-size: 12px; cursor: pointer; }
 .uid-preset:hover { border-color: var(--blue); color: var(--blue); }

@@ -227,8 +227,13 @@ def surface_for(dlg: dict, width: int, height: int, load_image,
                    and not isinstance(_alpha, bool) else 255)
     key = (id(img), id(tex), int(width), int(height), slice_key, tint_rgb,
            fade_top, fade_bottom, tex_alpha, panel_alpha, bool(pixelated))
-    if cache is not None and cache.get(key) is not None:
-        return cache[key]
+    if cache is not None:
+        hit = cache.get(key)
+        # 命中要再核对对象身份：id() 在对象被回收后可能被新图复用，
+        # 只靠 id 做键会拿到上一张图合成出来的面板。缓存同时持有强引用，
+        # 被引用的图不会回收，id 也就不会被复用。
+        if hit is not None and hit[1] is img and hit[2] is tex:
+            return hit[0]
     try:
         surf = compose_panel(img, width, height, slice_key, tint_rgb, fade_top,
                              fade_bottom, tex, tex_alpha, panel_alpha,
@@ -238,7 +243,7 @@ def surface_for(dlg: dict, width: int, height: int, load_image,
     if cache is not None:
         if len(cache) >= 8:
             cache.clear()
-        cache[key] = surf
+        cache[key] = (surf, img, tex)
     return surf
 
 

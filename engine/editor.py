@@ -1393,12 +1393,25 @@ class _EditorHandler(BaseHTTPRequestHandler):
             self._send_json(500, {"ok": False, "message": f"导出面板失败：{e}"})
             return
         out_dir = os.path.join(root, "images")
+        path = os.path.join(out_dir, raw_name + ".png")
+        # 重名不静默覆盖：用户可能已有同名素材（甚至就是那张正在用的皮肤图），
+        # 必须先由前端确认再带 overwrite=true 重发，避免误删别人的画。
+        if os.path.exists(path) and not data.get("overwrite"):
+            self._send_json(409, {"ok": False, "exists": True,
+                                  "message": f"images/{raw_name}.png 已存在，确认覆盖？"})
+            return
         try:
             os.makedirs(out_dir, exist_ok=True)
-            path = os.path.join(out_dir, raw_name + ".png")
-            with open(path, "wb") as f:
+            tmp = path + ".tmp"
+            with open(tmp, "wb") as f:
                 f.write(png)
+            os.replace(tmp, path)
         except OSError as e:
+            try:
+                if os.path.exists(tmp):
+                    os.remove(tmp)
+            except OSError:
+                pass
             self._send_json(500, {"ok": False, "message": f"写入图片失败：{e}"})
             return
         self._send_json(200, {"ok": True, "path": path, "name": raw_name,

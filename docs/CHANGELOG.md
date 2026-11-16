@@ -8,9 +8,11 @@
 
 **引擎**：新增 `engine/dialog_skin.py`（纯函数：切边归一 / 九宫格 / 垂直渐变 / 乘法染色 / 纹理平铺 / 合成 / 缓存 / 纯色兜底）；`config.dialogue.default` 新增 10 个皮肤键（`panel_image / panel_slice / panel_tint / panel_fade / panel_fade_bottom / panel_texture / panel_texture_alpha / panel_alpha / pad_x / pad_y`），**全部留空 = 与旧版逐像素一致**，老工程零变化；1080p 边距等比缩放对列表值同样生效。
 
-**编辑器**：新增「对话框皮肤」页签（5 套预设、九宫格四边、顶部/底部羽化、纹理强度、内边距、素材下拉）、预览画布拖拽（拖本体改纵向位置、拖上边缘改高度）、`POST /api/ui-design/export-textbox` 落盘 `images/<名>.png`（导出名清洗，`../evil` 返回 400）。
+**编辑器**：新增「对话框皮肤」页签（5 套预设、九宫格四边、顶部/底部羽化、纹理强度、内边距、素材下拉）、预览画布拖拽（拖本体改横纵偏移、拖上边缘改高度、拖左边缘改面板宽度）、`POST /api/ui-design/export-textbox` 落盘 `images/<名>.png`（导出名清洗，`../evil` 返回 400）。**NVL 整屏旁白同样支持皮肤**（整屏矩形走同一套合成，未配图仍是原渐变底）。
 
 **示例素材**：`tools/p53_sample_skins.py` 生成 `games/教程示例/images/textbox.png`（640×170 玻璃面板）与 `paper.png`（64×64 可平铺纸纹），九宫格拉伸对照图 `screenshots/p53-dialog-skin.png`。
+
+**安全细节**：导出的同名图默认**不覆盖**（409 + 前端确认后才带 `overwrite` 重发，文件写入走临时文件 + `os.replace`，失败不留 `.tmp`）；面板缓存的键是图片对象 `id()`，命中时再核对对象身份并持有强引用，避免 id 复用后拿到上一张图的合成结果。
 
 **证据**：`tests/test_p53_dialog_skin.py` 24 条（纯函数 / 配置合并 / 渲染 / 白名单清洗 / 导出尺寸 / 端到端 HTTP 写回与落盘 / 前端接线）；全量 `pytest -q -m "not slow"` 1033 passed + 1 skipped；pyright 112 = 基线；engine 覆盖率 80%+ 通过；说明文档 `docs/变更说明-P53-对话框皮肤.md`。
 

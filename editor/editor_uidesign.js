@@ -317,8 +317,14 @@
   function uidPositionStage() {
     const body = $("uidDragBody");
     const edge = $("uidDragTop");
+    const vedge = $("uidDragLeft");
     if (!body || !edge) return;
-    if (uidScene !== "dialog") { body.style.display = "none"; edge.style.display = "none"; return; }
+    if (uidScene !== "dialog") {
+      body.style.display = "none";
+      edge.style.display = "none";
+      if (vedge) vedge.style.display = "none";
+      return;
+    }
     body.style.display = "";
     edge.style.display = "";
     const r = uidPanelRect();
@@ -330,6 +336,12 @@
     edge.style.left = px(r.left, r.cw);
     edge.style.width = px(r.w, r.cw);
     edge.style.top = px(r.top, r.ch);
+    if (vedge) {
+      vedge.style.display = "";
+      vedge.style.left = px(r.left, r.cw);
+      vedge.style.top = px(r.top, r.ch);
+      vedge.style.height = px(r.h, r.ch);
+    }
   }
 
   let uidDrag = null;
@@ -338,11 +350,14 @@
     const stage = $("uidStage");
     if (!stage || uidScene !== "dialog") return;
     const box = stage.getBoundingClientRect();
-    if (!box.height) return;
+    if (!box.height || !box.width) return;
     e.preventDefault();
+    const [cw, ch] = uidCanvasSize();
     uidDrag = {
-      mode, y: e.clientY, off0: uidNum("uidOffsetY"), h0: uidNum("uidHeight"),
-      stageH: box.height, ch: uidCanvasSize()[1],
+      mode, x: e.clientX, y: e.clientY, off0: uidNum("uidOffsetY"),
+      offX0: uidNum("uidOffsetX"), h0: uidNum("uidHeight"),
+      w0: uidPanelRect().w,
+      stageH: box.height, stageW: box.width, ch, cw,
     };
     document.body.style.userSelect = "none";
   }
@@ -350,9 +365,17 @@
   function uidDragMove(e) {
     if (!uidDrag) return;
     const dy = ((e.clientY - uidDrag.y) / uidDrag.stageH) * uidDrag.ch;
+    const dx = ((e.clientX - uidDrag.x) / uidDrag.stageW) * uidDrag.cw;
     if (uidDrag.mode === "move") {
-      const v = Math.max(-160, Math.min(160, uidDrag.off0 + dy));
-      uidSetRange("uidOffsetY", Math.round(v / 2) * 2);
+      // 拖本体：纵向改 offset_y、横向改 offset_x（都是 2px 步长，夹 ±160）
+      const vy = Math.max(-160, Math.min(160, uidDrag.off0 + dy));
+      const vx = Math.max(-160, Math.min(160, uidDrag.offX0 + dx));
+      uidSetRange("uidOffsetY", Math.round(vy / 2) * 2);
+      uidSetRange("uidOffsetX", Math.round(vx / 2) * 2);
+    } else if (uidDrag.mode === "width") {
+      // 拖左边缘：改面板宽度（原本贴边全宽时，从这里开始收窄）
+      const v = Math.max(240, Math.min(uidDrag.cw, uidDrag.w0 - dx * 2));
+      uidSetRange("uidPanelWidth", Math.round(v / 4) * 4);
     } else {
       const v = Math.max(100, Math.min(400, uidDrag.h0 - dy));
       uidSetRange("uidHeight", Math.round(v / 4) * 4);
@@ -365,10 +388,10 @@
     if (!uidDrag) return;
     uidDrag = null;
     document.body.style.userSelect = "";
-    const b = $("uidDragBody");
-    const t = $("uidDragTop");
-    if (b) b.classList.remove("dragging");
-    if (t) t.classList.remove("dragging");
+    for (const id of ["uidDragBody", "uidDragTop", "uidDragLeft"]) {
+      const el = $(id);
+      if (el) el.classList.remove("dragging");
+    }
   }
 
   async function uidPreview() {
@@ -529,6 +552,7 @@
       '<img id="uidStageImg" alt="UI 设计预览" title="点击放大">' +
       '<div class="uid-drag-body" id="uidDragBody" title="拖动：上下移动对话框"></div>' +
       '<div class="uid-drag-edge" id="uidDragTop" title="拖上边缘：改对话框高度"></div>' +
+      '<div class="uid-drag-edge-v" id="uidDragLeft" title="拖左边缘：改面板宽度"></div>' +
       "</div>");
   }
   uidBuildSkinControls();
@@ -588,6 +612,17 @@
       const raw = String((payload.dialogue && payload.dialogue.panel_image) || "").trim();
       payload.name = (raw || "textbox_export").replace(/[^\w-]/g, "_");
       const resp = await postJSON("/api/ui-design/export-textbox", payload);
+      if (!resp.ok && resp.exists) {
+        // 同名图已存在：先问人，再带 overwrite 重发（不静默覆盖已有素材）
+        if (!window.confirm((resp.message || "同名图已存在") + "\n覆盖会替换 images 里那张图。"))
+          return;
+        payload.overwrite = true;
+        const again = await postJSON("/api/ui-design/export-textbox", payload);
+        if (!again.ok) { $("uidErr").textContent = again.message || "导出失败"; return; }
+        $("uidPathHint").textContent = "已覆盖：" + (again.path || "");
+        toast("已覆盖成品面板 PNG");
+        return;
+      }
       if (!resp.ok) {
         $("uidErr").textContent = resp.message || "导出失败";
         return;
@@ -719,9 +754,10 @@
   const uidExportBtn = $("uidExport");
   if (uidExportBtn) uidExportBtn.addEventListener("click", uidExportTextbox);
 
-  // 画布拖拽：拖对话框本体 = 上下移动；拖上边缘 = 改高度
+  // 画布拖拽：拖本体 = 上下左右移动；拖上边缘 = 改高度；拖左边缘 = 改宽度
   const uidDragBodyEl = $("uidDragBody");
   const uidDragTopEl = $("uidDragTop");
+  const uidDragLeftEl = $("uidDragLeft");
   if (uidDragBodyEl) {
     uidDragBodyEl.addEventListener("mousedown", (e) => {
       uidDragBodyEl.classList.add("dragging");
@@ -733,6 +769,12 @@
     uidDragTopEl.addEventListener("mousedown", (e) => {
       uidDragTopEl.classList.add("dragging");
       uidDragStart("resize", e);
+    });
+  }
+  if (uidDragLeftEl) {
+    uidDragLeftEl.addEventListener("mousedown", (e) => {
+      uidDragLeftEl.classList.add("dragging");
+      uidDragStart("width", e);
     });
   }
   document.addEventListener("mousemove", uidDragMove);

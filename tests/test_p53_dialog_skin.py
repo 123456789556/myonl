@@ -157,6 +157,8 @@ def test_surface_for_缓存与合成异常兜底(monkeypatch):
     a = S.surface_for(dlg, 80, 40, lambda n: img, cache=cache)
     assert a is S.surface_for(dlg, 80, 40, lambda n: img, cache=cache)  # 命中缓存
     assert len(cache) == 1
+    # 缓存项持有源图强引用（id 键不会被回收后复用）
+    assert next(iter(cache.values()))[1] is img
     # 换参数 → 新对象
     assert S.surface_for({**dlg, "panel_alpha": 120}, 80, 40,
                          lambda n: img, cache=cache) is not a
@@ -208,6 +210,30 @@ def test_config_脏皮肤覆盖被忽略不崩():
     assert dlg["panel_slice"] == 0
     assert dlg["panel_fade"] == 0
     assert dlg["panel_tint"] is None
+
+
+def test_config_nvl继承皮肤键():
+    # 未配置：nvl 也有皮肤键，但值为空 → 仍走原有整屏渐变
+    assert Config().dialogue("nvl")["panel_image"] == ""
+    assert Config().dialogue("nvl")["panel_alpha"] == 255
+    # 显式配到 nvl 段：生效（这是"整屏旁白也能贴图"的入口）
+    dlg = Config({"dialogue": {"nvl": {
+        "panel_image": "textbox", "panel_slice": [0, 0, 0, 0], "panel_fade": 40,
+    }}}).dialogue("nvl")
+    assert dlg["panel_image"] == "textbox"
+    assert dlg["panel_fade"] == 40
+
+
+def test_renderer_nvl整屏也能贴皮肤(tmp_path):
+    root = _project(tmp_path, {"dialogue": {"nvl": {"panel_image": "textbox"}}})
+    ren = Renderer((1280, 720), root)
+    try:
+        surf = ren._dialog_skin_surface(ren.config.dialogue("nvl"),
+                                        pygame.Rect(0, 0, 1280, 720))
+        assert surf is not None
+        assert surf.get_size() == (1280, 720)
+    finally:
+        ren.close()
 
 
 # ============ 3. 渲染层 ============
@@ -361,7 +387,7 @@ def test_前端皮肤分页与预设库接线():
     for token in ("uidBuildSkinControls", "UID_PRESETS", "uidApplyPreset",
                   "uidExportTextbox", "export-textbox", "uidPositionStage",
                   "uidLoadImageNames", "uidSliceL", "uidPanelImage",
-                  "uidDragBody", "uidDragTop"):
+                  "uidDragBody", "uidDragTop", "uidDragLeft"):
         assert token in js, f"editor_uidesign.js 缺 {token}"
     assert ".uid-drag-body" in css and ".uid-preset" in css
     # 导出路由已注册
@@ -436,6 +462,17 @@ def test_接口端到端_皮肤写回与导出落盘(tmp_path):
         status, raw = _req(port, "POST", "/api/ui-design/export-textbox",
                            {"name": "../evil"})
         assert status == 400
+        # 同名图已存在：默认拒（409），不静默覆盖用户的素材
+        status, raw = _req(port, "POST", "/api/ui-design/export-textbox",
+                           {"dialogue": {"panel_image": "textbox"}, "name": "exported"})
+        assert status == 409
+        assert json.loads(raw)["exists"] is True
+        # 明确带 overwrite 才覆盖
+        status, raw = _req(port, "POST", "/api/ui-design/export-textbox",
+                           {"dialogue": {"panel_image": "textbox"},
+                            "name": "exported", "overwrite": True})
+        assert status == 200 and json.loads(raw)["ok"] is True
+        assert not os.path.exists(os.path.join(root, "images", "exported.png.tmp"))
     finally:
         srv.shutdown()
         srv.server_close()
