@@ -318,11 +318,13 @@
     const body = $("uidDragBody");
     const edge = $("uidDragTop");
     const vedge = $("uidDragLeft");
+    const sel = $("uidSel");
     if (!body || !edge) return;
     if (uidScene !== "dialog") {
       body.style.display = "none";
       edge.style.display = "none";
       if (vedge) vedge.style.display = "none";
+      if (sel) sel.classList.remove("on");
       return;
     }
     body.style.display = "";
@@ -342,6 +344,18 @@
       vedge.style.top = px(r.top, r.ch);
       vedge.style.height = px(r.h, r.ch);
     }
+    if (sel) {
+      // P57：选择框按屏幕 px 定位（百分比在 flex/图片未加载时会算歪，命中判区跟着一起歪）
+      const box = $("uidStage").getBoundingClientRect();
+      if (!box.width || !box.height) { sel.classList.remove("on"); return; }
+      const sx = box.width / r.cw;
+      const sy = box.height / r.ch;
+      sel.classList.add("on");
+      sel.style.left = (r.left * sx) + "px";
+      sel.style.top = (r.top * sy) + "px";
+      sel.style.width = (r.w * sx) + "px";
+      sel.style.height = (r.h * sy) + "px";
+    }
   }
 
   let uidDrag = null;
@@ -357,6 +371,7 @@
       mode, x: e.clientX, y: e.clientY, off0: uidNum("uidOffsetY"),
       offX0: uidNum("uidOffsetX"), h0: uidNum("uidHeight"),
       w0: uidPanelRect().w,
+      r0: uidNum("uidRadius"),
       stageH: box.height, stageW: box.width, ch, cw,
     };
     document.body.style.userSelect = "none";
@@ -376,6 +391,43 @@
       // 拖左边缘：改面板宽度（原本贴边全宽时，从这里开始收窄）
       const v = Math.max(240, Math.min(uidDrag.cw, uidDrag.w0 - dx * 2));
       uidSetRange("uidPanelWidth", Math.round(v / 4) * 4);
+    } else if (uidDrag.mode === "e" || uidDrag.mode === "w") {
+      // P57：拖左右手柄——改宽度，同时反着挪 offset_x，让另一条边钉住不动
+      const dir = uidDrag.mode === "e" ? 1 : -1;
+      const v = Math.max(240, Math.min(uidDrag.cw, uidDrag.w0 + dir * dx));
+      uidSetRange("uidPanelWidth", Math.round(v / 4) * 4);
+      const off = uidDrag.offX0 + (v - uidDrag.w0) / 2;
+      uidSetRange("uidOffsetX", Math.round(off / 2) * 2);
+    } else if (uidDrag.mode === "ne" || uidDrag.mode === "se" ||
+               uidDrag.mode === "nw" || uidDrag.mode === "sw") {
+      // 拖四个角：横向当左右手柄（改宽 + 钉住对边），纵向当上下手柄（改高）
+      const east = uidDrag.mode === "ne" || uidDrag.mode === "se";
+      const north = uidDrag.mode === "nw" || uidDrag.mode === "ne";
+      const wv = Math.max(240, Math.min(uidDrag.cw, uidDrag.w0 + (east ? 1 : -1) * dx));
+      uidSetRange("uidPanelWidth", Math.round(wv / 4) * 4);
+      uidSetRange("uidOffsetX", Math.round((uidDrag.offX0 + (wv - uidDrag.w0) / 2) / 2) * 2);
+      if (north) {
+        const hv = Math.max(60, Math.min(400, uidDrag.h0 - dy));
+        uidSetRange("uidHeight", Math.round(hv / 4) * 4);
+      } else {
+        const hv = Math.max(60, Math.min(400, uidDrag.h0 + dy));
+        uidSetRange("uidHeight", Math.round(hv / 4) * 4);
+        uidSetRange("uidOffsetY", Math.round((uidDrag.off0 + (hv - uidDrag.h0)) / 2) * 2);
+      }
+    } else if (uidDrag.mode === "n") {
+      // 拖上边缘：底边钉住，改高度
+      const v = Math.max(60, Math.min(400, uidDrag.h0 - dy));
+      uidSetRange("uidHeight", Math.round(v / 4) * 4);
+    } else if (uidDrag.mode === "s") {
+      // 拖下边缘：顶边钉住（offset_y 跟着走），改高度
+      const v = Math.max(60, Math.min(400, uidDrag.h0 + dy));
+      uidSetRange("uidHeight", Math.round(v / 4) * 4);
+      uidSetRange("uidOffsetY", Math.round((uidDrag.off0 + (v - uidDrag.h0)) / 2) * 2);
+    } else if (uidDrag.mode === "radius") {
+      // P57：拖绿点改圆角——往右下拖变大，范围 0~40（和滑杆同一上限）
+      const d = (dx + dy) / 2;
+      const v = Math.max(0, Math.min(40, uidDrag.r0 + d * 0.35));
+      uidSetRange("uidRadius", Math.round(v));
     } else {
       const v = Math.max(100, Math.min(400, uidDrag.h0 - dy));
       uidSetRange("uidHeight", Math.round(v / 4) * 4);
@@ -413,6 +465,8 @@
       if (img) {
         img.alt = "UI 设计预览";
         img.title = "点击放大";
+        // 图换了尺寸就变，选择框/拖拽层必须跟着重新定位（否则会停在上一帧的位置）
+        img.onload = function () { uidPositionStage(); };
         img.src = url;
       }
       const stage = $("uidStage");
@@ -640,7 +694,55 @@
       '<div class="uid-drag-edge" id="uidDragTop" title="拖上边缘：改对话框高度"></div>' +
       '<div class="uid-drag-edge-v" id="uidDragLeft" title="拖左边缘：改面板宽度"></div>' +
       "</div>");
+    uidBuildSel();
   }
+
+  // ===== P57：PPT / 虚幻式可视化操控（选中框 + 八个手柄 + 角上的圆角手柄） =====
+  // 之前只有三块拖拽热区，改圆角还得低头填数字。这里给面板加一套选择框：
+  // 拖本体=移动，拖四边=改宽高，拖左上角的小圆点=改圆角——手上看到的就是画布上那块面板。
+  function uidBuildSel() {
+    const stage = $("uidStage");
+    if (!stage || $("uidSel")) return;
+    stage.insertAdjacentHTML("beforeend",
+      '<div class="uid-sel" id="uidSel">' +
+      ["nw", "n", "ne", "e", "se", "s", "sw", "w"].map(function (h) {
+        return '<span class="uid-sel-h" data-h="' + h + '"></span>';
+      }).join("") +
+      '<span class="uid-sel-r" id="uidRadiusGrip" title="拖我改圆角"></span>' +
+      '<span class="uid-sel-tag">对话框面板 · 拖角改圆角</span>' +
+      "</div>");
+  }
+
+  function uidStyleCanvas() {
+    if ($("uidSelStyle")) return;
+    const css = [
+      ".uid-sel{position:absolute;pointer-events:none;box-sizing:border-box;",
+      "border:1px dashed #4f8cff;border-radius:2px;z-index:3;display:none}",
+      ".uid-sel.on{display:block}",
+      // 手柄必须整块落在框内：预览区 overflow:hidden，压在框外的那半会被裁掉，
+      // 结果「看得见但点不到」——所以用负 margin 把 12px 手柄往里收，而不是往外悬。
+      ".uid-sel-h{position:absolute;width:12px;height:12px;background:#4f8cff;",
+      "border:1px solid #e6eeff;border-radius:2px;pointer-events:auto}",
+      '.uid-sel-h[data-h="nw"]{left:0;top:0}',
+      '.uid-sel-h[data-h="n"]{left:50%;top:0;margin-left:-6px}',
+      '.uid-sel-h[data-h="ne"]{right:0;top:0}',
+      '.uid-sel-h[data-h="e"]{right:0;top:50%;margin-top:-6px;cursor:ew-resize}',
+      '.uid-sel-h[data-h="se"]{right:0;bottom:0}',
+      '.uid-sel-h[data-h="s"]{left:50%;bottom:0;margin-left:-6px}',
+      '.uid-sel-h[data-h="sw"]{left:0;bottom:0}',
+      '.uid-sel-h[data-h="w"]{left:0;top:50%;margin-top:-6px;cursor:ew-resize}',
+      ".uid-sel-r{position:absolute;left:34px;top:34px;width:13px;height:13px;",
+      "margin:-6px 0 0 -6px;border-radius:50%;background:#7ee787;",
+      "border:1px solid #0b0d12;pointer-events:auto;cursor:move;z-index:4}",
+      ".uid-sel-tag{position:absolute;right:0;top:-18px;font-size:11px;line-height:16px;",
+      "padding:0 6px;color:#cfe0ff;background:rgba(11,13,18,.75);border-radius:3px;white-space:nowrap}",
+    ].join("");
+    const st = document.createElement("style");
+    st.id = "uidSelStyle";
+    st.textContent = css;
+    document.head.appendChild(st);
+  }
+  uidStyleCanvas();
   uidBuildSkinControls();
   uidBuildStage();
 
@@ -865,4 +967,75 @@
   }
   document.addEventListener("mousemove", uidDragMove);
   document.addEventListener("mouseup", uidDragEnd);
+
+  // P57：八个手柄 + 圆角绿点接线（手柄各自带 data-h，拖哪个改哪个）
+  const uidSelEl = $("uidSel");
+  if (uidSelEl) {
+    uidSelEl.querySelectorAll(".uid-sel-h").forEach((h) => {
+      h.addEventListener("mousedown", (e) => {
+        e.stopPropagation();
+        uidDragStart(h.dataset.h || "move", e);
+      });
+    });
+    const grip = $("uidRadiusGrip");
+    if (grip) {
+      grip.addEventListener("mousedown", (e) => {
+        e.stopPropagation();
+        uidDragStart("radius", e);
+      });
+    }
+    // 选择框本身不吃点击，避免挡住「点图放大」
+    uidSelEl.addEventListener("click", (e) => e.stopPropagation());
+  }
+
+  // P57：按坐标判命中（PPT 那样：不要求精准戳到 12px 小方块，边/角附近 12px 都算）
+  // 只靠 DOM 手柄会「看着能拖、点不到」——预览区 overflow 裁剪 + 层叠顺序都可能吃掉点击。
+  const uidStageEl = $("uidStage");
+  const uidStageImgEl = $("uidStageImg");
+  let uidJustDragged = false;
+  if (uidStageEl && uidStageImgEl) {
+    // 用 document 捕获 + 纯坐标判命中：不挑 target、也不要求精准戳手柄，
+    // 落点落在面板里就接管，落在外面就放行（留给点图放大）。
+    document.addEventListener("mousedown", (e) => {
+      if (uidScene !== "dialog") return;
+      const img = $("uidStageImg");
+      if (!img) return;
+      const box = img.getBoundingClientRect();
+      if (!box.width || !box.height) return;
+      if (e.clientX < box.left || e.clientX > box.right ||
+          e.clientY < box.top || e.clientY > box.bottom) return;
+      const r = uidPanelRect();
+      const sx = box.width / r.cw;      // 画布 → 屏幕 px
+      const sy = box.height / r.ch;
+      const lx = e.clientX - box.left;
+      const ly = e.clientY - box.top;
+      const L = r.left * sx, R = (r.left + r.w) * sx;
+      const T = r.top * sy, B = (r.top + r.h) * sy;
+      const hit = 14;                    // 命中带宽（屏幕 px）
+      if (lx < L - hit || lx > R + hit || ly < T - hit || ly > B + hit) return;  // 面板外：不管
+      const nearL = Math.abs(lx - L) <= hit;
+      const nearR = Math.abs(lx - R) <= hit;
+      const nearT = Math.abs(ly - T) <= hit;
+      const nearB = Math.abs(ly - B) <= hit;
+      const gripX = L + 34, gripY = T + 34;   // 绿点就在左上角内侧 34px
+      let mode = "move";
+      if (Math.hypot(lx - gripX, ly - gripY) <= 13) mode = "radius";
+      else if (nearT && nearL) mode = "nw";
+      else if (nearT && nearR) mode = "ne";
+      else if (nearB && nearL) mode = "sw";
+      else if (nearB && nearR) mode = "se";
+      else if (nearL) mode = "w";
+      else if (nearR) mode = "e";
+      else if (nearT) mode = "n";
+      else if (nearB) mode = "s";
+      e.preventDefault();
+      e.stopPropagation();
+      uidJustDragged = true;
+      uidDragStart(mode, e);
+    }, true);
+    // 拖完松手会跟一个 click，别让它触发「点图放大」
+    document.addEventListener("click", (e) => {
+      if (uidJustDragged) { uidJustDragged = false; e.stopPropagation(); }
+    }, true);
+  }
 })();

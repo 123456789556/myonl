@@ -4,11 +4,11 @@
 > 历史计划与变更说明只保留在 git 历史（原 docs/archive 已于 2026-11-01 删除）。
 > 维护规则：人只改上面的四行；自动数字区由 py -3 tools/status.py --write 生成。
 
-- **版本**：v1.0.0-rc7（Windows 离线引擎；rc6 后交互与失败态收口：原子保存、启动/热重载错误可定位、编辑器对齐与 Dock 缩放、存档/读档/打包失败态）——**已发布且为 Latest**（`prerelease=false`，`/releases/latest` 实测返回 rc7，附件 `MYONL-v1.0.0-rc7-windows.zip` 46.43MB）。**注意：该 zip 内是修复前构建，下面 ④ 的 P0 修复尚未进包**
-- **在做**：**发行与门面收口（2026-11-10）**——① rc7 从 prerelease 提为 **Latest**，Release 正文追加中英双语说明（原文未删）；② 英文入口上线 `README.en.md` + `docs/en/quick-start.md`，README 补语言切换并修断链 badge；③ 展示物料定稿 `docs/展示_60秒分镜与投稿包.md` + `docs/images/cover-60s.jpg`；④ **P0 修复「英文区域 Windows 上打包被中文日志打断」**（`engine/packaging.py` 的 `ensure_tolerant_console()` + `pack.py` 接入，4 条守护测试）。**唯一未完成**：重打发行包把 ④ 带进 zip → 复跑 `release-smoke` 转绿（该 workflow 当前是红的，run `42353120797`）。
-- **质量门槛**：干净 Windows（无 Python 环境）下可做出并打包一个可玩 demo；自动化等价验证（改→存→跑→打包→成品）在中文区域已通过，**在英文区域因 ④ 的编码 bug 失败**，修复已落到源码、尚未进发行包。
-- **本机限制（2026-11-07 实测）**：本机为 Windows 10 家庭版，无 Windows Sandbox（需专业版）；且 `py.exe` 位于 `C:\WINDOWS`，对所有本地用户可见——**新建本地用户也无法等价"无 Python"环境**。该格必须在外部机器 / 云桌面完成，或由用户拍板以自动化等价验证替代。
-- **后续待办**：① 重打发行包 + 复跑 `release-smoke`（P0 修复尚未进包） ② 干净 Windows 环境人工抽测 ③ 拍 60 秒展示片并投稿 ④ 收集早期使用者反馈 ⑤ 已知限制：4000 行级文档单键约 42ms（textarea 整篇重排，微优化收益 <1%，需换编辑器架构）。
+- **版本**：v1.0.0-rc8（**手机端为主线**：同一工程 → 竖屏/横屏 H5 网页包 → 安卓 APK；桌面端降为并行出口）。rc8 相对 rc7 的实质变化：P54 H5 播放器、P55 Capacitor 安卓壳 + GitHub Actions 出 APK（已跑通，产物 `myonl-debug-apk` 3.24 MB）、P56 可迁移导出（Ren'Py 工程 / 通用 JSON）。发行包 `dist/release/MYONL引擎-v1.0.0-rc8.zip` 46.5MB 已重打并冒烟（`editor.exe -h` / `--demo-worker` exit 0），**尚未上传到 GitHub Release**。
+- **在做**：P57 可视化 UI 编辑（对话框页签可拖：本体移动 / 右左边缘改宽 / 上边改高 / 四角 / 绿点改圆角）已完成并验收；全量本地 `1069 passed + 1 skipped`、pyright 112（基线，无新增）、node 三个 smoke 全绿。`tests` 工作流上一次全绿是 `6c59c3e`（run `43800334068`）。下一步是把同一套手柄接到「名字框 / 选项按钮 / 快捷栏 / 菜单 / 设置页」（需要后端先算出各分组的画布矩形）。
+- **质量门槛**：干净 Windows（无 Python）下可做出并打包可玩 demo；H5 播放器在真实 Chromium 竖屏 390×844 / 横屏 844×390 + 转屏 + 自动存档全过；安卓 APK 由 CI 产出（gradlew assembleDebug 绿）。
+- **本机限制**：无 JDK / 无 Android SDK / 无 gh CLI / 无 Ren'Py SDK——所以 **APK 只能在 CI 里编**、**Ren'Py 导出工程没在 Ren'Py 里真跑过**；Actions 日志需 token（已改成失败时写 `::error::` 注解，匿名可读）。
+- **后续待办**：① 真机装一次 APK（转屏 / 返回键 / 字体） ② 手机端补音频（当前最大体验缺口） ③ rc8 附件上传 Release（先删旧 rc7 附件） ④ Ren'Py 侧按 lint 报错修中文变量名（**用户已说不必做**） ⑤ 收集早期使用者反馈。
 
 <!-- auto:begin -->
 <!-- 自动数字区：由 tools/status.py 写入，勿手改 -->

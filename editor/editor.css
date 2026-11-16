@@ -1759,3 +1759,13 @@ input[type="color"] {
 .uid-preset { padding: 5px 10px; border-radius: var(--r-sm); border: 1px solid var(--surface0); background: var(--mantle); color: var(--text); font-size: 12px; cursor: pointer; }
 .uid-preset:hover { border-color: var(--blue); color: var(--blue); }
 .uid-preset.active { border-color: var(--blue); background: rgba(137, 180, 250, 0.14); color: var(--blue); }
+
+/* ---- P57：UI 设计区放大成「画布 + 属性」两栏（要能像 PPT 那样拖，就不能给 360px） ---- */
+#uiDesignModal .modal { width: min(1180px, calc(100vw - 40px)); }
+.ui-design-body { flex-wrap: wrap; }
+.ui-design-preview { flex: 1 1 340px; min-width: 340px; order: -1; }  /* 画布永远排最上：窄容器里一打开就看见 */
+.ui-design-preview .preview-img-wrap { min-height: 300px; }
+@media (max-width: 1100px) {
+  .ui-design-preview { min-width: 0; }
+  .ui-design-preview .preview-img-wrap { min-height: 220px; }
+}
