@@ -997,7 +997,7 @@
     if (!state.choice) return;
     ctx.save();
     ctx.globalAlpha = 1;
-    ctx.fillStyle = "rgba(6,8,12,.66)";
+    ctx.fillStyle = "rgba(6,8,12,.56)";
     ctx.fillRect(0, 0, L.viewW, L.viewH);
     ctx.restore();
   }
@@ -1042,6 +1042,26 @@
     // 往下放到胸口一带，既不压角色也不贴屏幕底边
     const startY = Math.max(L.marginX, geom.centerY - totalH / 2);
     const x = (L.viewW - bw) / 2;
+
+    // 选项上方留一句「在答什么」：选项出现时对话框是藏起来的，
+    // 光给几个按钮玩家会失去上下文（尤其横屏一整屏空着的时候）。
+    if (state.say && state.lines && state.lines.length) {
+      const qfs = Math.round(L.fs * 0.92);
+      ctx.save();
+      ctx.font = `${qfs}px ${FACE}`;
+      const qLines = wrap(state.lines[state.lines.length - 1], bw * 0.94).slice(-2);
+      ctx.textAlign = "center";
+      ctx.textBaseline = "bottom";
+      ctx.fillStyle = "rgba(236,241,255,.9)";
+      ctx.shadowColor = "rgba(0,0,0,.72)";
+      ctx.shadowBlur = 12;
+      const qBottom = startY - Math.round(bh * 0.55);
+      qLines.forEach((ln, i, arr) => {
+        ctx.fillText(ln, L.viewW / 2, qBottom - (arr.length - 1 - i) * qfs * 1.3);
+      });
+      ctx.restore();
+      ctx.textAlign = "left";
+    }
 
     state.choice.forEach((opt, i) => {
       const y = startY + i * (bh + gap);

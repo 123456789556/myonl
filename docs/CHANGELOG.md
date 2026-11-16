@@ -10,7 +10,7 @@
 
 **踩坑留档**：PIL `Image.new("RGBA") + Draw(img,"RGBA")` 是直接替换像素、不混 alpha，半透明会变纯白实心 —— 必须 `Image.new("RGB", 底色) + Draw(...,"RGBA")`。`next()` 遇到 `chapter` 必须 break，否则台词抢在章节卡前面出来。`@voice` 只能紧跟在台词之后，播放顺序是 say → voice。
 
-**证据**：`pwa-boot.png` / `pwa-play.png`（遮罩淡出、`#boot` 已移除、三处 PWA 头全 True、无 console error）、`p73-anim-early.png`（立绘偏左滑入）、`p73-fg.png`（斜雨铺满且不盖对话框）、`p73-video-a/b.png`（两帧换色）、`p73b-01.png`（章节卡）、`p73b-06.png`（wipe 半屏分界）；单文件 774824 B；`pytest -m "not slow"` 1091 passed + 1 skipped。详见 `docs/变更说明-P72-P73-PWA与手机端全指令.md`。
+**证据**：`pwa-boot.png` / `pwa-play.png`（遮罩淡出、`#boot` 已移除、三处 PWA 头全 True、无 console error）、`p73-anim-early.png`（立绘偏左滑入）、`p73-fg.png`（斜雨铺满且不盖对话框）、`p73-video-a/b.png`（两帧换色）、`p73b-01.png`（章节卡）、`p73b-06.png`（wipe 半屏分界）、`p74land-choice.png` + `p74choice-portrait.png`（横/竖屏选项页，按钮上方有「在答什么」那一行）；单文件 774823 B；`pytest -m "not slow"` 1091 passed + 1 skipped。详见 `docs/变更说明-P72-P73-PWA与手机端全指令.md`。
 
 ## 2026-11-16（P71：UI 设计区有整屏缩略图了——调参数能看见手机上变成什么样）
 
