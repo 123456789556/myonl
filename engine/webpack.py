@@ -187,8 +187,8 @@ def build_web(project_root: str, out_dir: str, *, title: str = "") -> dict:
         audio_manifest[name] = "assets/" + dst_name
 
     log = []
-    # P62：music / sfx 已实现；P63：cg 全屏演出也实现了
-    for op in ("play", "stop", "video", "fg", "camera", "shake", "anim"):
+    # P62：music / sfx 已实现；P63：cg 全屏演出；P64：camera（zoom/pan/shake/reset）
+    for op in ("play", "stop", "video", "fg", "shake", "anim"):
         if _has_op(ins, op):
             log.append(op)
 

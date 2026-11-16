@@ -95,20 +95,21 @@ def test_缺素材不硬失败(tmp_path):
 
 @pytest.mark.integration
 def test_桌面专属指令如实标注(tmp_path):
-    """P62 起 music/sfx、P63 起 cg 手机端已实现；仍不实现的必须如实列出来。"""
+    """P62 起 music/sfx、P63 起 cg、P64 起 camera 手机端已实现；仍不实现的必须如实列出来。"""
     proj = tmp_path / "带音乐工程"
     proj.mkdir()
     (proj / "script.gal").write_text(
         "@character 甲 #ffffff\n@label start\n@music bgm\n@cg 结尾图\n@camera zoom 1.0 1.2\n"
-        "@[甲] 你好\n@end\n",
+        "@video 开场\n@[甲] 你好\n@end\n",
         encoding="utf-8")
     out = tmp_path / "web"
     stat = W.build_web(str(proj), str(out))
     assert "music" not in stat["unsupported"], "music 已经支持了，不该再报不支持"
     assert "cg" not in stat["unsupported"], "cg 已经支持了，不该再报不支持"
-    assert "camera" in stat["unsupported"], "桌面有、手机端没有的指令必须标注"
+    assert "camera" not in stat["unsupported"], "camera 已经支持了（zoom/pan/shake/reset）"
+    assert "video" in stat["unsupported"], "桌面有、手机端没有的指令必须标注"
     pack = json.loads((out / "pack.json").read_text(encoding="utf-8"))
-    assert "camera" in pack["unsupported"]
+    assert "video" in pack["unsupported"]
 
 
 # ============ 2. JS 侧：node 直接跑（不需要浏览器）============

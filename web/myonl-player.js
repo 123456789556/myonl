@@ -27,10 +27,95 @@
   const assets = {};
   let L = LAYOUT.layoutFor(window.innerWidth, window.innerHeight);
 
+  // P64：镜头。@camera 在桌面端早就有，手机端之前直接进 unsupported。
+  // 语义对齐桌面 runtime：zoom 的终值是持久状态（进存档），pan/shake 是瞬时演出。
+  const cam = {
+    zoom: 1, zoomFrom: 1, zoomTo: 1, zoomT0: 0, zoomDur: 0,
+    panX: 0, panY: 0, panFromX: 0, panFromY: 0, panToX: 0, panToY: 0,
+    panT0: 0, panDur: 0,
+    shakeUntil: 0, shakeAmp: 0, sx: 0, sy: 0,
+  };
+  const ZOOM_MS = 620;
+
+  function applyCamera(kind, args) {
+    const t = performance.now();
+    const a0 = args && args[0];
+    const a1 = args && args[1];
+    if (kind === "zoom") {
+      // 从"当前实际缩放"补间到目标：连续两条 zoom 不会跳变
+      cam.zoomFrom = cam.zoom;
+      cam.zoomTo = Number(a1) || 1;
+      cam.zoomT0 = t;
+      cam.zoomDur = ZOOM_MS;
+    } else if (kind === "pan") {
+      const dir = String(a0 || "");
+      const secs = Math.max(0.2, Number(a1) || 1);
+      const dist = Math.min(L.viewW, L.viewH) * 0.14;
+      let tx = cam.panX;
+      let ty = cam.panY;
+      if (dir === "左") tx -= dist;
+      else if (dir === "右") tx += dist;
+      else if (dir === "上") ty -= dist;
+      else if (dir === "下") ty += dist;
+      cam.panFromX = cam.panX; cam.panFromY = cam.panY;
+      cam.panToX = tx; cam.panToY = ty;
+      cam.panT0 = t; cam.panDur = secs * 1000;
+    } else if (kind === "shake") {
+      const secs = Math.max(0.1, Number(a0) || 0.5);
+      const amp = Math.abs(Number(a1) || 12);
+      cam.shakeUntil = t + secs * 1000;
+      cam.shakeAmp = Math.min(amp, Math.min(L.viewW, L.viewH) * 0.12);
+    } else if (kind === "reset") {
+      const secs = Math.max(0.2, Number(a0) || 0.6);
+      cam.zoomFrom = cam.zoom; cam.zoomTo = 1; cam.zoomT0 = t; cam.zoomDur = secs * 1000;
+      cam.panFromX = cam.panX; cam.panFromY = cam.panY;
+      cam.panToX = 0; cam.panToY = 0; cam.panT0 = t; cam.panDur = secs * 1000;
+    }
+  }
+
+  function easeInOut(p) {
+    return p < 0.5 ? 2 * p * p : 1 - Math.pow(-2 * p + 2, 2) / 2;
+  }
+
+  function updateCam(t) {
+    if (cam.zoomDur > 0) {
+      const p = Math.min(1, (t - cam.zoomT0) / cam.zoomDur);
+      cam.zoom = cam.zoomFrom + (cam.zoomTo - cam.zoomFrom) * easeInOut(p);
+      if (p >= 1) { cam.zoom = cam.zoomTo; cam.zoomDur = 0; }
+    }
+    if (cam.panDur > 0) {
+      const p = Math.min(1, (t - cam.panT0) / cam.panDur);
+      const e = easeInOut(p);
+      cam.panX = cam.panFromX + (cam.panToX - cam.panFromX) * e;
+      cam.panY = cam.panFromY + (cam.panToY - cam.panFromY) * e;
+      if (p >= 1) { cam.panX = cam.panToX; cam.panY = cam.panToY; cam.panDur = 0; }
+    }
+    cam.sx = 0;
+    cam.sy = 0;
+    if (t < cam.shakeUntil) {
+      const left = (cam.shakeUntil - t) / 1000;
+      const decay = Math.min(1, left * 1.6);       // 尾巴渐弱，别戛然而止
+      cam.sx = (Math.random() * 2 - 1) * cam.shakeAmp * decay;
+      cam.sy = (Math.random() * 2 - 1) * cam.shakeAmp * decay;
+    }
+  }
+
+  // 平移/抖动会把画面推到画布外，所以底图要按偏移量多铺一点，别露黑边
+  function sceneMargin() {
+    const offX = (Math.abs(cam.panX) + Math.abs(cam.sx)) * 2 / L.viewW;
+    const offY = (Math.abs(cam.panY) + Math.abs(cam.sy)) * 2 / L.viewH;
+    const out = Math.max(1 + offX, 1 + offY) * 1.02;
+    const z = cam.zoom > 0 ? cam.zoom : 1;
+    return out / Math.min(1, z);
+  }
+
   const state = {
     scene: "title",        // title | game | ending
     say: null,
     lines: [],
+    fadeFromBg: "",        // P64：背景/CCG 交叉淡入的前一张
+    fadeT0: 0,
+    fadeDur: 0,
     typeStart: 0,          // 本次打字开始的时间
     typedBefore: 0,        // 转屏前已显示的字数（重排后按比例续上）
     choice: null,
@@ -303,11 +388,19 @@
     if (!ev) return;
     switch (ev.type) {
       case "bg":
+        if (state.bg && state.bg !== (ev.image || "")) {
+          state.fadeFromBg = state.bg;          // 记下旧背景做交叉淡入
+          state.fadeT0 = performance.now();
+          state.fadeDur = 280;
+        }
         state.bg = ev.image || "";
         state.cg = "";          // 切回背景：CG 退场
         break;
       case "cg":
         state.cg = ev.name || "";
+        break;
+      case "camera":
+        applyCamera(ev.kind || "", ev.args || []);
         break;
       case "show":
       case "hide":
@@ -377,6 +470,9 @@
     state.bg = "";
     state.cg = "";
     state.sprites = [];
+    cam.zoom = 1; cam.zoomDur = 0; cam.zoomTo = 1; cam.zoomFrom = 1;
+    cam.panX = 0; cam.panY = 0; cam.panDur = 0;
+    cam.shakeUntil = 0;
     if (fromSave) {
       const saved = localStorage.getItem(saveKey());
       if (saved) vm.load(saved);
@@ -384,10 +480,15 @@
       vm.restart();
       try { localStorage.removeItem(saveKey()); } catch (e) { /* ignore */ }
     }
-    // 读档后补一次"当前画面"：让 bg/立绘/CG 先对上，再继续推进
+    // 读档后补一次"当前画面"：让 bg/立绘/CG/镜头先对上，再继续推进
     state.bg = vm.state.bg || "";
     state.cg = vm.state.cg || "";
     state.sprites = (vm.state.sprites || []).slice();
+    const zoom = Number(vm.state.cameraZoom) || 1;
+    if (zoom !== cam.zoom && zoom !== 1) {
+      cam.zoomFrom = cam.zoom; cam.zoomTo = zoom;
+      cam.zoomT0 = performance.now(); cam.zoomDur = ZOOM_MS;
+    }
     // P62：音乐也要续上（存档只记名字，不记播放进度——重头放，玩家基本感知不到）
     if (fromSave && vm.state.music) playMusic(vm.state.music, 0, 0);
     next();
@@ -465,20 +566,43 @@
   });
 
   // ---------- 绘制 ----------
-  function drawBackground() {
-    const img = state.bg && assets[state.bg];
-    if (img) {
-      const scale = Math.max(L.viewW / img.width, L.viewH / img.height);  // cover：宁可裁不压扁
-      const dw = img.width * scale;
-      const dh = img.height * scale;
+  function blitCover(img, alpha) {
+    const m = sceneMargin();
+    const scale = Math.max(L.viewW / img.width, L.viewH / img.height) * m;
+    const dw = img.width * scale;
+    const dh = img.height * scale;
+    if (alpha !== undefined && alpha < 1) {
+      ctx.save();
+      ctx.globalAlpha = Math.max(0, alpha);
       ctx.drawImage(img, (L.viewW - dw) / 2, (L.viewH - dh) / 2, dw, dh);
+      ctx.restore();
+    } else {
+      ctx.drawImage(img, (L.viewW - dw) / 2, (L.viewH - dh) / 2, dw, dh);
+    }
+  }
+
+  function drawBackground() {
+    // 交叉淡入：旧背景先铺满，新背景按进度盖上去 —— 硬切太生硬
+    let t = 1;
+    if (state.fadeDur > 0) {
+      t = Math.min(1, (performance.now() - state.fadeT0) / state.fadeDur);
+      if (t >= 1) { state.fadeDur = 0; state.fadeFromBg = ""; }
+    }
+    const prev = state.fadeFromBg && assets[state.fadeFromBg];
+    const img = state.bg && assets[state.bg];
+    if (prev && t < 1) blitCover(prev, 1);
+    if (img) {
+      blitCover(img, prev && t < 1 ? t : 1);
       return;
     }
     const g = ctx.createLinearGradient(0, 0, 0, L.viewH);
     g.addColorStop(0, "#1a1d2b");
     g.addColorStop(1, "#0b0d14");
+    ctx.save();
+    ctx.globalAlpha = prev ? t : 1;
     ctx.fillStyle = g;
     ctx.fillRect(0, 0, L.viewW, L.viewH);
+    ctx.restore();
   }
 
   function drawSprites() {
@@ -514,10 +638,7 @@
       ctx.fillText("CG 素材缺失：" + state.cg, L.viewW / 2, L.viewH / 2);
       return;
     }
-    const scale = Math.max(L.viewW / img.width, L.viewH / img.height);   // cover
-    const dw = img.width * scale;
-    const dh = img.height * scale;
-    ctx.drawImage(img, (L.viewW - dw) / 2, (L.viewH - dh) / 2, dw, dh);
+    blitCover(img, 1);
   }
 
   function roundRect(x, y, w, h, r, fill, alpha) {
@@ -732,8 +853,24 @@
     });
   }
 
+  // 场景（背景 / 立绘 / CG）套一层镜头变换；对话框和选项永远不跟着镜头动
+  function drawScene() {
+    ctx.save();
+    const cx = L.viewW / 2;
+    const cy = L.viewH / 2;
+    ctx.translate(cx + cam.panX + cam.sx, cy + cam.panY + cam.sy);
+    ctx.scale(cam.zoom, cam.zoom);
+    ctx.translate(-cx, -cy);
+    drawBackground();
+    drawSprites();
+    drawCg();
+    ctx.restore();
+  }
+
   function frame() {
     const vis = visual();
+    const now = performance.now();
+    updateCam(now);
     if (state.error) {
       drawError();
     } else if (!pack) {
@@ -743,9 +880,7 @@
     } else if (state.scene === "ending") {
       drawEnding();
     } else {
-      drawBackground();
-      drawSprites();
-      drawCg();
+      drawScene();
       drawDialogue(vis);
       drawChoices(vis);
       drawMute();

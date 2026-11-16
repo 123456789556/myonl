@@ -142,4 +142,37 @@ ev = vm8.next();
 assert.strictEqual(ev.type, "bg");
 assert.strictEqual(vm8.state.cg, "");               // 切 bg → CG 退场
 
+// ---- 8. P64：@camera（zoom 持久 + reset 复原 + pan/shake 瞬时）----
+const vmC = createVM({ins: [
+  {op: "bg", image: "bg_a"},
+  {op: "camera", kind: "zoom", args: [1.0, 1.2]},
+  {op: "say", char: null, text: "推近"},
+  {op: "camera", kind: "shake", args: [0.6, 18]},
+  {op: "camera", kind: "pan", args: ["右", 1]},
+  {op: "camera", kind: "reset", args: [0.8]},
+  {op: "end"},
+]});
+ev = vmC.next();                                  // bg
+assert.strictEqual(ev.type, "bg");
+assert.strictEqual(vmC.state.cameraZoom, 1);
+ev = vmC.next();                                  // zoom
+assert.strictEqual(ev.type, "camera");
+assert.strictEqual(ev.kind, "zoom");
+assert.deepStrictEqual(ev.args, [1.0, 1.2]);
+assert.strictEqual(vmC.state.cameraZoom, 1.2);    // 终值是持久状态
+const savedCam = vmC.save();
+const vmD = createVM({ins: [{op: "say", char: null, text: "x"}, {op: "end"}]});
+assert.ok(vmD.load(savedCam));
+assert.strictEqual(vmD.state.cameraZoom, 1.2);    // 读档镜头还在
+ev = vmC.next();                                  // say
+assert.strictEqual(ev.type, "say");
+ev = vmC.next();                                  // shake
+assert.strictEqual(ev.kind, "shake");
+assert.strictEqual(vmC.state.cameraZoom, 1.2);    // 瞬时指令不改持久缩放
+ev = vmC.next();
+assert.strictEqual(ev.kind, "pan");
+ev = vmC.next();
+assert.strictEqual(ev.kind, "reset");
+assert.strictEqual(vmC.state.cameraZoom, 1);      // reset 回 1.0
+
 console.log("vm-smoke: 全部通过");

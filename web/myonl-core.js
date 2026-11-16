@@ -18,7 +18,7 @@
 
   const OPS = new Set([
     "character", "bg", "cg", "show", "hide", "say", "choice", "jump", "label",
-    "set", "if", "wait", "end", "nvl", "music", "sfx", "stop", "play",
+    "set", "if", "wait", "end", "nvl", "music", "sfx", "camera", "stop", "play",
   ]);
 
   function formatValue(v) {
@@ -77,6 +77,7 @@
       cg: "",            // P63：当前全屏 CG（空 = 没在放）
       sprites: [],       // [{char, expr, anim}]
       music: "",         // P62：当前背景音乐名（存档带上，读档能续上）
+      cameraZoom: 1,     // P64：@camera zoom 的持久缩放（reset 回 1.0，和桌面端 runtime 一致）
       ended: false,
       warnings: [],      // 不支持的指令：不崩，记下来给作者看
       choice: null,      // 当前挂起的选项
@@ -196,6 +197,14 @@
                     fadein: ins.fadein || 0, fadeout: ins.fadeout || 0};
           case "sfx":
             return {type: "sfx", sound: ins.sound || ""};
+          case "camera": {
+            // 与桌面端 runtime 同一套语义：zoom 的终值持久（进存档），pan/shake 是瞬时的
+            const kind = ins.kind || "";
+            const args = (ins.args || []).slice();
+            if (kind === "zoom") state.cameraZoom = Number(args[1]) || 1;
+            else if (kind === "reset") state.cameraZoom = 1;
+            return {type: "camera", kind: kind, args: args};
+          }
           case "end":
             state.ended = true;
             return {type: "end", final: true};
@@ -224,6 +233,7 @@
     function save() {
       return JSON.stringify({pc: state.pc, vars: state.vars, bg: state.bg,
                              cg: state.cg, music: state.music,
+                             cameraZoom: state.cameraZoom,
                              sprites: state.sprites, ended: state.ended,
                              framePc: frame.pc, frameRoot: frame.root});
     }
@@ -235,6 +245,7 @@
         state.bg = s.bg || "";
         state.cg = s.cg || "";
         state.music = s.music || "";
+        state.cameraZoom = Number(s.cameraZoom) || 1;
         state.sprites = s.sprites || [];
         state.ended = !!s.ended;
         frame = {ins: instrs, pc: Math.max(0, Number(s.pc) || 0), root: true};
@@ -251,6 +262,7 @@
       state.bg = "";
       state.cg = "";
       state.music = "";
+      state.cameraZoom = 1;
       state.sprites = [];
       state.ended = false;
       state.choice = null;
