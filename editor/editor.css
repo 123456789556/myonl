@@ -1910,8 +1910,9 @@ input[type="color"] {
   .menubar { padding: 0 6px; gap: 2px; }
   /* 搜索框 / 品牌字 / 面包屑在手机上只占高度，不给信息（工程路径手机上也改不了） */
   .menubar .mb-search, .menubar .mb-brand, .breadcrumb { display: none !important; }
-  /* 新手引导卡片别压到底部 tab 上 */
-  .ob-card { bottom: calc(96px + env(safe-area-inset-bottom)) !important; }
+  /* 新手引导卡片别压到底部 tab 上（tab 52 + 状态栏 30 + 间距） */
+  .ob-card { bottom: calc(104px + env(safe-area-inset-bottom)) !important;
+    max-height: 46dvh; overflow: auto; }
 
   .m-tabbar {
     display: flex; position: fixed; left: 0; right: 0; bottom: 30px; z-index: 84;
