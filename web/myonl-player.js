@@ -329,7 +329,22 @@
     next();
   }
 
-  canvas.addEventListener("pointerdown", onTap);
+  // P58：点击/触摸改成「按下 → 抬起时判断」。
+  // 原来 pointerdown 就推进，手指一滑（想拖动画面或误触）也会翻页；
+  // 现在位移 >12px 或按住 >1.2s 不算点击，判定为滑动/长按。
+  let tapStart = null;
+  canvas.addEventListener("pointerdown", (e) => {
+    tapStart = {x: e.clientX, y: e.clientY, t: performance.now(), id: e.pointerId};
+  });
+  canvas.addEventListener("pointerup", (e) => {
+    if (!tapStart || tapStart.id !== e.pointerId) return;
+    const moved = Math.hypot(e.clientX - tapStart.x, e.clientY - tapStart.y);
+    const dur = performance.now() - tapStart.t;
+    tapStart = null;
+    if (moved > 12 || dur > 1200) return;
+    onTap(e);
+  });
+  canvas.addEventListener("pointercancel", () => { tapStart = null; });
   document.addEventListener("keydown", (e) => {
     if (e.key === " " || e.key === "Enter" || e.key === "ArrowRight") onTap(e);
   });

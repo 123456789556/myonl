@@ -477,7 +477,7 @@
       if (zoomImg && $("uidZoomMask") && $("uidZoomMask").style.display !== "none") {
         zoomImg.src = url;   // 放大状态下调参数也能实时更新
       }
-      uidPositionStage();
+      uidApplyZoom();        // 顺带重排 stage 宽高 + 选择框
     } catch (e) {
       const stage = $("uidStage");
       if (stage) stage.classList.remove("on");
@@ -687,15 +687,92 @@
   function uidBuildStage() {
     const wrap = $("uidPreviewWrap");
     if (!wrap || $("uidStage")) return;
+    // P58：画布外面套一层滚动容器 + 缩放条。
+    // 竖屏/窄窗口下面板只有几十像素高，12px 的手柄手指根本抓不住——先放大再拖。
     wrap.insertAdjacentHTML("afterbegin",
+      '<div class="uid-zoom-bar" id="uidZoomBar">' +
+      '<button type="button" class="uid-zoom-btn" data-z="-0.25" title="缩小画布">−</button>' +
+      '<button type="button" class="uid-zoom-btn uid-zoom-val" id="uidZoomVal" title="点击回到 1x">1.0x</button>' +
+      '<button type="button" class="uid-zoom-btn" data-z="0.25" title="放大画布">＋</button>' +
+      '<span class="uid-zoom-hint">双指捏合 / Ctrl+滚轮 也能缩放</span>' +
+      "</div>" +
+      '<div class="uid-stage-scroll" id="uidStageScroll">' +
       '<div class="uid-stage" id="uidStage">' +
       '<img id="uidStageImg" alt="UI 设计预览" title="点击放大">' +
       '<div class="uid-drag-body" id="uidDragBody" title="拖动：上下移动对话框"></div>' +
       '<div class="uid-drag-edge" id="uidDragTop" title="拖上边缘：改对话框高度"></div>' +
       '<div class="uid-drag-edge-v" id="uidDragLeft" title="拖左边缘：改面板宽度"></div>' +
+      "</div>" +
       "</div>");
     uidBuildSel();
   }
+
+  // ===== P58：画布缩放（触控/鼠标都能调，1.0x ~ 3.0x） =====
+  let uidZoom = 1;
+
+  function uidApplyZoom() {
+    const scroll = $("uidStageScroll");
+    const stage = $("uidStage");
+    if (!scroll || !stage) return;
+    const [cw, ch] = uidCanvasSize();
+    const baseW = Math.max(200, scroll.clientWidth - 8);   // 1x = 容器宽
+    const w = Math.round(baseW * uidZoom);
+    stage.style.width = w + "px";
+    stage.style.height = Math.round((w * ch) / cw) + "px";
+    const val = $("uidZoomVal");
+    if (val) val.textContent = uidZoom.toFixed(1) + "x";
+    uidPositionStage();
+  }
+
+  function uidSetZoom(next) {
+    const z = Math.max(1, Math.min(3, Math.round(next * 4) / 4));
+    if (z === uidZoom) { uidApplyZoom(); return; }
+    uidZoom = z;
+    uidApplyZoom();
+  }
+
+  function uidBindZoom() {
+    const bar = $("uidZoomBar");
+    if (bar && !bar.dataset.bound) {
+      bar.dataset.bound = "1";
+      bar.addEventListener("click", (e) => {
+        const btn = e.target.closest("[data-z]");
+        if (btn) { uidSetZoom(uidZoom + Number(btn.dataset.z)); return; }
+        if (e.target.closest("#uidZoomVal")) uidSetZoom(1);
+      });
+    }
+    const scroll = $("uidStageScroll");
+    if (scroll && !scroll.dataset.zoomBound) {
+      scroll.dataset.zoomBound = "1";
+      // 桌面：Ctrl + 滚轮缩放（和 PPT / 画图软件一致）；否则交回滚动
+      scroll.addEventListener("wheel", (e) => {
+        if (!e.ctrlKey && !e.metaKey) return;
+        e.preventDefault();
+        uidSetZoom(uidZoom - Math.sign(e.deltaY) * 0.25);
+      }, {passive: false});
+      // 触屏：双指捏合缩放
+      let pinchStart = 0, pinchZoom0 = 1;
+      const dist = (t) => Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY);
+      scroll.addEventListener("touchstart", (e) => {
+        if (e.touches.length !== 2) return;
+        pinchStart = dist(e.touches);
+        pinchZoom0 = uidZoom;
+        uidPinching = true;
+      }, {passive: true});
+      scroll.addEventListener("touchmove", (e) => {
+        if (!uidPinching || e.touches.length !== 2 || !pinchStart) return;
+        const ratio = dist(e.touches) / pinchStart;
+        uidSetZoom(pinchZoom0 * ratio);
+      }, {passive: true});
+      scroll.addEventListener("touchend", (e) => {
+        if (e.touches.length < 2) { uidPinching = false; pinchStart = 0; }
+      }, {passive: true});
+      // 窗口变宽变窄（含竖屏转横屏）时 1x 的基准要重算
+      window.addEventListener("resize", () => { if ($("uidStage")) uidApplyZoom(); });
+      window.addEventListener("orientationchange", () => setTimeout(() => { if ($("uidStage")) uidApplyZoom(); }, 150));
+    }
+  }
+  let uidPinching = false;
 
   // ===== P57：PPT / 虚幻式可视化操控（选中框 + 八个手柄 + 角上的圆角手柄） =====
   // 之前只有三块拖拽热区，改圆角还得低头填数字。这里给面板加一套选择框：
@@ -736,6 +813,19 @@
       "border:1px solid #0b0d12;pointer-events:auto;cursor:move;z-index:4}",
       ".uid-sel-tag{position:absolute;right:0;top:-18px;font-size:11px;line-height:16px;",
       "padding:0 6px;color:#cfe0ff;background:rgba(11,13,18,.75);border-radius:3px;white-space:nowrap}",
+      // P58：缩放条 + 可滚动画布容器（竖屏下面板只有几十像素高，得能放大再拖）
+      ".uid-zoom-bar{display:flex;align-items:center;gap:6px;margin:0 0 6px}",
+      ".uid-zoom-btn{min-width:28px;height:24px;padding:0 6px;border-radius:4px;font-size:12px;",
+      "background:#1b2130;color:#cfe0ff;border:1px solid #2a3345;cursor:pointer}",
+      ".uid-zoom-btn:hover{border-color:#4f8cff;color:#fff}",
+      ".uid-zoom-val{min-width:44px}",
+      ".uid-zoom-hint{margin-left:auto;font-size:11px;color:#7d8899;white-space:nowrap}",
+      ".uid-stage-scroll{overflow:auto;max-height:62vh;border-radius:6px;",
+      "-webkit-overflow-scrolling:touch;touch-action:pan-x pan-y}",
+      // 触摸设备（手指比鼠标粗）：手柄整个放大 1.6 倍，transform 不影响定位只放大视觉 + 命中区
+      "body.uid-touch .uid-sel-h{transform:scale(1.6)}",
+      "body.uid-touch .uid-sel-r{transform:scale(1.7)}",
+      "body.uid-touch .uid-zoom-btn{height:32px;min-width:36px}",
     ].join("");
     const st = document.createElement("style");
     st.id = "uidSelStyle";
@@ -745,6 +835,7 @@
   uidStyleCanvas();
   uidBuildSkinControls();
   uidBuildStage();
+  uidBindZoom();
 
   function uidIdForKey(key) {
     for (const f of UID_FIELDS) {
@@ -965,8 +1056,9 @@
       uidDragStart("width", e);
     });
   }
-  document.addEventListener("mousemove", uidDragMove);
-  document.addEventListener("mouseup", uidDragEnd);
+  document.addEventListener("pointermove", uidDragMove);
+  document.addEventListener("pointerup", uidDragEnd);
+  document.addEventListener("pointercancel", uidDragEnd);
 
   // P57：八个手柄 + 圆角绿点接线（手柄各自带 data-h，拖哪个改哪个）
   const uidSelEl = $("uidSel");
@@ -996,8 +1088,9 @@
   if (uidStageEl && uidStageImgEl) {
     // 用 document 捕获 + 纯坐标判命中：不挑 target、也不要求精准戳手柄，
     // 落点落在面板里就接管，落在外面就放行（留给点图放大）。
-    document.addEventListener("mousedown", (e) => {
-      if (uidScene !== "dialog") return;
+    document.addEventListener("pointerdown", (e) => {
+      if (uidScene !== "dialog" || uidPinching || uidJustDragged) return;
+      if (e.pointerType === "touch") document.body.classList.add("uid-touch");
       const img = $("uidStageImg");
       if (!img) return;
       const box = img.getBoundingClientRect();
@@ -1011,7 +1104,8 @@
       const ly = e.clientY - box.top;
       const L = r.left * sx, R = (r.left + r.w) * sx;
       const T = r.top * sy, B = (r.top + r.h) * sy;
-      const hit = 14;                    // 命中带宽（屏幕 px）
+      // 手指比鼠标粗：触摸时命中带放大，免得「按下去偏 10px 就变成整块平移」
+      const hit = e.pointerType === "touch" ? 22 : 14;
       if (lx < L - hit || lx > R + hit || ly < T - hit || ly > B + hit) return;  // 面板外：不管
       const nearL = Math.abs(lx - L) <= hit;
       const nearR = Math.abs(lx - R) <= hit;

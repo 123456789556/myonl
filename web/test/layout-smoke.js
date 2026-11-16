@@ -11,7 +11,7 @@ function check(name, w, h, expectLandscape) {
   const L = layoutFor(w, h);
   assert.strictEqual(L.landscape, expectLandscape, name + "：横竖屏判定");
   assert.ok(L.viewW >= 1080 && L.viewH >= 1080, name + "：短边不小于 1080");
-  assert.ok(L.fs >= 28 && L.fs <= 64, name + "：字号在区间内（" + L.fs + "）");
+  assert.ok(L.fs >= 34 && L.fs <= 78, name + "：字号在区间内（" + L.fs + "）");
   assert.ok(L.panelH > L.lineH * 3, name + "：面板至少能放 3 行");
   assert.ok(L.panelY >= 0, name + "：面板不出顶");
   assert.ok(L.panelY + L.panelH <= L.viewH, name + "：面板不出底");

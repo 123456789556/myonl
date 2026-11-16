@@ -27,7 +27,9 @@
     const viewH = Math.round(shortSide * (aspect >= 1 ? 1 : 1 / aspect));
 
     const unit = Math.min(viewW, viewH);          // 字号/间距的基准
-    const fs = Math.round(clamp(unit / 26, 28, 64));
+    // P58：手机上字要能看清。短边 1080 时 42px 逻辑 ≈ 390 宽屏上的 15 CSS px（偏小），
+    // 改成短边的 1/22 ≈ 49px → 约 18 CSS px，横竖屏仍然一致。
+    const fs = Math.round(clamp(unit / 22, 34, 78));
     const lineH = Math.round(fs * 1.65);
     const nameSize = Math.round(fs * 1.18);
 
@@ -62,7 +64,8 @@
       maxTextRows: 5,          // 面板最多 5 行，再多等玩家点（不缩字）
       spriteH: Math.round(viewH * (landscape ? 0.94 : 0.72)),
       choiceW: Math.round(landscape ? Math.min(viewW * 0.62, 900) : viewW - marginX * 4),
-      choiceH: Math.round(clamp(fs * 2.6, 96, 150)),
+      // P58：选项按钮按手指来算——最小 120 逻辑 px（1080 短边下约 43 CSS px，接近 44pt 触摸推荐值）
+      choiceH: Math.round(clamp(fs * 2.8, 120, 170)),
       choiceGap: Math.round(fs * 0.7),
     };
   }
