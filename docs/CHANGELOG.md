@@ -2,6 +2,33 @@
 
 > 只记 release 级变化，一句话 + 证据链接。单项细节见 git 历史（原 archive/ 已删除）。
 
+## 2026-11-17（P88：砍掉「手机连接」—— 真机一次都没跑通，只留插线推成品）
+
+用户定的：`手机连接清掉，只要手机接根线把素材互传就好了`。
+
+**为什么砍**：扫码 + 局域网地址探测这条链路，真机从头到尾一次没验成 —— `adb devices` 一直
+只有表头，投屏还和 adb 抢通道。留着它就是在产品里摆一张兑现不了的承诺，比没有更糟。
+
+- **删** `engine/mobile_link.py` 的 `local_ips()` / `qr_data_url()` / `link_payload()`（连 segno 二维码、
+  局域网 IP 探测一起）；文件只剩 `adb_state()` / `adb_push()`，docstring 改成实话。
+- **删** `engine/editor.py` 的 `GET /api/mobile-link` 路由与 `_mobile_link` 处理函数。
+- **删** `editor_link.js` 里的「手机连接」整块面板（二维码 / 地址 / 复制 / 重新探测）及挂载、事件绑定；
+  头注释改成"插线推送 + AI 预留"两块。
+- **删** `editor.css` 的 `.lk-row / .lk-qr / .lk-side / .lk-url` 和对应的窄屏媒体查询（那些样式只服务二维码那张卡）。
+- **删** `tests/test_p74_mobile_link.py` 里 4 条二维码 / 地址测试，剩 9 条（adb 2 + AI 7）。
+  全套从 1103 → **1099 passed**。
+
+**保留的路径**（设置中心 → 工程与数据）：`插线推送到手机` —— 先在「导出」里导一次单文件，
+点「把成品推到手机」，落到 `Download/MYONL/`，手机任意浏览器打开就能玩。没插线/没开 USB 调试
+就如实报「没检测到手机：数据线插好后，手机上打开『开发者选项 → USB 调试』并允许授权」。
+工程和素材本身的搬运交给系统文件管理（手机插线当 U 盘用），引擎不再自己做一套同步。
+
+**顺手**：编辑器状态栏版本号 `rc11` → `rc13`（一直没跟上）。
+
+验收：设置中心截图 `_tools/tmp/audit/p88-settings.png` —— 没有「手机连接」字样、没有二维码元素，
+「插线推送到手机」「AI 助手（预留）」都在，console 错误 0；`tests/test_p74_mobile_link.py` 9 passed；
+全套 1099 passed。
+
 ## 2026-11-17（P87：发行包少两个前端文件 —— 手机连接在 exe 里是坏的）
 
 **这是本轮最要紧的一条**：`editor/index.html` 加载 `editor_link.js` / `editor_mobile.js`，

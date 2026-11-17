@@ -1,8 +1,8 @@
-/* P74：手机连接 / 插线推送 / AI 助手（预留）—— 三块面板塞进「设置」里。
+/* 插线推送 / AI 助手（预留）—— 两块面板塞进「设置」里。
 
-   思路：协同不需要另做一套同步。编辑器本身就是电脑上的一个 HTTP 服务，
-   手机打开同一个地址 = 同一个工程、同一份文件。所以这里只解决两件小事：
-   手机怎么找到地址（二维码），以及做好的成品怎么塞进手机（adb push）。
+   P88 起「手机连接」（扫码 + 局域网地址探测）整块砍掉了：真机上一次都没跑通，
+   留着只是张兑现不了的承诺。现在把成品送进手机只有一条路 —— 插数据线，
+   用 adb push 丢到 Download/MYONL/；工程和素材自己拷，不在这里做。
 
    DOM 全部由本文件创建：index.html 已经到行数硬限，不能再往里加结构。 */
 (function () {
@@ -23,70 +23,6 @@
     if (cls) e.className = cls;
     if (text !== undefined) e.textContent = text;
     return e;
-  }
-
-  // ---------- 手机连接 ----------
-  function buildLink() {
-    var box = el("div", "lk-block");
-    box.appendChild(el("div", "lk-title", "手机连接"));
-    var row = el("div", "lk-row");
-
-    var qrWrap = el("div", "lk-qr");
-    var img = el("img", "");
-    img.id = "lkQrImg";
-    img.alt = "手机扫码";
-    qrWrap.appendChild(img);
-    row.appendChild(qrWrap);
-
-    var side = el("div", "lk-side");
-    var url = el("div", "lk-url");
-    url.id = "lkUrl";
-    url.textContent = "探测中…";
-    side.appendChild(url);
-    var hint = el("div", "lk-hint");
-    hint.id = "lkHint";
-    side.appendChild(hint);
-
-    var btns = el("div", "lk-btns");
-    var copy = el("button", "lk-btn", "复制地址");
-    copy.id = "lkCopy";
-    btns.appendChild(copy);
-    var reload = el("button", "lk-btn", "重新探测");
-    reload.id = "lkReload";
-    btns.appendChild(reload);
-    side.appendChild(btns);
-    row.appendChild(side);
-    box.appendChild(row);
-    return box;
-  }
-
-  function loadLink() {
-    api("/api/mobile-link").then(function (r) {
-      var url = $("lkUrl"), img = $("lkQrImg"), hint = $("lkHint");
-      if (!url) return;
-      url.textContent = r.url || "没探测到局域网地址";
-      hint.textContent = r.hint || "";
-      if (img) {
-        if (r.qr) { img.src = r.qr; img.style.display = "block"; }
-        else { img.removeAttribute("src"); img.style.display = "none"; }
-      }
-      var copy = $("lkCopy");
-      if (copy) {
-        copy.onclick = function () {
-          var text = r.url || "";
-          if (!text) return;
-          if (navigator.clipboard && navigator.clipboard.writeText) {
-            navigator.clipboard.writeText(text).then(function () { copy.textContent = "已复制"; });
-          } else {
-            copy.textContent = "请手动复制";
-          }
-          setTimeout(function () { copy.textContent = "复制地址"; }, 1600);
-        };
-      }
-    }).catch(function () {
-      var hint = $("lkHint");
-      if (hint) hint.textContent = "读不到连接信息（后端没响应）";
-    });
   }
 
   // ---------- 插线推送 ----------
@@ -203,15 +139,12 @@
     if (!modal || mounted) return;
     var anchor = modal.querySelector(".modal-hint");
     var wrap = el("div", "lk-wrap");
-    wrap.appendChild(buildLink());
     wrap.appendChild(buildAdb());
     wrap.appendChild(buildAi());
     if (anchor && anchor.parentNode) anchor.parentNode.insertBefore(wrap, anchor);
     else modal.appendChild(wrap);
     mounted = true;
 
-    var reload = $("lkReload");
-    if (reload) reload.onclick = loadLink;
     var check = $("adbCheck");
     if (check) check.onclick = function () { loadAdb(false); };
     var push = $("adbPush");
@@ -229,7 +162,6 @@
     var ping = $("aiPing");
     if (ping) ping.onclick = pingAi;
 
-    loadLink();
     loadAdb(true);
     loadAi();
   }

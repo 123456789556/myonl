@@ -2448,18 +2448,6 @@ input[type="color"] {
 }
 .lk-block { display: flex; flex-direction: column; gap: 8px; }
 .lk-title { font-size: 13px; font-weight: 600; color: var(--text); letter-spacing: .02em; }
-.lk-row { display: flex; gap: 16px; align-items: flex-start; }
-.lk-qr {
-  width: 132px; height: 132px; flex: 0 0 auto;
-  border-radius: var(--r-lg); background: #e8ecf6;
-  display: flex; align-items: center; justify-content: center; overflow: hidden;
-}
-.lk-qr img { width: 132px; height: 132px; display: block; image-rendering: pixelated; }
-.lk-side { min-width: 0; flex: 1 1 auto; display: flex; flex-direction: column; gap: 6px; }
-.lk-url {
-  font-family: ui-monospace, Consolas, "Cascadia Mono", monospace;
-  font-size: 14px; color: var(--blue); word-break: break-all; line-height: 1.5;
-}
 .lk-hint { font-size: 12px; line-height: 1.65; color: var(--subtext1); }
 .lk-btns { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 2px; }
 .lk-btn {
@@ -2477,10 +2465,6 @@ input[type="color"] {
   color: var(--text); font-size: 13px; font-family: inherit;
 }
 .lk-field input:focus { outline: none; border-color: var(--blue); }
-@media (max-width: 560px) {
-  .lk-row { flex-direction: column; }
-  .lk-qr, .lk-qr img { width: 168px; height: 168px; margin: 0 auto; }
-}
 /* P74：手机上设置中心的分页从左侧竖列改成顶部横排。
    原来 .set-tabs 固定 132px 竖列，390 宽的屏幕上先被吃掉三分之一，
    右边只剩一百多像素给内容 —— 看着像「挤在角落里」。 */

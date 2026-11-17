@@ -786,9 +786,8 @@ class _EditorHandler(BaseHTTPRequestHandler):
         ("POST", "/api/export-web"): "_export_web",
         ("POST", "/api/export-single"): "_export_single",
         ("POST", "/api/export-portable"): "_export_portable",
-        # P74：手机 ↔ 电脑。协同本身就是「同一个 HTTP 服务 + 手机浏览器」，
-        # 这里只解决「手机怎么找到地址」和「插线怎么把成品送过去」。
-        ("GET", "/api/mobile-link"): "_mobile_link",
+        # P88：手机「连接」（扫码 / 局域网发现）砍了 —— 只剩插线推成品。
+        # 素材互传交给数据线（手机当 U 盘 / 文件管理器），不再自己做一套同步。
         ("GET", "/api/adb"): "_adb_get",
         ("POST", "/api/adb"): "_adb_push",
         # P74：AI 助手配置（预留；key 只存用户目录，不进工程/导出包）
@@ -1209,17 +1208,6 @@ class _EditorHandler(BaseHTTPRequestHandler):
             except (TypeError, ValueError):
                 pass
         return 8790
-
-    def _mobile_link(self, parsed=None) -> None:
-        """「手机连接」卡片：局域网地址 + 二维码。
-
-        手机打开同一个地址就是同一个编辑器、同一份工程 —— 协同不需要另做一套同步。
-        """
-        from . import mobile_link
-
-        root = str(getattr(self.app, "project_root", "") or "")
-        self._send_json(200, mobile_link.link_payload(
-            self._server_port(), os.path.basename(os.path.normpath(root)) if root else ""))
 
     def _adb_get(self, parsed=None) -> None:
         from . import mobile_link
