@@ -8,6 +8,10 @@ on:
     tags:
       - "apk-*"
 
+# 发 Release 要写权限
+permissions:
+  contents: write
+
 jobs:
   apk:
     runs-on: ubuntu-latest
@@ -66,3 +70,19 @@ jobs:
           name: myonl-apk
           path: out/*.apk
           if-no-files-found: error
+
+      # 挂到 Release，这样不登录 GitHub 也能点下来直接装
+      - name: 发 Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          name: "MYONL 安卓包 ${{ github.ref_name }}"
+          body: |
+            直接装：下载下面的 .apk（约 3.7 MB）传进手机，允许"未知来源"安装即可。
+
+            - 覆盖安装不会丢档（签名固定）；**卸载**才会清空存档。
+            - 换手机/换包名之前，先在游戏里「导出」一次存档码。
+            - 竖屏横屏都支持，转屏自动重排；返回键先关面板、再开菜单、最后才退出。
+          files: out/*.apk
+          fail_on_unmatched_files: true
+
