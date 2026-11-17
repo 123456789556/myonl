@@ -3,7 +3,7 @@
 [简体中文](README.md) | **English**
 
 ![tests](https://github.com/123456789556/myonl/actions/workflows/tests.yml/badge.svg?branch=main)
-![Release](https://img.shields.io/badge/release-v1.0.0--rc10-blue)
+![Release](https://img.shields.io/badge/release-v1.0.0--rc15-blue)
 ![Windows](https://img.shields.io/badge/Windows-10%2021H2%2B%20%7C%2011-0078D4)
 ![Python](https://img.shields.io/badge/Python-3.9%2B-3776AB)
 ![License](https://img.shields.io/badge/License-MIT-green)
