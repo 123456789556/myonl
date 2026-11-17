@@ -75,9 +75,8 @@
       spriteH: Math.round(landscape
         ? viewH * 0.92
         : Math.min(viewH * 0.86, viewH - panelH - bottom - 6)),
-      // 横屏选项不能铺满：1686 长的画布上 0.62 宽（约 480 CSS）几乎横贯整屏，
-      // 两个按钮像两条横幅压在人物腰上。收到 0.46，居中，人还能看见。
-      choiceW: Math.round(landscape ? Math.min(viewW * 0.46, 780) : viewW - marginX * 4),
+      // 横屏选项靠左占 0.42：再宽就压到人物身上，再窄中文字会换行
+      choiceW: Math.round(landscape ? Math.min(viewW * 0.42, 720) : viewW - marginX * 4),
       // P58：选项按钮按手指来算——最小 120 逻辑 px（1080 短边下约 43 CSS px，接近 44pt 触摸推荐值）
       choiceH: Math.round(clamp(fs * 2.8, 120, 170)),
       choiceGap: Math.round(fs * (landscape ? 1.0 : 0.7)),

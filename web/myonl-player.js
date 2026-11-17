@@ -994,11 +994,9 @@
     ctx.textBaseline = "top";
     const tx = rect.x + L.padX + vis.panel.padX;
     const maxRows = Math.min(rect.rows, L.maxTextRows);
-    // 竖屏面板是固定高度的：一句话就一行字，顶在角上会显得「盒子空了一半」。
-    // 行数少时把文字垂直居中，多行时自然从顶部排。
-    const usedH = Math.min(state.lines.length, maxRows) * L.lineH;
-    const ty = rect.y + Math.max(L.padY + vis.panel.padY,
-                                 Math.round((rect.h - usedH) / 2));
+    // 竖屏面板是固定高度（约占三分之一屏），台词就从顶部排：一行字居中的话，
+    // 看着像「对话框里空了一大块」；从顶部起就是标准对话框，下面的留白是给后续行的。
+    const ty = rect.y + L.padY + vis.panel.padY;
     for (let i = 0; i < state.lines.length && i < maxRows; i++) {
       const line = state.lines[i];
       const txt = line.slice(0, Math.max(0, Math.min(line.length, left)));
@@ -1078,7 +1076,11 @@
     // 选项组压在画面 66% 高度：立绘头顶约在 28%，42% 正好挡住脸；
     // 往下放到胸口一带，既不压角色也不贴屏幕底边
     const startY = Math.max(L.marginX, geom.centerY - totalH / 2);
-    const x = (L.viewW - bw) / 2;
+    // 横屏选项靠左：画布 1686 长、人物站右 63%，选项居中就正好压在人腰上。
+    // 靠左贴着画面边，人整个露出来，视线从字到人是一条横线。
+    const x = L.landscape
+      ? Math.round(L.viewW * 0.052)
+      : (L.viewW - bw) / 2;
 
     // 选项上方留一句「在答什么」：选项出现时对话框是藏起来的，
     // 光给几个按钮玩家会失去上下文（尤其横屏一整屏空着的时候）。
@@ -1093,8 +1095,9 @@
       ctx.shadowColor = "rgba(0,0,0,.72)";
       ctx.shadowBlur = 12;
       const qBottom = startY - Math.round(bh * 0.55);
+      const qCx = L.landscape ? x + bw / 2 : L.viewW / 2;
       qLines.forEach((ln, i, arr) => {
-        ctx.fillText(ln, L.viewW / 2, qBottom - (arr.length - 1 - i) * qfs * 1.3);
+        ctx.fillText(ln, qCx, qBottom - (arr.length - 1 - i) * qfs * 1.3);
       });
       ctx.restore();
       ctx.textAlign = "left";

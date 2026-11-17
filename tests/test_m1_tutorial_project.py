@@ -23,9 +23,14 @@ PROJECT = Path(__file__).resolve().parents[1] / "games" / "教程示例"
 
 def test_文件齐全():
     for rel in ("script.gal", "config.json", "settings.json", "gallery_config.json",
-                "pack_config.json", "icon.png", "images/bg_教室.png", "images/bg_天台.png",
+                "pack_config.json", "icon.png", "images/bg_天台.png",
                 "images/林晚_微笑.png", "images/林晚_生气.png"):
         assert (PROJECT / rel).is_file(), f"教程示例缺 {rel}"
+    # 背景图允许任意支持的扩展名：引擎按 MIME_BY_EXT 索引 png/jpg/webp，
+    # 一张 1600×900 的照片存 PNG 要 1.5 MB，存 JPEG 只有 240 KB —— 不该为了测试写死 png。
+    bgs = [p for p in (PROJECT / "images").glob("bg_教室.*")
+           if p.suffix.lower() in {".png", ".jpg", ".jpeg", ".webp"}]
+    assert bgs, "教程示例缺 images/bg_教室（png/jpg/webp）"
 
 
 def test_指令覆盖至少8种():
