@@ -431,7 +431,6 @@
   // 窄屏判定：窄，或者矮（手机横过来 844×390 也走手机布局，不跌回桌面三列）
   var mobileMQ = window.matchMedia("(max-width: 860px), (max-height: 520px)");
   var maskEl = null;
-  var dockEl = null;
 
   function closeDrawers() {
     mainEl.classList.remove("mobile-tree-open", "mobile-preview-open", "mobile-asset-open");
@@ -454,31 +453,16 @@
   }
 
   function buildMobileUI() {
-    if (dockEl) return;
+    if (maskEl) return;
     maskEl = document.createElement("div");
     maskEl.className = "mobile-mask";
     maskEl.addEventListener("click", closeDrawers);
     document.body.appendChild(maskEl);
 
-    dockEl = document.createElement("div");
-    dockEl.className = "mobile-dock";
-    dockEl.innerHTML =
-      '<button type="button" class="m-dock-btn" id="mDockTree" title="工程文件 / 章节大纲">📁</button>' +
-      '<button type="button" class="m-dock-btn" id="mDockAssets" title="素材库">🗂</button>' +
-      '<button type="button" class="m-dock-btn" id="mDockPreview" title="实时预览">👁</button>' +
-      '<button type="button" class="m-dock-btn m-dock-run" id="mDockRun" title="运行">▶</button>';
-    document.body.appendChild(dockEl);
-
-    $("mDockTree").addEventListener("click", function () { toggleDrawer("mobile-tree-open"); });
-    $("mDockAssets").addEventListener("click", function () { toggleDrawer("mobile-asset-open"); });
-    $("mDockPreview").addEventListener("click", function () { toggleDrawer("mobile-preview-open"); });
-    $("mDockRun").addEventListener("click", function () {
-      var run = $("btnRun");
-      if (run) run.click();
-    });
-
     // P65：手机端底部 tab。真机上「右上 4 个浮圆按钮 + 三行顶栏」把正文挤成半屏，
-    // 改成一条纯文字 tab：剧本 / 素材 / 外观 / 预览 / 导出（不放 emoji，图标风格不统一反而乱）。
+    // 改成一条纯文字 tab：剧本 / 素材 / 外观 / 预览 / 导出。
+    // P83：那套 emoji 悬浮 dock（📁🗂👁▶）已被这条 tab 完全替代，代码与样式一起删掉 ——
+    // 留着只会在两种条件下冒出来打架（而且 emoji 图标本身和整体风格不搭）。
     var tabbar = document.createElement("div");
     tabbar.className = "m-tabbar";
     tabbar.innerHTML =

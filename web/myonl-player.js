@@ -831,10 +831,13 @@
       const img = assets[key] || assets[sp.char];
       if (!img) return;
       const disp = animDisp(sp.char);
-      const h = baseH * (disp.scale > 0 ? disp.scale : 1);
+      const h = baseH * (disp.scale > 0 ? disp.scale : 1) * (L.landscape ? 1 : 0.95);
       // 竖长的全身立绘整张塞进横屏，只剩中间细长一条，人小得像贴纸。
       // 横屏就按 galgame 的常态构图：只画上 62%（头顶到膝），按屏高放大，膝盖以下让对话框压住。
-      const tall = L.landscape && img.height > img.width * 2.2;
+      // 阈值原来写 2.2，是按 368×1400（比例 3.8）那种细长图定的；苏晴这张 872×1915
+      // 比例 2.198，刚好卡在边界外 → 不走半身裁切，整人塞进 92% 屏高，看着像站远处。
+      // 1.5 覆盖所有竖构图立绘（正常立绘宽高比都 > 1.5）。
+      const tall = L.landscape && img.height > img.width * 1.5;
       const srcH = tall ? Math.round(img.height * 0.62) : img.height;
       const w = img.width * (h / srcH);
       const slotW = L.viewW / n;
@@ -843,9 +846,11 @@
       const cx = (L.landscape && n === 1)
         ? L.viewW * 0.63 + disp.x * k
         : slotW * (i + 0.5) + disp.x * k;
-      // 脚底锚点：竖屏贴「对话框上沿」（全身可见），横屏贴底边（人被面板压住小腿，
-      // 换取人物够大）。@anim 的 y 偏移在这个基准上叠加。
-      const bottom = (L.landscape ? L.viewH : L.panelY - 6) + disp.y * k;
+      // 脚底锚点：竖屏让脚沉进去小半截（panelH 的 9%）——脚贴在面板上沿时，
+      // 下面还有一大片地板，看着像浮在半空；让面板压住鞋尖，人才像站在前景。
+      const bottom = (L.landscape
+        ? L.viewH
+        : L.panelY + Math.round(L.panelH * 0.09)) + disp.y * k;
       const t0 = (state.spriteAt && state.spriteAt[sp.char]) || 0;
       const fadeIn = t0 ? Math.min(1, (nowT - t0) / 0.26) : 1;
       if (fadeIn <= 0) return;

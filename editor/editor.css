@@ -1793,7 +1793,7 @@ input[type="color"] {
 /* ---- P59：手机主界面（侧栏 / 预览变抽屉，编辑区铺满） ----
    三栏在 390px 宽下每栏只剩 100px，写不了剧本。窄屏只留编辑区，
    侧栏从左滑出、预览从下滑出，点遮罩或 Esc 关掉。 */
-.mobile-dock, .mobile-mask { display: none; }
+.mobile-mask { display: none; }
 
 @media (max-width: 860px), (max-height: 520px) {
   /* 手机上编辑器不该有横向滚动：任何藏到屏外的面板都会把 layout 宽度撑大，
@@ -1844,8 +1844,6 @@ input[type="color"] {
   .m-kb.act { background: #2f6df6; border-color: #2f6df6; color: #fff;
     font-family: inherit; }
   /* 键盘弹起来时，浮动按钮和状态栏让位，别跟快捷条叠 */
-  body.m-typing .mobile-dock,
-  body.m-kb-open .mobile-dock,
   body.m-kb-open .statusbar { display: none; }
   .left-pane { width: 100%; min-width: 0; border-right: none; }
   .right-pane {
@@ -1876,17 +1874,7 @@ input[type="color"] {
     z-index: 76; opacity: 0; pointer-events: none; transition: opacity .18s ease;
   }
   .mobile-mask.on { opacity: 1; pointer-events: auto; }
-  .mobile-dock {
-    display: flex; position: fixed; right: 14px; bottom: calc(40px + env(safe-area-inset-bottom));
-    gap: 10px; z-index: 82;
-  }
-  .m-dock-btn {
-    width: 52px; height: 52px; border-radius: 50%; font-size: 20px;
-    background: #1b2130; color: #cfe0ff; border: 1px solid #2a3345;
-    box-shadow: 0 6px 18px rgba(0,0,0,.5); cursor: pointer;
-  }
-  .m-dock-btn:active { transform: scale(.96); }
-  .m-dock-run { background: #2f6df6; border-color: #2f6df6; color: #fff; }
+  /* P83：.mobile-dock（emoji 浮圆按钮）已删——底部五个纯文字 tab 早就替代了它 */
   /* 手机上没有 hover，编辑器顶部工具条横向可滚，别折行 */
   .top-bar { overflow-x: auto; flex-wrap: nowrap; }
   .top-bar .top-btn { flex: 0 0 auto; }
@@ -1902,7 +1890,6 @@ input[type="color"] {
   .editor-toolbar, #richToolbar { display: none !important; }
   .main.m-tools-open .editor-toolbar { display: flex !important; }
   .main.m-tools-open #richToolbar { display: flex !important; }
-  .mobile-dock { display: none !important; }
   /* 最左活动栏（📁🗂️⚙️?）在手机上会把顶栏挤成一排图标：它的功能已由底部 tab 覆盖 */
   .activity-bar { display: none !important; }
   /* 手机上顶部只剩「文件」一个菜单：编辑/视图/运行/帮助的功能都在 ⋯ 工具条和 tab 里 */
