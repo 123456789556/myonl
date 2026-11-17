@@ -800,7 +800,11 @@
       const srcH = tall ? Math.round(img.height * 0.62) : img.height;
       const w = img.width * (h / srcH);
       const slotW = L.viewW / n;
-      const cx = slotW * (i + 0.5) + disp.x * k;
+      // 横屏单人时人物偏右三分之二处：左边留白给画面，对话框在底部压住腰——
+      // 完整居中的话，两侧空得对称又无聊，人贴在正中像证件照。
+      const cx = (L.landscape && n === 1)
+        ? L.viewW * 0.63 + disp.x * k
+        : slotW * (i + 0.5) + disp.x * k;
       // 脚底锚点：竖屏贴「对话框上沿」（全身可见），横屏贴底边（人被面板压住小腿，
       // 换取人物够大）。@anim 的 y 偏移在这个基准上叠加。
       const bottom = (L.landscape ? L.viewH : L.panelY - 6) + disp.y * k;
@@ -1164,14 +1168,14 @@
       ctx.restore();
       ctx.filter = "none";
       const rv = ctx.createRadialGradient(W / 2, H * 0.26, 0, W / 2, H * 0.26, Math.max(W, H) * 0.78);
-      rv.addColorStop(0, "rgba(9,11,17,.20)");
-      rv.addColorStop(.60, "rgba(9,11,17,.56)");
-      rv.addColorStop(1, "rgba(9,11,17,.96)");
+      rv.addColorStop(0, "rgba(9,11,17,.12)");
+      rv.addColorStop(.60, "rgba(9,11,17,.38)");
+      rv.addColorStop(1, "rgba(9,11,17,.86)");
       ctx.fillStyle = rv;
       ctx.fillRect(0, 0, W, H);
       const gb = ctx.createLinearGradient(0, H * 0.42, 0, H);
       gb.addColorStop(0, "rgba(9,11,17,0)");
-      gb.addColorStop(1, "rgba(9,11,17,.94)");
+      gb.addColorStop(1, "rgba(9,11,17,.78)");
       ctx.fillStyle = gb;
       ctx.fillRect(0, H * 0.42, W, H * 0.58);
     } else {
@@ -1185,6 +1189,23 @@
       rg.addColorStop(1, "rgba(79,140,255,0)");
       ctx.fillStyle = rg;
       ctx.fillRect(0, 0, W, H);
+    }
+
+    // 横屏标题页：光有一张卡片 + 一片（被压暗的）背景，看着像启动屏不像作品页。
+    // 把工程里的全身立绘右侧立一个当主视觉，左边卡片就是标题，右边是人 —— 一眼是 galgame。
+    if (land) {
+      const heroName = Object.keys(assets).find(n => /全身/.test(n));
+      const hero = heroName && assets[heroName];
+      if (hero && hero.width && hero.height) {
+        const tallSrc = hero.height > hero.width * 2.2;
+        const srcH = tallSrc ? Math.round(hero.height * 0.66) : hero.height;
+        const hh = H * 0.97;
+        const hw = hero.width * (hh / srcH);
+        ctx.save();
+        ctx.globalAlpha = 0.97;
+        ctx.drawImage(hero, 0, 0, hero.width, srcH, W * 0.72 - hw / 2, H - hh, hw, hh);
+        ctx.restore();
+      }
     }
 
     let hasSave = false;
@@ -1281,6 +1302,23 @@
     drawSprites();
     drawCg();
     drawFg();
+    ctx.restore();
+    drawVignette();
+  }
+
+  /* 横屏暗角：横屏画面宽，背景常常是一片渐变，边角不收一下就容易「一整块平色」。
+     压在场景之上、UI 之下，边缘收暗、视线往里收，看着像一张画面而不是一个网页。 */
+  function drawVignette() {
+    if (!L.landscape) return;
+    const g = ctx.createRadialGradient(
+      L.viewW / 2, L.viewH * 0.46, Math.round(L.viewH * 0.30),
+      L.viewW / 2, L.viewH * 0.52, Math.round(Math.max(L.viewW, L.viewH) * 0.66));
+    g.addColorStop(0, "rgba(0,0,0,0)");
+    g.addColorStop(0.62, "rgba(0,0,0,.10)");
+    g.addColorStop(1, "rgba(4,6,12,.46)");
+    ctx.save();
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, L.viewW, L.viewH);
     ctx.restore();
   }
 
