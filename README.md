@@ -3,7 +3,7 @@
 **简体中文** | [English](README.en.md)
 
 [![tests](https://github.com/123456789556/myonl/actions/workflows/tests.yml/badge.svg?branch=main)](https://github.com/123456789556/myonl/actions/workflows/tests.yml)
-![Release](https://img.shields.io/badge/release-v1.0.0--rc11-blue)
+![Release](https://img.shields.io/badge/release-v1.0.0--rc15-blue)
 ![Windows](https://img.shields.io/badge/Windows-10%2021H2%2B%20%7C%2011-0078D4)
 ![Python](https://img.shields.io/badge/Python-3.9%2B-3776AB)
 ![License](https://img.shields.io/badge/License-MIT-green)
@@ -12,6 +12,17 @@
 
 > **这是一个引擎工具（给创作者用），不是游戏作品**；仓库里的小样板只是可以随便改的起点。
 > **主线已经是手机端**：同一个工程 → 竖屏/横屏都能跑的网页包 → 安卓 APK；桌面端是并行出口，不是唯一出口。
+
+## 一部真的作品：《研修日志》
+
+引擎能不能做出东西，看这个而不是看说明：`games/研修日志/` 是一部 **12~15 分钟**的短篇 ——
+5 章、281 句台词、一个分支、两个结局（要不要把十七张照片贴到那条快拆的街的卷帘门上）。
+7 张真背景、5 张立绘、6 段音频全部随工程带，`missing []`。
+
+- **手机上直接玩**：`dist/web/研修日志.html`（单文件 2.6 MB，传进手机用任何浏览器打开，竖屏横屏都满屏）
+- **改它**：编辑器打开 `games/研修日志/`，左栏点 `script.gal`，改一句就 `Ctrl+S`
+- **它同时是回归样本**：`tests/test_p89_mobile_branch_and_game.py` 盯着「脚本能解析 / 两个结局 label 都在 /
+  剧本引用的图一张不缺」—— 这个作品坏掉，测试先红
 
 ## 手机端优先（现在的主线）
 
