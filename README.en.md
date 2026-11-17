@@ -3,34 +3,74 @@
 [简体中文](README.md) | **English**
 
 ![tests](https://github.com/123456789556/myonl/actions/workflows/tests.yml/badge.svg?branch=main)
-![Release](https://img.shields.io/badge/release-v1.0.0--rc15-blue)
-![Windows](https://img.shields.io/badge/Windows-10%2021H2%2B%20%7C%2011-0078D4)
+![Release](https://img.shields.io/badge/release-apk--6%20%2B%20v1.0.0--rc19-blue)
+![Android](https://img.shields.io/badge/Android-7.0%2B%20phone%20%26%20tablet-3DDC84)
+![Windows](https://img.shields.io/badge/Windows-editor%20%2B%20packager-0078D4)
 ![Python](https://img.shields.io/badge/Python-3.9%2B-3776AB)
 ![License](https://img.shields.io/badge/License-MIT-green)
 
-**A fully offline, MIT-licensed visual-novel engine and authoring tool for Windows.**
-Write a plain-text script, preview it live, and package it into a build your players double-click — no Python on their machine, no installer, no network.
+**A fully offline, MIT-licensed visual-novel engine and authoring tool.**
+
+Write a plain-text script, preview it live, and ship it as a single-file HTML bundle that fills a
+phone screen in both orientations, as an Android APK, or as a Windows folder your player
+double-clicks — no Python on their machine, no installer, no network.
 
 > This is an **engine/tool for creators**, not a game. The bundled sample is a starting point you are meant to rewrite.
-> Windows 10 21H2+ / Windows 11 · Python 3.9+ · pygame-ce · MIT · 100% offline
+> **Player side targets phones and Android tablets.** The Windows desktop build ships in parallel.
+> Editor / packager: Windows 10 21H2+ / Windows 11 · Python 3.9+ · pygame-ce · MIT · 100% offline
 
-![Dialogue and choices](docs/images/dialogue-choices.jpg)
+## Grab something playable
 
-## The short version
+| You want | Take | Size |
+| :--- | :--- | :--- |
+| Android phone or tablet, installed | [**MYONL-apk-6.apk**](https://github.com/123456789556/myonl/releases/download/apk-6/MYONL-apk-6.apk) | 3.6 MB |
+| Any browser, nothing installed | a single-file HTML you exported | ~3.0 MB |
+| Windows, double-click (editor + packager) | the Windows no-install zip on the Releases page | 66.5 MB |
 
-- **Write** — `script.gal` is plain text with 24 directives; any editor can open it
-- **See** — the built-in web editor puts script on the left and a live preview on the right; one line change, half a second to picture
-- **Ship** — one click packs a folder your player double-clicks. No Python, no config, nothing to install
+The APK targets `minSdk` 24 (Android 7.0); one package serves phones and Android tablets and reflows
+in both orientations. Saves live in the app's own storage, and the APK is signed with a fixed key —
+upgrading replaces the package without wiping saves or asking you to uninstall.
 
-The whole engine ships as a **46 MB** package (`editor.exe` + bundled runtime). That size is the point: it is small enough to hand to someone over a chat app.
+## Phone and tablet first
+
+One project, three exits: a **single-file web bundle**, an **Android APK** (self-built WebView
+shell + fixed signing key, built by `.github/workflows/android-apk.yml`), and a **Windows folder**
+(double-click, no Python on the player's machine).
+
+Feeding the same code to a 390 px phone and an 800 px Android tablet is the part that needed pinning.
+The logical canvas is a constant 1080 short edge, so a fixed `px` value means 17 CSS px on the phone
+and 35 CSS px on the tablet — text doubles, a screen holds a dozen characters, and the whole thing
+reads as "the phone layout, magnified". So the layout is pinned to **physical CSS size**:
+
+- **Type size is back-derived from CSS**: target 18.5 CSS px → 51 logical px on a phone, 25 on a tablet;
+  it lands the same size in your eye on both.
+- **Body text caps at 720 CSS px** (~39 characters per line), which is what actually tames 1280×800
+  and 1024×600 tablet-landscape canvases.
+- **Sprite height follows the current dialogue panel**: portrait takes `min(86% screen height, panel
+  top - 6)`, so a one-line line puts the character at 71% screen height on a tablet and a long line
+  shrinks them back continuously. Landscape does not clamp — in galgames the character normally
+  stands on the bottom edge behind the box.
+
+Rotation tested end to end: phone 1080×2337 ↔ 2337×1080, tablet 1080×1728 ↔ 1728×1080 — scene,
+background and sprites stay continuous, `panelH` recomputes, zero `pageerror`.
+
+### `@video` frame sequences are budgeted on phones
+
+Frames live at `images/videos/<name>_001.png` and onward (`@video <name> fps=24`). On desktop you can
+cache them all; on a phone you cannot: **one 1080×1920 frame decodes to ~8 MB, so 10 s at 24 fps is
+240 frames** — the first loop alone would eat 2 GB and the game goes white. The player keeps only the
+**14 most recently used frames**, warms the first three on entry (otherwise the first frame is still
+loading and the screen flashes black), and releases everything when `@bg` takes over.
 
 ## What's inside
 
 **Player side**
 
-- Title / continue / load / settings / gallery menus, 10 save slots + quick save, each with thumbnail and chapter name
+- Title / continue / load / settings / gallery menus, 6 slots + auto save, each with a background
+  thumbnail, the line you were on, and a timestamp
 - Typewriter dialogue, automatic pagination for long passages, branching choices, backlog
 - Auto-play, skip (read-only content), hide-UI screenshot mode, fullscreen
+- Save export / import as a `MYONL1:` text code, so a slot moves between devices
 - CG and character-art gallery with unlock progress
 
 **Authoring side**
@@ -43,10 +83,16 @@ The whole engine ships as a **46 MB** package (`editor.exe` + bundled runtime). 
 
 ## Screens
 
-| | |
+| Phone portrait | Phone landscape |
 |---|---|
-| ![Title](docs/images/title.jpg) Title: "Continue" greys out when no save exists | ![Save](docs/images/save.jpg) Save: 10 slots + thumbnail + chapter name |
-| ![Gallery](docs/images/gallery.jpg) Gallery: CG and character-art tabs | ![Editor](docs/images/editor.jpg) Editor: scene editing + live preview |
+| ![Title](docs/images/m-title.jpg) | ![Save](docs/images/l-save.jpg) |
+| ![Dialogue](docs/images/m-game.jpg) | ![Menu](docs/images/m-menu.jpg) |
+
+| Android tablet |
+|---|
+| ![Tablet portrait](docs/images/t-game.jpg) ![Tablet landscape](docs/images/t-game-l.jpg) |
+
+![Video background](docs/images/m-video.jpg)
 
 ## What a script looks like
 
@@ -84,16 +130,18 @@ flowchart LR
   C --> D["engine/renderer<br/>scene / sprites / dialog / ui_pages"]
   D --> E["pygame-ce window<br/>logical canvas scaled 1280×720"]
   C --> F["engine/save<br/>label + offset"]
-  B --> G["engine/packaging<br/>pack into standalone folder"]
-  G --> H["editor.exe / MYONLPlayer.exe<br/>player double-clicks"]
-  B -.-> I["editor/<br/>web editor · live preview"]
+  B --> G["engine/webpack<br/>single-file bundle · frames inlined"]
+  G --> H["web/myonl-player.js<br/>phone / tablet player"]
+  G --> I["android/<br/>WebView shell → APK"]
+  B -.-> J["editor/<br/>web editor · live preview"]
 ```
 
-The same `parser → runtime → renderer` pipeline serves both the player window and the editor's right-hand preview: the preview is real engine rendering, not a mockup.
+The same `parser → runtime → asset manifest` pipeline serves the player window, the editor's
+right-hand preview, and the web bundle: the preview is real engine rendering, not a mockup.
 
 ## Quick start (release build, recommended)
 
-1. Unzip `MYONL-v1.0.0-rc10-windows.zip` anywhere **outside** `Program Files` (no admin rights needed)
+1. Unzip `MYONL-v1.0.0-rc19-windows.zip` anywhere **outside** `Program Files` (no admin rights needed)
 2. Double-click `editor/editor.exe`
 3. The editor opens the bundled `games/教程示例` project; live preview is on the right
 
@@ -104,7 +152,7 @@ Windows 10/11 ship WebView2, so nothing else is required. If the window does not
 ```powershell
 pip install -r requirements.txt
 
-# 1) Run the bundled sample (three-act story: hallway -> rooftop -> room)
+# 1) Run the bundled sample (three-act story: hallway -> rooftop -> classroom)
 py -3 -m engine.demo games/标准示例/script.gal --assets games/标准示例
 
 # 2) Create your own game
@@ -115,6 +163,9 @@ py -3 -m engine.editor --project games/我的第一个游戏
 
 # 4) Pack it into a double-clickable folder (dist/<game name>/)
 py -3 pack.py games/我的第一个游戏
+
+# 5) Export the single-file web bundle (this is what phones and tablets get)
+py -3 -c "from engine.webpack import build_single; build_single(r'games\我的第一个游戏', r'dist\web\game.html', title='game')"
 ```
 
 Turn on hot reload while writing:
@@ -126,14 +177,16 @@ py -3 -m engine.demo games/我的第一个游戏/script.gal --assets games/我�
 ## Tests and gates
 
 ```powershell
-py -3 -m pytest -q                    # full suite, 1021 cases (including slow, takes a while)
-py -3 -m pytest -q -m "not slow"      # daily run: 988 passed + 1 skipped (~67s)
+py -3 -m pytest -q -m "not slow"      # daily run (~70s)
+py -3 -m pytest -q                    # full suite: 1148 passed + 1 skipped
 py -3 -m pytest -q -m slow            # real packaging / full render / performance cases
 ```
 
 - Layers: `unit` / `ui` / `integration` / `slow`; coverage gate 80% for `engine/` (`tools/check_coverage.ps1`)
 - Type-check ratchet: `tools/check_types.ps1` (blocks new errors only, does not force a burn-down)
 - Interaction walkthrough: `py -3 tools/ui_walkthrough.py --game games/标准示例` (driven by real keyboard/mouse events, screenshots and asserts at every screen)
+- Layout contract: `web/test/layout-smoke.js` asserts "physical type size 17.5–19.5 CSS px" and
+  "≤41 characters per line" across phone portrait/landscape, tablet portrait/landscape and 1024×600
 
 > The release zip (`editor.exe` + bundled runtime) is **not** committed to Git. Reproduce it with `build_editor.bat` and `tools/build_release_zip.py`.
 
@@ -141,12 +194,14 @@ py -3 -m pytest -q -m slow            # real packaging / full render / performan
 
 | Path | Contents |
 |---|---|
-| `engine/` | Core: parser, runtime, rendering (10 render modules), saves, editor backend, packaging |
+| `engine/` | Core: parser, runtime, rendering (10 render modules), saves, editor backend, web packaging |
+| `web/` | Phone / tablet player (`myonl-player.js`, `myonl-layout.js`) and layout contract tests |
+| `android/` | APK project (WebView shell + fixed signing key + Gradle config) |
 | `editor/` | Web editor frontend (HTML/CSS/JS, no build step) |
-| `games/` | Sample projects (standard / tutorial / new-game templates) |
+| `games/` | Sample projects (研修日志 / standard / tutorial / new-game templates) |
 | `tests/` | Headless pytest suite (unit / ui / integration / slow) |
 | `tools/` | Gates and scripts (coverage / pyright / release verification / asset import) |
-| `docs/` | Getting started, product description, engine spec, developer and packaging guides |
+| `docs/` | Getting started, product description, engine spec, save & upgrade, developer and packaging guides |
 
 Documentation is written in Chinese. English coverage: this README and [`docs/en/quick-start.md`](docs/en/quick-start.md). The engine spec (`docs/engine_spec.md`) is Chinese-only for now.
 
@@ -154,10 +209,12 @@ Documentation is written in Chinese. English coverage: this README and [`docs/en
 
 - **Do I need to know Python?** No. The script is 24 directives. You only need Python if you want to modify the engine itself.
 - **Does it need a network connection?** No. Writing, previewing, packing and playing are all offline.
-- **macOS / Linux?** Windows only for now (10 21H2+ / 11). Cross-platform is in the backlog with no schedule.
-- **3D / multiplayer / mobile?** No. Visual novels only; the general-purpose-engine direction is explicitly refused.
+- **macOS / Linux?** The editor and packager are Windows-only for now. **The player side is not**: the web bundle runs in any modern browser, the APK runs on Android 7.0+.
+- **Do tablets need a separate build?** No. One APK serves phones and Android tablets; assets are shared and the layout reflows.
+- **3D / multiplayer?** No. Visual novels only; the general-purpose-engine direction is explicitly refused.
 - **Will editing the script break old saves?** No. Saves anchor on label + offset, not line numbers.
-- **How big is the output?** The runtime is about 46 MB and ships inside each game; the player machine needs no Python.
+- **Does upgrading wipe saves?** No. The APK is signed with a fixed key and upgraded in place; saves stay in the app's storage, and export/import is the fallback.
+- **How big is the output?** ~46 MB for the Windows runtime, ~3 MB for a single-file web bundle (assets inlined), ~3.8 MB for the APK.
 - **Is there built-in AI?** No. The engine exposes JSON control primitives that external scripts or AI can drive, but the product contains no model.
 - **Can I use the sample assets commercially?** Read `NOTICE` first; third-party assets carry their own terms.
 

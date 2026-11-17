@@ -459,6 +459,7 @@
         state.bg = ev.image || "";
         state.cg = "";          // 切回背景：CG 退场
         state.video = null;     // 视频背景也停（和桌面端 @bg 清 video 一致）
+        dropVideoCache();       // 帧图不跟着留：一段 10 秒 24fps 的序列能吃掉上百 MB
         break;
       case "cg":
         state.cg = ev.name || "";
@@ -472,6 +473,7 @@
       case "video":
         state.video = {name: ev.name || "", fps: ev.fps || 24,
                        t0: performance.now()};
+        warmVideo();
         break;
       case "camera":
         applyCamera(ev.kind || "", ev.args || []);
@@ -808,7 +810,8 @@
     state.sprites = (vm.state.sprites || []).slice();
     state.fg = vm.state.fg || null;
     state.anim = vm.state.anim || {};
-    state.video = vm.state.video || null;
+    state.video = vm.state.video ? Object.assign({}, vm.state.video) : null;
+    if (state.video) { state.video.t0 = performance.now(); warmVideo(); }
     const zoom = Number(vm.state.cameraZoom) || 1;
     if (zoom !== cam.zoom && zoom !== 1) {
       cam.zoomFrom = cam.zoom; cam.zoomTo = zoom;
@@ -980,26 +983,72 @@
 
   // ---------- 帧序列背景（P73）----------
   // @video 名 fps= → images/videos/名_001.png 起连续编号，按 fps 循环播。
-  // 帧图懒加载；还没加载完就把上一帧继续贴着，避免黑一下。
-  const videoCache = {};
-  function videoFrameImg() {
+  //
+  // P100（手机/平板）：帧图不能全留。一帧手机分辨率（1080×1920）解码后 8 MB 出头，
+  // 10 秒 24fps 就是 240 帧 —— 循环走完第一轮就吃掉 2 GB，手机上直接白屏。
+  // 所以只留「最近用过的 N 帧」（N 覆盖约半秒，够回头兜底），超出就丢掉引用交给 GC。
+  const VIDEO_KEEP = 14;
+  const videoCache = {};        // key → Image
+  const videoKeys = [];         // 最近使用的 key，越靠后越新
+  let videoCachedFor = "";      // 当前缓的是哪个视频（换视频就清空）
+
+  function dropVideoCache() {
+    for (const k of Object.keys(videoCache)) delete videoCache[k];
+    videoKeys.length = 0;
+    videoCachedFor = "";
+  }
+
+  function touchVideo(key, img) {
+    videoCache[key] = img;
+    const i = videoKeys.indexOf(key);
+    if (i >= 0) videoKeys.splice(i, 1);
+    videoKeys.push(key);
+    while (videoKeys.length > VIDEO_KEEP) delete videoCache[videoKeys.shift()];
+  }
+
+  function videoSeq() {
     const v = state.video;
     if (!v || !v.name) return null;
     const seq = (pack && pack.videos && pack.videos[v.name]) || null;
-    if (!seq || !seq.length) return null;
+    return (seq && seq.length) ? seq : null;
+  }
+
+  function videoLoad(name, i) {
+    const seq = videoSeq();
+    if (!seq) return;
+    const key = name + "#" + i;
+    if (videoCache[key]) return;
+    const img = new Image();
+    img.src = seq[i];
+    touchVideo(key, img);
+  }
+
+  // 进 @video 先把头几帧叫醒：不然第一帧还在读，画面黑一下才出来。
+  function warmVideo() {
+    const seq = videoSeq();
+    if (!seq) { dropVideoCache(); return; }
+    if (videoCachedFor !== state.video.name) {
+      dropVideoCache();
+      videoCachedFor = state.video.name;
+    }
+    const n = Math.min(3, seq.length);
+    for (let i = 0; i < n; i++) videoLoad(state.video.name, i);
+  }
+
+  function videoFrameImg() {
+    const seq = videoSeq();
+    if (!seq) return null;
+    const v = state.video;
     const fps = v.fps > 0 ? v.fps : 24;
     const len = seq.length;
     const raw = Math.floor(((performance.now() - (v.t0 || 0)) / 1000) * fps);
     const idx = ((raw % len) + len) % len;
-    const key = v.name + "#" + idx;
-    let img = videoCache[key];
-    if (!img) {
-      img = new Image();
-      img.src = seq[idx];
-      videoCache[key] = img;
-    }
-    if (img.complete && img.naturalWidth) return img;
-    for (let d = 1; d < len; d++) {
+    videoLoad(v.name, idx);
+    videoLoad(v.name, (idx + 1) % len);      // 顺手叫下一帧，帧率才跟得上
+    const img = videoCache[v.name + "#" + idx];
+    if (img && img.complete && img.naturalWidth) return img;
+    // 还没读出来就把能用的最近一帧贴上，别黑
+    for (let d = 1; d < Math.min(len, VIDEO_KEEP); d++) {
       const prev = videoCache[v.name + "#" + ((idx - d + len) % len)];
       if (prev && prev.complete && prev.naturalWidth) return prev;
     }
@@ -1233,6 +1282,16 @@
     pathRound(x, y, w, h, r);
     if (fill) { ctx.fillStyle = fill; ctx.fill(); }
     ctx.restore();
+  }
+
+  // 按当前 ctx.font 把一行字收进 avail 宽：放得下原样返回，放不下就砍到能放并补「…」。
+  // 存档格、选项这类"宽度跟着列数变"的文字都该走它，别再 hard slice 字数。
+  function ellipsisTo(s, avail) {
+    if (avail <= 0) return "";
+    if (ctx.measureText(s).width <= avail) return s;
+    let n = s.length;
+    while (n > 1 && ctx.measureText(s.slice(0, n) + "…").width > avail) n--;
+    return s.slice(0, n) + "…";
   }
 
   /* 面板高度：跟这一句的实际行数走，逐帧补间过渡。
@@ -1911,12 +1970,20 @@
         choiceRects: state.choiceRects, sprites: state.sprites, bg: state.bg,
         cg: state.cg,
         lines: state.lines, ended: state.ended, error: state.error,
+        guide: !!state.guide,
         panelH: panelHNow(), panelTop: panelTopY(),
       };
     },
     get audio() {
       return bgm ? {paused: bgm.paused, muted: bgm.muted, volume: bgm.volume,
                     on: audioOn} : null;
+    },
+    // @video 帧池的实测读数：验收脚本用它确认"缓存有上限、切走会释放"
+    get video() {
+      return {name: state.video ? state.video.name : "", fps: state.video ? state.video.fps : 0,
+              cached: videoKeys.length, keep: VIDEO_KEEP,
+              ready: Object.keys(videoCache).filter(k => videoCache[k].complete
+                                                      && videoCache[k].naturalWidth).length};
     },
     tap: (x, y) => {
       const box = canvas.getBoundingClientRect();
@@ -2080,7 +2147,8 @@
     state.sprites = (vm.state.sprites || []).slice();
     state.fg = vm.state.fg || null;
     state.anim = vm.state.anim || {};
-    state.video = vm.state.video || null;
+    state.video = vm.state.video ? Object.assign({}, vm.state.video) : null;
+    if (state.video) { state.video.t0 = performance.now(); warmVideo(); }
     if (vm.state.music) playMusic(vm.state.music, 0, 0);
     next();
   }
@@ -2406,6 +2474,7 @@
     ctx.restore();
 
     const ix = x + Math.round(w * 0.055);
+    const avail = w - Math.round(w * 0.055) * 2;   // 卡片里能写字的内宽
     ctx.textAlign = "left";
     ctx.textBaseline = "top";
     ctx.fillStyle = empty ? "rgba(240,244,255,.38)" : "rgba(240,244,255,.96)";
@@ -2418,10 +2487,12 @@
       ctx.fillText(saving ? "空 · 点这里存" : "空", ix, y + Math.round(h * 0.40));
     } else {
       ctx.fillStyle = "rgba(240,244,255,.72)";
-      ctx.fillText(String(d.say || "（存档）").slice(0, 16), ix, y + Math.round(h * 0.34));
+      // P100：按卡片的真实内宽收字。原来 hard slice(0,16)，
+      // 横屏三列时卡片比竖屏两列窄，16 个中文字会横着压到隔壁格子上。
+      ctx.fillText(ellipsisTo(String(d.say || "（存档）"), avail), ix, y + Math.round(h * 0.34));
       ctx.fillStyle = "rgba(240,244,255,.34)";
       ctx.font = "400 " + Math.round(L.fs * 0.38) + "px " + FACE;
-      ctx.fillText(stamp(d.t), ix, y + h - Math.round(L.fs * 0.70));
+      ctx.fillText(ellipsisTo(stamp(d.t), avail), ix, y + h - Math.round(L.fs * 0.70));
     }
     ctx.textBaseline = "alphabetic";
     if (!saving && empty) return;
