@@ -34,7 +34,7 @@
     const nameSize = Math.round(fs * 1.18);
 
     const marginX = Math.round(viewW * (landscape ? 0.045 : 0.035));
-    const panelH = Math.round(clamp(viewH * (landscape ? 0.34 : 0.30),
+    const panelH = Math.round(clamp(viewH * (landscape ? 0.34 : 0.33),
                                     lineH * 3 + 60, viewH * 0.5));
     const bottom = Math.round(clamp(unit / 26, 20, 56));
     const padX = Math.round(fs * 1.1);
@@ -61,7 +61,11 @@
       padX: padX,
       padY: padY,
       textW: panelW - padX * 2,
-      maxTextRows: 5,          // 面板最多 5 行，再多等玩家点（不缩字）
+      // 面板能装几行由面板高度算（竖屏面板固定约三分之一屏，横屏是内容驱动）。
+      // 装不下的就分页让玩家点，不缩字号 —— 缩了更难读。
+      maxTextRows: Math.max(3, Math.min(8, Math.floor(
+        ((landscape ? Math.round(viewH * 0.46) : panelH) - padY * 2 - Math.round(fs * 0.7))
+        / lineH))),
       // P74：竖屏立绘从 0.72 提到 0.86，但真正的上限是「对话框上沿」——
       // 全身立绘要让人从头到脚都看见，脚就不能落到底边（那里被对话框盖住）。
       // 所以身高取 min(屏高比例, panelY - 6)，头顶不会顶出屏幕。

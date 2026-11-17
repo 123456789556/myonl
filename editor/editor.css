@@ -2552,3 +2552,156 @@ input[type="color"] {
     gap: 6px; row-gap: 6px;
   }
 }
+
+/* ===== P76 手机端多层交互：外观分组钻取 / 素材看大图 / 页头统一 =====
+   只在窄屏生效；桌面端三栏一点不动。 */
+@media (max-width: 860px), (max-height: 520px) {
+  /* 页头：素材抽屉 / 外观页 / 预览页原本各长一版，高度和字号先统一 */
+  .asset-head { height: 46px !important; padding: 0 10px !important; }
+  .asset-title { font-size: 15px; font-weight: 600; color: var(--text); }
+
+  /* --- 外观：10 个分组从「横排换行的一排小 pill」变成一份列表 --- */
+  .ui-design-tabs.m-tabs-hide { display: none !important; }
+  /* 一级页只留列表：预览和滑杆是二级页里的东西，别在这里铺一屏 */
+  .ui-design-body { display: none !important; }
+  .m-grouplist { display: flex; flex-direction: column; margin: 2px 0 0; }
+  .m-group-row {
+    display: flex; align-items: center; gap: 10px; width: 100%;
+    padding: 13px 2px; background: none; border: 0; border-bottom: 1px solid var(--surface0);
+    color: var(--text); font-size: 14px; text-align: left; cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .m-group-row:active { background: var(--surface0); }
+  .m-gr-name { flex: 0 0 auto; font-weight: 500; }
+  .m-gr-val {
+    flex: 1 1 auto; color: var(--subtext0); font-size: 12px;
+    text-align: right; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .m-gr-arrow { flex: 0 0 auto; color: var(--surface2); font-size: 17px; line-height: 1; }
+
+  /* --- 二级页：从右侧滑进来，盖住整屏。比弹窗「深一层」，返回键在左上 --- */
+  .m-subpage {
+    position: fixed; inset: 0; z-index: 400; background: var(--base);
+    display: flex; flex-direction: column;
+    transform: translateX(100%); transition: transform .22s ease-out;
+    padding-top: env(safe-area-inset-top);
+  }
+  .m-subpage.on { transform: none; }
+  .m-subhead {
+    flex: 0 0 auto; display: flex; align-items: center; gap: 6px;
+    height: 50px; padding: 0 6px; border-bottom: 1px solid var(--surface0);
+  }
+  .m-back {
+    width: 40px; height: 40px; border: 0; background: none; color: var(--text);
+    font-size: 22px; line-height: 1; cursor: pointer; -webkit-tap-highlight-color: transparent;
+  }
+  .m-subtitle { font-size: 15px; font-weight: 600; }
+  .m-subbody { flex: 1 1 auto; overflow-y: auto; padding: 14px 14px 40px; }
+  /* 弹窗遮罩是 z300：全屏页面必须压在上面，否则列表/返回键被它吃了点击 */
+  .center-page { z-index: 310 !important; }
+  /* tab 栏要能点：压在 center-page 之上，但仍在二级页(400)/sheet(402) 之下 */
+  .m-tabbar { z-index: 320 !important; }
+  .mobile-mask { z-index: 305 !important; }
+  .m-subbody .uid-panel { display: block !important; }
+  .m-subbody .ui-dl.row { padding: 9px 0; }
+  /* 竖屏：整块等比缩小，别把预览的下半截切掉（切一半最伤信任） */
+  /* 竖屏：预览要看得全（被裁掉的那半截正好是对话框本身），所以缩到 0.62 而不是砍高度 */
+  .m-subbody .ui-design-preview { max-height: 58dvh; overflow: hidden; border-radius: 10px; zoom: 0.62; }
+  .m-subbody .ui-design-preview .uid-stage { min-height: 0 !important; }
+  /* 二级页打开时底部 tab 栏先退场，别和返回键抢眼 */
+  body.m-sub-open .m-tabbar { display: none; }
+
+  /* --- 素材：点卡片先看大图 --- */
+  .asset-card { position: relative; }
+  .m-zoom {
+    position: absolute; right: 5px; top: 5px; width: 26px; height: 26px;
+    border-radius: 50%; border: 0; background: rgba(10, 12, 20, .62); color: #fff;
+    font-size: 12px; line-height: 26px; text-align: center; padding: 0; cursor: pointer;
+  }
+  .m-sheet-mask { position: fixed; inset: 0; z-index: 402; background: rgba(0, 0, 0, .72); display: none; }
+  .m-sheet-mask.on { display: block; }
+  .m-sheet {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 404;
+    background: var(--mantle); border-radius: 16px 16px 0 0;
+    transform: translateY(110%); transition: transform .24s ease-out;
+    padding: 12px 14px calc(14px + env(safe-area-inset-bottom));
+  }
+  .m-sheet.on { transform: none; }
+  .m-sheet img {
+    width: 100%; max-height: 56dvh; object-fit: contain;
+    border-radius: 10px; background: var(--crust); display: block;
+  }
+  .m-sheet-cap { margin: 10px 0 2px; font-size: 13px; color: var(--subtext0); text-align: center; word-break: break-all; }
+  .m-sheet-acts { display: flex; gap: 8px; margin-top: 10px; }
+  .m-sheet-act {
+    flex: 1 1 0; height: 42px; border-radius: 10px; border: 1px solid var(--surface1);
+    background: var(--surface0); color: var(--text); font-size: 14px; cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .m-sheet-act.m-sheet-insert { background: var(--blue); border-color: var(--blue); color: #fff; }
+}
+
+/* 横屏（844×390 这类）：tab 栏挪到左边竖排，正文整条横向空间还给内容 */
+@media (max-height: 520px) and (min-width: 640px) {
+  .m-tabbar {
+    top: 0; bottom: 0; left: 0; right: auto; width: 60px !important; height: auto !important;
+    flex-direction: column; border-top: 0; border-right: 1px solid var(--surface0);
+    padding-top: 6px; padding-bottom: 0;
+  }
+  .m-tab { height: 44px; line-height: 44px; font-size: 12px; }
+  /* 正文让开左侧 60px：用 padding 而不是 margin（main 是 flex:1，margin 会被 flex 吃掉） */
+  .main { padding-left: 60px !important; box-sizing: border-box; }
+  /* center-page 是 position:fixed，不吃 .main 的内边距 —— 横屏得自己让开左侧 tab 栏，否则列表被压掉半行字 */
+  .center-page { left: 60px !important; width: calc(100% - 74px) !important; right: auto !important; overflow-x: hidden; box-sizing: border-box; }
+  .center-page .modal-wide, .center-page .modal { width: 100% !important; max-width: 100% !important; box-sizing: border-box; }
+  .m-grouplist { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 18px; }
+  .m-gr-val { max-width: 46%; }
+  .center-page .cp-head, .center-page .modal-hint { max-width: 100%; }
+  /* 横屏二级页：滑杆在左（限宽，手指够得到），预览在右。846 宽拉一条 10px 精度的滑杆是折磨 */
+  .m-subbody { display: flex; gap: 44px; align-items: flex-start; justify-content: center; padding: 10px 14px 20px; }
+  .m-subbody .uid-panel { order: 1; flex: 1 1 auto; max-width: 470px !important; }
+  .m-subbody .ui-design-preview { order: 2; flex: 0 0 232px; max-height: none; }
+  .statusbar { padding-left: 60px !important; box-sizing: border-box; }
+  .m-subhead { height: 42px; }
+  .m-sheet img { max-height: 62dvh; }
+}
+
+/* ===== P77 手机端视觉收口：参数行卡片化 + 页头渐变 =====
+   之前二级页是一长串「标签 + 滑杆」裸排，像表单，不像一页东西。
+   这里给每行参数一张卡，页头压一层淡渐变，让每一页有边界。 */
+@media (max-width: 860px), (max-height: 520px) {
+  .m-subhead {
+    background: linear-gradient(100deg, rgba(79, 140, 255, .18),
+                rgba(79, 140, 255, .05) 52%, transparent 78%);
+    border-bottom-color: rgba(79, 140, 255, .22) !important;
+  }
+  .m-subbody {
+    background: radial-gradient(120% 52% at 50% 0%, rgba(79, 140, 255, .09), transparent 62%);
+  }
+
+  /* 一行参数一张卡：上面标签 + 右上当前值，下面整条滑杆 */
+  .m-subbody .ui-dl.row {
+    display: grid; grid-template-columns: 1fr auto; align-items: center;
+    margin: 0 0 10px; padding: 12px 14px 10px;
+    background: rgba(255, 255, 255, .04);
+    border: 1px solid var(--surface0); border-radius: 12px;
+  }
+  .m-subbody .ui-dl.row > span:first-child {
+    grid-column: 1; font-size: 13px; color: var(--subtext0); margin: 0;
+  }
+  .m-subbody .ui-dl.row > .uid-val {
+    grid-column: 2; justify-self: end;
+    font-size: 13px; color: var(--sky); padding: 0 8px; line-height: 20px;
+    background: rgba(79, 140, 255, .14); border-radius: 999px;
+  }
+  .m-subbody .ui-dl.row > input[type=range] { grid-column: 1 / -1; width: 100%; margin: 8px 0 0; }
+
+  /* 分组列表：一行一张软卡，按下有渐变，手指知道点到了 */
+  .m-group-row {
+    border-bottom: 0; margin-bottom: 6px; padding: 13px 12px;
+    background: rgba(255, 255, 255, .04); border-radius: 12px;
+  }
+  .m-group-row:active {
+    background: linear-gradient(90deg, rgba(79, 140, 255, .22), rgba(79, 140, 255, .06) 70%);
+  }
+}

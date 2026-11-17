@@ -870,10 +870,15 @@
     ctx.restore();
   }
 
-  /* 面板高度跟着台词行数走：一句话就不要一个大空盒子（至少 3 行高，最多 5 行）。 */
+  /* 面板高度：竖屏固定占约三分之一屏（`L.panelH`），横屏跟台词行数走。
+     竖屏为什么要固定：一句话就要演一个矮盒子，面板每句都变高变矮，立绘脚下还留一大块空，
+     看着像没做完；固定成一条，立绘脚正好踩在上沿，对话框也不会跳。 */
   function panelRect() {
     const rows = Math.max(2, Math.min(L.maxTextRows, (state.lines || []).length || 2));
-    const h = Math.min(L.viewH * 0.46, L.padY * 2 + rows * L.lineH + Math.round(L.fs * 0.7));
+    const contentH = L.padY * 2 + rows * L.lineH + Math.round(L.fs * 0.7);
+    const h = L.landscape
+      ? Math.min(L.viewH * 0.46, contentH)
+      : L.panelH;
     return {x: L.panelX, y: L.viewH - h - L.bottom, w: L.panelW, h: h, rows: rows};
   }
 
@@ -980,8 +985,12 @@
     ctx.font = `${L.fs}px ${FACE}`;
     ctx.textBaseline = "top";
     const tx = rect.x + L.padX + vis.panel.padX;
-    const ty = rect.y + L.padY + vis.panel.padY;
     const maxRows = Math.min(rect.rows, L.maxTextRows);
+    // 竖屏面板是固定高度的：一句话就一行字，顶在角上会显得「盒子空了一半」。
+    // 行数少时把文字垂直居中，多行时自然从顶部排。
+    const usedH = Math.min(state.lines.length, maxRows) * L.lineH;
+    const ty = rect.y + Math.max(L.padY + vis.panel.padY,
+                                 Math.round((rect.h - usedH) / 2));
     for (let i = 0; i < state.lines.length && i < maxRows; i++) {
       const line = state.lines[i];
       const txt = line.slice(0, Math.max(0, Math.min(line.length, left)));

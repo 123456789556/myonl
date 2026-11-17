@@ -766,6 +766,8 @@ class _EditorHandler(BaseHTTPRequestHandler):
         ("GET", "/editor_home.js"): "_serve_home_js",
         # P74：设置里的「手机连接 / 插线推送 / AI 助手」面板
         ("GET", "/editor_link.js"): "_serve_link_js",
+        # P76：手机端多层交互（外观分组钻取 / 素材看大图）
+        ("GET", "/editor_mobile.js"): "_serve_mobile_js",
         # P67：游戏画面方向（any / portrait / landscape），存进工程 config.json
         ("GET", "/api/orientation"): "_get_orientation",
         ("POST", "/api/orientation"): "_set_orientation",
@@ -1043,6 +1045,9 @@ class _EditorHandler(BaseHTTPRequestHandler):
 
     def _serve_link_js(self, parsed=None) -> None:
         self._serve_editor_file("editor_link.js", "application/javascript; charset=utf-8")
+
+    def _serve_mobile_js(self, parsed=None) -> None:
+        self._serve_editor_file("editor_mobile.js", "application/javascript; charset=utf-8")
 
     def _check(self, parsed=None) -> None:
         data = self._read_json()
