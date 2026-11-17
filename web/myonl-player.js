@@ -23,7 +23,7 @@
   const BASE_CPS = 32;                // 打字机基准：字/秒（设置里可调）
 
   // 玩家设置（本机 localStorage，与游戏无关）：文字速度 / 字号 / 音量 / 自动翻页
-  const PREF = {speed: 1, text: 1, vol: 0.7, auto: 0};
+  const PREF = {speed: 1, text: 1, vol: 0.7, auto: 0, quality: 1, skip: 0};
   const PREF_KEY = "myonl:prefs";
   const UI = {open: false, view: "menu", rects: [], t0: 0, logPage: 0};
   let pack = null;
@@ -144,7 +144,10 @@
   function fit() {
     L = LAYOUT.layoutFor(window.innerWidth, window.innerHeight);
     applyTextScale();
-    const dpr = Math.max(1, Math.min(3, window.devicePixelRatio || 1));
+    // 渲染分辨率：高 DPR 手机（2~3x）按原样画会烧 GPU，弱机直接掉帧。
+    // 画质档位乘在 DPR 上，画布逻辑尺寸不变，只是重采样少一点。
+    const q = PREF.quality === undefined ? 1 : PREF.quality;
+    const dpr = Math.max(0.6, Math.min(3, (window.devicePixelRatio || 1) * q));
     const sw = window.innerWidth;
     const sh = window.innerHeight;
     const scale = Math.min(sw / L.viewW, sh / L.viewH);
@@ -459,9 +462,21 @@
         applyCamera(ev.kind || "", ev.args || []);
         break;
       case "show":
-      case "hide":
+      case "hide": {
         state.sprites = (ev.sprites || []).slice();
+        // 进场淡入：角色从 0 透明走到 1，260ms。硬切进场像贴纸啪一下砸上屏幕；
+        // 按 char 记时间而不是按「char_表情」——表情差分要立刻换，重新淡入反而闪。
+        const at = state.spriteAt || {};
+        const seen = {};
+        const nowS = performance.now() / 1000;
+        state.sprites.forEach((sp) => {
+          seen[sp.char] = 1;
+          if (!(sp.char in at)) at[sp.char] = nowS;
+        });
+        for (const c of Object.keys(at)) if (!seen[c]) delete at[c];
+        state.spriteAt = at;
         break;
+      }
       case "say":
         stopVoice();                                  // 换句就掐掉上一句语音
         state.say = ev;
@@ -548,6 +563,11 @@
     state.cg = "";
     state.sprites = [];
     state.history = [];
+    // 首次进游戏的一次性说明（本机记一次，之后不再弹）
+    let seenHelp = false;
+    try { seenHelp = localStorage.getItem("myonl:helpSeen") === "1"; } catch (err) { seenHelp = false; }
+    state.guide = !seenHelp;
+    state.guideT0 = performance.now();
     cam.zoom = 1; cam.zoomDur = 0; cam.zoomTo = 1; cam.zoomFrom = 1;
     cam.panX = 0; cam.panY = 0; cam.panDur = 0;
     cam.shakeUntil = 0;
@@ -606,6 +626,12 @@
   function onTap(e) {
     e.preventDefault();
     if (state.error) return;
+    // 引导页：这一下只关引导，不推进剧情（否则第一次点就直接跳过一句话）
+    if (state.guide) {
+      state.guide = false;
+      try { localStorage.setItem("myonl:helpSeen", "1"); } catch (err) { /* 隐私模式 */ }
+      return;
+    }
     const p = point(e);
 
     if (UI.open) return onMenuTap(p);
@@ -660,7 +686,13 @@
     const moved = Math.hypot(e.clientX - tapStart.x, e.clientY - tapStart.y);
     const dur = performance.now() - tapStart.t;
     tapStart = null;
-    if (moved > 12 || dur > 1200) return;
+    if (moved > 12) return;
+    // 长按（600ms~1.6s）打开菜单：手机上没有右键，长按是最自然的"叫出菜单"
+    if (dur >= 600 && dur <= 1600 && state.scene === "game" && !UI.open && !state.guide) {
+      openMenu();
+      return;
+    }
+    if (dur > 1600) return;
     onTap(e);
   });
   canvas.addEventListener("pointercancel", () => { tapStart = null; });
@@ -814,7 +846,10 @@
       // 脚底锚点：竖屏贴「对话框上沿」（全身可见），横屏贴底边（人被面板压住小腿，
       // 换取人物够大）。@anim 的 y 偏移在这个基准上叠加。
       const bottom = (L.landscape ? L.viewH : L.panelY - 6) + disp.y * k;
-      const alpha = Math.max(0, Math.min(1, disp.alpha));
+      const t0 = (state.spriteAt && state.spriteAt[sp.char]) || 0;
+      const fadeIn = t0 ? Math.min(1, (nowT - t0) / 0.26) : 1;
+      if (fadeIn <= 0) return;
+      const alpha = Math.max(0, Math.min(1, disp.alpha)) * fadeIn;
       if (alpha <= 0) return;
       const idle = idleMotion(i, nowT);
       ctx.save();
@@ -1386,9 +1421,14 @@
       drawChoices(vis);
       drawMute();
       drawMenuButton();
+      if (state.guide) drawGuide();
       if (state.waitUntil && performance.now() >= state.waitUntil) {
         state.waitUntil = 0;
         next();
+      }
+      // 快进（二周目用）：55ms 一句，遇到选项/@wait/结局自动停。开关在菜单里。
+      if (PREF.skip && !state.choice && !(state.waitUntil > 0) && !state.ended) {
+        if (now - (state.skipAt || 0) > 55) { state.skipAt = now; next(); }
       }
       // 自动翻页：只在打字读完、没有选项、没有 @wait 时走
       if (PREF.auto > 0 && !state.choice && !(state.waitUntil > 0)) {
@@ -1634,9 +1674,9 @@
     const gap = Math.round(L.fs * 0.55);
     let bodyH;
     if (UI.view === "menu") {
-      bodyH = Math.round(L.fs * 0.3) + 6 * (menuRowH() + gap);
+      bodyH = Math.round(L.fs * 0.3) + (L.landscape ? 4 : 7) * (menuRowH() + gap);
     } else if (UI.view === "settings") {
-      bodyH = Math.round(L.fs * 0.3) + 4 * (setRowH() + gap);
+      bodyH = Math.round(L.fs * 0.3) + 5 * (setRowH() + gap);
     } else if (UI.view === "log") {
       bodyH = Math.round(L.fs * 0.5)
                + logRows() * (logRowH() + logGap())
@@ -1693,17 +1733,29 @@
       ["toLog", "回顾台词"],
       ["toSave", "保存进度"],
       ["toLoad", "读取进度"],
+      ["skip", PREF.skip ? "快进 · 已开" : "快进 · 关"],
       ["toSet", "设置"],
       ["toTitle", "回到标题"],
     ];
     let yy = y + gap;
-    for (const pair of items) {
+    // 横屏两列：7 项竖排会撑破面板（高只有 390 CSS）
+    const cols = L.landscape ? 2 : 1;
+    const colGap = Math.round(L.fs * 0.5);
+    const cellW = (w - (cols - 1) * colGap) / cols;
+    items.forEach((pair, idx) => {
       const id = pair[0];
       const label = pair[1];
-      const accent = id === "resume";
-      uiButton(id, x, yy, w, rowH, label, {on: accent, weight: accent ? 700 : 500});
-      yy += rowH + gap;
-    }
+      const accent = id === "resume" || (id === "skip" && !!PREF.skip);
+      const col = idx % cols;
+      const row = Math.floor(idx / cols);
+      const bx = x + col * (cellW + colGap);
+      const by = yy + row * (rowH + gap);
+      // 奇数项时最后一项横跨两列，否则右半边留个洞，看着像没做完
+      const lastOdd = idx === items.length - 1 && items.length % cols === 1;
+      uiButton(id, bx, by, lastOdd ? w : cellW, rowH, label,
+               {on: accent, weight: accent ? 700 : 500});
+    });
+    yy += Math.ceil(items.length / cols) * (rowH + gap);
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
     ctx.fillStyle = "rgba(240,244,255,.34)";
@@ -1834,12 +1886,77 @@
     ctx.textAlign = "left";
   }
 
+  /* 第一次打开作品的一次性说明。手机上没键盘没右键，用户得先知道点哪、怎么叫菜单 ——
+     这一段是「别人愿不愿意继续玩」的门槛，比任何视觉打磨都值。 */
+  function drawGuide() {
+    const a = Math.min(1, (performance.now() - (state.guideT0 || 0)) / 200);
+    ctx.save();
+    ctx.globalAlpha = a;
+    ctx.fillStyle = "rgba(4,6,12,.86)";
+    ctx.fillRect(0, 0, L.viewW, L.viewH);
+
+    const w = L.landscape ? Math.min(L.viewW * 0.54, 820) : L.viewW * 0.86;
+    const pad = Math.round(w * 0.058);
+    const titleH = Math.round(L.fs * 2.1);
+    const rowH = Math.round(L.fs * (L.landscape ? 2.05 : 2.35));
+    const btnH = Math.round(L.fs * 2.1);
+    const h = titleH + 3 * rowH + btnH + pad * 2;
+    const x = (L.viewW - w) / 2;
+    const y = (L.viewH - h) / 2;
+    const rr = Math.round(w * 0.038);
+    roundRect(x, y, w, h, rr, "rgba(17,20,29,.98)");
+    ctx.strokeStyle = "rgba(255,255,255,.10)";
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(x + rr, y);
+    ctx.arcTo(x + w, y, x + w, y + h, rr);
+    ctx.arcTo(x + w, y + h, x, y + h, rr);
+    ctx.arcTo(x, y + h, x, y, rr);
+    ctx.arcTo(x, y, x + w, y, rr);
+    ctx.closePath();
+    ctx.stroke();
+
+    ctx.textAlign = "left";
+    ctx.textBaseline = "middle";
+    ctx.fillStyle = "#f2f5ff";
+    ctx.font = "700 " + Math.round(L.fs * 0.86) + "px " + FACE;
+    ctx.fillText("怎么玩", x + pad, y + pad + titleH / 2 - Math.round(L.fs * 0.2));
+
+    const rows = [
+      ["轻点画面", "推进一句；读到一半再点，整句立刻显示"],
+      ["长按画面", "打开菜单：存档、读档、回顾台词、设置"],
+      ["选项出现", "直接点你想选的那一句"],
+    ];
+    let yy = y + pad + titleH;
+    const keyW = Math.round(L.fs * 3.4);
+    for (const r of rows) {
+      roundRect(x + pad, yy + Math.round(rowH * 0.18), keyW,Math.round(rowH * 0.62),
+                Math.round(rowH * 0.2), "rgba(79,140,255,.16)");
+      ctx.fillStyle = "#8fb4ff";
+      ctx.font = "600 " + Math.round(L.fs * 0.5) + "px " + FACE;
+      ctx.textAlign = "center";
+      ctx.fillText(r[0], x + pad + keyW / 2, yy + rowH / 2 - Math.round(L.fs * 0.06));
+      ctx.textAlign = "left";
+      ctx.fillStyle = "rgba(240,244,255,.72)";
+      ctx.font = "400 " + Math.round(L.fs * 0.5) + "px " + FACE;
+      ctx.fillText(r[1], x + pad + keyW + Math.round(L.fs * 0.7), yy + rowH / 2);
+      yy += rowH;
+    }
+
+    const bh = btnH;
+    uiButton("guideOk", x + pad, y + h - pad - bh, w - pad * 2, bh, "开始",
+             {on: true, fs: Math.round(bh * 0.44)});
+    ctx.restore();
+  }
+
   function drawSettings(x, y, w, p) {
     const groups = [
       ["文字速度", "speed", ["慢", "中", "快"], [0.6, 1, 1.6], PREF.speed],
       ["字号", "text", ["小", "中", "大"], [0.9, 1, 1.15], PREF.text],
       ["音量", "vol", ["小", "中", "大"], [0.4, 0.7, 1], PREF.vol],
       ["自动翻页", "auto", ["关", "3 秒", "6 秒"], [0, 3, 6], PREF.auto],
+      // 弱机自救：降渲染分辨率，字和图会软一点，但帧率能上来
+      ["画面质量", "quality", ["流畅", "标准", "清晰"], [0.62, 0.82, 1], PREF.quality],
     ];
     const rowH = setRowH();
     const gap = Math.round(L.fs * 0.5);
@@ -1926,6 +2043,7 @@
     if (id === "close") { UI.open = false; return; }
     if (id === "back") { UI.view = "menu"; return; }
     if (id === "resume") { UI.open = false; return; }
+    if (id === "skip") { PREF.skip = PREF.skip ? 0 : 1; savePrefs(); state.skipAt = 0; return; }
     if (id === "toSave") { UI.view = "save"; return; }
     if (id === "toLoad") { UI.view = "load"; return; }
     if (id === "toLog") { UI.view = "log"; UI.logPage = 0; return; }
@@ -1960,6 +2078,7 @@
       bgmVolume = PREF.vol;
       if (bgm) bgm.volume = PREF.vol;
     } else if (key === "auto") PREF.auto = [0, 3, 6][i];
+    else if (key === "quality") { PREF.quality = [0.62, 0.82, 1][i]; savePrefs(); fit(); return; }
     savePrefs();
   }
 
