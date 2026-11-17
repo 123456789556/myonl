@@ -1082,6 +1082,24 @@
     return { breath, sway };
   }
 
+  // P98：谁在说话，谁亮。
+  // 两个人同屏时两张立绘一样亮，玩家得先读对话框上那两个字才知道谁在开口 ——
+  // 这是 galgame 最基本的一条表达，之前完全没有。非发言方退到 0.72，
+  // 人自然"退后一步"，明暗就替名字把话说完了。
+  // 单人场景不动（场上只有一个人时他永远该是亮的）；切换用 120ms 指数补间，
+  // 不是"啪"一下跳档。数值放模块级而不是 state：state 会进存档，不该混进表现层。
+  const DIMV = {};
+  const DIMT = {};
+  function spriteDim(char, target, now) {
+    if (!char) return 1;
+    const cur = DIMV[char] === undefined ? target : DIMV[char];
+    const dt = DIMT[char] ? Math.min(0.3, now - DIMT[char]) : 0;
+    DIMT[char] = now;
+    const v = cur + (target - cur) * (1 - Math.exp(-dt / 0.12));
+    DIMV[char] = Math.abs(target - v) < 0.008 ? target : v;
+    return DIMV[char];
+  }
+
   function drawSprites() {
     const list = state.sprites || [];
     if (!list.length) return;
@@ -1123,11 +1141,27 @@
       const t0 = (state.spriteAt && state.spriteAt[sp.char]) || 0;
       const fadeIn = t0 ? Math.min(1, (nowT - t0) / 0.26) : 1;
       if (fadeIn <= 0) return;
+      const speaker = state.say && state.say.char;
+      // 只有"说话的人自己也在场上"才压别人。旁白、或主角（没有立绘）说话时，
+      // 场上所有立绘都保持原亮度 —— 否则每句内心独白都让两个人一起变暗，画面在闪。
+      const speakerOnStage = !!(speaker && list.some((x) => x.char === speaker));
+      const dimTo = (speakerOnStage && n >= 2 && sp.char && sp.char !== speaker) ? 0.72 : 1;
+      const dimV = spriteDim(sp.char, dimTo, nowT);
       const alpha = Math.max(0, Math.min(1, disp.alpha)) * fadeIn;
       if (alpha <= 0) return;
       const idle = idleMotion(i, nowT);
       ctx.save();
       if (alpha < 1) ctx.globalAlpha = alpha;
+      // 压暗用亮度而不是透明度：半透明的苏晴会透出背后的栏杆，成了"幽灵"。
+      // brightness 只降她的亮度、仍不透明，才读得出"退后一步"。老设备不支持 filter 时退回 alpha。
+      if (dimV < 0.999) {
+        if (typeof ctx.filter === "string") {
+          ctx.filter = "brightness(" + dimV.toFixed(3) + ") saturate(" +
+                       (0.80 + 0.20 * dimV).toFixed(3) + ")";
+        } else {
+          ctx.globalAlpha = alpha * dimV;
+        }
+      }
       // 以脚底中心为锚：先落点，再微摆，再呼吸缩放——顺序决定缩放不会把脚抬离地面
       ctx.translate(cx, bottom);
       ctx.rotate(idle.sway);
@@ -1178,9 +1212,7 @@
     blitCover(img, 1);
   }
 
-  function roundRect(x, y, w, h, r, fill, alpha) {
-    ctx.save();
-    if (alpha !== undefined) ctx.globalAlpha = alpha;
+  function pathRound(x, y, w, h, r) {
     const rr = Math.min(r, w / 2, h / 2);
     ctx.beginPath();
     ctx.moveTo(x + rr, y);
@@ -1189,6 +1221,12 @@
     ctx.arcTo(x, y + h, x, y, rr);
     ctx.arcTo(x, y, x + w, y, rr);
     ctx.closePath();
+  }
+
+  function roundRect(x, y, w, h, r, fill, alpha) {
+    ctx.save();
+    if (alpha !== undefined) ctx.globalAlpha = alpha;
+    pathRound(x, y, w, h, r);
     if (fill) { ctx.fillStyle = fill; ctx.fill(); }
     ctx.restore();
   }
@@ -2014,7 +2052,9 @@
   function readSlot(i) { return storeSlot(i); }
 
   function writeSlot(i) {
-    if (!vm) return;
+    // 没有在跑的进度就明说（storeErr=2），不要静默 return ——
+    // 玩家点了格子、什么都没有发生，只会以为"存上了"。
+    if (!vm) { UI.storeErr = 2; return; }
     storeSetSlot(i, {s: vm.save(), t: Date.now(), say: previewLine(), bg: state.bg || ""});
     UI.t0 = performance.now();
   }
@@ -2324,9 +2364,29 @@
   function drawSlotCard(id, x, y, w, h, d, saving, no) {
     const empty = !d;
     const r = Math.round(Math.min(h / 6, 16));
-    // P97：空档不填底，只留一条虚线框。六个实心圆角盒并排就是一张"表格"，
-    // 而且每格都在抢注意力；空格退成虚框之后，有档的那格才浮上来 —— 层级自己就出来了。
-    if (!empty) roundRect(x, y, w, h, r, "rgba(255,255,255,.085)");
+    // P98：有档的格子铺一张当时的背景图。
+    // 原来有档和空档长得一样（都是一行字），六个格子读起来是张列表；
+    // 铺上图之后"哪一幕"不用读字就认出来了。老档没有 bg 字段 → 退回实底，不报错。
+    const shot = empty ? null : (assets[d.bg] || (d.bg ? assets[d.bg + "_p"] : null));
+    if (!empty && !shot) roundRect(x, y, w, h, r, "rgba(255,255,255,.085)");
+    if (shot) {
+      ctx.save();
+      pathRound(x, y, w, h, r);
+      ctx.clip();
+      // cover 裁切、纵向偏上：背景的信息基本都在上半部，居中会把关键区域切掉
+      const s = Math.max(w / shot.width, h / shot.height);
+      const iw = shot.width * s;
+      const ih = shot.height * s;
+      ctx.drawImage(shot, x + (w - iw) / 2, y + (h - ih) * 0.35, iw, ih);
+      // 左重右轻的压暗：文字压在左侧，右边把画面留出来
+      const sg = ctx.createLinearGradient(x, y, x + w, y);
+      sg.addColorStop(0, "rgba(6,8,12,.80)");
+      sg.addColorStop(0.55, "rgba(6,8,12,.52)");
+      sg.addColorStop(1, "rgba(6,8,12,.28)");
+      ctx.fillStyle = sg;
+      ctx.fillRect(x, y, w, h);
+      ctx.restore();
+    }
     ctx.save();
     if (empty) ctx.setLineDash([Math.max(4, Math.round(L.fs * 0.17)), Math.max(4, Math.round(L.fs * 0.15))]);
     ctx.strokeStyle = empty ? "rgba(255,255,255,.10)" : "rgba(255,255,255,.15)";
@@ -2432,9 +2492,13 @@
       }
       ctx.fillText(t, nx, fy);
     } else {
-      ctx.fillStyle = "rgba(240,244,255,.30)";
+      // 写不进存档要当场说清楚，不能"点了没反应、玩家以为存上了"
+      const note = UI.storeErr === 2 ? "这局还没在跑，没有可存的进度"
+                 : UI.storeErr === 1 ? "这台机器写不进存档（隐私模式或空间不足）"
+                 : (saving ? "存在本机 · 换文件前先导出" : "点格子读档");
+      ctx.fillStyle = UI.storeErr ? "rgba(255,150,120,.80)" : "rgba(240,244,255,.30)";
       ctx.font = "400 " + Math.round(L.fs * 0.42) + "px " + FACE;
-      ctx.fillText(saving ? "存在本机 · 换文件前先导出" : "点格子读档", nx, fy);
+      ctx.fillText(note, nx, fy);
     }
     ctx.textBaseline = "alphabetic";
   }
