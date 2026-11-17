@@ -2,6 +2,38 @@
 
 > 只记 release 级变化，一句话 + 证据链接。单项细节见 git 历史（原 archive/ 已删除）。
 
+## 2026-11-17（P96：安卓壳真的出了 APK，且能覆盖安装）
+
+想要的东西很简单：一个能装进手机的包，装完不会白屏，下次更新不用卸载。
+上一版走的是 Capacitor + `assembleDebug` —— 它能编，但编出来的是 **debug 签名**，
+CI 每次给机器新生成的 debug key 都不一样，所以新包装不上旧包，玩家只能先卸载，
+而卸载会连 localStorage 一起清空。存档全在 localStorage 里，这条路正好撞在
+"升级不能毁档"的线上。
+
+换成自建 WebView 壳（`android/`，Groovy Gradle，不依赖 node）：
+
+- **origin 固定**：`WebViewAssetLoader` 把 assets 挂到 `https://appassets.androidplatform.net`。
+  不用 `file://`，因为 `file://` 下 localStorage 不保证持久 —— 换个壳就丢档；
+- **签名固定**：`android/keystore/myonl-test.p12`（PKCS12 / 别名 `myonl` / 30 年自签），
+  覆盖安装才成立。要换成自己的：`MYONL_KEYSTORE` / `MYONL_STORE_PASS` / `MYONL_KEY_PASS`；
+- **沉浸全屏 + 转屏不重建**：`windowFullscreen` + `WindowInsetsController.hide(systemBars)`，
+  `configChanges` 补全（否则一转屏 WebView 重载、剧本回到标题页）；
+- **返回键接管**：`window.myonlBack`（播放器新增）—— 面板开着就关、游戏里就开菜单、
+  都不是才 `finish()`；
+- **不申 INTERNET**：素材全内嵌，不需要联网。
+
+第一次编出来的包：**`MYONL-apk-3.apk` 3,770,281 B / 107 个条目**，APK Signing Block
+4,088 B（v2/v3 已签名），里面 `assets/index.html` 3,110,702 B。已验证：解出来的 HTML
+用 390×844 真跑一遍，能进游戏、能说话、返回键三态都对（标题页 `false` / 游戏里 `true` 开菜单 /
+菜单里 `true` 关菜单）。
+
+清理：删掉 `tools/build_android.py`（204 行 Capacitor 脚手架）、`tests/test_android_pack.py`（8 条）、
+`docs/变更说明-P55-安卓打包.md`；新增 `tests/test_android_shell.py`（7 条）守上面那几条命门，
+新增 `docs/存档与升级.md` 讲清三种出口的存档在哪、为什么换目录就丢、怎么搬。
+
+工作流：`apk-*` 标签或手动触发 → 生成单文件 HTML → `gradle assembleRelease` →
+artifact + GitHub Release（不登录也能点下来装）。
+
 ## 2026-11-17（P95：同一场景横竖两套构图 + 构图锚点）
 
 先说数字：一张 16:9 的背景铺到 9:16 的竖屏上，cover 之后**只剩 26% 的宽度可见** ——
