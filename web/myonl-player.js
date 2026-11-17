@@ -1356,7 +1356,9 @@
       ctx.closePath();
       ctx.stroke();
       ctx.fillStyle = vis.accent;
-      ctx.fillRect(x + 1, y + Math.round(bh * 0.28), 3, Math.round(bh * 0.44));
+      // 左侧 accent 竖条：别贴着卡片外缘画。原来在 x+1、宽 3（布局单位），2x 屏上只有 2 个
+      // 物理像素，又正好压在圆角收口的位置，看起来像屏幕边上的一颗故障小点。挪进卡片内、加厚。
+      ctx.fillRect(x + 12, y + Math.round(bh * 0.28), 5, Math.round(bh * 0.44));
       ctx.restore();
       ctx.fillStyle = geom.fg || vis.textColor;
       ctx.font = `500 ${L.fs}px ${FACE}`;
