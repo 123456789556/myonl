@@ -73,7 +73,7 @@
       // 竖屏看的是全身（脚要落在面板之上，不能被面板盖掉）；
       // 横屏反过来要人「大」，贴底边让人被对话框压住小腿，这是横屏 galgame 的标准构图。
       spriteH: Math.round(landscape
-        ? viewH * 0.94
+        ? viewH * 0.92
         : Math.min(viewH * 0.86, viewH - panelH - bottom - 6)),
       choiceW: Math.round(landscape ? Math.min(viewW * 0.62, 900) : viewW - marginX * 4),
       // P58：选项按钮按手指来算——最小 120 逻辑 px（1080 短边下约 43 CSS px，接近 44pt 触摸推荐值）

@@ -794,7 +794,11 @@
       if (!img) return;
       const disp = animDisp(sp.char);
       const h = baseH * (disp.scale > 0 ? disp.scale : 1);
-      const w = img.width * (h / img.height);
+      // 竖长的全身立绘整张塞进横屏，只剩中间细长一条，人小得像贴纸。
+      // 横屏就按 galgame 的常态构图：只画上 62%（头顶到膝），按屏高放大，膝盖以下让对话框压住。
+      const tall = L.landscape && img.height > img.width * 2.2;
+      const srcH = tall ? Math.round(img.height * 0.62) : img.height;
+      const w = img.width * (h / srcH);
       const slotW = L.viewW / n;
       const cx = slotW * (i + 0.5) + disp.x * k;
       // 脚底锚点：竖屏贴「对话框上沿」（全身可见），横屏贴底边（人被面板压住小腿，
@@ -809,7 +813,7 @@
       ctx.translate(cx, bottom);
       ctx.rotate(idle.sway);
       ctx.scale(1 - idle.breath * 0.55, 1 + idle.breath);
-      ctx.drawImage(img, -w / 2, -h, w, h);
+      ctx.drawImage(img, 0, 0, img.width, srcH, -w / 2, -h, w, h);
       ctx.restore();
     });
   }
