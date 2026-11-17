@@ -66,7 +66,7 @@ def test_back_key_goes_through_game_first():
 
 def test_workflow_builds_release_apk():
     text = _read(ROOT / ".github" / "workflows" / "android-apk.yml")
-    for token in ("workflow_dispatch", "setup-java", "setup-android",
+    for token in ("workflow_dispatch", "setup-java", "ANDROID_HOME",
                   "engine.webpack", "assembleRelease", "upload-artifact"):
         assert token in text, f"工作流缺 {token}"
     assert "assembleDebug" not in text, "debug 包的签名每次都不同，装不上旧版本"

@@ -22,11 +22,20 @@ jobs:
           distribution: temurin
           java-version: "17"
 
-      - name: 装 Android SDK
-        uses: android-actions/setup-android@v3
-
-      - name: 补 SDK 平台（runner 通常已自带，缺了就装）
-        run: sdkmanager --install "platforms;android-34" "build-tools;34.0.0"
+      - name: 准备 Android SDK（用 runner 自带的那套）
+        run: |
+          if [ -z "$ANDROID_HOME" ]; then
+            ANDROID_HOME=/usr/local/lib/android/sdk
+          fi
+          echo "ANDROID_HOME=$ANDROID_HOME" >> "$GITHUB_ENV"
+          echo "ANDROID_SDK_ROOT=$ANDROID_HOME" >> "$GITHUB_ENV"
+          echo "platforms:"; ls "$ANDROID_HOME/platforms" || true
+          echo "build-tools:"; ls "$ANDROID_HOME/build-tools" || true
+          SDKMANAGER="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          if [ -x "$SDKMANAGER" ]; then
+            yes | "$SDKMANAGER" --licenses > /dev/null 2>&1 || true
+            "$SDKMANAGER" --install "platforms;android-34" "build-tools;34.0.0" > /dev/null 2>&1 || true
+          fi
 
       - name: 生成单文件 HTML（素材全内嵌）
         env:
