@@ -333,10 +333,10 @@
     voiceAudio = a;
   }
 
-  // 右上角喇叭：逻辑坐标下 ~43 个屏幕像素，游戏内常驻
+  // 右上角喇叭：尺寸跟 ☰ 同一档（menuBtnSize），两个键才是一个层级
   function muteRect() {
-    const s = Math.min(160, Math.max(60, Math.round(Math.min(L.viewW, L.viewH) * 0.11)));
-    const m = Math.round(Math.min(L.viewW, L.viewH) * 0.03);
+    const s = menuBtnSize();
+    const m = Math.round(Math.min(L.viewW, L.viewH) * 0.022);
     return { x: L.viewW - s - m, y: m, w: s, h: s };
   }
 
@@ -344,9 +344,14 @@
     if (state.scene !== "game" || state.error) return;
     const r = muteRect();
     ctx.save();
-    ctx.globalAlpha = audioOn ? 0.5 : 0.85;
-    roundRect(r.x, r.y, r.w, r.h, Math.round(r.h / 4), "rgba(12,14,20,.84)");
+    ctx.globalAlpha = audioOn ? 0.62 : 0.80;
+    roundRect(r.x, r.y, r.w, r.h, r.h / 2, "rgba(12,14,20,.80)");
     ctx.globalAlpha = 1;
+    ctx.strokeStyle = "rgba(223,230,245,.18)";
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.arc(r.x + r.w / 2, r.y + r.h / 2, r.w / 2 - 0.5, 0, Math.PI * 2);
+    ctx.stroke();
     ctx.fillStyle = audioOn ? "#dfe6f5" : "#8a91a3";
     ctx.font = `${Math.round(r.h * 0.46)}px sans-serif`;
     ctx.textAlign = "center";
@@ -628,6 +633,114 @@
     storeFlush();
     UI.wipeConfirm = 0;
     UI.wipeDone = performance.now();
+  }
+
+  /* ---- 存档带走 / 带回 -------------------------------------------------------
+     手机端存档在 localStorage，而 localStorage **按 origin 隔离**：把 HTML 换个文件名、
+     换个目录、或者从浏览器打开改成用文件管理器打开，就是另一个 origin —— 旧存档看不见了。
+     这堵墙拆不了（浏览器安全模型），能做的是给玩家一条稳的后备路：
+     导出成一个文件，换到新位置后再从文件导回来。桌面端不用这套（那边数据在 AppData）。*/
+
+  function b64encode(str) {
+    const bytes = new TextEncoder().encode(str);
+    let bin = "";
+    for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+    return btoa(bin);
+  }
+
+  function b64decode(str) {
+    const bin = atob(String(str).replace(/\s+/g, ""));
+    const bytes = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    return new TextDecoder().decode(bytes);
+  }
+
+  /* 把本机所有 MYONL 键（各作品的档 + 设置）打包成一段码：换设备/换路径后一条不落 */
+  function storeExportCode() {
+    const data = {};
+    let n = 0;
+    try {
+      for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i);
+        if (!k || k.indexOf("myonl:") !== 0) continue;
+        const v = localStorage.getItem(k);
+        if (v === null) continue;
+        data[k] = v;
+        n++;
+      }
+    } catch (e) { return ""; }
+    if (!n) return "";
+    return "MYONL1:" + b64encode(JSON.stringify({app: "MYONL", v: 1, at: Date.now(), data: data}));
+  }
+
+  function storeImportCode(raw) {
+    let code = String(raw || "").trim();
+    if (!code) return {ok: false, msg: "文件是空的"};
+    if (code.indexOf("MYONL1:") >= 0) code = code.slice(code.indexOf("MYONL1:") + 7);
+    let obj = null;
+    try { obj = JSON.parse(b64decode(code)); } catch (e) { return {ok: false, msg: "内容不完整或不是存档文件"}; }
+    if (!obj || obj.v !== 1 || !obj.data || typeof obj.data !== "object") {
+      return {ok: false, msg: "不是 MYONL 的存档文件"};
+    }
+    const keys = Object.keys(obj.data);
+    if (!keys.length) return {ok: false, msg: "这份存档是空的"};
+    let n = 0;
+    keys.forEach((k) => {
+      if (k.indexOf("myonl:") !== 0) return;       // 只认自家键，别的什么都不碰
+      try { localStorage.setItem(k, String(obj.data[k])); n++; } catch (e) {}
+    });
+    return {ok: true, n: n};
+  }
+
+  function storeExportFile(code) {
+    try {
+      const blob = new Blob([code], {type: "text/plain;charset=utf-8"});
+      const a = document.createElement("a");
+      const d = new Date();
+      const p2 = (x) => (x < 10 ? "0" : "") + x;
+      a.href = URL.createObjectURL(blob);
+      a.download = "MYONL存档-" + d.getFullYear() + p2(d.getMonth() + 1) + p2(d.getDate())
+                   + "-" + p2(d.getHours()) + p2(d.getMinutes()) + ".txt";
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+      return true;
+    } catch (e) { return false; }
+  }
+
+  /* 导入：走系统文件选择器（手机上下载目录里选那个 .txt），比让人手打一串码现实 */
+  function storeImportFile() {
+    const inp = document.createElement("input");
+    inp.type = "file";
+    inp.accept = ".txt,text/plain,.json,application/json";
+    inp.style.position = "fixed";
+    inp.style.left = "-9999px";
+    document.body.appendChild(inp);
+    inp.addEventListener("change", () => {
+      const f = inp.files && inp.files[0];
+      if (!f) { inp.remove(); return; }
+      const fr = new FileReader();
+      fr.onload = () => { inp.remove(); applyImport(String(fr.result || "")); };
+      fr.onerror = () => { inp.remove(); notice("这个文件读不出来", false); };
+      fr.readAsText(f);
+    });
+    inp.click();
+  }
+
+  function applyImport(raw) {
+    const r = storeImportCode(raw);
+    if (!r.ok) { notice("导入失败：" + r.msg, false); return; }
+    if (!confirm("导入会覆盖本机已有的 MYONL 进度（共 " + r.n + " 项）。继续？")) return;
+    notice("已导入 " + r.n + " 项，正在刷新…", true);
+    setTimeout(() => { location.reload(); }, 500);
+  }
+
+  /* 面板里的一行结果：绿=成、红=败，4 秒后自己消失（不弹窗打断） */
+  function notice(text, ok) {
+    UI.notice = text;
+    UI.noticeOk = !!ok;
+    UI.noticeAt = performance.now();
+    UI.t0 = performance.now();
   }
 
   /* 迁移：旧版散装键搬进来再删掉。只搬本作品 —— 别的作品下次打开时自己搬，
@@ -1054,7 +1167,7 @@
     const nameH = state.say && state.say.char ? Math.round(L.nameSize * 0.9) : 0;
     const contentH = L.padY * 2 + rows * L.lineH + nameH + Math.round(L.fs * 0.6);
     const minH = L.landscape
-      ? L.padY * 2 + L.lineH * 1.35 + nameH + L.fs * 0.5
+      ? L.padY * 2 + L.lineH * 1.1 + nameH + L.fs * 0.45
       : L.padY * 2 + L.lineH * 3.5 + nameH + L.fs * 0.6;
     const maxH = L.viewH * (L.landscape ? 0.52 : 0.46);
     return Math.round(Math.max(minH, Math.min(maxH, contentH)));
@@ -1163,40 +1276,34 @@
     const nameH = say.char ? Math.round(L.nameSize * 0.9) : 0;
 
     if (say.char) {
-      // 字号比面板预留的名位小一档（0.88）：白字撑满胶囊会变成一块厚标签，
-      // 缩小后上下留出呼吸，描边才看得见
-      const nameFs = Math.round(L.nameSize * 0.88);
-      ctx.font = `500 ${nameFs}px ${FACE}`;
+      const nameFs = Math.round(L.nameSize * 0.86);
+      ctx.font = `600 ${nameFs}px ${FACE}`;
       const tw = ctx.measureText(say.char).width;
-      // P89：名字牌放进面板内部。原来画在面板上沿外面 —— 面板贴底时它悬空压在
-      // 立绘的脚上，像贴了张纸条；而面板高度又已经按 nameH 预留过，名字在外，
-      // 那截预留就白撑成了空白。
+      // P89：名字牌放进面板内部（原来的 nameH 就是给这一块留的位）
       const plateH = nameH;
-      const padW = Math.round(plateH * 1.15);
-      const plateX = rect.x + L.padX + vis.panel.padX - Math.round(plateH * 0.28);
+      const padW = Math.round(plateH * 0.66);
+      // 贴着正文左缘起：原来往外探出 0.28 个牌高，和正文缩进差半格，读起来是两条线
+      const plateX = rect.x + L.padX + vis.panel.padX;
       const plateY = rect.y + L.padY + vis.panel.padY;
       const tint = say.color || vis.accent;
-      // 名字牌：深色胶囊保证任何角色色都读得清，角色色只用于描边（纯当标签太淡就看不见字）
-      roundRect(plateX, plateY, tw + padW, plateH, plateH / 2, "rgba(12,14,20,.92)");
+      const pw = tw + padW * 2 + Math.round(plateH * 0.34);
+      // 名牌：淡底 + 角色色竖条 + 白字。原来那圈彩色描边胶囊像贴上去的标签，
+      // 换一个角色形状就变一次；竖条只用一个色块交代"谁在说"，安静得多，
+      // 白字在任何角色色下都读得清。
+      roundRect(plateX, plateY, pw, plateH, Math.round(plateH * 0.30), "rgba(255,255,255,.075)");
+      roundRect(plateX + Math.round(plateH * 0.28),
+                plateY + Math.round(plateH * 0.20),
+                Math.max(2, Math.round(plateH * 0.105)),
+                plateH - Math.round(plateH * 0.40),
+                2, hexA(tint, 0.92));
       ctx.save();
-      ctx.strokeStyle = hexA(tint, 0.72);
-      ctx.lineWidth = 1;
-      ctx.beginPath();
-      const rrp = plateH / 2;
-      ctx.moveTo(plateX + rrp, plateY);
-      ctx.arcTo(plateX + tw + padW, plateY, plateX + tw + padW, plateY + plateH, rrp);
-      ctx.arcTo(plateX + tw + padW, plateY + plateH, plateX, plateY + plateH, rrp);
-      ctx.arcTo(plateX, plateY + plateH, plateX, plateY, rrp);
-      ctx.arcTo(plateX, plateY, plateX + tw + padW, plateY, rrp);
-      ctx.closePath();
-      ctx.stroke();
-      ctx.restore();
-      // 用居中而不是"左内边距"，否则不同角色名的左右留白不等宽
-      ctx.fillStyle = vis.textColor;
-      ctx.textAlign = "center";
-      ctx.textBaseline = "middle";
-      ctx.fillText(say.char, plateX + (tw + padW) / 2, plateY + plateH / 2 + 1);
+      ctx.fillStyle = "rgba(242,246,255,.96)";
       ctx.textAlign = "left";
+      ctx.textBaseline = "middle";
+      ctx.fillText(say.char,
+                   plateX + Math.round(plateH * 0.28) + Math.round(plateH * 0.34),
+                   plateY + plateH / 2 + 1);
+      ctx.restore();
     }
 
     const shown = typedCount();
@@ -1230,16 +1337,17 @@
     // 继续提示：打字完成 / 没有选项时
     if (!state.choice && shown >= totalChars(state.lines)) {
       // 位置跟内容走：一行字的面板变矮了，圆点要贴着字下面，否则会落在面板底部那块空白里
-      const ax = rect.x + rect.w - Math.round(L.fs * 1.3);
-      const ay = Math.min(rect.y + rect.h - Math.round(L.fs * 0.8),
+      const ax = rect.x + rect.w - Math.round(L.fs * 1.05);
+      const ay = Math.min(rect.y + rect.h - Math.round(L.fs * 0.72),
                           ty + textH + Math.round(L.fs * 0.5));
-      // 一个会呼吸的小圆点，比原来的实心三角安静
-      const pulse = 0.55 + 0.45 * (0.5 + 0.5 * Math.sin(performance.now() / 380));
+      // 一个会呼吸的小圆点，比原来的实心三角安静；半径和亮度都再收一档，
+      // 它只是"这一句读完了"，不是按钮
+      const pulse = 0.35 + 0.35 * (0.5 + 0.5 * Math.sin(performance.now() / 420));
       ctx.save();
       ctx.globalAlpha = pulse;
       ctx.fillStyle = vis.accent;
       ctx.beginPath();
-      ctx.arc(ax, ay, Math.max(4, Math.round(L.fs * 0.28)), 0, Math.PI * 2);
+      ctx.arc(ax, ay, Math.max(3, Math.round(L.fs * 0.20)), 0, Math.PI * 2);
       ctx.fill();
       ctx.restore();
     }
@@ -1856,7 +1964,10 @@
   }
 
   function menuBtnSize() {
-    return Math.min(160, Math.max(64, Math.round(Math.min(L.viewW, L.viewH) * 0.105)));
+    // 原来 0.105 → 最小 64px：竖屏 390 宽时是 68，两个键就把右上角占满，
+    // 右侧竖列又各 56 —— 五个控件互相争焦点。收到 0.072（最小 44，正好是手指的舒适下限），
+    // 让画面回来的第一眼是立绘，不是按钮。
+    return Math.min(96, Math.max(44, Math.round(Math.min(L.viewW, L.viewH) * 0.072)));
   }
 
   /* 菜单键放在喇叭左边：右上角本来就是"两个键"的位置，玩家不用记新手势 */
@@ -1871,21 +1982,30 @@
     if (state.scene !== "game" || state.error) return;
     const r = menuRect();
     ctx.save();
-    ctx.globalAlpha = 0.5;
-    roundRect(r.x, r.y, r.w, r.h, Math.round(r.h / 4), "rgba(12,14,20,.84)");
+    // 圆形、弱底、细线：它只是个"入口"，不该比立绘更抢眼
+    ctx.globalAlpha = 0.62;
+    roundRect(r.x, r.y, r.w, r.h, r.h / 2, "rgba(12,14,20,.80)");
     ctx.globalAlpha = 1;
-    ctx.strokeStyle = "#dfe6f5";
-    ctx.lineWidth = Math.max(2, Math.round(r.h * 0.052));
+    ctx.strokeStyle = "rgba(223,230,245,.18)";
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.arc(r.x + r.w / 2, r.y + r.h / 2, r.w / 2 - 0.5, 0, Math.PI * 2);
+    ctx.stroke();
     const cx = r.x + r.w / 2;
     const cy = r.y + r.h / 2;
-    const half = r.w * 0.17;
+    const half = r.w * 0.16;
+    ctx.strokeStyle = "rgba(240,244,255,.82)";
+    ctx.lineWidth = Math.max(1.5, Math.round(r.h * 0.028));
+    ctx.lineCap = "round";
     for (let i = -1; i <= 1; i++) {
       ctx.beginPath();
-      ctx.moveTo(cx - half, cy + i * r.h * 0.19);
-      ctx.lineTo(cx + half, cy + i * r.h * 0.19);
+      ctx.moveTo(cx - half, cy + i * r.h * 0.17);
+      ctx.lineTo(cx + half, cy + i * r.h * 0.17);
       ctx.stroke();
     }
     ctx.restore();
+    // 验收脚本用（onTap 走 menuRect 判定）
+    hit("menuBtn", r.x, r.y, r.w, r.h);
   }
 
   /* ---- 右侧竖列工具条 --------------------------------------------------------
@@ -1896,11 +2016,13 @@
   const ORBIT = [["save", "存"], ["log", "回"], ["settings", "设"]];
 
   function orbitRect(i) {
-    const s2 = Math.round(menuBtnSize() * 0.82);
-    const m = Math.round(Math.min(L.viewW, L.viewH) * 0.03);
-    const gap = Math.round(s2 * 0.14);
-    // 竖屏从 34% 屏高往下排（让开顶部标题和底部对话框）；横屏屏幕矮，压到 26%
-    const top = Math.round(L.viewH * (L.landscape ? 0.26 : 0.34));
+    const s2 = menuBtnSize();
+    const m = Math.round(Math.min(L.viewW, L.viewH) * 0.022);
+    const gap = Math.round(s2 * 0.18);
+    // 竖列整体垂直居中偏下：从 34% 屏高硬起排会正好压在人脸上/腰上。
+    // 现在按三条的总高算中心，落在 46% 处，跟对话框上沿拉开距离。
+    const total = (ORBIT.length - 1) * (s2 + gap) + s2;
+    const top = Math.round(L.viewH * (L.landscape ? 0.40 : 0.46) - total / 2);
     return {x: L.viewW - m - s2, y: top + i * (s2 + gap), w: s2, h: s2};
   }
 
@@ -1916,32 +2038,30 @@
     if (state.scene !== "game" || state.error || UI.open || state.guide) return;
     for (let i = 0; i < ORBIT.length; i++) {
       const r = orbitRect(i);
-      const rad = Math.round(r.h / 4);
-      roundRect(r.x, r.y, r.w, r.h, rad, "rgba(12,14,20,.80)", 0.46);
+      const rad = r.h / 2;
+      roundRect(r.x, r.y, r.w, r.h, rad, "rgba(12,14,20,.78)", 0.58);
       ctx.save();
-      ctx.strokeStyle = "rgba(223,230,245,.22)";
+      ctx.strokeStyle = "rgba(223,230,245,.16)";
       ctx.lineWidth = 1;
       ctx.beginPath();
-      ctx.moveTo(r.x + rad, r.y);
-      ctx.arcTo(r.x + r.w, r.y, r.x + r.w, r.y + r.h, rad);
-      ctx.arcTo(r.x + r.w, r.y + r.h, r.x, r.y + r.h, rad);
-      ctx.arcTo(r.x, r.y + r.h, r.x, r.y, rad);
-      ctx.arcTo(r.x, r.y, r.x + r.w, r.y, rad);
-      ctx.closePath();
+      ctx.arc(r.x + r.w / 2, r.y + r.h / 2, r.w / 2 - 0.5, 0, Math.PI * 2);
       ctx.stroke();
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
-      ctx.fillStyle = "rgba(240,244,255,.86)";
-      ctx.font = "500 " + Math.round(r.w * 0.34) + "px " + FACE;
+      ctx.fillStyle = "rgba(240,244,255,.80)";
+      ctx.font = "500 " + Math.round(r.w * 0.36) + "px " + FACE;
       ctx.fillText(ORBIT[i][1], r.x + r.w / 2, r.y + r.h / 2 + 1);
       ctx.restore();
+      // 只用于验收脚本定位（onTap 走 orbitHit，不读这里）
+      hit("orbit:" + ORBIT[i][0], r.x, r.y, r.w, r.h);
     }
     ctx.textAlign = "left";
     ctx.textBaseline = "alphabetic";
   }
 
   /* 横屏只有 390 高，5 个按钮按竖屏的尺寸会顶到屏幕上下边 */
-  function menuRowH() { return Math.round(L.fs * (L.landscape ? 2.1 : 2.7)); }
+  function menuRowH() { return Math.round(L.fs * (L.landscape ? 1.75 : 2.3)); }
+  function menuGap() { return Math.round(L.fs * (L.landscape ? 0.22 : 0.16)); }
   function setRowH() { return Math.round(L.fs * (L.landscape ? 2.0 : 2.4)); }
   /* 回顾一页几行：横屏矮，一页 6 行；竖屏高，7 行 */
   function logRows() { return L.landscape ? 6 : 7; }
@@ -1951,15 +2071,16 @@
   /* 面板高度跟着内容走：写死 74% 会在底部留一大片空，还漏出后面的对话框 */
   function menuPanel() {
     const land = L.landscape;
-    const w = land ? Math.min(L.viewW * 0.58, 860) : L.viewW * 0.88;
+    const w = land ? Math.min(L.viewW * 0.62, 900) : L.viewW * 0.94;
     const pad = Math.round(w * 0.055);
     const headH = Math.round(L.fs * 2.2);
     const footH = Math.round(L.fs * 2.3);
     const gap = Math.round(L.fs * 0.55);
     let bodyH;
     if (UI.view === "menu") {
-      // 网格：竖屏 2 列 → 4 行；横屏 4 列 → 2 行
-      bodyH = Math.round(L.fs * 0.3) + (L.landscape ? 2 : 4) * (menuRowH() + gap);
+      // 列表行：竖屏 8 行一列；横屏 4 行两列
+      bodyH = Math.round(L.fs * 0.35)
+              + (L.landscape ? 4 : 8) * (menuRowH() + menuGap());
     } else if (UI.view === "settings") {
       // 横屏两列（3 行）—— 单列 6 组在横屏里会把面板撑到顶边，一点留白都没有
       bodyH = Math.round(L.fs * 0.3) + (L.landscape ? 3 : 6) * (setRowH() + gap);
@@ -1977,7 +2098,7 @@
     } else {
       const rows = land ? 2 : 3;
       // 必须和 drawSlots() 里的 ch 一致，否则面板比格子高、底下空出一条
-      const ch = Math.round(L.fs * (land ? 5.8 : 5.2));
+      const ch = Math.round(L.fs * (land ? 4.4 : 3.9));
       bodyH = Math.round(L.fs * 0.4) + rows * (ch + gap);
     }
     // 回顾要一屏能读，比菜单面板宽；横屏设置两列，也要更宽才装得下两组
@@ -1991,8 +2112,13 @@
     const footUsed = (UI.view === "save" || UI.view === "load")
       ? Math.round(L.fs * 1.6)
       : footH;
-    const h = Math.min(headH + bodyH + footUsed + pad2, L.viewH * (land ? 0.96 : 0.94));
-    return {x: (L.viewW - w2) / 2, y: (L.viewH - h) / 2, w: w2, h: h, pad: pad2, headH: headH};
+    const h = Math.min(headH + bodyH + footUsed + pad2, L.viewH * (land ? 0.96 : 0.88));
+    // 竖屏做成"底部抽屉"：贴屏底、左右留 3% 边。原来垂直居中浮在半空，
+    // 上下各一整块黑，看着像一张贴在墙上的纸。
+    const y = land
+      ? (L.viewH - h) / 2
+      : L.viewH - h - Math.round(Math.min(L.viewW, L.viewH) * 0.03);
+    return {x: (L.viewW - w2) / 2, y: y, w: w2, h: h, pad: pad2, headH: headH};
   }
 
   function hit(id, x, y, w, h) { UI.rects.push({id: id, x: x, y: y, w: w, h: h}); }
@@ -2028,43 +2154,75 @@
   }
 
   function drawMenuList(x, y, w, p) {
-    const rowH = menuRowH();
-    const gap = Math.round(L.fs * 0.55);
     const items = [
       ["resume", "继续游戏"],
       ["toLog", "回顾台词"],
       ["toSave", "保存进度"],
       ["toLoad", "读取进度"],
-      ["skip", PREF.skip ? "快进 · 已开" : "快进 · 关"],
-      // 第 8 项补「自动」：正好 2×4 / 4×2 装满，不留空格，而且自动翻页不用每次进设置
-      ["autoTgl", PREF.auto ? "自动 · " + PREF.auto + " 秒" : "自动 · 关"],
+      ["skip", PREF.skip ? "快进 · 已开" : "快进 · 关", 1],
+      ["autoTgl", PREF.auto ? "自动 · " + PREF.auto + " 秒" : "自动 · 关", 1],
       ["toSet", "设置"],
       ["toTitle", "回到标题"],
     ];
-    let yy = y + gap;
-    // P84：菜单从「7 条通栏长条」改成网格卡片。
-    // 长条竖排看起来像设置项列表（劣质感主要来源）；商业作品的菜单都是格位按钮，
-    // 一屏 2×4 或 4×2，视线一眼扫完，且高度砍半，面板能收得干净。
-    const cols = L.landscape ? 4 : 2;
-    const colGap = Math.round(L.fs * 0.5);
-    const cellW = (w - (cols - 1) * colGap) / cols;
+    const land = L.landscape;
+    const cols = land ? 2 : 1;
+    const perCol = Math.ceil(items.length / cols);
+    const colGap = Math.round(L.fs * 0.6);
+    const colW = (w - colGap * (cols - 1)) / cols;
+    const rowH = menuRowH();
+    const gap = menuGap();
+    const padX = Math.round(L.fs * 0.66);
+    const top = y + Math.round(L.fs * 0.35);
     items.forEach((pair, idx) => {
       const id = pair[0];
       const label = pair[1];
-      const accent = id === "resume" || (id === "skip" && !!PREF.skip);
-      const col = idx % cols;
-      const row = Math.floor(idx / cols);
-      const bx = x + col * (cellW + colGap);
-      const by = yy + row * (rowH + gap);
-      uiButton(id, bx, by, cellW, rowH, label,
-               {on: accent, weight: accent ? 700 : 500, fs: Math.round(L.fs * 0.72)});
+      const toggle = !!pair[2];
+      const on = id === "resume" || (toggle && (id === "skip" ? !!PREF.skip : !!PREF.auto));
+      const ci = Math.floor(idx / perCol);
+      const ri = idx % perCol;
+      const bx = x + ci * (colW + colGap);
+      const by = top + ri * (rowH + gap);
+      // 行：淡底 + 圆角。选中/开启的用极淡蓝底 + 左侧一条 accent，
+      // 不再整块刷蓝 —— 一整块 120 高的蓝按钮比什么都刺眼。
+      roundRect(bx, by, colW, rowH, Math.round(rowH * 0.28),
+                on ? "rgba(79,140,255,.15)" : "rgba(255,255,255,.055)");
+      if (on) {
+        roundRect(bx + Math.round(rowH * 0.06), by + Math.round(rowH * 0.22),
+                  Math.max(3, Math.round(rowH * 0.07)), rowH - Math.round(rowH * 0.44),
+                  2, "#4f8cff");
+      }
+      ctx.textAlign = "left";
+      ctx.textBaseline = "middle";
+      ctx.fillStyle = on ? "#eaf1ff" : "rgba(240,244,255,.88)";
+      ctx.font = (on ? 600 : 500) + " " + Math.round(L.fs * 0.62) + "px " + FACE;
+      ctx.fillText(label, bx + padX, by + rowH / 2);
+
+      const ax = bx + colW - padX * 0.7;
+      const ay = by + rowH / 2;
+      if (toggle) {
+        // 开关：右侧一个小圆点，开=蓝、关=灰，比写「已开/关」更省眼
+        ctx.beginPath();
+        ctx.arc(ax - Math.round(L.fs * 0.2), ay, Math.max(3, Math.round(L.fs * 0.14)), 0, Math.PI * 2);
+        ctx.fillStyle = on ? "#4f8cff" : "rgba(240,244,255,.20)";
+        ctx.fill();
+      } else {
+        const s3 = Math.round(L.fs * 0.18);
+        ctx.strokeStyle = "rgba(240,244,255,.28)";
+        ctx.lineWidth = Math.max(1.5, Math.round(L.fs * 0.06));
+        ctx.beginPath();
+        ctx.moveTo(ax - s3 * 0.7, ay - s3);
+        ctx.lineTo(ax + s3 * 0.3, ay);
+        ctx.lineTo(ax - s3 * 0.7, ay + s3);
+        ctx.stroke();
+      }
+      hit(id, bx, by, colW, rowH);
     });
-    yy += Math.ceil(items.length / cols) * (rowH + gap);
+
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
     ctx.fillStyle = "rgba(240,244,255,.34)";
     ctx.font = "400 " + Math.round(L.fs * 0.5) + "px " + FACE;
-    ctx.fillText("进度保存在本机浏览器里 · 换设备不会同步", p.x + p.w / 2, p.y + p.h - Math.round(L.fs * 1.1));
+    ctx.fillText("进度保存在本机浏览器里 · 换设备不会同步", p.x + p.w / 2, p.y + p.h - Math.round(L.fs * 1.2));
     ctx.textAlign = "left";
   }
 
@@ -2111,7 +2269,7 @@
     const cols = land ? 3 : 2;
     const gap = Math.round(L.fs * 0.55);
     const cw = (w - gap * (cols - 1)) / cols;
-    const ch = Math.round(L.fs * (land ? 5.4 : 4.6));
+    const ch = Math.round(L.fs * (land ? 4.4 : 3.9));
     const saving = UI.view === "save";
     for (let i = 0; i < slotCount(); i++) {
       const rr = Math.floor(i / cols);
@@ -2145,17 +2303,39 @@
       return;
     }
     const confirm = !!UI.wipeConfirm && performance.now() - UI.wipeConfirm < 4000;
-    const bw = Math.round(L.fs * 4.6);
     const bh = Math.round(L.fs * 1.3);
+    // 左边「导出 / 导入」：手机端存档跟 origin 走，换文件就看不见 —— 这是唯一的搬运口
+    const bwS = Math.round(L.fs * 3.2);
+    const gapB = Math.round(L.fs * 0.3);
+    uiButton("exp", p.x, fy - bh / 2, bwS, bh, "导出", {fs: Math.round(L.fs * 0.44)});
+    uiButton("imp", p.x + bwS + gapB, fy - bh / 2, bwS, bh, "导入", {fs: Math.round(L.fs * 0.44)});
+    const bw = Math.round(L.fs * 4.6);
     uiButton("wipe", p.x + p.w - bw, fy - bh / 2, bw, bh,
              confirm ? "再点一次" : "清空存档",
              {fs: Math.round(L.fs * 0.46), dim: !confirm, on: confirm,
               accent: "rgba(190,60,60,.9)", weight: confirm ? 700 : 500});
+
+    // 中间一行：导出/导入的结果（做成败色），平时是一句提示
+    const nx = p.x + bwS * 2 + gapB + Math.round(L.fs * 0.45);
+    const nw = p.w - (bwS * 2 + gapB) - bw - Math.round(L.fs * 0.9);
+    const fresh = !!UI.notice && performance.now() - (UI.noticeAt || 0) < 4000;
     ctx.textAlign = "left";
     ctx.textBaseline = "middle";
-    ctx.fillStyle = "rgba(240,244,255,.32)";
-    ctx.font = "400 " + Math.round(L.fs * 0.46) + "px " + FACE;
-    ctx.fillText(saving ? "存在本机 · 不同步" : "点格子读档", p.x, fy);
+    if (fresh) {
+      ctx.fillStyle = UI.noticeOk ? "rgba(120,220,160,.92)" : "rgba(255,120,120,.92)";
+      ctx.font = "600 " + Math.round(L.fs * 0.42) + "px " + FACE;
+      let t = UI.notice;
+      if (ctx.measureText(t).width > nw) {
+        let n = t.length;
+        while (n > 1 && ctx.measureText(t.slice(0, n) + "…").width > nw) n--;
+        t = t.slice(0, n) + "…";
+      }
+      ctx.fillText(t, nx, fy);
+    } else {
+      ctx.fillStyle = "rgba(240,244,255,.30)";
+      ctx.font = "400 " + Math.round(L.fs * 0.42) + "px " + FACE;
+      ctx.fillText(saving ? "存在本机 · 换文件前先导出" : "点格子读档", nx, fy);
+    }
     ctx.textBaseline = "alphabetic";
   }
 
@@ -2335,12 +2515,23 @@
         uiButton(key + ":" + i, sx + i * (bw + btnGap), yy + (rowH - bh) / 2, bw, bh,
                  labels[i], {on: on, fs: Math.round(bh * (cols === 2 ? 0.36 : 0.42))});
       }
+      // 行分隔线：六组排下来没有分隔就是一张"表单"，有线才像"设置清单"
+      if (rowIdx < perCol - 1) {
+        ctx.save();
+        ctx.strokeStyle = "rgba(255,255,255,.06)";
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(gx, yy + rowH + gap / 2);
+        ctx.lineTo(gx + colW, yy + rowH + gap / 2);
+        ctx.stroke();
+        ctx.restore();
+      }
     }
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
-    ctx.fillStyle = "rgba(240,244,255,.32)";
-    ctx.font = "400 " + Math.round(L.fs * 0.48) + "px " + FACE;
-    ctx.fillText("设置存在本机 · 换作品也沿用", p.x + p.w / 2, p.y + p.h - Math.round(L.fs * 1.0));
+    ctx.fillStyle = "rgba(240,244,255,.36)";
+    ctx.font = "400 " + Math.round(L.fs * 0.52) + "px " + FACE;
+    ctx.fillText("设置存在本机 · 换作品也沿用", p.x + p.w / 2, p.y + p.h - Math.round(L.fs * 1.5));
     ctx.textAlign = "left";
   }
 
@@ -2350,7 +2541,7 @@
     const a = Math.min(1, (performance.now() - UI.t0) / 160);
 
     ctx.save();
-    ctx.fillStyle = "rgba(4,6,12," + (0.82 * a) + ")";
+    ctx.fillStyle = "rgba(4,6,12," + (0.93 * a) + ")";
     ctx.fillRect(0, 0, L.viewW, L.viewH);
     ctx.globalAlpha = a;
     ctx.translate(0, (1 - a) * Math.round(L.viewH * 0.03));
@@ -2412,6 +2603,14 @@
       return;
     }
     UI.wipeConfirm = 0;
+    if (id === "exp") {
+      const code = storeExportCode();
+      if (!code) { notice("还没有可导出的存档", false); return; }
+      const ok = storeExportFile(code);
+      notice(ok ? "已导出到下载目录" : "导出被拦，换个浏览器试", ok);
+      return;
+    }
+    if (id === "imp") { storeImportFile(); return; }
     if (id === "close") { UI.open = false; return; }
     if (id === "back") { UI.view = "menu"; return; }
     if (id === "resume") { UI.open = false; return; }
