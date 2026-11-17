@@ -753,6 +753,10 @@
     // 喇叭优先：点它只静音，不翻页
     if (state.scene === "game" && inRect(p, muteRect())) return toggleMute();
 
+    // 右侧竖列：存档/回顾/设置直接开面板，不必先进菜单
+    const oi = orbitHit(p);
+    if (oi) return openPanel(oi);
+
     if (state.scene === "title") {
       tryFullscreen();
       if (state.continueRect && inRect(p, state.continueRect)) return startGame(true);
@@ -1159,33 +1163,40 @@
     const nameH = say.char ? Math.round(L.nameSize * 0.9) : 0;
 
     if (say.char) {
-      ctx.font = `600 ${L.nameSize}px ${FACE}`;
+      // 字号比面板预留的名位小一档（0.88）：白字撑满胶囊会变成一块厚标签，
+      // 缩小后上下留出呼吸，描边才看得见
+      const nameFs = Math.round(L.nameSize * 0.88);
+      ctx.font = `500 ${nameFs}px ${FACE}`;
       const tw = ctx.measureText(say.char).width;
       // P89：名字牌放进面板内部。原来画在面板上沿外面 —— 面板贴底时它悬空压在
       // 立绘的脚上，像贴了张纸条；而面板高度又已经按 nameH 预留过，名字在外，
       // 那截预留就白撑成了空白。
       const plateH = nameH;
+      const padW = Math.round(plateH * 1.15);
       const plateX = rect.x + L.padX + vis.panel.padX - Math.round(plateH * 0.28);
       const plateY = rect.y + L.padY + vis.panel.padY;
       const tint = say.color || vis.accent;
       // 名字牌：深色胶囊保证任何角色色都读得清，角色色只用于描边（纯当标签太淡就看不见字）
-      roundRect(plateX, plateY, tw + 52, plateH, plateH / 2, "rgba(12,14,20,.92)");
+      roundRect(plateX, plateY, tw + padW, plateH, plateH / 2, "rgba(12,14,20,.92)");
       ctx.save();
-      ctx.strokeStyle = hexA(tint, 0.62);
+      ctx.strokeStyle = hexA(tint, 0.72);
       ctx.lineWidth = 1;
       ctx.beginPath();
       const rrp = plateH / 2;
       ctx.moveTo(plateX + rrp, plateY);
-      ctx.arcTo(plateX + tw + 52, plateY, plateX + tw + 52, plateY + plateH, rrp);
-      ctx.arcTo(plateX + tw + 52, plateY + plateH, plateX, plateY + plateH, rrp);
+      ctx.arcTo(plateX + tw + padW, plateY, plateX + tw + padW, plateY + plateH, rrp);
+      ctx.arcTo(plateX + tw + padW, plateY + plateH, plateX, plateY + plateH, rrp);
       ctx.arcTo(plateX, plateY + plateH, plateX, plateY, rrp);
-      ctx.arcTo(plateX, plateY, plateX + tw + 52, plateY, rrp);
+      ctx.arcTo(plateX, plateY, plateX + tw + padW, plateY, rrp);
       ctx.closePath();
       ctx.stroke();
       ctx.restore();
+      // 用居中而不是"左内边距"，否则不同角色名的左右留白不等宽
       ctx.fillStyle = vis.textColor;
+      ctx.textAlign = "center";
       ctx.textBaseline = "middle";
-      ctx.fillText(say.char, plateX + 26, plateY + plateH / 2);
+      ctx.fillText(say.char, plateX + (tw + padW) / 2, plateY + plateH / 2 + 1);
+      ctx.textAlign = "left";
     }
 
     const shown = typedCount();
@@ -1622,6 +1633,7 @@
       drawChoices(vis);
       drawMute();
       drawMenuButton();
+      drawOrbit();
       if (state.guide) drawGuide();
       if (state.waitUntil && performance.now() >= state.waitUntil) {
         state.waitUntil = 0;
@@ -1834,6 +1846,9 @@
 
   function openMenu() { UI.open = true; UI.view = "menu"; UI.t0 = performance.now(); }
 
+  /* 直接开某一页（右侧竖列用），跳过"先进菜单再点一层" */
+  function openPanel(view) { UI.open = true; UI.view = view; UI.t0 = performance.now(); }
+
   function stamp(t) {
     const d = new Date(t || 0);
     const p2 = (n) => (n < 10 ? "0" : "") + n;
@@ -1871,6 +1886,58 @@
       ctx.stroke();
     }
     ctx.restore();
+  }
+
+  /* ---- 右侧竖列工具条 --------------------------------------------------------
+     外壳那套「贴着屏边一列小键」的做法。原来「存档 / 回顾 / 设置」全藏在 ☰ 里，
+     玩到关键处想存一档要 点菜单 → 再点一层；菜单面板一开就盖掉大半个屏。
+     这里把三个最高频的拎出来常驻屏边，☰ 里剩下的照旧（含快进/自动/回标题）。
+     只露半透明底，看不清也不碍事；点开才展开成完整面板。*/
+  const ORBIT = [["save", "存"], ["log", "回"], ["settings", "设"]];
+
+  function orbitRect(i) {
+    const s2 = Math.round(menuBtnSize() * 0.82);
+    const m = Math.round(Math.min(L.viewW, L.viewH) * 0.03);
+    const gap = Math.round(s2 * 0.14);
+    // 竖屏从 34% 屏高往下排（让开顶部标题和底部对话框）；横屏屏幕矮，压到 26%
+    const top = Math.round(L.viewH * (L.landscape ? 0.26 : 0.34));
+    return {x: L.viewW - m - s2, y: top + i * (s2 + gap), w: s2, h: s2};
+  }
+
+  function orbitHit(p) {
+    if (state.scene !== "game" || state.error || UI.open || state.guide) return "";
+    for (let i = 0; i < ORBIT.length; i++) {
+      if (inRect(p, orbitRect(i))) return ORBIT[i][0];
+    }
+    return "";
+  }
+
+  function drawOrbit() {
+    if (state.scene !== "game" || state.error || UI.open || state.guide) return;
+    for (let i = 0; i < ORBIT.length; i++) {
+      const r = orbitRect(i);
+      const rad = Math.round(r.h / 4);
+      roundRect(r.x, r.y, r.w, r.h, rad, "rgba(12,14,20,.80)", 0.46);
+      ctx.save();
+      ctx.strokeStyle = "rgba(223,230,245,.22)";
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(r.x + rad, r.y);
+      ctx.arcTo(r.x + r.w, r.y, r.x + r.w, r.y + r.h, rad);
+      ctx.arcTo(r.x + r.w, r.y + r.h, r.x, r.y + r.h, rad);
+      ctx.arcTo(r.x, r.y + r.h, r.x, r.y, rad);
+      ctx.arcTo(r.x, r.y, r.x + r.w, r.y, rad);
+      ctx.closePath();
+      ctx.stroke();
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillStyle = "rgba(240,244,255,.86)";
+      ctx.font = "500 " + Math.round(r.w * 0.34) + "px " + FACE;
+      ctx.fillText(ORBIT[i][1], r.x + r.w / 2, r.y + r.h / 2 + 1);
+      ctx.restore();
+    }
+    ctx.textAlign = "left";
+    ctx.textBaseline = "alphabetic";
   }
 
   /* 横屏只有 390 高，5 个按钮按竖屏的尺寸会顶到屏幕上下边 */
