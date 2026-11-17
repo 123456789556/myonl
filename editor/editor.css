@@ -2771,3 +2771,16 @@ input[type="color"] {
   .main.mobile-asset-open .asset-card img { height: 78px !important; }
   .main.mobile-asset-open .asset-card .ph { height: 60px !important; }
 }
+
+/* ===== P78e 页头渐变统一 =====
+   P77 只给了外观二级页渐变，素材页/导出页还是一块死平的头，翻页时观感割裂。 */
+@media (max-width: 860px), (max-height: 520px) {
+  .center-page .cp-head,
+  .asset-head {
+    background: linear-gradient(100deg, rgba(79, 140, 255, .14),
+                rgba(79, 140, 255, .04) 46%, transparent 74%) !important;
+  }
+  .center-page.mode-export .ui-design-body {
+    background: radial-gradient(120% 46% at 50% 0%, rgba(79, 140, 255, .07), transparent 62%);
+  }
+}
