@@ -27,8 +27,12 @@
 ## 手机端优先（现在的主线）
 
 同一个工程，三条出口：**手机网页包**（竖屏 390×844 / 横屏 844×390 都满屏，转屏自动重排）、
-**安卓 APK**（`tools/build_android.py` 套 Capacitor 壳，`.github/workflows/android-apk.yml` 出 `app-debug.apk`）、
+**安卓 APK**（`android/` 自建 WebView 壳 + 固定签名，`.github/workflows/android-apk.yml` 出 release 包）、
 **桌面目录**（双击即玩，目标机不装 Python）。桌面端保留重度编辑与打包，不再是唯一出口。
+
+APK 壳有三条不能省（细节在 `docs/存档与升级.md`）：assets 必须挂到 `https://appassets.androidplatform.net`
+（`file://` 下 localStorage 存不住档）、签名固定在一个 keystore 上（否则更新要求卸载、存档跟着删）、
+返回键先交给 `window.myonlBack` 再退出。工程和签名入库，单文件 HTML 是 CI 产物不入库。
 
 **手机上的编辑器是一个"应用"，不是一张塞进 390px 的 IDE**：
 

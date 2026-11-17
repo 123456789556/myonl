@@ -1998,6 +1998,14 @@
   /* 直接开某一页（右侧竖列用），跳过"先进菜单再点一层" */
   function openPanel(view) { UI.open = true; UI.view = view; UI.t0 = performance.now(); }
 
+  /* 安卓壳的返回键先问这里：面板开着就关掉，游戏里就开菜单，都不是才让系统退出。
+     返回 false 时壳会 finish()，所以这里只在自己真的处理了的时候说 true。 */
+  window.myonlBack = function () {
+    if (UI.open) { UI.open = false; return true; }
+    if (state.scene === "game" && !state.error) { openPanel("menu"); return true; }
+    return false;
+  };
+
   function stamp(t) {
     const d = new Date(t || 0);
     const p2 = (n) => (n < 10 ? "0" : "") + n;

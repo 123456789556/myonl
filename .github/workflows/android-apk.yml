@@ -1,42 +1,20 @@
 name: 安卓 APK
 
-# 把 MYONL 工程编成网页包 → 套 Capacitor 安卓壳 → 出 debug APK。
-# 触发：Actions 页面手动填工程路径，或推 tag（v*）自动跑一次示例工程。
+# 自建 WebView 壳 + 固定签名，不依赖 node / 第三方壳框架。
+# 触发：Actions 页面手动跑，或推 apk-* 标签。
 on:
   workflow_dispatch:
-    inputs:
-      project:
-        description: "工程目录（相对仓库根，如 games/教程示例）"
-        default: "games/教程示例"
-        required: false
-      app_name:
-        description: "桌面显示的应用名"
-        default: "教程示例"
-        required: false
-      app_id:
-        description: "包名（如 com.myonl.demo）"
-        default: "com.myonl.demo"
-        required: false
   push:
     tags:
-      - "v*"
+      - "apk-*"
 
 jobs:
   apk:
     runs-on: ubuntu-latest
     timeout-minutes: 30
+
     steps:
       - uses: actions/checkout@v4
-
-      - name: 装 Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-
-      - name: 装 Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: "20"
 
       - name: 装 JDK 17
         uses: actions/setup-java@v4
@@ -44,46 +22,38 @@ jobs:
           distribution: temurin
           java-version: "17"
 
-      - name: 用 runner 自带 Android SDK
-        run: |
-          echo "ANDROID_HOME=$ANDROID_HOME"
-          echo "ANDROID_SDK_ROOT=$ANDROID_SDK_ROOT"
-          ls "$ANDROID_HOME/platforms" | tail -5
-          ls "$ANDROID_HOME/build-tools" | tail -5
+      - name: 装 Android SDK
+        uses: android-actions/setup-android@v3
 
-      - name: 装引擎依赖
-        run: |
-          python -m pip install --upgrade pip
-          pip install pygame-ce
+      - name: 补 SDK 平台（runner 通常已自带，缺了就装）
+        run: sdkmanager --install "platforms;android-34" "build-tools;34.0.0"
 
-      - name: 编译网页包
+      - name: 生成单文件 HTML（素材全内嵌）
         env:
-          PROJECT: ${{ github.event.inputs.project || 'games/教程示例' }}
+          SDL_VIDEODRIVER: dummy
         run: |
-          python -m engine.webpack "$PROJECT" -o build/web/game --title android-build
-          ls -R build/web/game | head -40
+          python3 -m pip install --quiet --upgrade pip
+          python3 -m pip install --quiet pillow pygame-ce
+          mkdir -p android/app/src/main/assets
+          python3 -c "from engine.webpack import build_single; build_single('games/研修日志', 'android/app/src/main/assets/index.html', title='研修日志')"
+          ls -lh android/app/src/main/assets/index.html
 
-      - name: 生成安卓工程
-        env:
-          APP_NAME: ${{ github.event.inputs.app_name || '教程示例' }}
-          APP_ID: ${{ github.event.inputs.app_id || 'com.myonl.demo' }}
-        run: |
-          python tools/build_android.py --www build/web/game --out android-app \
-            --app-name "$APP_NAME" --app-id "$APP_ID" --install
-
-      - name: 编译 debug APK
-        working-directory: android-app/android
-        run: |
-          chmod +x gradlew
-          ./gradlew assembleDebug --no-daemon
-
-      - name: 上传 APK
-        uses: actions/upload-artifact@v4
+      - uses: gradle/actions/setup-gradle@v4
         with:
-          name: myonl-debug-apk
-          path: android-app/android/app/build/outputs/apk/debug/app-debug.apk
-          if-no-files-found: error
+          gradle-version: "8.7"
 
-      - name: 检查转屏设置
+      - name: 打 release APK
+        working-directory: android
+        run: gradle assembleRelease --no-daemon --stacktrace
+
+      - name: 收产物
         run: |
-          grep -n "screenOrientation" android-app/android/app/src/main/AndroidManifest.xml
+          mkdir -p out
+          cp android/app/build/outputs/apk/release/app-release.apk "out/MYONL-${GITHUB_REF_NAME:-manual}.apk"
+          ls -lh out
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: myonl-apk
+          path: out/*.apk
+          if-no-files-found: error

@@ -58,3 +58,10 @@ pytest-of-*/
 pytest-*/
 dist/android/
 .venv_ci/
+
+# 安卓壳：单文件 HTML 是 CI 产物（3 MB），工程和签名才入库
+android/app/src/main/assets/index.html
+android/.gradle/
+android/build/
+android/app/build/
+android/local.properties

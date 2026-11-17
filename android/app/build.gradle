@@ -1,0 +1,50 @@
+plugins {
+    id 'com.android.application'
+}
+
+android {
+    namespace 'net.myonl.player'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId "net.myonl.player"
+        minSdk 24
+        targetSdk 34
+        versionCode 1
+        versionName "1.0.0"
+    }
+
+    // 签名固定在一个测试 keystore 上（android/keystore/myonl-test.p12）。
+    // 换签名 = 玩家必须先卸载，localStorage 会跟着一起删 —— 所以这是有意公开的测试签名。
+    // 想换成自己的：设置环境变量 MYONL_KEYSTORE / MYONL_STORE_PASS / MYONL_KEY_PASS。
+    signingConfigs {
+        release {
+            storeFile file(System.getenv("MYONL_KEYSTORE") ?: "../keystore/myonl-test.p12")
+            storePassword System.getenv("MYONL_STORE_PASS") ?: "[REDACTED-BY-P104]"
+            keyAlias System.getenv("MYONL_KEY_ALIAS") ?: "myonl"
+            keyPassword System.getenv("MYONL_KEY_PASS") ?: "[REDACTED-BY-P104]"
+            storeType "PKCS12"
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            shrinkResources false
+            signingConfig signingConfigs.release
+        }
+        debug {
+            signingConfig signingConfigs.release
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}
+
+dependencies {
+    implementation 'androidx.core:core:1.13.1'
+    implementation 'androidx.webkit:webkit:1.11.0'
+}
