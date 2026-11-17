@@ -27,9 +27,16 @@
     const viewH = Math.round(shortSide * (aspect >= 1 ? 1 : 1 / aspect));
 
     const unit = Math.min(viewW, viewH);          // 字号/间距的基准
-    // P58：手机上字要能看清。短边 1080 时 42px 逻辑 ≈ 390 宽屏上的 15 CSS px（偏小），
-    // 改成短边的 1/22 ≈ 49px → 约 18 CSS px，横竖屏仍然一致。
-    const fs = Math.round(clamp(unit / 22, 34, 78));
+    // 字号（P99 平板适配）：以前是 unit/22 —— 而 unit 恒 1080，等于"字号只跟逻辑画布挂钩"。
+    // 手机上 49 逻辑 ≈ 17.7 CSS px 刚好，但平板窗口 768 CSS 宽时缩放系数是 0.71（手机 0.36），
+    // 同样 49 逻辑就变成 34.8 CSS px —— 整屏内容等于被放大了近一倍，这才是"平板没适配"的真身。
+    // 反过来按"物理 CSS 字号"反推：逻辑画布短边恒 1080，所以 fs = 目标CSS × 1080 / 短边CSS，
+    // 任何尺寸的设备落到眼睛里的字都一样大，大屏多出来的地方留给"一屏更多字"。
+    const cssShort = Math.min(w, h);
+    const fsCss = 18.5;                            // 目标：约 18.5 CSS px（正文舒适区）
+    const fs = Math.round(clamp(fsCss * shortSide / Math.max(1, cssShort), 17, 78));
+    // 短边 ≥600 CSS 视为平板（7 寸以上 / 折叠屏展开都落在这边）
+    const tablet = cssShort >= 600;
     const lineH = Math.round(fs * 1.65);
     const nameSize = Math.round(fs * 1.18);
 
@@ -40,12 +47,20 @@
     const padX = Math.round(fs * 1.1);
     const padY = Math.round(fs * 0.85);
 
-    const panelW = Math.round(landscape
-      ? Math.min(viewW - marginX * 2, viewW * 0.80)
-      : viewW - marginX * 2);
+    // 正文别横跨太远：中文一行超过 40 字左右就开始"串行"，眼睛回不到下一行开头。
+    // "多少字一行"= 物理宽度 / 物理字号，两个都该钉死 —— 所以限制的不是字数，
+    // 而是正文的物理宽度：任何设备上都不超过 ~720 CSS px（720/18.5 ≈ 39 字）。
+    // 手机 390 宽时这条不起作用（面板本来就只到 363 CSS），限制的是安卓平板横屏
+    // 那种 1280×800、1024×600 的宽画布 —— 不然面板铺满就是一行 50 多字。
+    const scale = Math.min(w / viewW, h / viewH);
+    const maxPanelW = Math.round(720 / Math.max(0.2, scale)) + padX * 2;
+    const panelW = Math.round(Math.min(
+      landscape ? viewW * 0.80 : viewW - marginX * 2,
+      maxPanelW));
 
     return {
       landscape: landscape,
+      tablet: tablet,
       aspect: aspect,
       viewW: viewW,
       viewH: viewH,
@@ -72,9 +87,11 @@
       // P74：竖屏立绘从 0.72 提到 0.86，但上限是「对话框上沿」——
       // 竖屏看的是全身（脚要落在面板之上，不能被面板盖掉）；
       // 横屏反过来要人「大」，贴底边让人被对话框压住小腿，这是横屏 galgame 的标准构图。
-      spriteH: Math.round(landscape
-        ? viewH * 0.92
-        : Math.min(viewH * 0.86, viewH - panelH - bottom - 6)),
+      // 竖屏立绘上限只给"屏高比例"，不再在这里减面板高 —— 面板是按台词行数收放的
+      // （一句台词约 1.9 行、长句会涨到 8 行），用布局里这个静态值算，人就被锁死在
+      // 一个偏小的尺寸：平板上明明只有三行字，上面却按"九行面板"留空，人像站远处。
+      // 实际可用高度由播放器按「当前」面板高度现算（panelTopY）。
+      spriteH: Math.round(viewH * (landscape ? 0.92 : 0.86)),
       // 横屏选项靠左占 0.42：再宽就压到人物身上，再窄中文字会换行
       choiceW: Math.round(landscape ? Math.min(viewW * 0.42, 720) : viewW - marginX * 4),
       // P58：选项按钮按手指来算——最小 120 逻辑 px（1080 短边下约 43 CSS px，接近 44pt 触摸推荐值）

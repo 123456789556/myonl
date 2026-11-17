@@ -1105,6 +1105,10 @@
     if (!list.length) return;
     const n = list.length;
     const baseH = L.spriteH;
+    // 竖屏的人要"从头顶到鞋"全露在面板之上：可用高度按「当前」面板现算。
+    // 面板是按台词行数收放的（并做了补间），所以一句短台词时人会自动站大一点，
+    // 长句把面板顶高又自动收回去 —— 全程连续，不会跳。
+    const liveH = L.landscape ? baseH : Math.min(baseH, panelTopY() - 6);
     const k = L.viewW / 1280;   // 剧本里的像素值以桌面 1280 为基准
     const nowT = performance.now() / 1000;
     list.forEach((sp, i) => {
@@ -1112,7 +1116,7 @@
       const img = assets[key] || assets[sp.char];
       if (!img) return;
       const disp = animDisp(sp.char);
-      const h = baseH * (disp.scale > 0 ? disp.scale : 1) * (L.landscape ? 1 : 0.95);
+      const h = liveH * (disp.scale > 0 ? disp.scale : 1) * (L.landscape ? 1 : 0.95);
       // 竖长的全身立绘整张塞进横屏，只剩中间细长一条，人小得像贴纸。
       // 横屏就按 galgame 的常态构图：只画上 62%（头顶到膝），按屏高放大，膝盖以下让对话框压住。
       // 阈值原来写 2.2，是按 368×1400（比例 3.8）那种细长图定的；苏晴这张 872×1915
