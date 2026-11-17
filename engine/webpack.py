@@ -26,6 +26,7 @@ from . import parser as parser_mod
 from . import pwa
 from .data import resolve_audio
 from .data import resolve_image
+from .data import find_variant_image
 from .data import DataError
 
 # 启动遮罩：加载 pack.json 与素材的那一两秒不能给一块纯黑（手机上看像卡死）。
@@ -76,7 +77,29 @@ PLAYER_FILES = ("myonl-core.js", "myonl-layout.js", "myonl-player.js")
 # P70：ui（选项/快捷栏/菜单/设置页的几何与颜色）、dialogue（对话框皮肤）也要带上，
 # 否则编辑器调完 UI 导出后手机端读不到，等于白调。
 CONFIG_KEYS = ("window_title", "theme", "colors", "alphas", "font", "line_height",
-               "ui", "dialogue")
+               "ui", "dialogue", "focal")
+
+
+def _clean_focal(raw) -> dict:
+    """收 config.json 的 "focal": {"背景名": [x, y]}，只留 0–1 的合法项。
+
+    语义是「裁切窗口落在哪」：0 贴左/上、0.5 居中、1 贴右/下。
+    没有这项就走居中 —— 老工程不用改任何东西也不会坏。
+    """
+    out: dict[str, list] = {}
+    if not isinstance(raw, dict):
+        return out
+    for key, val in raw.items():
+        if not isinstance(val, (list, tuple)) or len(val) != 2:
+            continue
+        try:
+            x = float(val[0])
+            y = float(val[1])
+        except (TypeError, ValueError):
+            continue
+        if 0 <= x <= 1 and 0 <= y <= 1:
+            out[str(key)] = [round(x, 3), round(y, 3)]
+    return out
 
 
 def _pick_script(root: str) -> str:
@@ -273,6 +296,13 @@ def build_web(project_root: str, out_dir: str, *, title: str = "") -> dict:
         dst_name = name + ext
         shutil.copyfile(src, os.path.join(assets_dir, dst_name))
         manifest[name] = "assets/" + dst_name
+        # 可选竖版构图：images/{name}_p.png 一并打包成 {name}_p，
+        # 播放器按当前是横是竖挑一张；没有就回退主图 + 锚点裁切。
+        var = find_variant_image(root, name)
+        if var:
+            vext = os.path.splitext(var)[1].lower()
+            shutil.copyfile(var, os.path.join(assets_dir, name + "_p" + vext))
+            manifest[name + "_p"] = "assets/" + name + "_p" + vext
         low = name.lower()
         if ("bg" in low or low.startswith("cg")) and "title" not in low:
             try:
@@ -285,6 +315,7 @@ def build_web(project_root: str, out_dir: str, *, title: str = "") -> dict:
 
     # 只回填存在的那部分配置（缺的走播放器默认，避免前端处理空对象）
     picked = {k: cfg[k] for k in CONFIG_KEYS if k in cfg}
+    picked["focal"] = _clean_focal(cfg.get("focal"))
     picked["dialogue"] = {
         g: d for g, d in (cfg.get("dialogue") or {}).items() if isinstance(d, dict)
     }

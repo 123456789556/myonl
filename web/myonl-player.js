@@ -28,6 +28,7 @@
   let helpSeen = false;                 // 首次引导标记：跟设置一起存（以前是裸键）
   const UI = {open: false, view: "menu", rects: [], t0: 0, logPage: 0};
   let pack = null;
+  let FOCAL = {};          // 构图锚点：{背景名: [x, y]}，0 贴左/上、0.5 居中
   let vm = null;
   const assets = {};
   let L = LAYOUT.layoutFor(window.innerWidth, window.innerHeight);
@@ -928,6 +929,40 @@
   });
 
   // ---------- 绘制 ----------
+  // 竖屏优先用竖版构图（images/{名}_p.png），没有就回退主图
+  function pickBgName(name) {
+    if (!name) return "";
+    if (!L.landscape && assets[name + "_p"]) return name + "_p";
+    return name;
+  }
+
+  // 带锚点的 cover。锚点 = 裁切窗口在「可移动范围」里的位置：
+  // 0 贴左/上，0.5 居中，1 贴右/下。16:9 的图铺到 9:16 的屏上，
+  // 居中裁掉的是两边各三成，人脸常常被切 —— 给一个锚点就不用改图。
+  function blitNamed(name, alpha) {
+    const key = pickBgName(name);
+    const img = assets[key] || assets[name];
+    if (!img) return false;
+    const f = FOCAL[name] || FOCAL[key];
+    const m = sceneMargin();
+    const scale = Math.max(L.viewW / img.width, L.viewH / img.height) * m;
+    const dw = img.width * scale;
+    const dh = img.height * scale;
+    const fx = f ? f[0] : 0.5;
+    const fy = f ? f[1] : 0.5;
+    const dx = (L.viewW - dw) * fx;
+    const dy = (L.viewH - dh) * fy;
+    if (alpha !== undefined && alpha < 1) {
+      ctx.save();
+      ctx.globalAlpha = Math.max(0, alpha);
+      ctx.drawImage(img, dx, dy, dw, dh);
+      ctx.restore();
+    } else {
+      ctx.drawImage(img, dx, dy, dw, dh);
+    }
+    return true;
+  }
+
   function blitCover(img, alpha) {
     const m = sceneMargin();
     const scale = Math.max(L.viewW / img.width, L.viewH / img.height) * m;
@@ -983,13 +1018,14 @@
       t = Math.min(1, (performance.now() - state.fadeT0) / state.fadeDur);
       if (t >= 1) { state.fadeDur = 0; state.fadeFromBg = ""; }
     }
-    const prev = state.fadeFromBg && assets[state.fadeFromBg];
-    const img = state.bg && assets[state.bg];
-    if (prev && t < 1) blitCover(prev, 1);
-    if (img) {
+    const prevName = state.fadeFromBg;
+    const bgName = state.bg;
+    const hasBg = !!(bgName && (assets[bgName] || assets[bgName + "_p"]));
+    if (prevName && t < 1) blitNamed(prevName, 1);
+    if (hasBg) {
       // @transition wipe / slide：新图按方向推进来；dissolve 就是普通淡入
       const mode = state.transMode || "dissolve";
-      if (prev && t < 1 && mode !== "dissolve") {
+      if (prevName && t < 1 && mode !== "dissolve") {
         ctx.save();
         ctx.beginPath();
         const dir = state.transDir || "左";
@@ -1001,10 +1037,10 @@
           ctx.rect(0, dir === "上" ? 0 : L.viewH - h, L.viewW, h);
         }
         ctx.clip();
-        blitCover(img, 1);
+        blitNamed(bgName, 1);
         ctx.restore();
       } else {
-        blitCover(img, prev && t < 1 ? t : 1);
+        blitNamed(bgName, prevName && t < 1 ? t : 1);
       }
       return;
     }
@@ -1012,7 +1048,7 @@
     g.addColorStop(0, "#1a1d2b");
     g.addColorStop(1, "#0b0d14");
     ctx.save();
-    ctx.globalAlpha = prev ? t : 1;
+    ctx.globalAlpha = prevName ? t : 1;
     ctx.fillStyle = g;
     ctx.fillRect(0, 0, L.viewW, L.viewH);
     ctx.restore();
@@ -1494,8 +1530,12 @@
      没有就退回"名字里带 bg 的" —— 但不再从 assets 里抓第一张，
      那常常是程序画的占位图，标题页会变成一堵空墙。 */
   function titleCover() {
-    if (pack && pack.cover && assets[pack.cover]) return assets[pack.cover];
-    const names = Object.keys(assets).filter(n => /bg|cover/i.test(n));
+    if (pack && pack.cover) {
+      // 竖屏优先用封面的竖版构图，没有就主图（配合锚点裁）
+      if (!L.landscape && assets[pack.cover + "_p"]) return assets[pack.cover + "_p"];
+      if (assets[pack.cover]) return assets[pack.cover];
+    }
+    const names = Object.keys(assets).filter(n => /bg|cover/i.test(n) && !/_p$/.test(n));
     return names.length ? assets[names[0]] : null;
   }
 
@@ -1844,6 +1884,7 @@
   bootPack
     .then((data) => {
       pack = data;
+      FOCAL = pack.focal || {};
       vm = CORE.createVM(pack);
       return loadAssets();
     })

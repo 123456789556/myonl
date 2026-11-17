@@ -236,6 +236,20 @@ def resolve_image(root, name) -> str:
     return _resolve(root, "images", name, _IMAGE_EXTS, "图片")
 
 
+def find_variant_image(root, name, suffix="_p"):
+    """找同一场景的另一种构图：images/{name}_p.png。
+
+    竖屏要的是 9:16，横屏素材 cover 上去左右各裁三成，构图会散。约定是**可选**的：
+    有就打包并优先用，没有返回 None，调用方回退主图 + 锚点。不抛错。
+    """
+    if not name:
+        return None
+    try:
+        return _resolve(root, "images", str(name) + suffix, _IMAGE_EXTS, "图片")
+    except DataError:
+        return None
+
+
 def resolve_audio(root, name) -> str:
     """root/audio/{name}.ogg（兼容 .mp3/.wav），缺失抛 DataError。"""
     return _resolve(root, "audio", name, _AUDIO_EXTS, "音频")

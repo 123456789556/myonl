@@ -385,6 +385,14 @@ create_game(name: str, template: str = "default", dest: str = ".") -> Path
 # 快捷栏图标：config.json 的
 #   "ui": {"quickbar": {"icons": {"SAVE": "ui_save", "LOAD": "ui_load"}}}
 # 值为 images/ 下的图片名（不带扩展名）；缺项/缺图自动回退为原来的文字按钮。
+
+# 横竖两套构图（都可选，不写就和以前完全一样）：
+#   1) images/{图片名}_p.png —— 同一场景的竖版构图。播放器按当前方向挑，
+#      竖屏优先用 _p，横屏用主图；桌面端竖窗口同理。没有就回退主图。
+#      为什么要这个：16:9 的图铺到 9:16 的屏上，cover 之后只剩 26% 宽度可见。
+#   2) config.json 的 "focal": {"图片名": [x, y]} —— 裁切窗口落在哪，
+#      0 = 贴左/上，0.5 = 居中（缺省），1 = 贴右/下。只影响 cover 裁切，不缩放。
+#      写法示例："focal": {"bg_教室": [0.42, 0.5], "bg_走廊": [0.3, 0.45]}
 ```
 
 ### `engine.packaging`

@@ -281,6 +281,37 @@ class MediaMixin:
             cache.popitem(last=False)
         return snd
 
+    def _bg_image(self, name, vertical: bool):
+        """背景图：竖窗口优先 `images/{name}_p.png`（另一种构图），没有就回退主图。
+
+        约定是可选的 —— 工程里没有 `_p` 文件时行为和以前完全一样。
+        """
+        if vertical:
+            try:
+                alt = data.find_variant_image(self.assets_root, str(name))
+            except Exception:
+                alt = None
+            if alt:
+                return self._load_image_path(alt)
+        return self._load_image(str(name))
+
+    def _bg_focal(self, name):
+        """构图锚点 (fx, fy)：0 贴左/上、0.5 居中、1 贴右/下。缺省居中。"""
+        raw = None
+        cfg = getattr(self, "config", None)
+        if cfg is not None and isinstance(getattr(cfg, "data", None), dict):
+            raw = cfg.data.get("focal")
+        if not isinstance(raw, dict):
+            return (0.5, 0.5)
+        val = raw.get(str(name))
+        if isinstance(val, (list, tuple)) and len(val) == 2:
+            try:
+                return (min(1.0, max(0.0, float(val[0]))),
+                        min(1.0, max(0.0, float(val[1]))))
+            except (TypeError, ValueError):
+                pass
+        return (0.5, 0.5)
+
     def _load_image(self, name):
         """按名字加载 images/{name}.png；缺失/损坏返回 None（调用方画占位块）。"""
         try:

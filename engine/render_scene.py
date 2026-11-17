@@ -208,17 +208,18 @@ class SceneMixin:
         if bg is None:
             target.fill((0, 0, 0))
             return
-        img = self._load_image(str(bg))
+        img = self._bg_image(bg, h > w)
         if img is None:
             # ④ 占位改为深色渐变（画面上不写文件名，开发者侧日志已有）
             self._draw_bg_placeholder((0, 0, w, h), target)
             return
         scaled = _scale_to_cover(img, w, h)
         target.fill((0, 0, 0))
-        # cover 后图可能比画布大，负偏移让 pygame 自己裁掉多余部分：
-        # 竖屏工程配横屏背景图时，以前是「等比缩进 + 上下补黑」，上半屏全黑看着像没加载
-        target.blit(scaled, ((w - scaled.get_width()) // 2,
-                             (h - scaled.get_height()) // 2))
+        # cover 后图可能比画布大，按锚点决定裁掉哪一边（缺省 0.5 = 居中裁）。
+        # 竖窗口配横背景图时，居中裁的正中间，人脸常在两侧 —— 锚点就是为这个存在的。
+        fx, fy = self._bg_focal(bg)
+        target.blit(scaled, (int((w - scaled.get_width()) * fx),
+                             int((h - scaled.get_height()) * fy)))
 
     def _draw_bg_placeholder(self, rect, target) -> None:
         """④ 背景占位：深色对角线渐变（不写文件名到画面上）。"""
