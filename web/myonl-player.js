@@ -1703,20 +1703,30 @@
       // 网格：竖屏 2 列 → 4 行；横屏 4 列 → 2 行
       bodyH = Math.round(L.fs * 0.3) + (L.landscape ? 2 : 4) * (menuRowH() + gap);
     } else if (UI.view === "settings") {
-      bodyH = Math.round(L.fs * 0.3) + 6 * (setRowH() + gap);
+      // 横屏两列（3 行）—— 单列 6 组在横屏里会把面板撑到顶边，一点留白都没有
+      bodyH = Math.round(L.fs * 0.3) + (L.landscape ? 3 : 6) * (setRowH() + gap);
     } else if (UI.view === "log") {
       bodyH = Math.round(L.fs * 0.5)
                + logRows() * (logRowH() + logGap())
                + Math.round(L.fs * 2.4);
     } else {
       const rows = land ? 2 : 3;
-      const ch = Math.round(L.fs * (land ? 5.4 : 4.6));
+      // 必须和 drawSlots() 里的 ch 一致，否则面板比格子高、底下空出一条
+      const ch = Math.round(L.fs * (land ? 5.8 : 5.2));
       bodyH = Math.round(L.fs * 0.4) + rows * (ch + gap);
     }
-    // 回顾要一屏能读，比菜单面板宽
-    const w2 = UI.view === "log" ? (land ? Math.min(L.viewW * 0.78, 1100) : L.viewW * 0.92) : w;
+    // 回顾要一屏能读，比菜单面板宽；横屏设置两列，也要更宽才装得下两组
+    const w2 = UI.view === "log"
+      ? (land ? Math.min(L.viewW * 0.78, 1100) : L.viewW * 0.92)
+      : UI.view === "settings"
+        ? (land ? Math.min(L.viewW * 0.78, 1180) : L.viewW * 0.88)
+        : w;
     const pad2 = Math.round(w2 * 0.055);
-    const h = Math.min(headH + bodyH + footH + pad2, L.viewH * (land ? 0.96 : 0.94));
+    // 存档页的脚注只有一行，按菜单页的 footH 留位会在格子下面空出一条空洞
+    const footUsed = (UI.view === "save" || UI.view === "load")
+      ? Math.round(L.fs * 1.6)
+      : footH;
+    const h = Math.min(headH + bodyH + footUsed + pad2, L.viewH * (land ? 0.96 : 0.94));
     return {x: (L.viewW - w2) / 2, y: (L.viewH - h) / 2, w: w2, h: h, pad: pad2, headH: headH};
   }
 
@@ -1845,6 +1855,14 @@
       const by = y + Math.round(L.fs * 0.4) + rr * (ch + gap);
       drawSlotCard("s" + i, bx, by, cw, ch, readSlot(i), saving, i + 1);
     }
+    // 存档页也吃到底部那行脚注位：只画格子不写字，面板底下会空出一整条
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillStyle = "rgba(240,244,255,.32)";
+    ctx.font = "400 " + Math.round(L.fs * 0.48) + "px " + FACE;
+    ctx.fillText(saving ? "进度存在本机浏览器里 · 换设备不会同步" : "点一个格子读档 · 空位不用点",
+                 p.x + p.w / 2, p.y + p.h - Math.round(L.fs * 1.0));
+    ctx.textAlign = "left";
   }
 
   // 回顾：手机上一划一点，台词就过去了，漏掉的得能翻回来。
@@ -1993,18 +2011,27 @@
     ];
     const rowH = setRowH();
     const gap = Math.round(L.fs * 0.5);
-    let yy = y + gap;
-    for (const g of groups) {
+    // P84：横屏改两列（3 组一列）。单列 6 组在 390 高的横屏里顶到上下边，没有留白。
+    const cols = L.landscape ? 2 : 1;
+    const colGap = Math.round(L.fs * 1.1);
+    const colW = (w - colGap * (cols - 1)) / cols;
+    const perCol = Math.ceil(groups.length / cols);
+    for (let gi = 0; gi < groups.length; gi++) {
+      const g = groups[gi];
       const label = g[0], key = g[1], labels = g[2], vals = g[3], cur = g[4];
+      const ci = Math.floor(gi / perCol);
+      const rowIdx = ci === 0 ? gi : gi - perCol;
+      const gx = x + ci * (colW + colGap);
+      const yy = y + gap + rowIdx * (rowH + gap);
       ctx.textAlign = "left";
       ctx.textBaseline = "middle";
       ctx.fillStyle = "rgba(240,244,255,.92)";
       ctx.font = "500 " + Math.round(L.fs * 0.56) + "px " + FACE;
-      ctx.fillText(label, x, yy + rowH / 2);
+      ctx.fillText(label, gx, yy + rowH / 2);
 
-      const segW = Math.round(w * 0.44);
-      const sx = x + w - segW;
-      const btnGap = Math.round(L.fs * 0.34);
+      const segW = Math.round(colW * (cols === 2 ? 0.54 : 0.44));
+      const sx = gx + colW - segW;
+      const btnGap = Math.round(L.fs * (cols === 2 ? 0.24 : 0.34));
       const bw = (segW - btnGap * 2) / 3;
       const bh = Math.round(L.fs * 1.5);
       for (let i = 0; i < 3; i++) {
@@ -2012,9 +2039,8 @@
           ? cur === vals[i]
           : Math.abs(cur - vals[i]) < 0.001;
         uiButton(key + ":" + i, sx + i * (bw + btnGap), yy + (rowH - bh) / 2, bw, bh,
-                 labels[i], {on: on, fs: Math.round(bh * 0.42)});
+                 labels[i], {on: on, fs: Math.round(bh * (cols === 2 ? 0.36 : 0.42))});
       }
-      yy += rowH + gap;
     }
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";

@@ -40,7 +40,10 @@ def test_模板素材规模():
     audio = _names(TPL / "audio", ".ogg")
     bgs = {n for n in images if n.startswith("bg_")}
     sprites = {n for n in images if not n.startswith("bg_")}
-    assert len(bgs) >= 9, f"背景只有 {len(bgs)} 张：{sorted(bgs)}"
+    assert len(bgs) >= 4, f"背景只有 {len(bgs)} 张：{sorted(bgs)}"
+    # 三张大背景必须是真插画，不是程序画的渐变色块（占位图早删了）
+    for n in ("bg_走廊", "bg_天台", "bg_街道夜"):
+        assert (TPL / "images" / f"{n}.png").stat().st_size > 300 * 1024, f"{n} 不像真图"
     assert len(sprites) >= 5, f"立绘只有 {len(sprites)} 张：{sorted(sprites)}"
     assert sum(1 for n in audio if n.startswith("bgm_")) >= 2, "BGM 至少 2 首"
     assert len([n for n in audio if not n.startswith("bgm_")]) >= 4, "音效至少 4 个"
@@ -57,8 +60,8 @@ def test_角色库与立绘对应():
             assert asset in images, f"{c['id']} 的 {expr} 指向不存在的立绘 {asset}"
 
 
-def test_模板空包只演示三张背景且不配声音():
-    """初始空包保持简单：三张背景、无 BGM/音效，第二幕只有旁白。"""
+def test_模板空包只演示三张真背景且不配声音():
+    """初始空包保持简单：三张真背景、无 BGM/音效，第二幕只有旁白。"""
     instrs = parse_file(str(TPL / "script.gal"))
     bgs = [i["image"] for i in instrs if i["op"] == "bg"]
     assert len(bgs) == 3, f"空包模板应只用三张背景，实际 {bgs}"
@@ -86,7 +89,7 @@ def test_示例剧本引用的素材都存在():
     for ins in instrs:
         op = ins["op"]
         if op == "bg":
-            data.resolve_image(str(TPL), ins["image"])
+            data.resolve_image(str(sample), ins["image"])
         elif op == "music":
             data.resolve_audio(str(TPL), ins["track"])
         elif op == "sfx":
@@ -113,7 +116,7 @@ def test_新建游戏自带内置素材(tmp_path):
 
     root = create_game("自带素材", str(tmp_path), template="standard")
     images = _names(root / "images", ".png")
-    assert {"bg_走廊", "bg_天台", "bg_房间"} <= images
+    assert {"bg_走廊", "bg_天台", "bg_街道夜"} <= images
     audio = _names(root / "audio", ".ogg")
     assert {"click", "rain", "bgm_day"} <= audio
     # 剧本引用的背景都能解析（空包一打开就有画面）
