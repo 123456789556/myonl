@@ -56,6 +56,9 @@ RELEASE_README = """# MYONL 引擎 · 发行版
 - **杀毒软件拦截**：这是未签名的自研引擎，选择「允许运行」或加入白名单即可。
 - **工程放在中文路径**：可以；但建议不要放在网盘同步目录，避免保存冲突。
 - **我改的文件在哪**：剧本与素材都在你的工程目录里；打包产物在工程下的 `dist/<游戏名>/`。
+- **升级会不会把我的存档弄丢**：不会。存档、玩家设置、解锁记录都写在
+  `%APPDATA%/Moyul/<游戏名>/`，不在这个程序目录里 —— 新版本解压覆盖旧目录只换程序文件，
+  档案原样接回来。老版本留在工程目录里的 `saves/` 会在第一次启动新版时**复制**一份过去（原件不动）。
 
 ## 文档
 
@@ -69,6 +72,11 @@ def _release_readme() -> str:
     """发行版 README 内容（独立于根目录 README，避免把源码流程带进包里）。"""
     return RELEASE_README
 
+
+# 玩家数据：绝不进发行包（升级=解压覆盖，包里带一份就会把玩家的档换掉）
+_PLAYER_DATA_DIRS = ("saves",)
+_PLAYER_DATA_FILES = ("persistent.json",)
+
 # 控制台默认 GBK：子进程输出里的非 GBK 字符（emoji/箭头）会让 print 崩，统一 UTF-8
 if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
@@ -80,7 +88,15 @@ def _add_tree(zf: zipfile.ZipFile, src: Path, arc_prefix: str) -> int:
     for path in sorted(src.rglob("*")):
         if path.is_dir():
             continue
-        arc = f"{arc_prefix}/{path.relative_to(src).as_posix()}"
+        rel = path.relative_to(src)
+        parts = rel.parts
+        # 玩家数据不跟版本走：存档目录、全局解锁记录。包里带了它们，解压覆盖就可能把
+        # 玩家的挡案/解锁记录换成包里那份（升级不该毁数据）。
+        if any(p in _PLAYER_DATA_DIRS for p in parts):
+            continue
+        if rel.name in _PLAYER_DATA_FILES:
+            continue
+        arc = f"{arc_prefix}/{rel.as_posix()}"
         zf.write(path, arc)
         count += 1
     return count

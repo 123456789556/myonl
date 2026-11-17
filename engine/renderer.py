@@ -92,7 +92,7 @@ class Renderer(TextMixin, SceneMixin, SpriteMixin, MediaMixin, DialogMixin,
         # assets_root 是资源根目录；clock/now_ms 供离屏预览注入虚拟时钟（正常游玩用默认值）
         self._now_source = now_ms or pygame.time.get_ticks
         self.assets_root = str(assets_root)
-        self.settings = data.load_settings(os.path.join(self.assets_root, "settings.json"))
+        self.settings = data.load_settings(data.player_settings_path(self.assets_root))
         # P30-S3：只读配置（config.json）——窗口标题/字号/色板/遮罩 alpha/键位
         self.config = cfgapi.load(self.assets_root)
         # T10：逻辑画布尺寸——显式传入优先，否则读 config.canvas_size()（默认 1280×720）

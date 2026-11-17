@@ -23,6 +23,7 @@ from . import profiling
 from . import save as save_api
 from .config import CONFIG_FILE, load as load_config
 from .data import (DEFAULT_SETTINGS, DataError, audio_hint, data_root, image_hint,
+                   migrate_legacy_data, player_settings_path,
                    load_gallery_config, load_settings, resolve_audio, resolve_image,
                    save_settings)
 from . import hotload
@@ -58,10 +59,13 @@ def run(script_path: str, assets_root=".", max_frames=None, auto=True,
     prof.reset()  # 同进程可多次 run（测试场景），互不继承上次的样本
     rt = Runtime()
     ren = Renderer(assets_root=assets_root)  # T10：画布尺寸从 config.json 读取
-    settings_path = os.path.join(assets_root, "settings.json")
+    settings_path = player_settings_path(assets_root)
     # 存档目录跟随数据根（settings.data_dir：随游戏 / AppData / 自定义绝对路径）：
     # 统一走 data_root()，否则 data_dir=appdata 会被这里覆盖回游戏目录。
     save_api.set_saves_dir(os.path.join(data_root(assets_root), "saves"))
+    # 老版本把存档/设置写在游戏目录里，升级覆盖就丢 —— 第一次用新版启动时复一份到数据根
+    # （只复制不删除，原件留着当备份，也可以反悔）。
+    migrate_legacy_data(assets_root)
     ui = UI(config=load_config(assets_root))  # P44：标题菜单 items 覆盖读 config.json
     ui.settings_path = settings_path  # UI 与 renderer 读写同一个 settings.json
     # P28 E1/E3：画廊固定格子 + 幻灯片序列（文件缺省时为空 = 旧行为）

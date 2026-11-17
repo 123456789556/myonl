@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import json
 import os
+import shutil
 import sys
 
 # 内置默认设置
@@ -109,25 +110,96 @@ def _read_data_dir(root: str) -> str:
     return ""
 
 
+def default_data_dir(root: str | None = None) -> str:
+    """没写 `settings.data_dir` 时该走哪种策略。
+
+    - **打包形态**（PyInstaller 成品）→ `appdata`。玩家升级就是把新版解压覆盖旧目录，
+      存档和设置**不能**躺在被覆盖的那堆文件里，否则一更新就全没了。
+      这是 Kazumi / QQ 那种升级方式的前提：程序文件可换，玩家数据不动。
+    - **开发形态** → `game`（就地放在工程目录，改完即看，也不往 AppData 里塞开发垃圾）。
+    """
+    if getattr(sys, "frozen", False):
+        return "appdata"
+    return "game"
+
+
+def _appdata_root(root: str) -> str:
+    """`%APPDATA%/Moyul/<游戏名>`：按安装目录的名字区分作品，删游戏数据仍在。"""
+    base = os.environ.get("APPDATA") or os.path.join(
+        os.path.expanduser("~"), "AppData", "Roaming")
+    game_name = os.path.basename(os.path.abspath(root)) or "game"
+    return os.path.join(base, "Moyul", game_name)
+
+
 def data_root(root: str | None = None) -> str:
     """数据根目录（存档/设置/后续扩展数据落点），按 settings.data_dir 策略解析。
 
-    - "" / "game"（默认）→ 随游戏目录（删除游戏 = 数据删干净）
+    - ""（未写）→ `default_data_dir()`：打包形态 appdata，开发形态 game
+    - "game"              → 随游戏目录（删除游戏 = 数据删干净）
     - "appdata"           → %APPDATA%/Moyul/<游戏名>（删除游戏后数据保留）
     - 绝对路径            → 开发者自定义数据位置
     """
     root = root if root is not None else game_root()
-    mode = _read_data_dir(root)
-    if mode in ("", "game"):
+    mode = _read_data_dir(root) or default_data_dir(root)
+    if mode == "game":
         return root
     if mode.lower() == "appdata":
-        base = os.environ.get("APPDATA") or os.path.join(
-            os.path.expanduser("~"), "AppData", "Roaming")
-        game_name = os.path.basename(os.path.abspath(root))
-        return os.path.join(base, "Moyul", game_name)
+        return _appdata_root(root)
     if os.path.isabs(mode):
         return mode
     return root
+
+
+def migrate_legacy_data(root: str | None = None) -> list[str]:
+    """把老版本落在**游戏目录**里的玩家数据搬一份到新的数据根。
+
+    为什么要有这一步：P91 之前默认 `data_dir=""` = 随游戏目录，玩家升级覆盖目录就丢档。
+    现在默认落到 AppData，但老玩家的 `saves/`、`settings.json` 还在安装目录里 ——
+    第一次用新版启动时**复制**过去（不移动、不删除原件：搬一半崩了也不会两头空）。
+
+    返回搬过去的条目名（空列表 = 没搬）。
+    """
+    root = root if root is not None else game_root()
+    target = data_root(root)
+    if os.path.normcase(os.path.abspath(target)) == os.path.normcase(os.path.abspath(root)):
+        return []   # 还在游戏目录里，没有"迁移"这回事
+    moved: list[str] = []
+    # ① 存档目录：整份复制，逐文件跳过已存在的（不覆盖新版已经写下的存档）
+    src_saves = os.path.join(root, "saves")
+    dst_saves = os.path.join(target, "saves")
+    if os.path.isdir(src_saves):
+        for name in os.listdir(src_saves):
+            src = os.path.join(src_saves, name)
+            dst = os.path.join(dst_saves, name)
+            if not os.path.isfile(src) or os.path.exists(dst):
+                continue
+            os.makedirs(dst_saves, exist_ok=True)
+            shutil.copyfile(src, dst)
+            moved.append(f"saves/{name}")
+    # ② 玩家设置：只在对方还没有的时候复制（有就以玩家的为准）
+    src_set = os.path.join(root, "settings.json")
+    dst_set = os.path.join(target, "settings.json")
+    if os.path.isfile(src_set) and not os.path.exists(dst_set):
+        os.makedirs(target, exist_ok=True)
+        shutil.copyfile(src_set, dst_set)
+        moved.append("settings.json")
+    return moved
+
+
+def player_settings_path(root: str | None = None) -> str:
+    """玩家设置文件（音量/字速/键位…）的真实落点。
+
+    出厂默认在 `<游戏>/settings.json`（跟着版本走，是"出厂配置"）；玩家改过的那份在
+    `data_root()` 下（跟着玩家走，升级不覆盖）。这里负责**首次接管**：数据根里还没有时，
+    把出厂那份复制过去作为起点；已经有了就一律用玩家的。
+    """
+    root = root if root is not None else game_root()
+    target = os.path.join(data_root(root), "settings.json")
+    factory = os.path.join(root, "settings.json")
+    if not os.path.isfile(target) and os.path.isfile(factory):
+        os.makedirs(os.path.dirname(target), exist_ok=True)
+        shutil.copyfile(factory, target)
+    return target
 
 
 def engine_data_root() -> str:
