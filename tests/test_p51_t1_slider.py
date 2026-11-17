@@ -23,7 +23,7 @@ from engine.ui import UI  # noqa: E402
 pytestmark = [pytest.mark.ui]
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-PROJECT = os.path.join(REPO, "games", "新游戏")
+PROJECT = os.path.join(REPO, "games", "新游戏模板")
 
 
 @pytest.fixture()

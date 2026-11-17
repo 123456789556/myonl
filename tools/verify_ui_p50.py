@@ -12,7 +12,7 @@ import sys
 
 os.environ["SDL_VIDEODRIVER"] = "dummy"
 ROOT = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-                    "games", "新游戏")
+                    "games", "新游戏模板")
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import pygame

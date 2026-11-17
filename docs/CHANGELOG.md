@@ -2,6 +2,30 @@
 
 > 只记 release 级变化，一句话 + 证据链接。单项细节见 git 历史（原 archive/ 已删除）。
 
+## 2026-11-17（P87：发行包少两个前端文件 —— 手机连接在 exe 里是坏的）
+
+**这是本轮最要紧的一条**：`editor/index.html` 加载 `editor_link.js` / `editor_mobile.js`，
+`engine/editor.py` 也为它们注册了路由，但 `editor.spec` 的 datas 是一个手写名单，这两个文件
+从来没进名单。结果：源码跑没问题，**发行版 exe 里这两个 URL 直接 404，「手机连接」「手机预览」
+整块功能坏掉**，而打包过程一声不响。守护测试也没抓到，因为测试里的名单同样是手写的、
+同样漏了这两个。
+
+- `editor.spec` 改成整个 `editor/` 目录一起带出：以后往 `editor/` 加文件不会再漏。
+- `tests/test_editor_level.py` 的守护测试改成**以 index.html 实际引用的脚本为准**，不再手写名单：
+  解析 `src="/xxx.js"` → 逐个断言文件在、路由在、打包清单覆盖得（整目录带或点名）。
+- 重新打包 + 发行包冒烟（`editor.exe -h` / `--demo-worker` 均 exit 0），产物 121.4 MB，
+  模板素材已是 P86 的真图（`bg_教室.jpg`），无桌宠残留。
+- 打 `MYONL引擎-v1.0.0-rc13.zip`（60.1 MB / 412 文件）并用 `--verify` 从解压目录冒烟通过。
+
+**清废料**（一共 80 MB）：
+- `games/新游戏`（2 MB）—— 与 `games/新游戏模板` 完全重复，且素材还是 6 KB 占位；
+  把 `tests/test_p51_t1_slider.py`、`tools/verify_ui_p50.py` 的依赖改到模板后删除。
+- `dist/教程示例`（22.8 MB，11 月 10 日的旧打包）、`dist/portable`、`dist/single`、`dist/android`（空）。
+- `dist/release/MYONL引擎-v1.0.0-rc10.zip`（52.7 MB，已被 rc13 取代）。
+
+保留：`games/newbie_demo`（`test_newbie.py` 六项验收守护的新手演示工程）、
+`作品/副产物/月光漫步`（30+ 张真背景 + 10 张立绘 + 10 章剧本，是有内容的素材库，不是尸体）。
+
 ## 2026-11-17（P86：手机端观感 —— 对话框不再挂一块空板子，占位素材换成真图）
 
 起因：跑一遍竖屏/横屏全流程（18 张截图逐张看），问题不在颜色，在**几何和素材**。

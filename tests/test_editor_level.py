@@ -69,16 +69,22 @@ def test_档位由后端路由提供():
     assert "_serve_level_js" in py, "缺少 _serve_level_js 处理方法"
 
 
-def test_发行包打包清单包含全部前端模块():
-    """PyInstaller datas 漏文件时，exe 里打开编辑器会 500（真发生过）。"""
-    names = ("editor_utils.js", "editor_pro.js", "editor_main.js", "editor_scene.js",
-             "editor_characters.js", "editor_level.js",
-             "editor_uidesign.js", "editor_shell.js")
-    spec = (ROOT / "editor.spec").read_text(encoding="utf-8")
+def test_发行包打包清单覆盖前端全部模块():
+    """PyInstaller datas 漏文件时，exe 里打开编辑器就 404（真发生过两次）。
+
+    第二次是 editor_link.js / editor_mobile.js 已经加进 index.html，却没人加进 spec
+    —— 打包不报错，发行版里「手机连接」「手机预览」整块坏掉。
+    所以这里不写死名单，直接以 index.html 实际引用的脚本为准。
+    """
+    import re
+
     html = _read("index.html")
+    refs = sorted(set(re.findall(r'src="/([^"?]+\.js)', html)))
+    assert refs, "index.html 没有引用任何脚本"
+    spec = (ROOT / "editor.spec").read_text(encoding="utf-8")
     py = (ROOT / "engine" / "editor.py").read_text(encoding="utf-8")
-    for name in names:
-        assert f'"{name}"' in spec, f"editor.spec 打包清单缺 {name}"
-        assert (EDITOR / name).is_file(), f"缺少 editor/{name}"
-        assert f"/{name}" in html, f"index.html 未加载 {name}"
+    whole_dir = '(os.path.join(ROOT, "editor"), "editor")' in spec
+    for name in refs:
+        assert (EDITOR / name).is_file(), f"index.html 引用了不存在的 editor/{name}"
         assert f'"/{name}"' in py, f"engine/editor.py 未注册 /{name} 路由"
+        assert whole_dir or f'"{name}"' in spec, f"editor.spec 打包清单缺 {name}"

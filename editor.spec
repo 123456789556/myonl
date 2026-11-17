@@ -11,19 +11,10 @@ from PyInstaller.utils.hooks import collect_data_files
 ROOT = os.path.abspath(SPECPATH)
 
 datas = [
-    (os.path.join(ROOT, "editor", "index.html"), "editor"),
-    (os.path.join(ROOT, "editor", "editor.css"), "editor"),
-    # P65：手机端 PWA（添加到主屏幕后全屏），漏带就报 500
-    (os.path.join(ROOT, "editor", "manifest.webmanifest"), "editor"),
-    (os.path.join(ROOT, "editor", "icon-192.png"), "editor"),
-    (os.path.join(ROOT, "editor", "icon-512.png"), "editor"),
-]
-# 前端模块（拆分后的主脚本 / 场景 / 角色 / 档位）：漏掉任何一个，发行包打开编辑器即 500
-datas += [
-    (os.path.join(ROOT, "editor", name), "editor")
-    for name in ("editor_utils.js", "editor_pro.js", "editor_main.js", "editor_scene.js",
-                 "editor_characters.js", "editor_level.js",
-                 "editor_uidesign.js", "editor_shell.js", "editor_home.js")
+    # 整个 editor/ 目录一起带：原来是一个个列文件，新加了 editor_link.js / editor_mobile.js
+    # 却忘了加到名单里 —— 发行版里这两个 URL 直接 404，「手机连接」「手机预览」整块坏掉，
+    # 而且当时打包不报错，只有用户点到才知道。目录整体带就不会再有这种漏。
+    (os.path.join(ROOT, "editor"), "editor"),
 ]
 # M1.5：内嵌教程（编辑器「帮助 → 教程 / 说明书」在发行包里也要能看）
 datas += [
