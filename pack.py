@@ -49,8 +49,7 @@ _EXCLUDE_MODULES = (
     "doctest", "ssl", "_ssl",
     # P31-d：引擎全程不做哈希/加密（存档是纯 JSON，无校验和），
     # 这批模块会把 OpenSSL（libcrypto-3.dll，约 5MB）拖进产物。
-    # 桌宠是编辑器/引擎功能，游戏包里不出现（用户 2026-11-01 决定：进引擎不进游戏）
-    "engine.pet",
+    # 编辑器/引擎独有的模块不进游戏包（桌宠已整体移除）
     "hashlib", "_hashlib", "_blake2", "_md5", "_sha1", "_sha256", "_sha512",
     "_sha3", "hmac", "secrets",
 )

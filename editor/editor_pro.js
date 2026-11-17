@@ -1725,10 +1725,9 @@
 
 
 /* ===================================================================
-   界面衔接批（2026-11-01）：桌宠开关 + 设置中心分页
-   - 桌宠：编辑器内「打开/关闭 Mooki」走 /api/pet（源码模式可用，发行包明确提示）
-   - 设置中心：把散落的「工程/数据/启动动画」与「UI 设计区 / 桌宠 / 关于」收进一个
-     分页面板（Trae 式左侧分类 + 内容），而不是三个互不相通的弹窗。
+   界面衔接批（2026-11-01）：设置中心分页
+   把散落的「工程/数据/启动动画」与「UI 设计区 / 关于」收进一个
+   分页面板（Trae 式左侧分类 + 内容），而不是三个互不相通的弹窗。
    =================================================================== */
 (function () {
   "use strict";
@@ -1740,38 +1739,6 @@
       if (E.toast) { E.toast(msg, !!isErr); return; }
     } catch (e) {}
     console.log("[editor]", msg);
-  }
-
-  function petFetch(action) {
-    return fetch("/api/pet", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: action }),
-    }).then(function (r) { return r.json(); });
-  }
-
-  // ---------- 桌宠：菜单 / 设置中心共用入口 ----------
-  window.__petToggle = function () {
-    petFetch("status").then(function (st) {
-      return petFetch(st && st.running ? "stop" : "start");
-    }).then(function (resp) {
-      toast(resp.message || (resp.running ? "桌宠已打开" : "桌宠已关闭"), resp.ok === false);
-      syncPetStatus(resp.running);
-    }).catch(function (e) { toast("桌宠操作失败：" + e, true); });
-  };
-
-  function syncPetStatus(running) {
-    var span = $("setPetStatus"), btn = $("setPetToggle");
-    if (!span || !btn) return;
-    span.textContent = running ? "运行中" : "已关闭";
-    span.classList.toggle("on", !!running);
-    btn.textContent = running ? "关闭桌宠" : "打开桌宠";
-  }
-
-  function refreshPetStatus() {
-    petFetch("status").then(function (resp) {
-      syncPetStatus(!!(resp && resp.running));
-    }).catch(function () { syncPetStatus(false); });
   }
 
   // ---------- 设置中心：分页 ----------
@@ -1801,16 +1768,6 @@
       '<button type="button" class="icon-btn" id="setOpenUiDesign">打开 UI 设计区</button>' +
       '<p class="set-hint">玩家侧设置（显示模式、音量、字号三档）在游戏里按 Esc → 设置。</p>';
 
-    var pane3 = document.createElement("div");
-    pane3.className = "set-pane";
-    pane3.style.display = "none";
-    pane3.innerHTML =
-      '<h3 class="set-h">桌宠 Mooki（实验功能）</h3>' +
-      '<p class="set-p">会跟着鼠标、能拖动的小桌宠。默认关闭，随编辑器一起分发；打开后可拖动 / 双击弹爱心 / 右键菜单，Esc 关闭。</p>' +
-      '<div class="set-row"><span class="set-status" id="setPetStatus">状态未知</span>' +
-      '<button type="button" class="icon-btn" id="setPetToggle">打开桌宠</button></div>' +
-      '<p class="set-hint">打开后可拖动 / 双击弹爱心 / 右键菜单，Esc 关闭。</p>';
-
     var pane4 = document.createElement("div");
     pane4.className = "set-pane";
     pane4.style.display = "none";
@@ -1819,7 +1776,7 @@
       '<p class="set-p">MYONL 引擎 · 视觉小说创作工具。示例工程与教程都在游戏的 <b>games/</b> 下，可随意改。</p>' +
       '<p class="set-hint">快捷键：Ctrl+S 保存 · Ctrl+F 查找替换 · Ctrl+Shift+F 全局搜索 · Ctrl+, 设置中心 · F1 教程</p>';
 
-    var PANES = [["工程与数据", pane1], ["游戏界面", pane2], ["桌宠", pane3], ["关于", pane4]];
+    var PANES = [["工程与数据", pane1], ["游戏界面", pane2], ["关于", pane4]];
     var body = document.createElement("div");
     body.className = "set-body";
     var tabBar = document.createElement("div");
@@ -1832,7 +1789,6 @@
         b.classList.toggle("active", i === idx);
       });
       PANES.forEach(function (p, i) { p[1].style.display = i === idx ? "block" : "none"; });
-      if (name === "桌宠") refreshPetStatus();
     }
 
     PANES.forEach(function (p, i) {
@@ -1859,13 +1815,6 @@
         if (ui) ui.click();
       });
     }
-    if ($("setPetToggle")) {
-      $("setPetToggle").addEventListener("click", function () { window.__petToggle(); });
-    }
-    // 打开设置时刷新桌宠状态
-    new MutationObserver(function () {
-      if (mask.style.display && mask.style.display !== "none") refreshPetStatus();
-    }).observe(mask, { attributes: true, attributeFilter: ["style"] });
   })();
 })();
 

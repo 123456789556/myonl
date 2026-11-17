@@ -2,6 +2,48 @@
 
 > 只记 release 级变化，一句话 + 证据链接。单项细节见 git 历史（原 archive/ 已删除）。
 
+## 2026-11-17（P85b：手机版存储层 —— 键里不再塞剧本，旧档自动迁移，能一键清空）
+
+1. **存储收成一个入口**：以前每个存档一个 localStorage 键，键名里拼了**完整剧本文本**
+   （几 KB），浏览器里翻一眼全是垃圾键；「设置」和「看过引导」又是另外的裸键。
+   现在一个作品一条记录 `myonl:v2:save:<短哈希>`，里面同时装自动档和 6 个手动档；
+   设置（含引导标记）单独一条 `myonl:v2:prefs`。读写都进内存缓存，落盘只有 `storeFlush` 一个出口。
+2. **自动迁移**：首次运行把旧版 `myonl:auto:*` / `myonl:slot:*` / `myonl:prefs` / `myonl:helpSeen`
+   搬进新结构再删掉 —— 老玩家的进度不会因为升级而消失。只搬本作品，不扫全库（免得把别人的档拽进来）。
+3. **写失败不再静默**：存不下（配额满 / 隐私模式禁写）时，存档页脚注直接变红字说明，
+   而不是 catch 吞掉、让玩家以为存上了。
+4. **能清空了**：存档页右下角「清空存档」，第一次点只是亮起来问一句，4 秒内再点才真清
+   （手指在手机上容易点歪），清完脚注给一行绿字回执。
+5. **顺手修了个底层 bug**：可点区域数组原来只在菜单打开时清空，引导卡不走菜单这条路径，
+   于是它每帧往数组里追加「开始」按钮、越堆越多，最后命中的还是入场动画那一帧的坐标。
+   现在 `frame()` 开头统一清空，谁画谁 push。
+6. **调试口加 `MYONL_DEBUG.rects`**：当帧可点的按钮（id + 布局坐标）。验收脚本靠它点，
+   不再靠猜像素 —— 这轮竖屏/横屏两套坐标就是这么跑通过的。
+
+证据：`_tools/tmp/audit/p85-store-p-wiped.png`（清空回执）、`p85-store-p-settings.png`（6 组 + 画面方向）、
+`p85-store-l-save.png`（横屏 3×2 + 清空按钮），验收 24/24 通过（旧键清理 / 迁移 / 存读 / 清空 / 横竖两态）。
+
+## 2026-11-17（P85：砍掉桌宠 Mooki —— 电脑端与手机端都不再带）
+
+1. **整体移除桌宠**：`engine/pet.py`（26.8 KB 的 Mooki 主体）、`engine/pet_host.py`、
+   `tools/desktop_pet.py`、`tools/mooki_pet_v2.py`、`tools/export_mooki_layers.py`、
+   `brand/mooki_v2.svg`、`brand/mooki_layers/`（11 项分层 PNG）全部删除。
+2. **引擎侧摘掉调用**：`demo.py` 不再 `pet_host.sync/stop`；`ui.py` 设置项少一项「桌宠」
+   （含 `frozen` 隐藏逻辑）；`data.py` 默认值少 `pet_enabled`；`editor.py` 的路由
+   `POST /api/pet`、`_pet_control`、`_PET_PROC/_PET_LOCK` 全删；`editor_app.py` 删 `--pet`
+   入口；`pack.py` 与 `editor.spec` 去掉 `engine.pet` 排除项与分层素材打包项。
+3. **编辑器不再有假入口**：设置中心从 4 页回到 3 页（工程与数据 / 游戏界面 / 关于），
+   视图菜单删「桌宠（实验）」，UI 设计区的「启用桌宠（pet_enabled）」开关删除，
+   素材分类 `skip` 表去掉 `mooki`。留着开关却打不开东西，比没有更糟。
+4. **品牌废稿一起清**：`brand/preview*.html`（三份 Mooki 图形预览）、`mooki_expressions.*`、
+   `eyes_tracking_demo.*` 删除 —— 桌宠没了，这些页面没有任何使用者。
+5. **文档同步**：`产品说明书` 删「八、桌宠」整节（后续章节号顺移）、`架构说明` 模块表去掉
+   `pet.py`、`engine_spec` 删 `pet_enabled` 与 `engine.pet_host` 段、`BACKLOG` 标注为已移除。
+   `CHANGELOG`/`STATUS` 里的历史记录原样保留（它们记录的是当时确实做过的事）。
+
+证据：全量测试 1102 passed（原 1108，删掉 5 条桌宠用例、新增 1 条「只剩快捷栏」）；
+`/api/pet` 返回 404；编辑器设置中心 3 页。
+
 ## 2026-11-17（P84c：清废料 —— 假背景、会毁素材的脚本、存档页空洞）
 
 1. **砍掉「房间」**：模板第三幕原来切到 `bg_房间`（程序画的色块），剧本 + 图 + 生成函数

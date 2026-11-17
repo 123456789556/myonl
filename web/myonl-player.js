@@ -24,7 +24,8 @@
 
   // 玩家设置（本机 localStorage，与游戏无关）：文字速度 / 字号 / 音量 / 自动翻页 / 画质 / 快进 / 画面方向
   const PREF = {speed: 1, text: 1, vol: 0.7, auto: 0, quality: 1, skip: 0, orient: "auto"};
-  const PREF_KEY = "myonl:prefs";
+  const PREF_KEY = "myonl:v2:prefs";   // P85：带版本，旧键由 loadPrefs 迁移
+  let helpSeen = false;                 // 首次引导标记：跟设置一起存（以前是裸键）
   const UI = {open: false, view: "menu", rects: [], t0: 0, logPage: 0};
   let pack = null;
   let vm = null;
@@ -548,18 +549,120 @@
     }
   }
 
-  // 存档 key：标题 + 剧本名 + 指令条数。只按标题会串档——两个游戏都叫"我的游戏"时，
-  // 后开的那个会读到前一个的存档（进度对不上，甚至跳到不存在的 label）。
-  function saveKey() {
-    const t = (pack && pack.title) || "untitled";
-    const s = (pack && pack.script) || "";
-    const n = (pack && pack.ins && pack.ins.length) || 0;
-    return "myonl:auto:" + t + ":" + s + ":" + n;
+  /* ---------- 本机存储层（P85）----------
+     旧实现：每个存档一个 key，而且 key 里拼了**完整剧本文本**（几 KB）——浏览器里一眼看过去
+     全是垃圾键；"设置"和"看过引导"又是另外的裸键；没有版本号、没有迁移、
+     写失败还被 catch 吞掉：玩家以为存上了，其实没有。
+     现在：一个作品一份记录，读在内存里做，落盘只有 storeFlush 一个出口。 */
+  let SAVE = null;                       // 当前作品的存档记录（内存缓存，只读一次盘）
+
+  function hash36(str) {                 // FNV-1a：给 key 用，短且稳定
+    let h = 0x811c9dc5;
+    for (let i = 0; i < str.length; i++) {
+      h ^= str.charCodeAt(i);
+      h = (h * 0x01000193) >>> 0;
+    }
+    return h.toString(36);
   }
 
-  function autoSave() {
-    try { localStorage.setItem(saveKey(), vm.save()); } catch (e) { /* 隐私模式禁写 */ }
+  // 作品指纹：标题区分作品，剧本 + 指令数区分"同名换了剧本"。都走短哈希，key 长度恒定
+  function storeGid() {
+    const t = (pack && pack.title) || "untitled";
+    const sc = (pack && pack.script) || "";
+    const n = (pack && pack.ins && pack.ins.length) || 0;
+    return hash36(t) + "-" + hash36(sc + "|" + n);
   }
+
+  function storeKey() { return "myonl:v2:save:" + storeGid(); }
+
+  function storeRead() {
+    if (SAVE) return SAVE;
+    SAVE = {v: 2, auto: null, slots: {}};
+    try {
+      const raw = localStorage.getItem(storeKey());
+      if (raw) {
+        const d = JSON.parse(raw);
+        if (d && typeof d === "object") {
+          SAVE = {v: 2, auto: d.auto || null,
+                  slots: (d.slots && typeof d.slots === "object") ? d.slots : {}};
+        }
+      }
+    } catch (e) { SAVE = {v: 2, auto: null, slots: {}}; }   // 坏档按空档处理，别让整页崩
+    return SAVE;
+  }
+
+  function storeFlush() {
+    try {
+      localStorage.setItem(storeKey(), JSON.stringify(storeRead()));
+      UI.storeErr = 0;
+      return true;
+    } catch (e) {
+      UI.storeErr = 1;                   // 满了 / 隐私模式：界面要明说，不能假装存上了
+      return false;
+    }
+  }
+
+  function storeAuto() { const a = storeRead().auto; return (a && a.s) ? a : null; }
+
+  function storeSetAuto(str) {
+    const d = storeRead();
+    d.auto = str ? {s: str, t: Date.now(), say: previewLine(), bg: state.bg || ""} : null;
+    storeFlush();
+  }
+
+  function storeSlot(i) {
+    const d = storeRead().slots[i];
+    return (d && d.s) ? d : null;
+  }
+
+  function storeSetSlot(i, data) {
+    const d = storeRead();
+    if (data) d.slots[i] = data; else delete d.slots[i];
+    storeFlush();
+  }
+
+  function storeWipe() {
+    const d = storeRead();
+    d.auto = null;
+    d.slots = {};
+    storeFlush();
+    UI.wipeConfirm = 0;
+    UI.wipeDone = performance.now();
+  }
+
+  /* 迁移：旧版散装键搬进来再删掉。只搬本作品 —— 别的作品下次打开时自己搬，
+     不去扫全库，免得把别人的档拽进当前作品。 */
+  function storeMigrate() {
+    const t = (pack && pack.title) || "untitled";
+    const sc = (pack && pack.script) || "";
+    const n = (pack && pack.ins && pack.ins.length) || 0;
+    const d = storeRead();
+    let moved = 0;
+    try {
+      const oldAuto = "myonl:auto:" + t + ":" + sc + ":" + n;
+      const rawAuto = localStorage.getItem(oldAuto);
+      if (rawAuto) {
+        if (!d.auto) { d.auto = {s: rawAuto, t: Date.now(), say: "", bg: ""}; moved++; }
+        localStorage.removeItem(oldAuto);
+      }
+      const base = "myonl:slot:" + t + ":" + sc + ":";
+      for (let i = 0; i < slotCount(); i++) {
+        const raw = localStorage.getItem(base + i);
+        if (!raw) continue;
+        if (!d.slots[i]) {
+          try {
+            const v = JSON.parse(raw);
+            if (v && v.s) { d.slots[i] = v; moved++; }
+          } catch (e) { /* 单个坏档跳过，别的照搬 */ }
+        }
+        localStorage.removeItem(base + i);
+      }
+      if (moved) storeFlush();
+    } catch (e) { /* 迁移失败不挡游戏：最坏也就是从零开始 */ }
+    return moved;
+  }
+
+  function autoSave() { storeSetAuto(vm ? vm.save() : null); }
 
   function startGame(fromSave) {
     state.scene = "game";
@@ -572,19 +675,17 @@
     state.sprites = [];
     state.history = [];
     // 首次进游戏的一次性说明（本机记一次，之后不再弹）
-    let seenHelp = false;
-    try { seenHelp = localStorage.getItem("myonl:helpSeen") === "1"; } catch (err) { seenHelp = false; }
-    state.guide = !seenHelp;
+    state.guide = !helpSeen;
     state.guideT0 = performance.now();
     cam.zoom = 1; cam.zoomDur = 0; cam.zoomTo = 1; cam.zoomFrom = 1;
     cam.panX = 0; cam.panY = 0; cam.panDur = 0;
     cam.shakeUntil = 0;
     if (fromSave) {
-      const saved = localStorage.getItem(saveKey());
-      if (saved) vm.load(saved);
+      const a = storeAuto();
+      if (a) vm.load(a.s);
     } else {
       vm.restart();
-      try { localStorage.removeItem(saveKey()); } catch (e) { /* ignore */ }
+      storeSetAuto(null);        // 新开局清掉自动档，免得"继续游戏"跳回上一局
     }
     // 读档后补一次"当前画面"：让 bg/立绘/CG/镜头/前景先对上，再继续推进
     state.bg = vm.state.bg || "";
@@ -637,7 +738,7 @@
     // 引导页：这一下只关引导，不推进剧情（否则第一次点就直接跳过一句话）
     if (state.guide) {
       state.guide = false;
-      try { localStorage.setItem("myonl:helpSeen", "1"); } catch (err) { /* 隐私模式 */ }
+      markHelpSeen();
       return;
     }
     const p = point(e);
@@ -1423,6 +1524,7 @@
   function frame() {
     const vis = visual();
     const now = performance.now();
+    UI.rects = [];        // 一帧一套热点：谁画谁 push，别让上一帧的坐标留到下一帧
     updateCam(now);
     if (state.error) {
       drawError();
@@ -1471,6 +1573,8 @@
   // 调试口：给 tools/web_shot.py 之类的验收脚本读状态（只读，不改剧情）
   window.MYONL_DEBUG = {
     get layout() { return L; },
+    // 菜单/存档/设置里当帧可点的按钮（id + 布局坐标），验收脚本靠它点，不靠猜像素
+    get rects() { return UI.rects.slice(); },
     get state() {
       return {
         scene: state.scene, say: state.say, choice: state.choice,
@@ -1543,6 +1647,7 @@
       return loadAssets();
     })
     .then(() => {
+      storeMigrate();            // 旧版散装存档搬进新结构（只搬本作品）
       fit();
       syncOrientationHint(pack.orientation);
       window.addEventListener("resize", () => syncOrientationHint(pack.orientation));
@@ -1562,7 +1667,18 @@
 
   function loadPrefs() {
     try {
+      // 旧键迁移：P85 之前的顶层 myonl:prefs 与 myonl:helpSeen
+      const legacy = localStorage.getItem("myonl:prefs");
+      if (legacy && !localStorage.getItem(PREF_KEY)) {
+        localStorage.setItem(PREF_KEY, legacy);
+        localStorage.removeItem("myonl:prefs");
+      }
+      if (localStorage.getItem("myonl:helpSeen") === "1") {
+        helpSeen = true;
+        localStorage.removeItem("myonl:helpSeen");
+      }
       const v = JSON.parse(localStorage.getItem(PREF_KEY) || "{}");
+      if (v.helpSeen === 1) helpSeen = true;
       if (typeof v.speed === "number") PREF.speed = v.speed;
       if (typeof v.text === "number") PREF.text = v.text;
       if (typeof v.vol === "number") PREF.vol = v.vol;
@@ -1578,8 +1694,11 @@
   }
 
   function savePrefs() {
-    try { localStorage.setItem(PREF_KEY, JSON.stringify(PREF)); } catch (e) { /* 禁写 */ }
+    const o = Object.assign({}, PREF, {helpSeen: helpSeen ? 1 : 0});
+    try { localStorage.setItem(PREF_KEY, JSON.stringify(o)); } catch (e) { /* 禁写 */ }
   }
+
+  function markHelpSeen() { helpSeen = true; savePrefs(); }
 
   function cps() { return BASE_CPS * PREF.speed; }
 
@@ -1594,12 +1713,6 @@
     L.textW = L.panelW - L.padX * 2;
   }
 
-  function slotBase() {
-    const t = (pack && pack.title) || "untitled";
-    const s2 = (pack && pack.script) || "";
-    return t + ":" + s2;
-  }
-  function slotKey(i) { return "myonl:slot:" + slotBase() + ":" + i; }
   function slotCount() { return 6; }
 
   function previewLine() {
@@ -1608,14 +1721,11 @@
     return (who + (state.say.text || "")).slice(0, 18);
   }
 
-  function readSlot(i) {
-    try { return JSON.parse(localStorage.getItem(slotKey(i)) || "null"); } catch (e) { return null; }
-  }
+  function readSlot(i) { return storeSlot(i); }
 
   function writeSlot(i) {
     if (!vm) return;
-    const d = {s: vm.save(), t: Date.now(), say: previewLine(), bg: state.bg || ""};
-    try { localStorage.setItem(slotKey(i), JSON.stringify(d)); } catch (e) { /* 满了/禁写 */ }
+    storeSetSlot(i, {s: vm.save(), t: Date.now(), say: previewLine(), bg: state.bg || ""});
     UI.t0 = performance.now();
   }
 
@@ -1855,14 +1965,43 @@
       const by = y + Math.round(L.fs * 0.4) + rr * (ch + gap);
       drawSlotCard("s" + i, bx, by, cw, ch, readSlot(i), saving, i + 1);
     }
-    // 存档页也吃到底部那行脚注位：只画格子不写字，面板底下会空出一整条
-    ctx.textAlign = "center";
+    // 脚注：左边一句说明，右边「清空存档」。存不下的时候这里换成红字 ——
+    // 静默失败最难查：玩家以为存上了，下次打开什么都没有。
+    const fy = p.y + p.h - Math.round(L.fs * 1.0);
+    const done = !!UI.wipeDone && performance.now() - UI.wipeDone < 2600;
+    if (UI.storeErr) {
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillStyle = "rgba(255,120,120,.92)";
+      ctx.font = "600 " + Math.round(L.fs * 0.5) + "px " + FACE;
+      ctx.fillText("存不下了：浏览器存储已满或被禁止", p.x + p.w / 2, fy);
+      ctx.textAlign = "left";
+      ctx.textBaseline = "alphabetic";
+      return;
+    }
+    if (done) {
+      ctx.textAlign = "left";
+      ctx.textBaseline = "middle";
+      ctx.fillStyle = "rgba(120,220,160,.9)";
+      ctx.font = "600 " + Math.round(L.fs * 0.46) + "px " + FACE;
+      ctx.fillText("已清空本作品的进度", p.x, fy);
+      ctx.textAlign = "left";
+      ctx.textBaseline = "alphabetic";
+      return;
+    }
+    const confirm = !!UI.wipeConfirm && performance.now() - UI.wipeConfirm < 4000;
+    const bw = Math.round(L.fs * 4.6);
+    const bh = Math.round(L.fs * 1.3);
+    uiButton("wipe", p.x + p.w - bw, fy - bh / 2, bw, bh,
+             confirm ? "再点一次" : "清空存档",
+             {fs: Math.round(L.fs * 0.46), dim: !confirm, on: confirm,
+              accent: "rgba(190,60,60,.9)", weight: confirm ? 700 : 500});
+    ctx.textAlign = "left";
     ctx.textBaseline = "middle";
     ctx.fillStyle = "rgba(240,244,255,.32)";
-    ctx.font = "400 " + Math.round(L.fs * 0.48) + "px " + FACE;
-    ctx.fillText(saving ? "进度存在本机浏览器里 · 换设备不会同步" : "点一个格子读档 · 空位不用点",
-                 p.x + p.w / 2, p.y + p.h - Math.round(L.fs * 1.0));
-    ctx.textAlign = "left";
+    ctx.font = "400 " + Math.round(L.fs * 0.46) + "px " + FACE;
+    ctx.fillText(saving ? "存在本机 · 不同步" : "点格子读档", p.x, fy);
+    ctx.textBaseline = "alphabetic";
   }
 
   // 回顾：手机上一划一点，台词就过去了，漏掉的得能翻回来。
@@ -2054,7 +2193,6 @@
     const p = menuPanel();
     const vis = visual();
     const a = Math.min(1, (performance.now() - UI.t0) / 160);
-    UI.rects = [];
 
     ctx.save();
     ctx.fillStyle = "rgba(4,6,12," + (0.82 * a) + ")";
@@ -2108,6 +2246,17 @@
   }
 
   function act(id) {
+    if (id === "wipe") {
+      // 第一次点只是"亮起来问一句"，4 秒内再点才真清 —— 手指在手机上很容易点歪
+      if (UI.wipeConfirm && performance.now() - UI.wipeConfirm < 4000) {
+        storeWipe();
+      } else {
+        UI.wipeConfirm = performance.now();
+      }
+      UI.t0 = performance.now();
+      return;
+    }
+    UI.wipeConfirm = 0;
     if (id === "close") { UI.open = false; return; }
     if (id === "back") { UI.view = "menu"; return; }
     if (id === "resume") { UI.open = false; return; }

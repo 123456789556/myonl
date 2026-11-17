@@ -235,7 +235,7 @@ def test_ui_design_p52_嵌套组补丁参与预览不改磁盘(tmp_path):
     assert E._load_project_config(root) == before
 
 
-# ============ 第四步：界面开关（quickbar_enabled / pet_enabled）接入 UI 设计页 ============
+# ============ 第四步：界面开关（quickbar_enabled）接入 UI 设计页 ============
 
 
 def test_ui_design_界面开关读写(tmp_path):
@@ -245,17 +245,15 @@ def test_ui_design_界面开关读写(tmp_path):
     with open(settings_path, "w", encoding="utf-8") as f:
         json.dump({"quickbar_enabled": 0, "title": "保留"}, f, ensure_ascii=False)
 
-    # 未写的 pet_enabled 回落默认 0；已写的 quickbar_enabled 读回原值
-    assert E._interface_settings(root) == {"quickbar_enabled": 0, "pet_enabled": 0}
+    # 未写的键回落引擎默认；已写的 quickbar_enabled 读回原值
+    assert E._interface_settings(root) == {"quickbar_enabled": 0}
     # 兼容 "1" / True 两种写法
-    assert E._save_interface_settings(root, {"quickbar_enabled": "1",
-                                             "pet_enabled": True}) == settings_path
+    assert E._save_interface_settings(root, {"quickbar_enabled": "1"}) == settings_path
     with open(settings_path, encoding="utf-8") as f:
         back = json.load(f)
     assert back["quickbar_enabled"] == 1
-    assert back["pet_enabled"] == 1
     assert back["title"] == "保留"                    # 作者键原样保留
-    assert E._interface_settings(root) == {"quickbar_enabled": 1, "pet_enabled": 1}
+    assert E._interface_settings(root) == {"quickbar_enabled": 1}
     # 脏值按开关语义归一：空串/off → 0
     assert E._as_switch("") == 0
     assert E._as_switch("off") == 0
@@ -280,6 +278,9 @@ def test_ui_design_界面开关前端接线():
     js = open(os.path.join(root, "editor", "editor_uidesign.js"), encoding="utf-8").read()
     assert 'id="uidPanelIface"' in html
     assert "uidBuildExtraPanels" in js
-    for token in ('id="uidIfIfaceQb"', 'id="uidIfIfacePet"', "out.interface",
-                  "uidIfIfaceQb", "uidIfIfacePet"):
+    for token in ('id="uidIfIfaceQb"', "out.interface", "uidIfIfaceQb",
+                  "quickbar_enabled"):
         assert token in js, f"editor_uidesign.js 缺 {token}"
+    # 桌宠已整体移除：旧控件不能再出现
+    assert "uidIfIfacePet" not in js
+    assert "pet_enabled" not in js

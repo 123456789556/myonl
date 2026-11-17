@@ -205,8 +205,7 @@
       { label: "场景编辑（可视化）", action: () => window.__openSceneEditor && window.__openSceneEditor() },
       { label: "角色库（角色与立绘）", action: () => window.__openCharacterManager && window.__openCharacterManager() },
       { label: "UI 设计区", minLevel: 3, action: () => $("btnUIDesign").click() },
-      { label: "桌宠（实验）", minLevel: 3, action: () => window.__petToggle && window.__petToggle() },
-      { label: "设置中心", shortcut: "Ctrl+,", action: () => $("btnSettings").click() },
+          { label: "设置中心", shortcut: "Ctrl+,", action: () => $("btnSettings").click() },
       // E9：档位切换（命令面板 / 视图菜单都能改）
       { label: "档位：Level 1 新手", action: () => window.__editorLevel && window.__editorLevel.set(1) },
       { label: "档位：Level 2 默认", action: () => window.__editorLevel && window.__editorLevel.set(2) },
@@ -218,7 +217,7 @@
     help: [
       { label: "教程 / 说明书", shortcut: "F1", action: () => toggleHelp() },
       { label: "新手引导", action: () => $("btnGuide").click() },
-      { label: "关于 MYONL", action: () => alert("MYONL 引擎 · 视觉小说创作工具\n极简字母月 · Mooki 发光小团子") },
+      { label: "关于 MYONL", action: () => alert("MYONL 引擎 · 视觉小说创作工具\n极简字母月 · 手机优先") },
     ],
   };
 

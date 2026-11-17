@@ -258,7 +258,7 @@
   function importFromAssets() {
     loadAssets();
     var made = 0;
-    var skip = { bg: 1, cg: 1, ui: 1, mooki: 1, logo: 1, title: 1 };
+    var skip = { bg: 1, cg: 1, ui: 1, logo: 1, title: 1 };
     var known = {};
     data.characters.forEach(function (c) { known[c.id] = c; });
     images.forEach(function (name) {

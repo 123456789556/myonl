@@ -1117,7 +1117,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 /* 运行成功 2 秒微反馈（不覆盖图标/文字） */
 .editor-toolbar .tb-btn.started { background: var(--green) !important; border-color: var(--green) !important; color: #11111b !important; }
 
-/* ===== 设置中心（Trae 式分页）+ 桌宠状态 ===== */
+/* ===== 设置中心（Trae 式分页） ===== */
 .settings-center { width: min(860px, calc(100vw - 80px)) !important; }
 .set-body { display: flex; gap: 18px; margin-top: 10px; min-height: 320px; }
 .set-tabs { display: flex; flex-direction: column; gap: 2px; width: 132px; flex-shrink: 0; border-right: 1px solid var(--surface0); padding-right: 8px; }

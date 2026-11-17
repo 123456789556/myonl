@@ -478,11 +478,8 @@
         '<div class="ui-dl row"><span>显示快捷栏（quickbar_enabled）</span>' +
         '<select id="uidIfIfaceQb"><option value="1">显示</option>' +
         '<option value="0">隐藏（快捷键仍可用）</option></select></div>' +
-        '<div class="ui-dl row"><span>启用桌宠（pet_enabled）</span>' +
-        '<select id="uidIfIfacePet"><option value="1">启用</option>' +
-        '<option value="0">关闭</option></select></div>' +
-        '<div class="modal-hint" style="margin-top:6px">这两项是玩家默认值，写入项目 settings.json；' +
-        '玩家仍可在游戏内「设置 → 界面」改。桌宠只随源码模式生效，打包后的游戏不含桌宠。</div>';
+        '<div class="modal-hint" style="margin-top:6px">这是玩家默认值，写入项目 settings.json；' +
+        '玩家仍可在游戏内「设置 → 界面」改。</div>';
     }
   }
   uidBuildExtraPanels();
@@ -527,10 +524,8 @@
     out.quickbar.icons = uidParseIcons(ic ? ic.value : "");
     // 界面开关（写项目 settings.json，作为玩家默认值）
     const qbIf = $("uidIfIfaceQb");
-    const petIf = $("uidIfIfacePet");
     out.interface = {
       quickbar_enabled: qbIf ? Number(qbIf.value) : 1,
-      pet_enabled: petIf ? Number(petIf.value) : 0,
     };
     return out;
   }
@@ -600,12 +595,10 @@
     if (ffEl) ffEl.value = String(data.font_file || "");
     const icEl = $("uidQbIcons");
     if (icEl) icEl.value = uidFormatIcons((data.quickbar && data.quickbar.icons) || {});
-    // 界面开关：GET 已按引擎默认补齐（快捷栏开 / 桌宠关）
+    // 界面开关：GET 已按引擎默认补齐（快捷栏开）
     const iface = data.interface || {};
     const qbIfEl = $("uidIfIfaceQb");
     if (qbIfEl) qbIfEl.value = (iface.quickbar_enabled === 0) ? "0" : "1";
-    const petIfEl = $("uidIfIfacePet");
-    if (petIfEl) petIfEl.value = (iface.pet_enabled === 1) ? "1" : "0";
   }
 
   function uidSchedulePreview() {
@@ -1317,7 +1310,7 @@
       font: {body: 28},
       line_height: {body: 1.6},
       canvas: {size: [1280, 720]},
-      interface: {quickbar_enabled: 1, pet_enabled: 0},
+      interface: {quickbar_enabled: 1},
     });
     // 配色恢复引擎兜底色，并标记「保存时清空 theme 覆盖」
     if (Object.keys(uidThemeDefaults).length) {
@@ -1333,7 +1326,7 @@
   $("uidReset").addEventListener("click", uidResetDefaults);
   const uidCanvasEl = $("uidCanvas");
   if (uidCanvasEl) uidCanvasEl.addEventListener("change", uidSchedulePreview);
-  ["uidFontFile", "uidQbIcons", "uidIfIfaceQb", "uidIfIfacePet"].forEach((id) => {
+  ["uidFontFile", "uidQbIcons", "uidIfIfaceQb"].forEach((id) => {
     const el = $(id);
     if (el) el.addEventListener("change", uidSchedulePreview);
   });

@@ -261,14 +261,13 @@ def test_设置_滑条点击按比例定值():
     assert act == {"action": "settings_set", "key": "sfx_volume", "value": 0.25}
 
 
-def test_设置_发行版隐藏桌宠开关(monkeypatch):
-    """桌宠不随游戏包分发：frozen 下设置页不显示该项，快捷栏开关照常可见。"""
-    monkeypatch.setattr(sys, "frozen", True, raising=False)
-    ui = UI()
-    ui.mode = "settings"
-    keys = [it.get("key") for it in ui.view()["items"]]
-    assert "pet_enabled" not in keys
+def test_设置页只有快捷栏一个界面开关():
+    """桌宠已移除：界面组只剩快捷栏，不会出现开了也没反应的假开关。"""
+    from engine.ui import SETTINGS_ITEMS
+
+    keys = [it["key"] for it in SETTINGS_ITEMS]
     assert "quickbar_enabled" in keys
+    assert "pet_enabled" not in keys
 
 
 def test_设置_分页方向键跨组():

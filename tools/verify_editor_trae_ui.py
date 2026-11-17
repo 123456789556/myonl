@@ -162,18 +162,18 @@ def main() -> int:
             sb = all(page.locator(f"#{i}").count() > 0 for i in ("sbLine", "sbProblems", "sbVersion"))
             check("状态栏分段齐全", sb)
 
-            # 12 设置中心：分页存在（工程与数据/游戏界面/桌宠/关于）
+            # 12 设置中心：分页存在（工程与数据/游戏界面/关于）
             page.locator('.act-btn[data-view="settings"]').first.click()
             page.wait_for_timeout(500)
             tabs_n = page.locator(".set-tab").count()
-            check("设置中心分页 >= 4", tabs_n >= 4, f"tab {tabs_n}")
+            check("设置中心分页 >= 3", tabs_n >= 3, f"tab {tabs_n}")
             page.locator("#settingsCancel").click()
             page.keyboard.press("Escape")
             page.wait_for_timeout(200)
 
-            # 13 桌宠状态接口可用（只查 status，不真的弹窗）
-            pet_ok = page.evaluate("fetch('/api/pet',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'status'})}).then(r=>r.json()).then(d=>!!d.ok)")
-            check("桌宠 /api/pet 状态可读", bool(pet_ok))
+            # 13 桌宠接口已随功能移除（404 才算干净）
+            pet_code = page.evaluate("fetch('/api/pet',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'status'})}).then(r=>r.status).catch(()=>0)")
+            check("桌宠接口已下线", int(pet_code or 0) == 404, f"status {pet_code}")
 
             # 14 编辑器可输入并被检查（改一句台词 → 状态变化）
             before = page.locator("#source").input_value()

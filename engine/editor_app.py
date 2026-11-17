@@ -171,12 +171,7 @@ def make_closing_handler(window, bridge: _EditorBridge):
 
 def main(argv=None) -> int:
     argv = list(sys.argv[1:] if argv is None else argv)
-    # 桌宠模式：editor.exe --pet（打包后没有独立 python，用它启动内置桌宠）
-    if "--pet" in argv:
-        from engine.pet import cli_main as _pet_main
-        return _pet_main([a for a in argv if a != "--pet"])
     ap = argparse.ArgumentParser(prog="engine.editor_app", description="MYONL 编辑器桌面窗口")
-    ap.add_argument("--pet", action="store_true", help=argparse.SUPPRESS)
     ap.add_argument("--project", default=None, help="项目根目录（默认：当前目录/配置记录）")
     ap.add_argument("--script", default=None, help="默认打开的剧本路径（必须在项目目录内）")
     args = ap.parse_args(argv)

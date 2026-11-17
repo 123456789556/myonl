@@ -79,8 +79,6 @@ SETTINGS_ITEMS = (
     # 界面：玩家侧显示项——追加在末尾，不改既有分组顺序与光标位置
     {"key": "quickbar_enabled", "label": "快捷栏", "min": 0, "max": 1, "step": 1,
      "kind": "switch", "group": "界面"},
-    {"key": "pet_enabled", "label": "桌宠", "min": 0, "max": 1, "step": 1,
-     "kind": "switch", "group": "界面"},
 )
 
 # P30-S2-1：打字速度三档实际取值（慢/中/快），循环调整，老数值按最近档显示
@@ -232,10 +230,6 @@ class UI:
         """
         hidden = set((self._settings or {}).get("settings_hidden", []) or [])
         items = [it for it in SETTINGS_ITEMS if it["key"] not in hidden]
-        # 桌宠只随引擎分发（pack.py 排除 engine.pet）：发行版游戏包里这项用不了，
-        # 直接不显示，避免玩家看到一个「开了也没反应」的开关。
-        if getattr(sys, "frozen", False):
-            items = [it for it in items if it["key"] != "pet_enabled"]
         return items
 
     # ==================== 对外属性 ====================

@@ -65,11 +65,6 @@ from .editor_project import (
     scene_state_at,
 )
 
-# 桌宠（实验功能）：编辑器内「打开/关闭」一个独立的 Mooki 桌宠进程
-_PET_LOCK = threading.Lock()
-_PET_PROC: subprocess.Popen | None = None
-
-
 def _demo_worker_entry() -> None:
     """打包形态下的 demo 启动器入口（A3 修复）。
 
@@ -294,7 +289,7 @@ def _write_error_text(action: str, e: OSError, rel: str) -> str:
 
 
 # UI 设计页「界面开关」：写到项目 settings.json，作为玩家默认值
-_UI_INTERFACE_KEYS = ("quickbar_enabled", "pet_enabled")
+_UI_INTERFACE_KEYS = ("quickbar_enabled",)
 
 
 def _as_switch(value) -> int:
@@ -305,7 +300,7 @@ def _as_switch(value) -> int:
 
 
 def _interface_settings(root: str) -> dict:
-    """读项目 settings.json 的界面开关；缺省回落引擎默认（快捷栏开 / 桌宠关）。"""
+    """读项目 settings.json 的界面开关；缺省回落引擎默认（快捷栏开）。"""
     from .data import DEFAULT_SETTINGS, load_settings
 
     st = load_settings(os.path.join(root, "settings.json"))
@@ -800,8 +795,6 @@ class _EditorHandler(BaseHTTPRequestHandler):
         ("GET", "/api/ai"): "_ai_get",
         ("POST", "/api/ai"): "_ai_set",
         ("POST", "/api/ai/ping"): "_ai_ping",
-        # 桌宠（实验）：start / stop / status（源码模式可用；发行包后续接入）
-        ("POST", "/api/pet"): "_pet_control",
         ("GET", "/api/complete"): "_complete",
         ("GET", "/api/files"): "_handle_files",
         # P65：手机端工作台（工程卡片列表 / 点卡片切换工程）
@@ -1356,7 +1349,7 @@ class _EditorHandler(BaseHTTPRequestHandler):
         resp["canvas"] = {"size": [int(size[0]), int(size[1])]}
         # 自定义字体（顶层 font_file）：相对项目根的 ttf/otf 路径，空 = 自动查找
         resp["font_file"] = str(cfg.get("font_file") or "")
-        # 界面开关（项目 settings.json 的玩家默认值）：快捷栏显隐 / 桌宠
+        # 界面开关（项目 settings.json 的玩家默认值）：快捷栏显隐
         resp["interface"] = _interface_settings(root)
         self._send_json(200, {"ok": True, **resp})
 
@@ -1489,61 +1482,6 @@ class _EditorHandler(BaseHTTPRequestHandler):
         if settings_path:
             result["settings_path"] = settings_path
         self._send_json(200, result)
-
-    def _pet_control(self, parsed=None) -> None:
-        """桌宠开关（实验功能）：start / stop / status。默认关闭。
-
-        桌宠是独立的 pygame 进程，编辑器只在用户点「打开桌宠」时启动：
-        源码模式 `python -m engine.pet`，发行版 `editor.exe --pet`。
-        桌宠不进游戏包（pack.py 排除 engine.pet）；启动失败（无显示环境）会明确报错。
-        """
-        global _PET_PROC
-        data = self._read_json()
-        action = str(data.get("action") or "").strip() or "status"
-        if action not in ("start", "stop", "status"):
-            self._send_json(400, {"ok": False, "message": "action 只支持 start / stop / status"})
-            return
-        root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        with _PET_LOCK:
-            if action == "status":
-                running = bool(_PET_PROC and _PET_PROC.poll() is None)
-                self._send_json(200, {"ok": True, "running": running})
-                return
-            if action == "stop":
-                proc = _PET_PROC
-                _PET_PROC = None
-                if proc and proc.poll() is None:
-                    try:
-                        proc.terminate()
-                        proc.wait(timeout=3)
-                    except (OSError, subprocess.TimeoutExpired):
-                        try:
-                            proc.kill()
-                        except OSError:
-                            pass
-                self._send_json(200, {"ok": True, "running": False, "message": "桌宠已关闭"})
-                return
-            if _PET_PROC and _PET_PROC.poll() is None:
-                self._send_json(200, {"ok": True, "running": True, "message": "桌宠已在运行"})
-                return
-            if getattr(sys, "frozen", False):
-                pet_cmd = [sys.executable, "--pet"]   # editor.exe 内置桌宠
-            else:
-                pet_cmd = [sys.executable, "-m", "engine.pet"]
-            try:
-                _PET_PROC = subprocess.Popen(
-                    pet_cmd,
-                    cwd=str(root),
-                    stdout=subprocess.DEVNULL,
-                    stderr=subprocess.DEVNULL,
-                )
-            except OSError as e:
-                _PET_PROC = None
-                self._send_json(200, {"ok": False, "running": False,
-                                      "message": f"桌宠启动失败：{e}"})
-                return
-            self._send_json(200, {"ok": True, "running": True,
-                                  "message": "桌宠已打开（可拖动 / Esc 关闭）"})
 
     def _ui_design_preview(self, parsed=None) -> None:
         """用给定 UI 几何参数渲染一帧预览 PNG（不改磁盘配置）。
