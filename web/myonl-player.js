@@ -1196,15 +1196,15 @@
   /* 面板高度：跟这一句的实际行数走，逐帧补间过渡。
      以前竖屏钉死 1/3 屏：一句两行的话，面板下半截就是一整块空黑，像没填完的表格；
      横屏更难看 —— 一行字顶着一块 280 高的板子。
-     现在按行数算：最短留 3.5 行（再矮会显得话被截断），最长 46% 屏；
-     补间时间常数 90ms，逐句变化是"呼一口气"，不是硬跳。 */
+     P97 又把兜底压了一档：原来不管几句都留 3.5 行（849 高屏上就是 19% 屏高），
+     一句话的面板上下各空一大块 —— 那句"再矮会显得话被截断"其实是眼感，不是度量：
+     留 1.9 行已经够呼吸。 */
   function panelTargetH() {
     const rows = Math.max(1, Math.min(L.maxTextRows, (state.lines || []).length || 1));
     const nameH = state.say && state.say.char ? Math.round(L.nameSize * 0.9) : 0;
     const contentH = L.padY * 2 + rows * L.lineH + nameH + Math.round(L.fs * 0.6);
-    const minH = L.landscape
-      ? L.padY * 2 + L.lineH * 1.1 + nameH + L.fs * 0.45
-      : L.padY * 2 + L.lineH * 3.5 + nameH + L.fs * 0.6;
+    const minRows = L.landscape ? 1.1 : Math.max(1.9, rows + 0.9);
+    const minH = L.padY * 2 + L.lineH * minRows + nameH + L.fs * (L.landscape ? 0.45 : 0.6);
     const maxH = L.viewH * (L.landscape ? 0.52 : 0.46);
     return Math.round(Math.max(minH, Math.min(maxH, contentH)));
   }
@@ -1241,17 +1241,25 @@
   }
 
   /* 面板底色：原来是一块死黑（rgba(10,12,18,.90)）压在背景上，边缘像贴了张黑纸。
-     改为自上而下的深色渐变 + 顶部一道极淡的高光线，和底下的背景有过渡。 */
+     P97 再改一层：上缘**留透**，往下才压实 —— 面板和画面是一层幕，不是一张纸。
+     一路实到底的话，顶上那条边永远像有人拿刀切了一下。 */
   function panelFill(x, y, w, h) {
     const g = ctx.createLinearGradient(0, y, 0, y + h);
-    g.addColorStop(0, "rgba(20,23,32,.92)");
-    g.addColorStop(1, "rgba(9,11,16,.96)");
+    g.addColorStop(0, "rgba(18,21,30,.58)");
+    g.addColorStop(0.12, "rgba(15,18,26,.90)");
+    g.addColorStop(1, "rgba(7,9,14,.97)");
     return g;
   }
 
+  /* 上缘那道线不许等亮度：等亮度就是一条白描边，看着像网页卡片。
+     中间亮、两头收进去，才像光落在边上。 */
   function panelHairline(x, y, w, r) {
     ctx.save();
-    ctx.strokeStyle = "rgba(255,255,255,.08)";
+    const g = ctx.createLinearGradient(x + r, 0, x + w - r, 0);
+    g.addColorStop(0, "rgba(255,255,255,0)");
+    g.addColorStop(0.5, "rgba(255,255,255,.13)");
+    g.addColorStop(1, "rgba(255,255,255,0)");
+    ctx.strokeStyle = g;
     ctx.lineWidth = 1;
     ctx.beginPath();
     ctx.moveTo(x + r, y + 0.5);
@@ -1270,11 +1278,8 @@
     const skin = vis.panel.image && assets[vis.panel.image];
     // 先垫一层不透明底：贴图皮肤本体常是半透明 PNG，不垫的话背景/立绘会透上来，
     // 台词就不好读了（桌面端皮肤是在底板上叠的，这里保持同样的观感）。
-    // P84：垫底时带一道投影 —— 面板和背景之间没有过渡时，整块像切纸贴上去的。
+    // P97：不再挂大投影 —— 幕式面板靠渐变和画面接续，再加一圈阴影又变回"纸片"。
     ctx.save();
-    ctx.shadowColor = "rgba(0,0,0,.55)";
-    ctx.shadowBlur = Math.round(L.fs * 0.9);
-    ctx.shadowOffsetY = Math.round(L.fs * 0.28);
     roundRect(x, y, w, h, radius, panelFill(x, y, w, h));
     ctx.restore();
     if (skin) {
@@ -1297,7 +1302,9 @@
     } else {
       roundRect(x, y, w, h, radius, vis.surface, vis.bgAlpha);
     }
-    panelHairline(x, y, w, radius);
+    // P97：横屏不画上缘线。竖屏那条线只有 92% 宽，收得住；横屏面板占屏 81%，
+    // 一条横贯全屏的亮线就成了"两块板之间的缝"。横屏只留渐隐，不描边。
+    if (!L.landscape) panelHairline(x, y, w, radius);
     return rect;
   }
 
@@ -1613,42 +1620,83 @@
     let hasSave = false;
     try { hasSave = !!localStorage.getItem(saveKey()); } catch (e) { hasSave = false; }
 
-    // 底部信息卡：标题和按钮收在同一张卡里，别摊在屏幕两头（中间大片空）。
-    // 尺寸一律按 viewW/viewH 的比例算 —— 这两个是物理像素，写死 CSS 值会随 DPR 变形。
+    // P97：竖屏不要卡片。
+    // 一张圆角板贴在底边，无论怎么调圆角和透明度，它都是"网页落地页"的样子 ——
+    // 因为它把画面切成了"上半张图 + 下半块板"。改成整宽渐隐：画面完整留到最后一行，
+    // 字站在暗处。横屏保留卡片，因为右边站着立绘，左边需要一块压得住的板。
     const k = W / (window.innerWidth || W);
-    const cardX = land ? W * 0.05 : W * 0.037;
-    const cardW = land ? Math.min(W * 0.42, 380 * k) : W * 0.926;
-    const cardH = land ? H * 0.47 : H * 0.242;
-    const cardY = land ? (H - cardH) / 2 : H - cardH - H * 0.022;
-    roundRect(cardX, cardY, cardW, cardH, 20 * k, "rgba(22,26,36,.92)");
-    ctx.fillStyle = "rgba(255,255,255,.09)";
-    ctx.fillRect(cardX + 18 * k, cardY, cardW - 36 * k, Math.max(1, k));
+    const cardX = land ? W * 0.05 : 0;
+    const cardW = land ? Math.min(W * 0.42, 380 * k) : W;
+    const cardH = land ? H * 0.44 : H * 0.50;
+    const cardY = land ? (H - cardH) / 2 : H - cardH;
 
-    const pad = 18 * k;
-    const innerX = cardX + pad;
-    const innerW = cardW - pad * 2;
+    if (land) {
+      const cg = ctx.createLinearGradient(0, cardY, 0, cardY + cardH);
+      cg.addColorStop(0, "rgba(20,24,33,.66)");
+      cg.addColorStop(0.18, "rgba(17,20,28,.90)");
+      cg.addColorStop(1, "rgba(9,11,16,.97)");
+      roundRect(cardX, cardY, cardW, cardH, 24 * k, cg);
+      const hg = ctx.createLinearGradient(cardX + 40 * k, 0, cardX + cardW - 40 * k, 0);
+      hg.addColorStop(0, "rgba(255,255,255,0)");
+      hg.addColorStop(0.5, "rgba(255,255,255,.14)");
+      hg.addColorStop(1, "rgba(255,255,255,0)");
+      ctx.fillStyle = hg;
+      ctx.fillRect(cardX + 40 * k, cardY, cardW - 80 * k, Math.max(1, k));
+    } else {
+      const vg = ctx.createLinearGradient(0, cardY, 0, H);
+      vg.addColorStop(0, "rgba(6,8,12,0)");
+      vg.addColorStop(0.30, "rgba(6,8,12,.42)");
+      vg.addColorStop(0.62, "rgba(6,8,12,.84)");
+      vg.addColorStop(1, "rgba(5,7,11,.96)");
+      ctx.fillStyle = vg;
+      ctx.fillRect(0, cardY, W, H - cardY);
+    }
+
+    const pad = 20 * k;
+    const innerX = land ? cardX + pad : W * 0.075;
+    const innerW = land ? cardW - pad * 2 : W * 0.85;
     const bh = H * (land ? 0.135 : 0.062);
     const gap = 10 * k;
-    const btnY = cardY + cardH - pad - bh;
+    const btnY = land ? cardY + cardH - Math.round(pad * 0.8) - bh : H - bh - H * 0.052;
+    const btnW = land ? innerW : Math.min(innerW, W * 0.60);
     const subW = hasSave ? Math.min(innerW * 0.36, 128 * k) : 0;
-    state.startRect = {x: innerX, y: btnY, w: innerW - (hasSave ? subW + gap : 0), h: bh};
+    state.startRect = {x: innerX, y: btnY, w: btnW - (hasSave ? subW + gap : 0), h: bh};
     state.continueRect = hasSave
-      ? {x: innerX + innerW - subW, y: btnY, w: subW, h: bh}
+      ? {x: innerX + btnW - subW, y: btnY, w: subW, h: bh}
       : null;
 
+    const fs = fitFont(pack.title || "MYONL", innerW, Math.round(u * (land ? 0.112 : 0.132)), 800);
+    // 品牌标记：原来那行「视觉小说 · MYONL」是给开发者看的说明，玩家只认作品名。
+    const markY = land ? cardY + pad + Math.round(u * 0.026)
+                       : btnY - bh * 0.55 - fs * 1.30;
     ctx.textAlign = "left";
     ctx.textBaseline = "alphabetic";
-    ctx.fillStyle = "rgba(240,244,255,.50)";
-    ctx.font = `400 ${Math.round(u * 0.030)}px ${FACE}`;
-    ctx.fillText("视觉小说 · MYONL", innerX, cardY + pad + Math.round(u * 0.030));
+    ctx.fillStyle = "rgba(79,140,255,.90)";
+    ctx.fillRect(innerX, markY - Math.round(u * 0.020), Math.round(u * 0.052), Math.max(2, k));
+    ctx.fillStyle = "rgba(240,244,255,.42)";
+    ctx.font = `500 ${Math.round(u * 0.024)}px ${FACE}`;
+    ctx.fillText("MYONL", innerX + Math.round(u * 0.066), markY);
 
-    const fs = fitFont(pack.title || "MYONL", innerW, Math.round(u * (land ? 0.112 : 0.125)), 700);
-    ctx.font = `700 ${fs}px ${FACE}`;
+    ctx.font = `800 ${fs}px ${FACE}`;
     ctx.fillStyle = "#f7f9ff";
-    ctx.fillText(pack.title || "MYONL", innerX, btnY - bh * 0.58);
+    ctx.fillText(pack.title || "MYONL", innerX, btnY - bh * 0.55);
 
     const r1 = state.startRect;
-    roundRect(r1.x, r1.y, r1.w, r1.h, 14 * k, "rgba(79,140,255,.96)");
+    roundRect(r1.x, r1.y, r1.w, r1.h, 13 * k, "rgba(79,140,255,.96)");
+    // 按钮内高光：纯色块是"网页表单"，顶上一条 1px 白线才有实体感
+    {
+      const ig = ctx.createLinearGradient(0, r1.y, 0, r1.y + r1.h * 0.5);
+      ig.addColorStop(0, "rgba(255,255,255,.22)");
+      ig.addColorStop(1, "rgba(255,255,255,0)");
+      ctx.save();
+      ctx.beginPath();
+      ctx.roundRect ? ctx.roundRect(r1.x, r1.y, r1.w, r1.h, 13 * k)
+                    : ctx.rect(r1.x, r1.y, r1.w, r1.h);
+      ctx.clip();
+      ctx.fillStyle = ig;
+      ctx.fillRect(r1.x, r1.y, r1.w, r1.h * 0.5);
+      ctx.restore();
+    }
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
     ctx.fillStyle = "#fff";
@@ -2031,25 +2079,21 @@
     if (state.scene !== "game" || state.error) return;
     const r = menuRect();
     ctx.save();
-    // 圆形、弱底、细线：它只是个"入口"，不该比立绘更抢眼
-    ctx.globalAlpha = 0.62;
-    roundRect(r.x, r.y, r.w, r.h, r.h / 2, "rgba(12,14,20,.80)");
+    // P97：去掉那圈 1px 描边。深色底上一圈等亮度细线就是"图标按钮"的模样，
+    // 只留一个半透明圆 + 三条线，它才真的缩进画面里。
+    ctx.globalAlpha = 0.55;
+    roundRect(r.x, r.y, r.w, r.h, r.h / 2, "rgba(12,14,20,.86)");
     ctx.globalAlpha = 1;
-    ctx.strokeStyle = "rgba(223,230,245,.18)";
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.arc(r.x + r.w / 2, r.y + r.h / 2, r.w / 2 - 0.5, 0, Math.PI * 2);
-    ctx.stroke();
     const cx = r.x + r.w / 2;
     const cy = r.y + r.h / 2;
-    const half = r.w * 0.16;
-    ctx.strokeStyle = "rgba(240,244,255,.82)";
-    ctx.lineWidth = Math.max(1.5, Math.round(r.h * 0.028));
+    const half = r.w * 0.17;
+    ctx.strokeStyle = "rgba(240,244,255,.76)";
+    ctx.lineWidth = Math.max(1.5, Math.round(r.h * 0.026));
     ctx.lineCap = "round";
     for (let i = -1; i <= 1; i++) {
       ctx.beginPath();
-      ctx.moveTo(cx - half, cy + i * r.h * 0.17);
-      ctx.lineTo(cx + half, cy + i * r.h * 0.17);
+      ctx.moveTo(cx - half, cy + i * r.h * 0.16);
+      ctx.lineTo(cx + half, cy + i * r.h * 0.16);
       ctx.stroke();
     }
     ctx.restore();
@@ -2069,9 +2113,9 @@
     const m = Math.round(Math.min(L.viewW, L.viewH) * 0.022);
     const gap = Math.round(s2 * 0.18);
     // 竖列整体垂直居中偏下：从 34% 屏高硬起排会正好压在人脸上/腰上。
-    // 现在按三条的总高算中心，落在 46% 处，跟对话框上沿拉开距离。
+    // P97 再往下挪到 55%：46% 那会儿三条正好卡在立绘腰侧，看着跟人物长在一起。
     const total = (ORBIT.length - 1) * (s2 + gap) + s2;
-    const top = Math.round(L.viewH * (L.landscape ? 0.40 : 0.46) - total / 2);
+    const top = Math.round(L.viewH * (L.landscape ? 0.44 : 0.55) - total / 2);
     return {x: L.viewW - m - s2, y: top + i * (s2 + gap), w: s2, h: s2};
   }
 
@@ -2088,16 +2132,13 @@
     for (let i = 0; i < ORBIT.length; i++) {
       const r = orbitRect(i);
       const rad = r.h / 2;
-      roundRect(r.x, r.y, r.w, r.h, rad, "rgba(12,14,20,.78)", 0.58);
+      // P97：纯圆、无描边。底要压得住背景 —— 0.46 在课桌这类花纹上会"消失"，
+      // 0.62 才既安静又看得见。
+      roundRect(r.x, r.y, r.w, r.h, rad, "rgba(12,14,20,.88)", 0.62);
       ctx.save();
-      ctx.strokeStyle = "rgba(223,230,245,.16)";
-      ctx.lineWidth = 1;
-      ctx.beginPath();
-      ctx.arc(r.x + r.w / 2, r.y + r.h / 2, r.w / 2 - 0.5, 0, Math.PI * 2);
-      ctx.stroke();
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
-      ctx.fillStyle = "rgba(240,244,255,.80)";
+      ctx.fillStyle = "rgba(240,244,255,.72)";
       ctx.font = "500 " + Math.round(r.w * 0.36) + "px " + FACE;
       ctx.fillText(ORBIT[i][1], r.x + r.w / 2, r.y + r.h / 2 + 1);
       ctx.restore();
@@ -2157,10 +2198,11 @@
         ? (land ? Math.min(L.viewW * 0.78, 1180) : L.viewW * 0.88)
         : w;
     const pad2 = Math.round(w2 * 0.055);
-    // 存档页的脚注只有一行，按菜单页的 footH 留位会在格子下面空出一条空洞
+    // 存档页的脚注只有一行，按菜单页的 footH 留位会在格子下面空出一条空洞；
+    // 设置页的说明文案 P97 已删，再按 footH 留就是一块纯空。
     const footUsed = (UI.view === "save" || UI.view === "load")
       ? Math.round(L.fs * 1.6)
-      : footH;
+      : UI.view === "settings" ? Math.round(L.fs * 0.45) : footH;
     const h = Math.min(headH + bodyH + footUsed + pad2, L.viewH * (land ? 0.96 : 0.88));
     // 竖屏做成"底部抽屉"：贴屏底、左右留 3% 边。原来垂直居中浮在半空，
     // 上下各一整块黑，看着像一张贴在墙上的纸。
@@ -2231,14 +2273,23 @@
       const ri = idx % perCol;
       const bx = x + ci * (colW + colGap);
       const by = top + ri * (rowH + gap);
-      // 行：淡底 + 圆角。选中/开启的用极淡蓝底 + 左侧一条 accent，
-      // 不再整块刷蓝 —— 一整块 120 高的蓝按钮比什么都刺眼。
-      roundRect(bx, by, colW, rowH, Math.round(rowH * 0.28),
-                on ? "rgba(79,140,255,.15)" : "rgba(255,255,255,.055)");
+      // P97：行不再各套一层圆角底 —— 八个盒子叠在一个大盒子里，一眼就是"设置页"。
+      // 现在只留选中态和分隔线，字直接站在幕上。
       if (on) {
-        roundRect(bx + Math.round(rowH * 0.06), by + Math.round(rowH * 0.22),
-                  Math.max(3, Math.round(rowH * 0.07)), rowH - Math.round(rowH * 0.44),
+        roundRect(bx, by, colW, rowH, Math.round(rowH * 0.18), "rgba(79,140,255,.10)");
+        roundRect(bx, by + Math.round(rowH * 0.26),
+                  Math.max(3, Math.round(rowH * 0.055)), rowH - Math.round(rowH * 0.52),
                   2, "#4f8cff");
+      }
+      if (cols === 1 && idx + 1 < items.length) {
+        ctx.save();
+        ctx.strokeStyle = "rgba(255,255,255,.055)";
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(bx + padX, by + rowH + Math.round(gap / 2) + 0.5);
+        ctx.lineTo(bx + colW - padX * 0.4, by + rowH + Math.round(gap / 2) + 0.5);
+        ctx.stroke();
+        ctx.restore();
       }
       ctx.textAlign = "left";
       ctx.textBaseline = "middle";
@@ -2267,19 +2318,18 @@
       hit(id, bx, by, colW, rowH);
     });
 
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-    ctx.fillStyle = "rgba(240,244,255,.34)";
-    ctx.font = "400 " + Math.round(L.fs * 0.5) + "px " + FACE;
-    ctx.fillText("进度保存在本机浏览器里 · 换设备不会同步", p.x + p.w / 2, p.y + p.h - Math.round(L.fs * 1.2));
     ctx.textAlign = "left";
   }
 
   function drawSlotCard(id, x, y, w, h, d, saving, no) {
     const empty = !d;
     const r = Math.round(Math.min(h / 6, 16));
-    roundRect(x, y, w, h, r, empty ? "rgba(255,255,255,.045)" : "rgba(255,255,255,.075)");
-    ctx.strokeStyle = "rgba(255,255,255,.10)";
+    // P97：空档不填底，只留一条虚线框。六个实心圆角盒并排就是一张"表格"，
+    // 而且每格都在抢注意力；空格退成虚框之后，有档的那格才浮上来 —— 层级自己就出来了。
+    if (!empty) roundRect(x, y, w, h, r, "rgba(255,255,255,.085)");
+    ctx.save();
+    if (empty) ctx.setLineDash([Math.max(4, Math.round(L.fs * 0.17)), Math.max(4, Math.round(L.fs * 0.15))]);
+    ctx.strokeStyle = empty ? "rgba(255,255,255,.10)" : "rgba(255,255,255,.15)";
     ctx.lineWidth = 1;
     ctx.beginPath();
     ctx.moveTo(x + r, y);
@@ -2289,6 +2339,7 @@
     ctx.arcTo(x, y, x + w, y, r);
     ctx.closePath();
     ctx.stroke();
+    ctx.restore();
 
     const ix = x + Math.round(w * 0.055);
     ctx.textAlign = "left";
@@ -2554,15 +2605,31 @@
 
       const segW = Math.round(colW * (cols === 2 ? 0.54 : 0.44));
       const sx = gx + colW - segW;
-      const btnGap = Math.round(L.fs * (cols === 2 ? 0.24 : 0.34));
-      const bw = (segW - btnGap * 2) / 3;
+      const bw = segW / 3;
       const bh = Math.round(L.fs * 1.5);
+      const sy = yy + (rowH - bh) / 2;
+      // P97：三个独立小盒 -> 一条分段控件。
+      // 三个各带圆角底和描边的小盒并排，是"三个按钮"，玩家每次都要认一遍哪个是选中的；
+      // 一条胶囊底 + 里面一块实心滑块，位置本身就说清了"三选一、当前在哪个"。
+      roundRect(sx, sy, segW, bh, bh / 2, "rgba(255,255,255,.055)");
       for (let i = 0; i < 3; i++) {
         const on = typeof cur === "string"
           ? cur === vals[i]
           : Math.abs(cur - vals[i]) < 0.001;
-        uiButton(key + ":" + i, sx + i * (bw + btnGap), yy + (rowH - bh) / 2, bw, bh,
-                 labels[i], {on: on, fs: Math.round(bh * (cols === 2 ? 0.36 : 0.42))});
+        const bx = sx + i * bw;
+        if (on) {
+          roundRect(bx + Math.max(2, Math.round(bw * 0.02)), sy + 2,
+                    bw - Math.max(2, Math.round(bw * 0.02)) * 2, bh - 4,
+                    (bh - 4) / 2, "#4f8cff");
+        }
+        ctx.save();
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillStyle = on ? "#fff" : "rgba(240,244,255,.58)";
+        ctx.font = (on ? "600 " : "500 ") + Math.round(bh * (cols === 2 ? 0.36 : 0.40)) + "px " + FACE;
+        ctx.fillText(labels[i], bx + bw / 2, sy + bh / 2 + 1);
+        ctx.restore();
+        hit(key + ":" + i, bx, sy, bw, bh);
       }
       // 行分隔线：六组排下来没有分隔就是一张"表单"，有线才像"设置清单"
       if (rowIdx < perCol - 1) {
@@ -2576,11 +2643,6 @@
         ctx.restore();
       }
     }
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-    ctx.fillStyle = "rgba(240,244,255,.36)";
-    ctx.font = "400 " + Math.round(L.fs * 0.52) + "px " + FACE;
-    ctx.fillText("设置存在本机 · 换作品也沿用", p.x + p.w / 2, p.y + p.h - Math.round(L.fs * 1.5));
     ctx.textAlign = "left";
   }
 

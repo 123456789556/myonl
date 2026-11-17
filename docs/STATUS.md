@@ -8,6 +8,7 @@
 - **在做**：真机验证仍为零（`adb devices` 只有表头，`adb` 在 `D:\娱乐工作区\_tools\platform-tools`）。**APK 已经能出包了**（P96：自建 WebView 壳 + 固定签名 + 沉浸全屏 + 返回键接管，CI 出 release 包并挂 Release：
 `MYONL-apk-3.apk` 3,770,281 B / v2-v3 已签名 / 内含 3.1 MB 单文件 HTML，解出来在 390×844 里跑通标题页→进游戏→返回键三态）。
 手机端"升级不丢档"两条腿都补上了：桌面端数据搬到 `%APPDATA%`（P91），手机端加**存档导出/导入**（P93），APK 侧靠**固定签名**（P96）。
+**P97 默认 UI 去盒子化**：标题页竖屏不再用卡片（改整宽四段渐隐、字左对齐站在暗处）、面板兜底高从 3.5 行收到 1.9 行（一句台词的框从 19% 屏高降到 14.5%，立绘裙子膝盖完整露出）、菜单行去盒只留分隔线、设置页三个小盒改一条分段控件、存档空档改虚线框、横屏不画面板上缘线、右侧三键去描边并下移到 55%。
 剩下：鉴赏页（CG/音乐）无数据链路（`gallery_config.json` 空壳、webpack 不打包 gallery）、立绘分层（眨眼/口型）、桌面端除标题页外的其余页面仍是旧形态。
 - **质量门槛**：干净 Windows（无 Python）下可做出并打包可玩 demo；H5 播放器在真实 Chromium 竖屏 390×844 / 横屏 844×390 + 转屏 + 自动存档全过；安卓 APK 由 CI 产出（`gradle assembleRelease` 绿，固定签名，Release 可匿名下载）。
 - **本机限制**：无 JDK / 无 Android SDK / 无 gh CLI / 无 Ren'Py SDK——所以 **APK 只能在 CI 里编**、**Ren'Py 导出工程没在 Ren'Py 里真跑过**；Actions 日志需 token（已改成失败时写 `::error::` 注解，匿名可读）。**真机 adb 需另装 platform-tools（`D:\娱乐工作区\_tools\platform-tools`），且必须覆盖 TEMP 才能起 daemon**（默认 `%TEMP%` 写 `adb.log` 会被拒）。
