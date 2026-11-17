@@ -25,7 +25,7 @@
   // 玩家设置（本机 localStorage，与游戏无关）：文字速度 / 字号 / 音量 / 自动翻页
   const PREF = {speed: 1, text: 1, vol: 0.7, auto: 0};
   const PREF_KEY = "myonl:prefs";
-  const UI = {open: false, view: "menu", rects: [], t0: 0};
+  const UI = {open: false, view: "menu", rects: [], t0: 0, logPage: 0};
   let pack = null;
   let vm = null;
   const assets = {};
@@ -465,6 +465,11 @@
       case "say":
         stopVoice();                                  // 换句就掐掉上一句语音
         state.say = ev;
+        // 回顾用的历史：手机上手指一快就点过去了，漏掉的台词必须能翻回来。
+        // 只留最近 80 句，够回溯一章，也不让内存跟着剧情线性涨。
+        state.history = state.history || [];
+        state.history.push({char: ev.char || "", text: ev.text || ""});
+        if (state.history.length > 80) state.history.shift();
         ctx.font = `${L.fs}px ${FACE}`;
         state.lines = wrap(ev.text, L.textW);
         state.typeStart = performance.now();
@@ -542,6 +547,7 @@
     state.bg = "";
     state.cg = "";
     state.sprites = [];
+    state.history = [];
     cam.zoom = 1; cam.zoomDur = 0; cam.zoomTo = 1; cam.zoomFrom = 1;
     cam.panX = 0; cam.panY = 0; cam.panDur = 0;
     cam.shakeUntil = 0;
@@ -1613,6 +1619,10 @@
   /* 横屏只有 390 高，5 个按钮按竖屏的尺寸会顶到屏幕上下边 */
   function menuRowH() { return Math.round(L.fs * (L.landscape ? 2.1 : 2.7)); }
   function setRowH() { return Math.round(L.fs * (L.landscape ? 2.0 : 2.4)); }
+  /* 回顾一页几行：横屏矮，一页 6 行；竖屏高，7 行 */
+  function logRows() { return L.landscape ? 6 : 7; }
+  function logRowH() { return Math.round(L.fs * 1.45); }
+  function logGap() { return Math.round(L.fs * 0.3); }
 
   /* 面板高度跟着内容走：写死 74% 会在底部留一大片空，还漏出后面的对话框 */
   function menuPanel() {
@@ -1624,16 +1634,23 @@
     const gap = Math.round(L.fs * 0.55);
     let bodyH;
     if (UI.view === "menu") {
-      bodyH = Math.round(L.fs * 0.3) + 5 * (menuRowH() + gap);
+      bodyH = Math.round(L.fs * 0.3) + 6 * (menuRowH() + gap);
     } else if (UI.view === "settings") {
       bodyH = Math.round(L.fs * 0.3) + 4 * (setRowH() + gap);
+    } else if (UI.view === "log") {
+      bodyH = Math.round(L.fs * 0.5)
+               + logRows() * (logRowH() + logGap())
+               + Math.round(L.fs * 2.4);
     } else {
       const rows = land ? 2 : 3;
       const ch = Math.round(L.fs * (land ? 5.4 : 4.6));
       bodyH = Math.round(L.fs * 0.4) + rows * (ch + gap);
     }
-    const h = Math.min(headH + bodyH + footH + pad, L.viewH * (land ? 0.96 : 0.94));
-    return {x: (L.viewW - w) / 2, y: (L.viewH - h) / 2, w: w, h: h, pad: pad, headH: headH};
+    // 回顾要一屏能读，比菜单面板宽
+    const w2 = UI.view === "log" ? (land ? Math.min(L.viewW * 0.78, 1100) : L.viewW * 0.92) : w;
+    const pad2 = Math.round(w2 * 0.055);
+    const h = Math.min(headH + bodyH + footH + pad2, L.viewH * (land ? 0.96 : 0.94));
+    return {x: (L.viewW - w2) / 2, y: (L.viewH - h) / 2, w: w2, h: h, pad: pad2, headH: headH};
   }
 
   function hit(id, x, y, w, h) { UI.rects.push({id: id, x: x, y: y, w: w, h: h}); }
@@ -1673,6 +1690,7 @@
     const gap = Math.round(L.fs * 0.55);
     const items = [
       ["resume", "继续游戏"],
+      ["toLog", "回顾台词"],
       ["toSave", "保存进度"],
       ["toLoad", "读取进度"],
       ["toSet", "设置"],
@@ -1748,6 +1766,74 @@
     }
   }
 
+  // 回顾：手机上一划一点，台词就过去了，漏掉的得能翻回来。
+  // 一页放满就停（不做自由滚动 —— canvas 里滚动条手感差），底部用「更早 / 更晚」翻页。
+  function drawLog(x, y, w, p) {
+    const rows = logRows();
+    const rowH = Math.round(L.fs * 1.45);
+    const gap = Math.round(L.fs * 0.3);
+    const hist = state.history || [];
+    const per = rows;
+    const pages = Math.max(1, Math.ceil(hist.length / per));
+    UI.logPage = Math.min(Math.max(0, UI.logPage || 0), pages - 1);
+
+    let yy = y + Math.round(L.fs * 0.5);
+    if (!hist.length) {
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillStyle = "rgba(240,244,255,.4)";
+      ctx.font = "400 " + Math.round(L.fs * 0.6) + "px " + FACE;
+      ctx.fillText("还没有可回顾的台词", x + w / 2, y + rows * rowH / 2);
+      ctx.textAlign = "left";
+      return;
+    }
+
+    const end = hist.length - UI.logPage * per;
+    const start = Math.max(0, end - per);
+    const vis = visual();
+    for (let i = start; i < end; i++) {
+      const h = hist[i];
+      const hl = yy + (rowH - L.fs * 1.2) / 2;
+      // 一行的结构：名字（角色色）+ 台词，超宽就截断加省略号
+      let cx = x;
+      if (h.char) {
+        ctx.font = "600 " + Math.round(L.fs * 0.58) + "px " + FACE;
+        ctx.fillStyle = vis.accent;
+        ctx.textAlign = "left";
+        ctx.textBaseline = "top";
+        ctx.fillText(h.char, cx, hl + Math.round(L.fs * 0.06));
+        cx += ctx.measureText(h.char).width + Math.round(L.fs * 0.6);
+      }
+      ctx.font = "400 " + Math.round(L.fs * 0.58) + "px " + FACE;
+      ctx.fillStyle = "rgba(240,244,255,.86)";
+      ctx.textAlign = "left";
+      ctx.textBaseline = "top";
+      let t = h.text || "";
+      const room = x + w - cx;
+      while (t.length > 1 && ctx.measureText(t).width > room) t = t.slice(0, -1);
+      if (t !== (h.text || "")) t = t.slice(0, Math.max(1, t.length - 1)) + "…";
+      ctx.fillText(t, cx, hl);
+      yy += rowH + gap;
+    }
+
+    const per2 = per;
+    const total = hist.length;
+    const olderAllowed = (UI.logPage + 1) * per2 < total;
+    const bw = Math.round(w * 0.28);
+    const bh = Math.round(L.fs * 1.6);
+    const by = p.y + p.h - Math.round(L.fs * 2.2);
+    uiButton("logOlder", x, by, bw, bh, "更早", {dim: !olderAllowed, fs: Math.round(bh * 0.44)});
+    uiButton("logNewer", x + w - bw, by, bw, bh, "更晚",
+             {dim: UI.logPage === 0, fs: Math.round(bh * 0.44)});
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillStyle = "rgba(240,244,255,.32)";
+    ctx.font = "400 " + Math.round(L.fs * 0.46) + "px " + FACE;
+    ctx.fillText("第 " + (UI.logPage + 1) + " / " + pages + " 页 · 按更早往回翻",
+                 x + w / 2, by + bh / 2);
+    ctx.textAlign = "left";
+  }
+
   function drawSettings(x, y, w, p) {
     const groups = [
       ["文字速度", "speed", ["慢", "中", "快"], [0.6, 1, 1.6], PREF.speed],
@@ -1812,7 +1898,7 @@
 
     const pad = p.pad;
     const headH = p.headH;
-    const titles = {menu: "菜单", save: "保存进度", load: "读取进度", settings: "设置"};
+    const titles = {menu: "菜单", save: "保存进度", load: "读取进度", settings: "设置", log: "回顾台词"};
     ctx.textAlign = "left";
     ctx.textBaseline = "middle";
     ctx.fillStyle = "#f2f5ff";
@@ -1830,6 +1916,7 @@
 
     if (UI.view === "menu") drawMenuList(innerX, top, innerW, p);
     else if (UI.view === "save" || UI.view === "load") drawSlots(innerX, top, innerW, p);
+    else if (UI.view === "log") drawLog(innerX, top, innerW, p);
     else drawSettings(innerX, top, innerW, p);
 
     ctx.restore();
@@ -1841,6 +1928,14 @@
     if (id === "resume") { UI.open = false; return; }
     if (id === "toSave") { UI.view = "save"; return; }
     if (id === "toLoad") { UI.view = "load"; return; }
+    if (id === "toLog") { UI.view = "log"; UI.logPage = 0; return; }
+    if (id === "logOlder") {
+      const per = logRows();
+      const maxPage = Math.max(0, Math.ceil((state.history || []).length / per) - 1);
+      UI.logPage = Math.min(maxPage, (UI.logPage || 0) + 1);
+      return;
+    }
+    if (id === "logNewer") { UI.logPage = Math.max(0, (UI.logPage || 0) - 1); return; }
     if (id === "toSet") { UI.view = "settings"; return; }
     if (id === "toTitle") {
       autoSave();
