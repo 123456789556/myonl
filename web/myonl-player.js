@@ -1154,13 +1154,19 @@
     if (state.choice) return;
     const rect = drawPanel(vis);
     const say = state.say;
+    // 名字占用的高度：和 panelTargetH() 预留的完全是同一个值，两边必须一致，
+    // 否则预留多出来的一截会变成面板里的空白（横屏面板"偏松"就是这么来的）
+    const nameH = say.char ? Math.round(L.nameSize * 0.9) : 0;
 
     if (say.char) {
       ctx.font = `600 ${L.nameSize}px ${FACE}`;
       const tw = ctx.measureText(say.char).width;
-      const plateH = L.nameSize + 22;
-      const plateX = rect.x + Math.round(L.marginX * 0.6);
-      const plateY = rect.y - plateH - 14;
+      // P89：名字牌放进面板内部。原来画在面板上沿外面 —— 面板贴底时它悬空压在
+      // 立绘的脚上，像贴了张纸条；而面板高度又已经按 nameH 预留过，名字在外，
+      // 那截预留就白撑成了空白。
+      const plateH = nameH;
+      const plateX = rect.x + L.padX + vis.panel.padX - Math.round(plateH * 0.28);
+      const plateY = rect.y + L.padY + vis.panel.padY;
       const tint = say.color || vis.accent;
       // 名字牌：深色胶囊保证任何角色色都读得清，角色色只用于描边（纯当标签太淡就看不见字）
       roundRect(plateX, plateY, tw + 52, plateH, plateH / 2, "rgba(12,14,20,.92)");
@@ -1192,8 +1198,8 @@
     // 垂直居中：面板高度是按行数补间的（短句的面板本来就矮），
     // 再顶着上沿排，底下那块永远多出一截。居中后短句上下留白相等，
     // 行数接近上限时自动退化成顶对齐。
-    const innerTop = rect.y + L.padY + vis.panel.padY;
-    const innerH = rect.h - (L.padY + vis.panel.padY) * 2;
+    const innerTop = rect.y + L.padY + vis.panel.padY + nameH;
+    const innerH = rect.h - (L.padY + vis.panel.padY) * 2 - nameH;
     const textH = Math.min(maxRows, (state.lines || []).length) * L.lineH;
     const ty = innerTop + Math.max(0, Math.round((innerH - textH) / 2));
     for (let i = 0; i < state.lines.length && i < maxRows; i++) {
@@ -1252,8 +1258,10 @@
     const bw = dw ? Math.round(clampN(L.choiceW * (dw / 420), L.viewW * 0.5, L.viewW * 0.94)) : L.choiceW;
     const bh = dh ? Math.round(clampN(L.choiceH * (dh / 52), L.fs * 2.2, L.fs * 4.2)) : L.choiceH;
     const dgr = Number.isFinite(dg) ? dg / 40 : 1;   // dialog_gap = 选项组离对话区多远
-    const centerY = Math.round(clampN(L.viewH * (0.66 - (dgr - 1) * 0.12),
-                                      L.viewH * 0.42, L.viewH * 0.82));
+    // P89：0.66 -> 0.71。竖屏选项块以下原来空掉近四分之一屏（立绘脚与地板都在下面），
+    // 往下挪一点让「在答什么 + 按钮」更像一整个重心，而不是浮在半空。
+    const centerY = Math.round(clampN(L.viewH * (0.71 - (dgr - 1) * 0.12),
+                                      L.viewH * 0.44, L.viewH * 0.88));
     const sg = c.gap === undefined ? 34 : Number(c.gap);   // gap = 选项之间的缝
     const gap = Number.isFinite(sg) ? Math.max(0, Math.round(L.choiceGap * (sg / 34))) : L.choiceGap;
     const radius = dr ? Math.min(Math.round(dr * 1.6), Math.round(bh / 2)) : 14;

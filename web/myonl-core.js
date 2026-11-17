@@ -196,7 +196,9 @@
           case "if": {
             state.choice = null;
             const body = ins.body || [];
-            const elseBody = ins["else"] || [];
+            // 字段名是 parser 的 else_body（不是 else）。读错过一次：条件为假时不进 else，
+            // 直接顺着往下执行，落进紧随其后的 @label —— 手机端结局会整条走错。
+            const elseBody = ins["else_body"] || ins["else"] || [];
             const branch = compare(ins.cond, state.vars) ? body : elseBody;
             if (branch && branch.length) {
               frame = {ins: branch, pc: 0, root: false, ret: frame};

@@ -27,7 +27,7 @@ import zipfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-DEFAULT_VERSION = "v1.0.0-rc14"
+DEFAULT_VERSION = "v1.0.0-rc15"
 
 # 发行包专用 README：只讲双击即用的五步，绝不出现源码/ Python 指令，
 # 避免新用户照着源码版 README 去 pip install 而误以为包坏了。
@@ -111,7 +111,12 @@ def build(version: str, out: Path) -> Path:
             zf.write(ROOT / "docs" / doc, f"{prefix}/文档/{doc}")
             entries += 1
         entries += _add_tree(zf, ROOT / "dist" / "editor", f"{prefix}/editor")
-        entries += _add_tree(zf, tutorial, f"{prefix}/games/教程示例")
+        # 两个示例工程都进包：教程示例（改这个）、《研修日志》（引擎能做出什么）。清了三处废料之后
+        # 剩下的就只有这两个，别再手写名单（手写过一次，漏了什么都不报错）。
+        for proj in ("教程示例", "研修日志"):
+            src = ROOT / "games" / proj
+            if src.is_dir():
+                entries += _add_tree(zf, src, f"{prefix}/games/{proj}")
         # 零帮助抽测清单第 2 步要双击 tools/win_env_check.bat（docs/计划/00-总览.md §三）；
         # 以前只在仓库里有、没进包，抽测走到第 2 步就找不到文件，故必须随包。
         zf.write(ROOT / "tools" / "win_env_check.bat", f"{prefix}/tools/win_env_check.bat")

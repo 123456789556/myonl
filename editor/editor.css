@@ -2457,14 +2457,6 @@ input[type="color"] {
 }
 .lk-btn:hover { background: rgba(137, 180, 250, .16); border-color: var(--blue); }
 .lk-primary { background: rgba(137, 180, 250, .16); border-color: var(--blue); color: var(--blue); }
-.lk-field { display: flex; flex-direction: column; gap: 4px; }
-.lk-field label { font-size: 12px; color: var(--subtext0); }
-.lk-field input {
-  background: var(--crust); border: 1px solid rgba(255, 255, 255, .1);
-  border-radius: var(--r-md); padding: 8px 10px;
-  color: var(--text); font-size: 13px; font-family: inherit;
-}
-.lk-field input:focus { outline: none; border-color: var(--blue); }
 /* P74：手机上设置中心的分页从左侧竖列改成顶部横排。
    原来 .set-tabs 固定 132px 竖列，390 宽的屏幕上先被吃掉三分之一，
    右边只剩一百多像素给内容 —— 看着像「挤在角落里」。 */

@@ -759,7 +759,7 @@ class _EditorHandler(BaseHTTPRequestHandler):
         ("GET", "/editor_shell.js"): "_serve_shell_js",
         # P65：手机端工作台（工程卡片第一层）
         ("GET", "/editor_home.js"): "_serve_home_js",
-        # P74：设置里的「手机连接 / 插线推送 / AI 助手」面板
+        # 设置里的「插线推送到手机」面板（P88 砍扫码、P89 砍 AI）
         ("GET", "/editor_link.js"): "_serve_link_js",
         # P76：手机端多层交互（外观分组钻取 / 素材看大图）
         ("GET", "/editor_mobile.js"): "_serve_mobile_js",
@@ -790,10 +790,6 @@ class _EditorHandler(BaseHTTPRequestHandler):
         # 素材互传交给数据线（手机当 U 盘 / 文件管理器），不再自己做一套同步。
         ("GET", "/api/adb"): "_adb_get",
         ("POST", "/api/adb"): "_adb_push",
-        # P74：AI 助手配置（预留；key 只存用户目录，不进工程/导出包）
-        ("GET", "/api/ai"): "_ai_get",
-        ("POST", "/api/ai"): "_ai_set",
-        ("POST", "/api/ai/ping"): "_ai_ping",
         ("GET", "/api/complete"): "_complete",
         ("GET", "/api/files"): "_handle_files",
         # P65：手机端工作台（工程卡片列表 / 点卡片切换工程）
@@ -1198,7 +1194,7 @@ class _EditorHandler(BaseHTTPRequestHandler):
         )
         self._send_json(200 if result.get("ok") else 400, result)
 
-    # ==================== P74：手机连接 / 插线推送 / AI 预留 ====================
+    # ==================== 插线推送到手机（P88/P89 之后只剩这一块） ====================
 
     def _server_port(self) -> int:
         addr = getattr(self.server, "server_address", ())
@@ -1235,24 +1231,6 @@ class _EditorHandler(BaseHTTPRequestHandler):
             self._send_json(200, mobile_link.adb_state())
             return
         self._send_json(200, mobile_link.adb_push(single))
-
-    def _ai_get(self, parsed=None) -> None:
-        from . import ai as ai_mod
-
-        self._send_json(200, ai_mod.payload())
-
-    def _ai_set(self, parsed=None) -> None:
-        from . import ai as ai_mod
-
-        # 同样回 200：ok=false 表示「没存成」，原因在 message 里，前端照读
-        self._send_json(200, ai_mod.save(self._read_json()))
-
-    def _ai_ping(self, parsed=None) -> None:
-        from . import ai as ai_mod
-
-        # 一律 200：连不上是「配置还没填好」这种正常状态，不是接口错误，
-        # 回 400 只会让浏览器控制台飘红。
-        self._send_json(200, ai_mod.ping())
 
     # ==================== P51/P52：UI 设计区（独立于剧本编辑） ====================
 

@@ -1,8 +1,8 @@
-/* 插线推送 / AI 助手（预留）—— 两块面板塞进「设置」里。
+/* 插线推送到手机 —— 设置中心里的一小块。
 
-   P88 起「手机连接」（扫码 + 局域网地址探测）整块砍掉了：真机上一次都没跑通，
-   留着只是张兑现不了的承诺。现在把成品送进手机只有一条路 —— 插数据线，
-   用 adb push 丢到 Download/MYONL/；工程和素材自己拷，不在这里做。
+   P88 砍掉了「手机连接」（扫码 + 局域网地址探测）：真机上一次都没跑通。
+   P89 又砍掉了「AI 助手」：只有一张填 key 的表单，没有任何真的改剧本能力。
+   现在把成品送进手机只有一条路 —— 插数据线，adb push 到 Download/MYONL/。
 
    DOM 全部由本文件创建：index.html 已经到行数硬限，不能再往里加结构。 */
 (function () {
@@ -58,74 +58,6 @@
     });
   }
 
-  // ---------- AI 助手（预留） ----------
-  function buildAi() {
-    var box = el("div", "lk-block");
-    box.appendChild(el("div", "lk-title", "AI 助手（预留）"));
-    [["aiBase", "接口地址（OpenAI 兼容）", "https://api.openai.com/v1"],
-     ["aiModel", "模型名", "例如 gpt-4o-mini"],
-     ["aiKey", "API Key（只存本机，不写进工程）", "sk-..."]
-    ].forEach(function (f) {
-      var row = el("div", "lk-field");
-      row.appendChild(el("label", "", f[1]));
-      var input = document.createElement("input");
-      input.id = f[0];
-      input.placeholder = f[2];
-      if (f[0] === "aiKey") input.type = "password";
-      row.appendChild(input);
-      box.appendChild(row);
-    });
-    var msg = el("div", "lk-hint");
-    msg.id = "aiMsg";
-    box.appendChild(msg);
-    var btns = el("div", "lk-btns");
-    var save = el("button", "lk-btn lk-primary", "保存");
-    save.id = "aiSave";
-    btns.appendChild(save);
-    var ping = el("button", "lk-btn", "测试连接");
-    ping.id = "aiPing";
-    btns.appendChild(ping);
-    box.appendChild(btns);
-    box.appendChild(el("div", "lk-hint",
-      "现在只是把配置位置留好：key 存用户目录的 .myonl/ai.json，不进导出包、不进 git。" +
-      "真正让 AI 改剧本的能力接在这后面。"));
-    return box;
-  }
-
-  function loadAi() {
-    api("/api/ai").then(function (r) {
-      var base = $("aiBase"), model = $("aiModel"), key = $("aiKey"), msg = $("aiMsg");
-      if (base) base.value = r.base_url || "";
-      if (model) model.value = r.model || "";
-      if (key) {
-        key.value = "";
-        key.placeholder = r.has_key ? ("已配置 " + (r.key_mask || "")) : "sk-...";
-      }
-      if (msg) msg.textContent = r.has_key ? "已有一把 key（不会再显示明文）" : "还没配 key";
-    }).catch(function () {});
-  }
-
-  function saveAi() {
-    var msg = $("aiMsg");
-    api("/api/ai", {
-      base_url: ($("aiBase") || {}).value,
-      model: ($("aiModel") || {}).value,
-      key: ($("aiKey") || {}).value,
-      enabled: true
-    }).then(function (r) {
-      if (msg) msg.textContent = r.ok ? "已保存：" + (r.path || "") : ("失败：" + (r.message || ""));
-      if (r.ok) loadAi();
-    }).catch(function () { if (msg) msg.textContent = "保存失败（后端没响应）"; });
-  }
-
-  function pingAi() {
-    var msg = $("aiMsg");
-    if (msg) msg.textContent = "测试中…";
-    api("/api/ai/ping", {}).then(function (r) {
-      if (msg) msg.textContent = (r.ok ? "" : "失败：") + (r.message || "");
-    }).catch(function () { if (msg) msg.textContent = "测试失败（后端没响应）"; });
-  }
-
   // ---------- 装进设置弹窗 ----------
   // 编辑器会把 #settingsModal 里的 .modal 搬进中间的「设置中心」页面（editor_pro.js），
   // 所以不能只认 #settingsModal 下的节点 —— 两种位置都要认。
@@ -140,7 +72,6 @@
     var anchor = modal.querySelector(".modal-hint");
     var wrap = el("div", "lk-wrap");
     wrap.appendChild(buildAdb());
-    wrap.appendChild(buildAi());
     if (anchor && anchor.parentNode) anchor.parentNode.insertBefore(wrap, anchor);
     else modal.appendChild(wrap);
     mounted = true;
@@ -157,13 +88,7 @@
         }).catch(function () { if (msg) msg.textContent = "推送失败（后端没响应）"; });
       };
     }
-    var save = $("aiSave");
-    if (save) save.onclick = saveAi;
-    var ping = $("aiPing");
-    if (ping) ping.onclick = pingAi;
-
     loadAdb(true);
-    loadAi();
   }
 
   function init() {
