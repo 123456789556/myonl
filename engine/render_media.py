@@ -289,6 +289,42 @@ class MediaMixin:
             return None
         return self._load_image_path(path)
 
+    def _title_cover(self):
+        """标题页底图：`images/title_bg` 优先，没有就挑工程里**体积最大**的那张 bg_/cg_。
+
+        返回 `(surface, is_title_bg)`；都找不到时 `(None, False)`（调用方画渐变）。
+        和网页包的封面规则一致（`webpack` 也是按文件体积挑最大的 bg/cg），所以同一个
+        工程在桌面端和手机端第一眼是同一张图。之前只有 title_bg 一条路，缺图就退成
+        "深蓝渐变 + 星尘" —— 那是空包观感，一部作品不该从空包开始。
+        结果缓存一次（扫目录 + stat 每张图不必每帧做）。
+        """
+        cached = getattr(self, "_title_cover_cache", None)
+        if cached is not None:
+            return cached
+        bg = self._load_image("title_bg")
+        if bg is not None:
+            self._title_cover_cache = (bg, True)
+            return self._title_cover_cache
+        best, best_size = None, 0
+        try:
+            names = os.listdir(os.path.join(self.assets_root, "images"))
+        except OSError:
+            names = []
+        for fn in names:
+            stem = os.path.splitext(fn)[0]
+            low = stem.lower()
+            if ("bg" not in low and not low.startswith("cg")) or "title" in low:
+                continue
+            try:
+                size = os.path.getsize(os.path.join(self.assets_root, "images", fn))
+            except OSError:
+                continue
+            if size > best_size:
+                best, best_size = stem, size
+        surf = self._load_image(best) if best else None
+        self._title_cover_cache = (surf, False)
+        return self._title_cover_cache
+
     def _load_image_path(self, path):
         """按需加载 + LRU 缓存：命中只更新热度；超过张数/字节上限释放最久未用。
 

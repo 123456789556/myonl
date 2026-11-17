@@ -11,6 +11,7 @@ from typing import TYPE_CHECKING, Any
 import pygame
 import random
 from .render_utils import (
+    _scale_to_cover,
     _scale_to_fit,
 )
 
@@ -147,8 +148,9 @@ class UiScreensMixin:
                                         (rect.centerx - img.get_width() // 2,
                                          rect.y + (rect.height - img.get_height()) // 2))
             if i == cursor and available and not hover:
-                # 左缘竖线（左列布局在文字左侧；居中布局在整行左端）
-                mark_x = x0 - 14 if left else rect.x - 14
+                # 左缘竖线（左列布局在文字左侧；居中布局贴紧**文字**左缘——
+                # 贴整行左缘时，居中排的菜单会让这根线孤零零漂在屏幕边上）
+                mark_x = x0 - 14 if left else rect.centerx - img.get_width() // 2 - 14
                 pygame.draw.rect(self._screen, self.config.theme_color("primary"),
                                  (mark_x, rect.centery - 9, 3, 18))
             # P31-b：整行可点（灰置项也登记，由 ui 判 enabled 后忽略）
@@ -179,12 +181,20 @@ class UiScreensMixin:
     def _draw_title(self, view) -> None:
         """标题画面：背景图 → 缺省现代渐变；作品名 + 主题色下划线；菜单卡片。"""
         w, h = self.size
-        # ⑪ 标题背景：优先 images/title_bg，缺省深色渐变
-        bg = self._load_image("title_bg")
+        # ⑪ 标题背景：images/title_bg 优先；没有就用工程里最大的那张 bg/cg（和网页包封面同一套规则）。
+        # is_title_bg=True 说明这张图是专门做的标题图（通常自带标题字），此时不再叠作品名。
+        bg, is_title_bg = self._title_cover()
         if bg is not None:
-            scaled = _scale_to_fit(bg, w, h)
+            # 用 cover 不用 fit：窗口比例不是 16:9（比如竖着的桌面窗口）时，fit 会把横图缩成
+            # 中间一条、上下补纯黑，看着像"背景没加载"。cover 放大后居中裁掉多余部分。
+            scaled = _scale_to_cover(bg, w, h)
             self._screen.blit(scaled, ((w - scaled.get_width()) // 2,
                                        (h - scaled.get_height()) // 2))
+            # 封面是从剧本里挑的，没为标题做过排版：压暗一档 + 底部渐深，作品名和菜单才压得住
+            shade = pygame.Surface((w, h), pygame.SRCALPHA)
+            shade.fill((8, 10, 14, 64))
+            self._screen.blit(shade, (0, 0))
+            self._screen.blit(self._make_vgradient(w, 150, 0, 150), (0, h - 150))
         else:
             # P35 现代渐变：深蓝黑 → 靛紫，叠两团主题光晕与底部暗角
             for y in range(h):
@@ -208,10 +218,10 @@ class UiScreensMixin:
             vignette = self._make_vgradient(w, 120, 0, 120)
             self._screen.blit(vignette, (0, h - 120))
         # 作品名（view["title"] 已由 ui 从 settings.json 读取）
-        # P30-S1-6：title_text_visible=False（有背景图时默认）不叠中文，避免双层标题；
-        # 无背景图时默认显示（否则标题空白）；title_text_y 可调位置
+        # P30-S1-6：专门的标题图（通常自带标题字）默认不叠中文，避免双层标题；
+        # 现在封面是从剧本背景里挑的（没标题字），所以照样作品名 —— 否则第一眼只剩一个菜单。
         # P44：ui.title.align="left" 时作品名左列布局（左上角），配合左列菜单
-        layout = self._title_layout(bg is not None)
+        layout = self._title_layout(is_title_bg)
         menu_top = layout["menu_top"]
         if layout["visible"]:
             title = str(view.get("title") or "MYONL")
@@ -228,9 +238,26 @@ class UiScreensMixin:
             # 作品名可见时把菜单往下推：大字号下 logo_y 与 menu_top 会重叠，
             # 第一项被标题盖住会像「灰掉/点不动」（空包默认配置就踩到）。
             menu_top = max(menu_top, layout["y"] + title_surf.get_height() + 16)
+        items = view.get("items") or []
+        row_h = layout["menu_row_height"]
+        if items:
+            # 6 项 × 54 在 720 高的窗口里会顶到屏幕底边（"退出"半个字压在边上）：按剩多少高度收一档
+            row_h = max(34, min(row_h, (h - menu_top - 28) // len(items)))
+        if not is_title_bg and items:
+            # 封面模式（底图取自剧本）菜单是纯文字，压在照片高光上会读不清（"退出"常落在亮水洼）。
+            # 垫一块半透明圆角板；专门做过排版的 title_bg 不加，老工程观感完全不变。
+            left = layout["align"] == "left"
+            x0 = 110 if left else w // 2 - layout["menu_width"] // 2
+            plate = pygame.Rect(x0 - 26, menu_top - 20,
+                                layout["menu_width"] + 52, row_h * len(items) + 30)
+            panel = pygame.Surface(plate.size, pygame.SRCALPHA)
+            pygame.draw.rect(panel, (10, 12, 18, 120), panel.get_rect(), border_radius=18)
+            pygame.draw.rect(panel, (255, 255, 255, 20), panel.get_rect(),
+                             width=1, border_radius=18)
+            self._screen.blit(panel, plate.topleft)
         self._draw_ui_items(
-            view.get("items") or [], view.get("cursor", 0),
-            menu_top, layout["menu_row_height"], layout["menu_width"],
+            items, view.get("cursor", 0),
+            menu_top, row_h, layout["menu_width"],
             align=layout["align"],
         )
         # P30-S1-4：引擎署名默认不画（settings.json 里 show_engine_version=true 才显示）
