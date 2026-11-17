@@ -31,12 +31,16 @@ ROOT = Path(__file__).resolve().parents[1]
 TPL = ROOT / "engine" / "templates" / "standard"
 
 
-def _names(folder: Path, suffix: str) -> set[str]:
-    return {p.stem for p in folder.glob(f"*{suffix}")}
+def _names(folder: Path, suffix) -> set[str]:
+    """按后缀取文件名集合。suffix 可以是字符串或元组 —— 真插画有 png 也有 jpg，
+    只认 .png 会把换过格式的素材当成缺失。"""
+    exts = (suffix,) if isinstance(suffix, str) else tuple(suffix)
+    return {p.stem for p in folder.glob("*")
+            if p.suffix.lower() in [e.lower() for e in exts]}
 
 
 def test_模板素材规模():
-    images = _names(TPL / "images", ".png")
+    images = _names(TPL / "images", (".png", ".jpg"))
     audio = _names(TPL / "audio", ".ogg")
     bgs = {n for n in images if n.startswith("bg_")}
     sprites = {n for n in images if not n.startswith("bg_")}
@@ -53,7 +57,7 @@ def test_角色库与立绘对应():
     lib = json.loads((TPL / "characters.json").read_text(encoding="utf-8"))
     ids = [c["id"] for c in lib["characters"]]
     assert "林晚" in ids and "苏晴" in ids
-    images = _names(TPL / "images", ".png")
+    images = _names(TPL / "images", (".png", ".jpg"))
     for c in lib["characters"]:
         assert c["avatars"], f"{c['id']} 没有表情映射"
         for expr, asset in c["avatars"].items():
@@ -103,10 +107,10 @@ def test_示例剧本引用的素材都存在():
 
 def test_三个自带工程素材一致():
     """标准示例 / 新游戏模板 / 新游戏 都要能直接用上同一套素材。"""
-    names = _names(TPL / "images", ".png")
+    names = _names(TPL / "images", (".png", ".jpg"))
     for game in ("标准示例", "新游戏模板"):
         folder = ROOT / "games" / game / "images"
-        missing = names - _names(folder, ".png")
+        missing = names - _names(folder, (".png", ".jpg"))
         assert not missing, f"{game} 缺素材：{sorted(missing)}"
 
 
@@ -115,7 +119,7 @@ def test_新建游戏自带内置素材(tmp_path):
     from engine.newgame import create_game
 
     root = create_game("自带素材", str(tmp_path), template="standard")
-    images = _names(root / "images", ".png")
+    images = _names(root / "images", (".png", ".jpg"))
     assert {"bg_走廊", "bg_天台", "bg_街道夜"} <= images
     audio = _names(root / "audio", ".ogg")
     assert {"click", "rain", "bgm_day"} <= audio

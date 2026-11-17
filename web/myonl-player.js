@@ -665,6 +665,7 @@
   function autoSave() { storeSetAuto(vm ? vm.save() : null); }
 
   function startGame(fromSave) {
+    state.panelHc = 0;      // 重开/读档：面板高度重新算，别带着上一局的高度
     state.scene = "game";
     state.ended = false;
     state.choice = null;
@@ -952,14 +953,20 @@
       const slotW = L.viewW / n;
       // 横屏单人时人物偏右三分之二处：左边留白给画面，对话框在底部压住腰——
       // 完整居中的话，两侧空得对称又无聊，人贴在正中像证件照。
+      // 竖屏两人同屏收到 0.30 / 0.70（三人 0.30/0.50/0.70）：
+      // 0.25/0.75 是等分画布，碰到宽一点的立绘（苏晴 872×1915 那种）左边缘顶出屏幕，
+      // 半个手肘和头发被裁掉，看着像图放歪了。横屏仍按槽位等分。
       const cx = (L.landscape && n === 1)
         ? L.viewW * 0.63 + disp.x * k
-        : slotW * (i + 0.5) + disp.x * k;
+        : (L.landscape
+            ? slotW * (i + 0.5) + disp.x * k
+            : L.viewW * (n >= 2 ? 0.30 + 0.40 * (i / Math.max(1, n - 1)) : 0.5) + disp.x * k);
       // 脚底锚点：竖屏让脚沉进去小半截（panelH 的 9%）——脚贴在面板上沿时，
       // 下面还有一大片地板，看着像浮在半空；让面板压住鞋尖，人才像站在前景。
+      // 脚底锚在「当前」面板上沿（面板高度是补间的，不能用布局里那个定值）
       const bottom = (L.landscape
         ? L.viewH
-        : L.panelY + Math.round(L.panelH * 0.09)) + disp.y * k;
+        : panelTopY() + Math.round(panelHNow() * 0.09)) + disp.y * k;
       const t0 = (state.spriteAt && state.spriteAt[sp.char]) || 0;
       const fadeIn = t0 ? Math.min(1, (nowT - t0) / 0.26) : 1;
       if (fadeIn <= 0) return;
@@ -1033,15 +1040,42 @@
     ctx.restore();
   }
 
-  /* 面板高度：竖屏固定占约三分之一屏（`L.panelH`），横屏跟台词行数走。
-     竖屏为什么要固定：一句话就要演一个矮盒子，面板每句都变高变矮，立绘脚下还留一大块空，
-     看着像没做完；固定成一条，立绘脚正好踩在上沿，对话框也不会跳。 */
+  /* 面板高度：跟这一句的实际行数走，逐帧补间过渡。
+     以前竖屏钉死 1/3 屏：一句两行的话，面板下半截就是一整块空黑，像没填完的表格；
+     横屏更难看 —— 一行字顶着一块 280 高的板子。
+     现在按行数算：最短留 3.5 行（再矮会显得话被截断），最长 46% 屏；
+     补间时间常数 90ms，逐句变化是"呼一口气"，不是硬跳。 */
+  function panelTargetH() {
+    const rows = Math.max(1, Math.min(L.maxTextRows, (state.lines || []).length || 1));
+    const nameH = state.say && state.say.char ? Math.round(L.nameSize * 0.9) : 0;
+    const contentH = L.padY * 2 + rows * L.lineH + nameH + Math.round(L.fs * 0.6);
+    const minH = L.landscape
+      ? L.padY * 2 + L.lineH * 1.35 + nameH + L.fs * 0.5
+      : L.padY * 2 + L.lineH * 3.5 + nameH + L.fs * 0.6;
+    const maxH = L.viewH * (L.landscape ? 0.52 : 0.46);
+    return Math.round(Math.max(minH, Math.min(maxH, contentH)));
+  }
+
+  function updatePanelH(now) {
+    const target = panelTargetH();
+    if (!state.panelHc) { state.panelHc = target; state.panelT = now; return; }
+    const dt = Math.min(80, Math.max(1, now - (state.panelT || now)));
+    state.panelT = now;
+    state.panelHc += (target - state.panelHc) * (1 - Math.exp(-dt / 90));
+    if (Math.abs(target - state.panelHc) < 1) state.panelHc = target;
+  }
+
+  function panelHNow() {
+    return Math.round(state.panelHc || L.panelH);
+  }
+
+  function panelTopY() {
+    return L.viewH - panelHNow() - L.bottom;
+  }
+
   function panelRect() {
-    const rows = Math.max(2, Math.min(L.maxTextRows, (state.lines || []).length || 2));
-    const contentH = L.padY * 2 + rows * L.lineH + Math.round(L.fs * 0.7);
-    const h = L.landscape
-      ? Math.min(L.viewH * 0.46, contentH)
-      : L.panelH;
+    const rows = Math.max(1, Math.min(L.maxTextRows, (state.lines || []).length || 1));
+    const h = panelHNow();
     return {x: L.panelX, y: L.viewH - h - L.bottom, w: L.panelW, h: h, rows: rows};
   }
 
@@ -1155,9 +1189,13 @@
     ctx.textBaseline = "top";
     const tx = rect.x + L.padX + vis.panel.padX;
     const maxRows = Math.min(rect.rows, L.maxTextRows);
-    // 竖屏面板是固定高度（约占三分之一屏），台词就从顶部排：一行字居中的话，
-    // 看着像「对话框里空了一大块」；从顶部起就是标准对话框，下面的留白是给后续行的。
-    const ty = rect.y + L.padY + vis.panel.padY;
+    // 垂直居中：面板高度是按行数补间的（短句的面板本来就矮），
+    // 再顶着上沿排，底下那块永远多出一截。居中后短句上下留白相等，
+    // 行数接近上限时自动退化成顶对齐。
+    const innerTop = rect.y + L.padY + vis.panel.padY;
+    const innerH = rect.h - (L.padY + vis.panel.padY) * 2;
+    const textH = Math.min(maxRows, (state.lines || []).length) * L.lineH;
+    const ty = innerTop + Math.max(0, Math.round((innerH - textH) / 2));
     for (let i = 0; i < state.lines.length && i < maxRows; i++) {
       const line = state.lines[i];
       const txt = line.slice(0, Math.max(0, Math.min(line.length, left)));
@@ -1174,8 +1212,10 @@
 
     // 继续提示：打字完成 / 没有选项时
     if (!state.choice && shown >= totalChars(state.lines)) {
+      // 位置跟内容走：一行字的面板变矮了，圆点要贴着字下面，否则会落在面板底部那块空白里
       const ax = rect.x + rect.w - Math.round(L.fs * 1.3);
-      const ay = rect.y + rect.h - Math.round(L.fs * 1.1);
+      const ay = Math.min(rect.y + rect.h - Math.round(L.fs * 0.8),
+                          ty + textH + Math.round(L.fs * 0.5));
       // 一个会呼吸的小圆点，比原来的实心三角安静
       const pulse = 0.55 + 0.45 * (0.5 + 0.5 * Math.sin(performance.now() / 380));
       ctx.save();
@@ -1250,13 +1290,33 @@
       ctx.save();
       ctx.font = `${qfs}px ${FACE}`;
       const qLines = wrap(state.lines[state.lines.length - 1], bw * 0.94).slice(-2);
-      ctx.textAlign = "center";
-      ctx.textBaseline = "bottom";
-      ctx.fillStyle = "rgba(236,241,255,.9)";
-      ctx.shadowColor = "rgba(0,0,0,.72)";
-      ctx.shadowBlur = 12;
       const qBottom = startY - Math.round(bh * 0.55);
       const qCx = L.landscape ? x + bw / 2 : L.viewW / 2;
+      // 底衬：原来只有描边阴影，压在夕阳/雨街这种亮背景上就糊成一团。
+      // 用一团柔和的暗晕（径向渐变，四边都渐隐）—— 试过圆角矩形带子，
+      // 压在画面上就是一块明显的黑补丁，比字糊还难看。
+      const qBandTop = qBottom - qLines.length * qfs * 1.3 - Math.round(qfs * 0.6);
+      const qBandBot = startY - Math.round(bh * 0.18);
+      const qBw = Math.min(L.viewW - L.marginX * 2, Math.round(bw * 1.2));
+      const cy = (qBandTop + qBandBot) / 2;
+      ctx.save();
+      ctx.translate(qCx, cy);
+      ctx.scale(1, Math.max(0.35, (qBandBot - qBandTop) / qBw));
+      const rq = qBw * 0.62;
+      const bandG = ctx.createRadialGradient(0, 0, qBw * 0.10, 0, 0, rq);
+      bandG.addColorStop(0, "rgba(9,11,17,.80)");
+      bandG.addColorStop(0.62, "rgba(9,11,17,.55)");
+      bandG.addColorStop(1, "rgba(9,11,17,0)");
+      ctx.fillStyle = bandG;
+      ctx.beginPath();
+      ctx.arc(0, 0, rq, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+      ctx.textAlign = "center";
+      ctx.textBaseline = "bottom";
+      ctx.fillStyle = "rgba(238,242,252,.94)";
+      ctx.shadowColor = "rgba(0,0,0,.55)";
+      ctx.shadowBlur = 6;
       qLines.forEach((ln, i, arr) => {
         ctx.fillText(ln, qCx, qBottom - (arr.length - 1 - i) * qfs * 1.3);
       });
@@ -1301,11 +1361,13 @@
     });
   }
 
-  /* 标题页封面：拿工程里第一张背景图模糊铺满，比纯渐变更像"一个故事"而不是启动屏 */
+  /* 标题页封面：优先用打包时挑好的那张（按文件体积算出的最大背景图），
+     没有就退回"名字里带 bg 的" —— 但不再从 assets 里抓第一张，
+     那常常是程序画的占位图，标题页会变成一堵空墙。 */
   function titleCover() {
-    const names = Object.keys(assets);
-    if (!names.length) return null;
-    return assets[names.find(n => /bg/i.test(n)) || names[0]];
+    if (pack && pack.cover && assets[pack.cover]) return assets[pack.cover];
+    const names = Object.keys(assets).filter(n => /bg|cover/i.test(n));
+    return names.length ? assets[names[0]] : null;
   }
 
   /* 字号自适应：长标题缩字号比换行更稳（换行会把底部卡片撑高） */
@@ -1358,7 +1420,14 @@
     // 横屏标题页：光有一张卡片 + 一片（被压暗的）背景，看着像启动屏不像作品页。
     // 把工程里的全身立绘右侧立一个当主视觉，左边卡片就是标题，右边是人 —— 一眼是 galgame。
     if (land) {
-      const heroName = Object.keys(assets).find(n => /全身/.test(n));
+      // 立绘的判据不能用名字：打包后键就是「角色_表情」（林晚_微笑），
+      // 剧本里的「全身」前缀不会出现在键里。按构图比例认 —— 竖长图 + 不是背景/CG。
+      const heroName = Object.keys(assets).find(n => {
+        const im = assets[n];
+        if (!im || !im.width || !im.height) return false;
+        if (/^(bg|cover|cg|title)/i.test(n)) return false;
+        return im.height > im.width * 1.4;
+      });
       const hero = heroName && assets[heroName];
       if (hero && hero.width && hero.height) {
         const tallSrc = hero.height > hero.width * 2.2;
@@ -1525,6 +1594,7 @@
     const vis = visual();
     const now = performance.now();
     UI.rects = [];        // 一帧一套热点：谁画谁 push，别让上一帧的坐标留到下一帧
+    updatePanelH(now);
     updateCam(now);
     if (state.error) {
       drawError();
@@ -1581,6 +1651,7 @@
         choiceRects: state.choiceRects, sprites: state.sprites, bg: state.bg,
         cg: state.cg,
         lines: state.lines, ended: state.ended, error: state.error,
+        panelH: panelHNow(), panelTop: panelTopY(),
       };
     },
     get audio() {
@@ -1816,8 +1887,15 @@
       // 横屏两列（3 行）—— 单列 6 组在横屏里会把面板撑到顶边，一点留白都没有
       bodyH = Math.round(L.fs * 0.3) + (L.landscape ? 3 : 6) * (setRowH() + gap);
     } else if (UI.view === "log") {
+      // 按「这一页实际有几条」留高：最后一页常常只剩三四条，
+      // 照 7 行的固定高度留位，底下就是一整块空 —— 之前就是这样。
+      const hist = state.history || [];
+      const per = logRows();
+      const pages = Math.max(1, Math.ceil(hist.length / per));
+      const pg = Math.min(Math.max(0, UI.logPage || 0), pages - 1);
+      const shown = hist.length ? Math.min(per, hist.length - pg * per) : 2;
       bodyH = Math.round(L.fs * 0.5)
-               + logRows() * (logRowH() + logGap())
+               + Math.max(2, shown) * (logRowH() + logGap())
                + Math.round(L.fs * 2.4);
     } else {
       const rows = land ? 2 : 3;
@@ -2078,7 +2156,7 @@
     const a = Math.min(1, (performance.now() - (state.guideT0 || 0)) / 200);
     ctx.save();
     ctx.globalAlpha = a;
-    ctx.fillStyle = "rgba(4,6,12,.86)";
+    ctx.fillStyle = "rgba(4,6,12,.78)";
     ctx.fillRect(0, 0, L.viewW, L.viewH);
 
     const w = L.landscape ? Math.min(L.viewW * 0.54, 820) : L.viewW * 0.86;

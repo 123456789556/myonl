@@ -1,12 +1,12 @@
 # 标准模板 · 示例小故事《晚风与约定》
 # 成品观感：走廊 → 天台 → 咖啡店/雨天 → 公园/房间，双结局
-# 素材全部程序生成、版权干净；替换 images/audio 即可变成你自己的游戏。
+# 背景/立绘都是真插画（不是程序画的占位色块）；替换 images/audio 就是你的游戏。
 
 @character 林晚 #ffb3c8
 @character 苏晴 #8ecae6
 @character 我 #f2e6c9
 
-@bg bg_标题
+@bg bg_教室
 @music bgm_night
 
 @label start

@@ -258,6 +258,11 @@ def build_web(project_root: str, out_dir: str, *, title: str = "") -> dict:
     images = _collect_image_names(ins, cfg)
     manifest: dict[str, str] = {}
     missing: list[str] = []
+    # 标题页封面：拿工程里**最大的那张背景图**（按文件体积判断）。
+    # 之前播放器自己按名字猜（第一个带 bg 的），猜中的常常是程序画的占位图 ——
+    # 标题页是玩家看到的第一眼，不能拿一张几百字节的纯色图当封面。
+    cover_name = ""
+    cover_size = 0
     for name in images:
         try:
             src = resolve_image(root, name)
@@ -268,6 +273,15 @@ def build_web(project_root: str, out_dir: str, *, title: str = "") -> dict:
         dst_name = name + ext
         shutil.copyfile(src, os.path.join(assets_dir, dst_name))
         manifest[name] = "assets/" + dst_name
+        low = name.lower()
+        if ("bg" in low or low.startswith("cg")) and "title" not in low:
+            try:
+                size = os.path.getsize(src)
+            except OSError:
+                size = 0
+            if size > cover_size:
+                cover_size = size
+                cover_name = name
 
     # 只回填存在的那部分配置（缺的走播放器默认，避免前端处理空对象）
     picked = {k: cfg[k] for k in CONFIG_KEYS if k in cfg}
@@ -309,6 +323,8 @@ def build_web(project_root: str, out_dir: str, *, title: str = "") -> dict:
         "ins": ins,
         # P67：作者选定的画面方向（any / portrait / landscape），播放器据此提示转屏
         "orientation": str(cfg.get("orientation") or "any"),
+        # 标题页封面（挑体积最大的背景图；空 = 工程里没有像样的背景，播放器走渐变）
+        "cover": cover_name,
         # 桌面端有、移动端暂不实现的指令：告给作者，不假装支持
         "unsupported": log,
     }
