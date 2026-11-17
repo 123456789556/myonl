@@ -22,8 +22,8 @@
   const FACE = '"PingFang SC", "Source Han Sans SC", "Microsoft YaHei", system-ui, sans-serif';
   const BASE_CPS = 32;                // 打字机基准：字/秒（设置里可调）
 
-  // 玩家设置（本机 localStorage，与游戏无关）：文字速度 / 字号 / 音量 / 自动翻页
-  const PREF = {speed: 1, text: 1, vol: 0.7, auto: 0, quality: 1, skip: 0};
+  // 玩家设置（本机 localStorage，与游戏无关）：文字速度 / 字号 / 音量 / 自动翻页 / 画质 / 快进 / 画面方向
+  const PREF = {speed: 1, text: 1, vol: 0.7, auto: 0, quality: 1, skip: 0, orient: "auto"};
   const PREF_KEY = "myonl:prefs";
   const UI = {open: false, view: "menu", rects: [], t0: 0, logPage: 0};
   let pack = null;
@@ -142,7 +142,15 @@
 
   // ---------- 画布尺寸 ----------
   function fit() {
-    L = LAYOUT.layoutFor(window.innerWidth, window.innerHeight);
+    // P84：方向可以手选（设置里「画面方向：自动 / 竖屏 / 横屏」）。
+    // 强制横屏时把窗口宽高对调再算布局 —— 布局本身是等比 letterbox（#stage flex 居中），
+    // 所以画布会自己变成竖持手机里的一段横屏画面，上下是黑边，跟播放器放横视频一样。
+    const force = PREF.orient || "auto";
+    let lw = window.innerWidth;
+    let lh = window.innerHeight;
+    if (force === "landscape" && lw < lh) { const t = lw; lw = lh; lh = t; }
+    else if (force === "portrait" && lw > lh) { const t = lw; lw = lh; lh = t; }
+    L = LAYOUT.layoutFor(lw, lh);
     applyTextScale();
     // 渲染分辨率：高 DPR 手机（2~3x）按原样画会烧 GPU，弱机直接掉帧。
     // 画质档位乘在 DPR 上，画布逻辑尺寸不变，只是重采样少一点。
@@ -974,7 +982,13 @@
     const skin = vis.panel.image && assets[vis.panel.image];
     // 先垫一层不透明底：贴图皮肤本体常是半透明 PNG，不垫的话背景/立绘会透上来，
     // 台词就不好读了（桌面端皮肤是在底板上叠的，这里保持同样的观感）。
+    // P84：垫底时带一道投影 —— 面板和背景之间没有过渡时，整块像切纸贴上去的。
+    ctx.save();
+    ctx.shadowColor = "rgba(0,0,0,.55)";
+    ctx.shadowBlur = Math.round(L.fs * 0.9);
+    ctx.shadowOffsetY = Math.round(L.fs * 0.28);
     roundRect(x, y, w, h, radius, panelFill(x, y, w, h));
+    ctx.restore();
     if (skin) {
       ctx.save();
       ctx.globalAlpha = vis.panel.alpha;
@@ -1553,6 +1567,13 @@
       if (typeof v.text === "number") PREF.text = v.text;
       if (typeof v.vol === "number") PREF.vol = v.vol;
       if (typeof v.auto === "number") PREF.auto = v.auto;
+      // P84：quality / skip / orient 原来写了但没读回来 —— 玩家关了快进、调了画质，
+      // 关掉网页再进就全恢复默认，这种"记不住设置"是最廉价的廉价感。
+      if (typeof v.quality === "number") PREF.quality = v.quality;
+      if (typeof v.skip === "number") PREF.skip = v.skip;
+      if (v.orient === "auto" || v.orient === "portrait" || v.orient === "landscape") {
+        PREF.orient = v.orient;
+      }
     } catch (e) { /* 隐私模式禁读 */ }
   }
 
@@ -1679,9 +1700,10 @@
     const gap = Math.round(L.fs * 0.55);
     let bodyH;
     if (UI.view === "menu") {
-      bodyH = Math.round(L.fs * 0.3) + (L.landscape ? 4 : 7) * (menuRowH() + gap);
+      // 网格：竖屏 2 列 → 4 行；横屏 4 列 → 2 行
+      bodyH = Math.round(L.fs * 0.3) + (L.landscape ? 2 : 4) * (menuRowH() + gap);
     } else if (UI.view === "settings") {
-      bodyH = Math.round(L.fs * 0.3) + 5 * (setRowH() + gap);
+      bodyH = Math.round(L.fs * 0.3) + 6 * (setRowH() + gap);
     } else if (UI.view === "log") {
       bodyH = Math.round(L.fs * 0.5)
                + logRows() * (logRowH() + logGap())
@@ -1739,12 +1761,16 @@
       ["toSave", "保存进度"],
       ["toLoad", "读取进度"],
       ["skip", PREF.skip ? "快进 · 已开" : "快进 · 关"],
+      // 第 8 项补「自动」：正好 2×4 / 4×2 装满，不留空格，而且自动翻页不用每次进设置
+      ["autoTgl", PREF.auto ? "自动 · " + PREF.auto + " 秒" : "自动 · 关"],
       ["toSet", "设置"],
       ["toTitle", "回到标题"],
     ];
     let yy = y + gap;
-    // 横屏两列：7 项竖排会撑破面板（高只有 390 CSS）
-    const cols = L.landscape ? 2 : 1;
+    // P84：菜单从「7 条通栏长条」改成网格卡片。
+    // 长条竖排看起来像设置项列表（劣质感主要来源）；商业作品的菜单都是格位按钮，
+    // 一屏 2×4 或 4×2，视线一眼扫完，且高度砍半，面板能收得干净。
+    const cols = L.landscape ? 4 : 2;
     const colGap = Math.round(L.fs * 0.5);
     const cellW = (w - (cols - 1) * colGap) / cols;
     items.forEach((pair, idx) => {
@@ -1755,10 +1781,8 @@
       const row = Math.floor(idx / cols);
       const bx = x + col * (cellW + colGap);
       const by = yy + row * (rowH + gap);
-      // 奇数项时最后一项横跨两列，否则右半边留个洞，看着像没做完
-      const lastOdd = idx === items.length - 1 && items.length % cols === 1;
-      uiButton(id, bx, by, lastOdd ? w : cellW, rowH, label,
-               {on: accent, weight: accent ? 700 : 500});
+      uiButton(id, bx, by, cellW, rowH, label,
+               {on: accent, weight: accent ? 700 : 500, fs: Math.round(L.fs * 0.72)});
     });
     yy += Math.ceil(items.length / cols) * (rowH + gap);
     ctx.textAlign = "center";
@@ -1962,6 +1986,10 @@
       ["自动翻页", "auto", ["关", "3 秒", "6 秒"], [0, 3, 6], PREF.auto],
       // 弱机自救：降渲染分辨率，字和图会软一点，但帧率能上来
       ["画面质量", "quality", ["流畅", "标准", "清晰"], [0.62, 0.82, 1], PREF.quality],
+      // 手选方向：横屏作品在竖持手机上也能玩（画布变成上下留黑的一段横屏），
+      // 反过来竖屏作品横持手机也能强制竖排 —— 不用真的转手机
+      ["画面方向", "orient", ["自动", "竖屏", "横屏"],
+       ["auto", "portrait", "landscape"], PREF.orient || "auto"],
     ];
     const rowH = setRowH();
     const gap = Math.round(L.fs * 0.5);
@@ -1980,8 +2008,11 @@
       const bw = (segW - btnGap * 2) / 3;
       const bh = Math.round(L.fs * 1.5);
       for (let i = 0; i < 3; i++) {
+        const on = typeof cur === "string"
+          ? cur === vals[i]
+          : Math.abs(cur - vals[i]) < 0.001;
         uiButton(key + ":" + i, sx + i * (bw + btnGap), yy + (rowH - bh) / 2, bw, bh,
-                 labels[i], {on: Math.abs(cur - vals[i]) < 0.001, fs: Math.round(bh * 0.42)});
+                 labels[i], {on: on, fs: Math.round(bh * 0.42)});
       }
       yy += rowH + gap;
     }
@@ -2006,7 +2037,13 @@
     ctx.translate(0, (1 - a) * Math.round(L.viewH * 0.03));
 
     const rr = Math.round(p.w * 0.035);
+    // P84：菜单面板也带投影，否则它浮在暗背景上没有厚度，像个纯色矩形
+    ctx.save();
+    ctx.shadowColor = "rgba(0,0,0,.7)";
+    ctx.shadowBlur = Math.round(L.fs * 1.6);
+    ctx.shadowOffsetY = Math.round(L.fs * 0.5);
     roundRect(p.x, p.y, p.w, p.h, rr, "rgba(17,20,29,.98)");
+    ctx.restore();
     ctx.strokeStyle = "rgba(255,255,255,.10)";
     ctx.lineWidth = 1;
     ctx.beginPath();
@@ -2049,6 +2086,7 @@
     if (id === "back") { UI.view = "menu"; return; }
     if (id === "resume") { UI.open = false; return; }
     if (id === "skip") { PREF.skip = PREF.skip ? 0 : 1; savePrefs(); state.skipAt = 0; return; }
+    if (id === "autoTgl") { PREF.auto = PREF.auto ? 0 : 3; savePrefs(); state.autoAt = 0; return; }
     if (id === "toSave") { UI.view = "save"; return; }
     if (id === "toLoad") { UI.view = "load"; return; }
     if (id === "toLog") { UI.view = "log"; UI.logPage = 0; return; }
@@ -2084,6 +2122,12 @@
       if (bgm) bgm.volume = PREF.vol;
     } else if (key === "auto") PREF.auto = [0, 3, 6][i];
     else if (key === "quality") { PREF.quality = [0.62, 0.82, 1][i]; savePrefs(); fit(); return; }
+    else if (key === "orient") {
+      PREF.orient = ["auto", "portrait", "landscape"][i];
+      savePrefs();
+      fit();          // 立刻按新方向重算布局（画布 letterbox 自己居中；fit 内部会 rewrap 正文）
+      return;
+    }
     savePrefs();
   }
 
