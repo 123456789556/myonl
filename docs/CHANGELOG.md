@@ -2,6 +2,28 @@
 
 > 只记 release 级变化，一句话 + 证据链接。单项细节见 git 历史（原 archive/ 已删除）。
 
+## 2026-11-18（P103：安卓平板从「一屏桌面 IDE」拉回移动壳 / 顶栏中间不再空 300px）
+
+只适配安卓（手机 + 平板），复杂度往下降：断点条件收敛成一条，不再按机型去补。
+
+1. **平板横屏原来直接给一屏 VSCode**。编辑器只按宽度判断：1280×800 = 桌面 IDE（左文件树、右检查器、
+   40px 活动栏），手指点不动。现在 `editor.css` 的 21 处 `max-width: 860px` 断点全部追加
+   `(pointer: coarse) and (hover: none) and (max-width: 1400px)`，`editor_shell.js` 的 `mobileMQ`
+   写成同一个字符串（两处必须逐字相同，测试卡住这一点）。`(hover: none)` 是为了不误伤触屏笔记本。
+2. **平板正文行宽收口**。1280 宽配 15px 字 → 一行 70 多个字符，中文要横跨整屏才读完一行。
+   `@media (pointer: coarse) and (min-width: 900px)` 给正文 17px / 固定 29px 行高，一行落到 37 个中文字
+   （行号必须同 px，用比例行高会跟正文错位）。
+3. **顶栏中间那 300px 死黑填上当前文件名**。390 宽顶栏原来只有「‹」贴左、「文件 ⛶ ⋯」贴右。
+   `editor_shell.js` 建一个 `.m-title`（内容取 `#filePath`，切标签会变，用 `MutationObserver` 跟随），
+   CSS 里桌面 `display:none`、移动壳内 `flex:1` 居中显示。`editor/index.html` 599 行已顶到 600 上限，禁增。
+4. **横屏左上「‹ 返回」被压在竖 tab 栏底下，点不到**。844×390 的左侧竖排 tab 栏占 0~60px，
+   只给 `.main` / `.center-page` / `.statusbar` 让了位，顶栏漏了。补 `.menubar { padding-left: 68px }`，
+   同时把 390 高的横屏里 420px 宽、盖掉正文中段的引导卡收窄成 400×0.52vw 贴右下。
+
+**验证**：四档实拍（390×844 / 844×390 / 800×1280 / 1280×800）量到 `p 15px/28px sourceTop50`、
+`l 15px/24px sourceTop42`、`tp 15px/28px`、`tl 17px/29px`，`tl` 由桌面 IDE 变移动壳；
+`tests/test_p103_mobile_breakpoints.py` 6 条源码契约。
+
 ## 2026-11-18（P102：演出模式进菜单第一层 / 菜单九行不再出屏、不再透字）
 
 1. **「画面方向」从三层提到一层**。原来切竖/横要「菜单 → 设置 → 画面方向」，手机上换个握法是很高的频操作，

@@ -428,7 +428,11 @@
   // 三栏在 390px 宽下每栏只剩 100px，根本没法写剧本。窄屏只留「编辑区 + 底部悬浮按钮」，
   // 侧栏、右侧预览各自变成从边缘滑出的抽屉，点外面 / Esc 关掉。
   // 窄屏判定：窄，或者矮（手机横过来 844×390 也走手机布局，不跌回桌面三列）
-  var mobileMQ = window.matchMedia("(max-width: 860px), (max-height: 520px)");
+  // P103：断点从「窄屏」扩成「窄屏 或 触屏设备」—— 安卓平板横屏（1280×800）原来判成桌面，
+  // 直接给出一屏 VSCode。同一个条件 CSS 的 21 处 @media 也跟这里对齐，两处必须一模一样。
+  var MOBILE_MQ = "(max-width: 860px), (max-height: 520px), "
+    + "(pointer: coarse) and (hover: none) and (max-width: 1400px)";
+  var mobileMQ = window.matchMedia(MOBILE_MQ);
   var maskEl = null;
 
   function closeDrawers() {
@@ -564,6 +568,23 @@
       anchor.parentNode.insertBefore(back, anchor.parentNode.firstChild);
       anchor.parentNode.insertBefore(fsBtn, anchor);
       anchor.parentNode.insertBefore(more, anchor);
+      // P103：390 宽的顶栏原来只有「‹」贴左、「文件 ⛶ ⋯」贴右，中间空 300px 一片死黑。
+      // 中间放当前文件名（#filePath 由编辑器自己维护，切标签会变），既填空又是有用的信息。
+      var fpEl = document.getElementById("filePath");
+      var titleEl = document.createElement("span");
+      titleEl.className = "m-title";
+      var syncTitle = function () {
+        var t = ((fpEl && fpEl.textContent) || "").trim();
+        titleEl.textContent = t;
+        if (t) titleEl.title = t;
+      };
+      syncTitle();
+      if (fpEl && window.MutationObserver) {
+        new MutationObserver(syncTitle).observe(fpEl, {
+          childList: true, characterData: true, subtree: true
+        });
+      }
+      anchor.parentNode.insertBefore(titleEl, fsBtn);
       more.addEventListener("click", function () {
         var open = mainEl2.classList.toggle("m-tools-open");
         more.classList.toggle("active", open);
