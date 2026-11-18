@@ -22,8 +22,9 @@
   const FACE = '"PingFang SC", "Source Han Sans SC", "Microsoft YaHei", system-ui, sans-serif';
   const BASE_CPS = 32;                // 打字机基准：字/秒（设置里可调）
 
-  // 玩家设置（本机 localStorage，与游戏无关）：文字速度 / 字号 / 音量 / 自动翻页 / 画质 / 快进 / 画面方向
-  const PREF = {speed: 1, text: 1, vol: 0.7, auto: 0, quality: 1, skip: 0, orient: "auto"};
+  // 玩家设置（本机 localStorage，与游戏无关）：文字速度 / 字号 / 音量 / 自动翻页 / 画质 / 快进 /
+  // 画面方向 / 对话框样式（P101：经典 · 悬浮 · 极简，见 dlgStyle()）
+  const PREF = {speed: 1, text: 1, vol: 0.7, auto: 0, quality: 1, skip: 0, orient: "auto", dlg: 1};
   const PREF_KEY = "myonl:v2:prefs";   // P85：带版本，旧键由 loadPrefs 迁移
   let helpSeen = false;                 // 首次引导标记：跟设置一起存（以前是裸键）
   const UI = {open: false, view: "menu", rects: [], t0: 0, logPage: 0};
@@ -1304,7 +1305,10 @@
     const rows = Math.max(1, Math.min(L.maxTextRows, (state.lines || []).length || 1));
     const nameH = state.say && state.say.char ? Math.round(L.nameSize * 0.9) : 0;
     const contentH = L.padY * 2 + rows * L.lineH + nameH + Math.round(L.fs * 0.6);
-    const minRows = L.landscape ? 1.1 : Math.max(1.9, rows + 0.9);
+    // P101：原来竖屏硬性留 rows + 0.9 行 —— 一句单行台词也撑出将近三行高的面板，
+    // 底下那一整块是空的，等于白占了画面。行数是本句已经折好的行数，不会在打字过程中变，
+    // 所以高度按实际行数给，只在"至少几行"上留一点呼吸。
+    const minRows = L.landscape ? Math.max(1, rows) : Math.max(1.4, rows);
     const minH = L.padY * 2 + L.lineH * minRows + nameH + L.fs * (L.landscape ? 0.45 : 0.6);
     const maxH = L.viewH * (L.landscape ? 0.52 : 0.46);
     return Math.round(Math.max(minH, Math.min(maxH, contentH)));
@@ -1327,10 +1331,27 @@
     return L.viewH - panelHNow() - L.bottom;
   }
 
+  // P101：对话框不再是"贴满左右、压到全黑的一张纸"。
+  //
+  // 原来面板顶到屏幕左右边、最底 0.97 不透明度 —— 画面最下面那一条被彻底盖掉，
+  // 立绘的鞋和地板全部消失，看着像"图被切了一块再贴张黑纸"。
+  // 现在三档可切（设置里「对话框」）：
+  //   0 经典   贴边、底厚 —— 想读得稳的人用
+  //   1 悬浮   左右内缩、上缘全透、底 0.80 —— 画面从面板里透出来（默认）
+  //   2 极简   只留文字和一层很薄的压暗，不铺底 —— 想看图的人用
+  function dlgStyle() {
+    const s = Number(PREF.dlg);
+    return Number.isFinite(s) ? Math.max(0, Math.min(2, Math.trunc(s))) : 1;
+  }
+
   function panelRect() {
     const rows = Math.max(1, Math.min(L.maxTextRows, (state.lines || []).length || 1));
     const h = panelHNow();
-    return {x: L.panelX, y: L.viewH - h - L.bottom, w: L.panelW, h: h, rows: rows};
+    const st = dlgStyle();
+    // 内缩按屏幕宽算（不是按字号），手机上约 9 CSS px，平板约 19 CSS px
+    const inset = st === 0 ? 0 : Math.round(L.viewW * (L.landscape ? 0.013 : 0.024));
+    return {x: L.panelX + inset, y: L.viewH - h - L.bottom,
+            w: L.panelW - inset * 2, h: h, rows: rows, style: st};
   }
 
   /* 「#rrggbb + 透明度」：角色色要能当半透明底/描边用 */
@@ -1341,24 +1362,25 @@
     return "rgba(" + ((v >> 16) & 255) + "," + ((v >> 8) & 255) + "," + (v & 255) + "," + alpha + ")";
   }
 
-  /* 面板底色：原来是一块死黑（rgba(10,12,18,.90)）压在背景上，边缘像贴了张黑纸。
-     P97 再改一层：上缘**留透**，往下才压实 —— 面板和画面是一层幕，不是一张纸。
-     一路实到底的话，顶上那条边永远像有人拿刀切了一下。 */
+  /* 面板底色（只给经典档用）：原来是一块死黑（rgba(10,12,18,.90)）压在背景上，边缘像贴了张黑纸。
+     P97：上缘化开、往下才压实 —— 顶上不会留一条亮带。
+     P101：1/2 两档根本不走矩形（drawPanel 里铺全宽渐变），底只有经典档需要，所以这里不再分档。 */
   function panelFill(x, y, w, h) {
     const g = ctx.createLinearGradient(0, y, 0, y + h);
-    g.addColorStop(0, "rgba(18,21,30,.58)");
-    g.addColorStop(0.12, "rgba(15,18,26,.90)");
-    g.addColorStop(1, "rgba(7,9,14,.97)");
+    g.addColorStop(0, "rgba(14,17,26,0)");
+    g.addColorStop(0.08, "rgba(12,15,23,.86)");
+    g.addColorStop(1, "rgba(7,9,14,.90)");
     return g;
   }
 
   /* 上缘那道线不许等亮度：等亮度就是一条白描边，看着像网页卡片。
      中间亮、两头收进去，才像光落在边上。 */
-  function panelHairline(x, y, w, r) {
+  function panelHairline(x, y, w, r, alpha) {
+    const a1 = typeof alpha === "number" ? alpha : 0.13;
     ctx.save();
     const g = ctx.createLinearGradient(x + r, 0, x + w - r, 0);
     g.addColorStop(0, "rgba(255,255,255,0)");
-    g.addColorStop(0.5, "rgba(255,255,255,.13)");
+    g.addColorStop(0.5, "rgba(255,255,255," + a1 + ")");
     g.addColorStop(1, "rgba(255,255,255,0)");
     ctx.strokeStyle = g;
     ctx.lineWidth = 1;
@@ -1377,12 +1399,36 @@
     const h = rect.h;
     const radius = Math.max(vis.radius, 16);
     const skin = vis.panel.image && assets[vis.panel.image];
+    const classic = rect.style === 0;
+    // P101：1 幕 / 2 字幕 —— 两档都不画矩形。
+    // 半透明矩形的问题不在透明度，在"它是一条边界"：背景亮的地方露边、暗的地方消失，
+    // 同一块面板在画面里时隐时现，那才是真的丑。全宽渐变没有边，永远不会露。
+    //   幕：画面 46% 以上一点不压，往下分三级压到 0.86 —— 白字落在白地板上也读得清
+    //   字幕：同样无框，但最底只到 0.55，更像影院字幕，画面留得多
+    if (rect.style >= 1) {
+      const top = L.viewH * (rect.style === 1 ? 0.46 : 0.52);
+      const g = ctx.createLinearGradient(0, top, 0, L.viewH);
+      if (rect.style === 1) {
+        g.addColorStop(0, "rgba(5,7,12,0)");
+        g.addColorStop(0.40, "rgba(5,7,12,.32)");
+        g.addColorStop(0.72, "rgba(5,7,12,.64)");
+        g.addColorStop(1, "rgba(5,7,12,.86)");
+      } else {
+        g.addColorStop(0, "rgba(5,7,12,0)");
+        g.addColorStop(0.50, "rgba(5,7,12,.20)");
+        g.addColorStop(1, "rgba(5,7,12,.55)");
+      }
+      ctx.save();
+      ctx.fillStyle = g;
+      const ty0 = Math.round(top);
+      ctx.fillRect(0, ty0, L.viewW, L.viewH - ty0);
+      ctx.restore();
+      return rect;
+    }
     // 先垫一层不透明底：贴图皮肤本体常是半透明 PNG，不垫的话背景/立绘会透上来，
     // 台词就不好读了（桌面端皮肤是在底板上叠的，这里保持同样的观感）。
     // P97：不再挂大投影 —— 幕式面板靠渐变和画面接续，再加一圈阴影又变回"纸片"。
-    ctx.save();
     roundRect(x, y, w, h, radius, panelFill(x, y, w, h));
-    ctx.restore();
     if (skin) {
       ctx.save();
       ctx.globalAlpha = vis.panel.alpha;
@@ -1409,6 +1455,12 @@
     return rect;
   }
 
+  // 正文左缘：换行是按 L.textW 折的（宽度契约在 layout 里），面板内缩之后
+  // 不能再拿 rect.x + padX 当起点 —— 那样左右留白一宽一窄。按面板居中放正文带。
+  function textLeft(rect) {
+    return rect.x + Math.round((rect.w - L.textW) / 2);
+  }
+
   function drawDialogue(vis) {
     if (!state.say || !state.lines) return;
     // 选项出现时不画对话框：否则上一句面板会压住选项（横屏 390 高时尤其明显）
@@ -1427,7 +1479,7 @@
       const plateH = nameH;
       const padW = Math.round(plateH * 0.66);
       // 贴着正文左缘起：原来往外探出 0.28 个牌高，和正文缩进差半格，读起来是两条线
-      const plateX = rect.x + L.padX + vis.panel.padX;
+      const plateX = textLeft(rect) + vis.panel.padX;
       const plateY = rect.y + L.padY + vis.panel.padY;
       const tint = say.color || vis.accent;
       const pw = tw + padW * 2 + Math.round(plateH * 0.34);
@@ -1455,7 +1507,7 @@
     ctx.globalAlpha = 1;   // 面板/皮肤绘制可能留下半透明状态，台词必须不透明
     ctx.font = `${L.fs}px ${FACE}`;
     ctx.textBaseline = "top";
-    const tx = rect.x + L.padX + vis.panel.padX;
+    const tx = textLeft(rect) + vis.panel.padX;
     const maxRows = Math.min(rect.rows, L.maxTextRows);
     // 垂直居中：面板高度是按行数补间的（短句的面板本来就矮），
     // 再顶着上沿排，底下那块永远多出一截。居中后短句上下留白相等，
@@ -2089,6 +2141,7 @@
       if (v.orient === "auto" || v.orient === "portrait" || v.orient === "landscape") {
         PREF.orient = v.orient;
       }
+      if (typeof v.dlg === "number") PREF.dlg = Math.max(0, Math.min(2, Math.trunc(v.dlg)));
     } catch (e) { /* 隐私模式禁读 */ }
   }
 
@@ -2721,6 +2774,10 @@
       // 反过来竖屏作品横持手机也能强制竖排 —— 不用真的转手机
       ["画面方向", "orient", ["自动", "竖屏", "横屏"],
        ["auto", "portrait", "landscape"], PREF.orient || "auto"],
+      // P101：对话框占多大画面。三档都保证"读得清"，区别在于挡住多少画面：
+      // 经典 = 不透明底板（传统 galgame 手感）；幕 = 全宽暗幕、无框（默认，画面留得住）；
+      // 字幕 = 同样无框但更轻，几乎像影院字幕。
+      ["对话框", "dlg", ["经典", "幕", "字幕"], [0, 1, 2], PREF.dlg],
     ];
     const rowH = setRowH();
     const gap = Math.round(L.fs * 0.5);
@@ -2791,20 +2848,26 @@
     const a = Math.min(1, (performance.now() - UI.t0) / 160);
 
     ctx.save();
-    ctx.fillStyle = "rgba(4,6,12," + (0.93 * a) + ")";
+    // P101：原来是 93% 的一块死黑 —— 打开菜单等于把画面关掉，回来还要重新认这是哪一幕。
+    // 改成上浅下深的一层膜：看得见画面，还知道自己在哪，面板浮在膜上而不是浮在黑洞里。
+    const veil = ctx.createLinearGradient(0, 0, 0, L.viewH);
+    veil.addColorStop(0, "rgba(4,6,12," + (0.28 * a) + ")");
+    veil.addColorStop(1, "rgba(4,6,12," + (0.66 * a) + ")");
+    ctx.fillStyle = veil;
     ctx.fillRect(0, 0, L.viewW, L.viewH);
     ctx.globalAlpha = a;
     ctx.translate(0, (1 - a) * Math.round(L.viewH * 0.03));
 
     const rr = Math.round(p.w * 0.035);
     // P84：菜单面板也带投影，否则它浮在暗背景上没有厚度，像个纯色矩形
+    // P101：投影和底都收一档 —— 底 0.98 的实心块在浅色画面上就是一块黑板
     ctx.save();
-    ctx.shadowColor = "rgba(0,0,0,.7)";
-    ctx.shadowBlur = Math.round(L.fs * 1.6);
-    ctx.shadowOffsetY = Math.round(L.fs * 0.5);
-    roundRect(p.x, p.y, p.w, p.h, rr, "rgba(17,20,29,.98)");
+    ctx.shadowColor = "rgba(0,0,0,.45)";
+    ctx.shadowBlur = Math.round(L.fs * 1.2);
+    ctx.shadowOffsetY = Math.round(L.fs * 0.35);
+    roundRect(p.x, p.y, p.w, p.h, rr, "rgba(13,16,24,.90)");
     ctx.restore();
-    ctx.strokeStyle = "rgba(255,255,255,.10)";
+    ctx.strokeStyle = "rgba(255,255,255,.09)";
     ctx.lineWidth = 1;
     ctx.beginPath();
     ctx.moveTo(p.x + rr, p.y);
@@ -2907,6 +2970,8 @@
       fit();          // 立刻按新方向重算布局（画布 letterbox 自己居中；fit 内部会 rewrap 正文）
       return;
     }
+    // P101：对话框样式只影响下一帧怎么画，不碰布局，存完回设置页即可看到效果
+    else if (key === "dlg") PREF.dlg = [0, 1, 2][i];
     savePrefs();
   }
 

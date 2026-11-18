@@ -198,7 +198,7 @@ py -3 -m engine.demo games/我的第一个游戏/script.gal --assets games/我�
 
 ```powershell
 py -3 -m pytest -q -m "not slow"      # 日常快跑（约 70s）
-py -3 -m pytest -q                    # 全量 1148 passed + 1 skipped（含 slow，耗时较长）
+py -3 -m pytest -q                    # 全量 1155 passed + 1 skipped（含 slow，耗时较长）
 py -3 -m pytest -q -m slow            # 真实打包 / 全渲染 / 性能用例
 ```
 
@@ -262,7 +262,7 @@ Typography is pinned to physical CSS size, not logical pixels, so text stays the
 390 px phone and an 800 px tablet; body text is capped at 720 CSS px (~39 chars per line).
 
 - Editor / packager from source: Python 3.9+ + `pygame-ce>=2.5` (Windows only).
-- Tests: `pytest -q` → 1148 passed + 1 skipped headless cases.
+- Tests: `pytest -q` → 1155 passed + 1 skipped headless cases.
 - Documentation is written in Chinese: [快速上手](docs/快速上手.md) · [engine spec](docs/engine_spec.md).
 
 ## 许可
