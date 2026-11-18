@@ -13,7 +13,11 @@
 (function () {
   "use strict";
 
-  var mq = window.matchMedia("(max-width: 860px), (max-height: 520px)");
+  // 判据必须和 editor_shell.js 的 MOBILE_MQ 一模一样。
+  // 两边不一致时会出现"底部五个 tab 已经建好了，但场景表单没建"的缝合状态——
+  // 平板横屏 1280×800 就是这么漏出来的（860 判不到，触摸那一条能判到）。
+  var mq = window.matchMedia("(max-width: 860px), (max-height: 520px), " +
+    "(pointer: coarse) and (hover: none) and (max-width: 1400px)");
   var subEl = null;      // 二级页容器
   var sheetEl = null;    // 素材大图 sheet
   var sheetMask = null;
