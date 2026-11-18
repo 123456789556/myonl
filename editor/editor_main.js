@@ -1950,16 +1950,26 @@
 
   async function refreshAssets() {
     try {
-      const resp = await fetch("/api/assets", {cache: "no-store"}).then(r => r.json());
-      if (resp && resp.ok) {
-        assets = resp.assets || assets;
-    refreshClothesline();
-        assetsReady = true;
+      const r = await fetch("/api/assets", {cache: "no-store"});
+      // 纯静态打开（双击 index.html、或把编辑器当网页分发）时没有 Python 原稿后端，
+      // /api/assets 会回一段 404 的 HTML —— 这时 json() 抛错，旧代码把它当"读取失败"红字挂出来，
+      // 让人以为自己把素材弄坏了。没有后端不是错误：素材本来就走浏览器存储，静默降级即可。
+      const isJson = (r.headers.get("content-type") || "").toLowerCase().includes("json");
+      if (!r.ok || !isJson) {
+        assetsReady = false;
       } else {
-        setAssetHint((resp && resp.message) || "素材清单读取失败", true);
+        const resp = await r.json();
+        if (resp && resp.ok) {
+          assets = resp.assets || assets;
+          refreshClothesline();
+          assetsReady = true;
+        } else {
+          setAssetHint((resp && resp.message) || "素材清单读取失败", true);
+        }
       }
     } catch (e) {
-      setAssetHint("素材清单读取失败：" + e, true);
+      assetsReady = false;
+      if (window.console && console.debug) console.debug("素材清单：静态模式，跳过", e);
     }
     if (assetCat === "characters") window.__characterLib = null;  // V1：刷新按钮同时重读角色库
     renderAssets();

@@ -772,4 +772,20 @@
   if (mobileMQ.addEventListener) mobileMQ.addEventListener("change", syncMobileLayout);
   else if (mobileMQ.addListener) mobileMQ.addListener(syncMobileLayout);
   syncMobileLayout();
+
+  // 状态栏版本号：问后端要（engine.__version__ 是唯一来源）。
+  // 纯静态打开时没有后端，就老实写「本地」—— 不在页面上瞎报一个 rcNN。
+  (async function fillVersion() {
+    const el = document.getElementById("sbVersion");
+    if (!el) return;
+    try {
+      const r = await fetch("/api/version", {cache: "no-store"});
+      const isJson = (r.headers.get("content-type") || "").toLowerCase().includes("json");
+      if (r.ok && isJson) {
+        const d = await r.json();
+        if (d && d.version) { el.textContent = "MYONL v" + d.version; return; }
+      }
+    } catch (e) { /* 静态模式没有这个端点 */ }
+    el.textContent = "MYONL · 本地";
+  })();
 })();

@@ -819,6 +819,7 @@ class _EditorHandler(BaseHTTPRequestHandler):
         ("GET", "/api/pack/projects"): "_pack_projects",
         ("GET", "/api/pack/profile"): "_pack_profile_get",
         ("GET", "/api/pack/status"): "_pack_status",
+        ("GET", "/api/version"): "_app_version",
         ("GET", "/api/pack/version"): "_pack_version",
         ("POST", "/api/pack/profile"): "_pack_profile_save",
         ("POST", "/api/pack/build"): "_pack_build",
@@ -2014,6 +2015,12 @@ class _EditorHandler(BaseHTTPRequestHandler):
 
         threading.Thread(target=worker, daemon=True, name=f"pack-{job_id}").start()
         self._send_json(200, {"ok": True, "job_id": job_id, "message": job["message"]})
+
+    def _app_version(self, parsed=None) -> None:
+        """状态栏版本号的唯一来源：以前 index.html 里写死一个 rcNN，
+        发几个版本之后它还停在 rc19，玩家和我都分不清装的是哪一版。"""
+        from . import __version__
+        self._send_json(200, {"ok": True, "version": __version__})
 
     def _pack_status(self, parsed=None) -> None:
         qs = parse_qs(parsed.query) if parsed else {}
