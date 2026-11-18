@@ -60,7 +60,10 @@ _STR_SETTING_KEYS = ("lang", "data_dir", "title", "icon_title", "display_mode", 
                      "key_up", "key_down", "key_left", "key_right", "key_confirm", "key_back")
 
 # 音频 / 字体 / 图片允许的后缀（查找顺序即优先级）
-_IMAGE_EXTS = (".png", ".jpg")  # P29 A1：优先 png，找不到自动回退 jpg（旧素材零影响）
+# P127：补 .jpeg / .webp。编辑器导入白名单（editor.py 的 _IMAGE_EXTS）早就收了
+# 这四种，运行时只认 .png/.jpg —— 玩家拖一张 .webp 进去，编辑器里看得见、能预览，
+# 打包/播放时却找不到，报「缺素材」。同一个格式在两侧说法不同，这种不一致最伤人。
+_IMAGE_EXTS = (".png", ".jpg", ".jpeg", ".webp")  # P29 A1：优先 png，找不到自动回退
 _AUDIO_EXTS = (".ogg", ".mp3", ".wav")
 _FONT_EXTS = (".ttf", ".ttc", ".otf")
 

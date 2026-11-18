@@ -573,7 +573,9 @@ def build_single(project_root: str, out_file: str, *, title: str = "") -> dict:
         for name, blob, mime, ext in raws:
             # P62：大图压一道再内嵌。base64 本身还要再涨 37%，不压会更夸张。
             # P101：长边用上面按内存预算挑出来的 edge；哪怕文件不大，只要超了 edge 也缩。
-            if ext in (".png", ".jpg", ".jpeg", ".bmp") \
+            # P127：补 .webp。PIL 的 webp 读写都支持，但原先白名单里没有 ——
+            # 一张 3000px 的 webp 背景就这么原样内联进单文件包，手机上解码就是大图。
+            if ext in (".png", ".jpg", ".jpeg", ".bmp", ".webp") \
                     and (len(blob) > SHRINK_OVER_BYTES or _over_edge(blob, edge)):
                 shrunk = _shrink_image(blob, max_edge=edge)
                 if shrunk:

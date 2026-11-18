@@ -307,10 +307,14 @@ def test_资源预检_打印中文缺失清单且不崩(tmp_path, capsys):
         encoding="utf-8")
     run(str(script), assets_root=str(tmp_path), max_frames=5)
     err = capsys.readouterr().err
-    assert f"[资源缺失] images/no_such_bg.png 或 images/no_such_bg.jpg —— @bg no_such_bg（{script} 第 1 行）" in err
+    # P127：别把扩展名清单写死在测试里 —— 白名单一加格式，这些断言就全红，
+    # 而真正要保证的是「点名了哪个素材、在哪一行」。扩展名让 data.py 自己管。
+    assert f"[资源缺失] images/no_such_bg." in err
+    assert f"—— @bg no_such_bg（{script} 第 1 行）" in err
     assert (f"[资源缺失] audio/no_such_music.ogg 或 audio/no_such_music.mp3 或 audio/no_such_music.wav"
             f" —— @music no_such_music（{script} 第 2 行）") in err
-    assert f"[资源缺失] images/ghost_happy.png 或 images/ghost_happy.jpg —— @show ghost happy（{script} 第 3 行）" in err
+    assert f"[资源缺失] images/ghost_happy." in err
+    assert f"—— @show ghost happy（{script} 第 3 行）" in err
     assert (f"[资源缺失] audio/no_such_sfx.ogg 或 audio/no_such_sfx.mp3 或 audio/no_such_sfx.wav"
             f" —— @sfx no_such_sfx（{script} 第 4 行）") in err
 
@@ -325,7 +329,8 @@ def test_资源预检_多文件定位到子文件(tmp_path, capsys):
     run(str(main), assets_root=str(tmp_path), max_frames=3)
     err = capsys.readouterr().err
     child_file = str(chapter.resolve())
-    assert f"[资源缺失] images/ghost_child.png 或 images/ghost_child.jpg —— @bg ghost_child（{child_file} 第 1 行）" in err
+    assert f"[资源缺失] images/ghost_child." in err
+    assert f"—— @bg ghost_child（{child_file} 第 1 行）" in err
 
 
 # ---------- P37-T5 标题字距渲染 ----------

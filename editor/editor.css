@@ -1841,7 +1841,9 @@ input[type="color"] {
     font-size: 13px; font-family: "Consolas", "Courier New", monospace; cursor: pointer;
   }
   .m-kb:active { background: #2b3648; }
-  .m-kb.act { background: #2f6df6; border-color: #2f6df6; color: #fff;
+  /* P126：这里的 #2f6df6 是早期随手填的蓝，全站主色是 #4f8cff ——
+     同一屏里两种蓝，看着就像两张皮拼的。统一到主色。 */
+  .m-kb.act { background: #4f8cff; border-color: #4f8cff; color: #fff;
     font-family: inherit; }
   /* 键盘弹起来时，浮动按钮和状态栏让位，别跟快捷条叠 */
   body.m-kb-open .statusbar { display: none; }
