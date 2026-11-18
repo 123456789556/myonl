@@ -25,7 +25,7 @@ double-clicks — no Python on their machine, no installer, no network.
 | :--- | :--- | :--- |
 | Android phone or tablet, installed | [**MYONL-apk-9.apk**](https://github.com/123456789556/myonl/releases/download/apk-9/MYONL-apk-9.apk) | 3.6 MB |
 | Any browser, nothing installed | a single-file HTML you exported | ~3.0 MB |
-| Windows, double-click (editor + packager) | the Windows no-install zip on the Releases page | 66.5 MB |
+| Windows, double-click (editor + packager) | build it in-repo: `py -3 tools\build_release_zip.py --version v1.0.0-rc20` (too big to host on Releases) | 66.5 MB |
 
 The APK targets `minSdk` 24 (Android 7.0); one package serves phones and Android tablets and reflows
 in both orientations. Saves live in the app's own storage, and the APK is signed with a fixed key —
