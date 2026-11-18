@@ -2949,3 +2949,31 @@ input[type="color"] {
 @media (max-width: 860px), (max-height: 520px), (pointer: coarse) and (hover: none) and (max-width: 1400px) {
   .center-page.open.mode-export { z-index: 440 !important; }
 }
+/* ============================================================
+   P113：横屏场景页改两栏 —— 左改参数、右看画面。
+   横屏时 390 高塞不下单列竖排，台词框拉得又宽又空，预览被挤到看不见。
+   竖屏不动（竖屏是"台词在上、预览在下"，已经顺）。
+   ============================================================ */
+@media (max-height: 520px), (min-width: 900px) and (pointer: coarse) and (max-width: 1400px) {
+  #scenePage #sceneForm {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) minmax(200px, 38%) !important;
+    grid-auto-rows: min-content;
+    column-gap: 14px;
+    align-content: start;
+    align-items: start;
+  }
+  #scenePage #sceneForm > * { grid-column: 1; min-width: 0; }
+  /* 预览钉在右列，滚左边的时候画面一直看得见 */
+  #scenePage #sceneForm > .sf-stage-wrap {
+    grid-column: 2;
+    grid-row: 1 / span 40;
+    position: sticky;
+    top: 72px;
+    align-self: start;
+    margin-top: 0 !important;
+  }
+  #scenePage #sceneForm > .sf-actions { grid-column: 1 / -1; }
+  /* 横屏地窄，台词框不用再拉满 */
+  #scenePage .scene-form { padding-right: 10px; }
+}
