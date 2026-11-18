@@ -55,6 +55,10 @@
           '<b>＋</b><span>新建作品</span></button>' +
         '<button type="button" class="m-quick-item" id="mHomeImport">' +
           '<b>&#8615;</b><span>导入作品</span></button>' +
+        // P126：APK 里一直带着 game.html（547 KB 的内置示例），但界面没有入口 ——
+        // 装了的人以为是个空编辑器。有这个文件才显示这一项，浏览器里没有就不出现。
+        '<button type="button" class="m-quick-item" id="mHomeDemo" style="display:none">' +
+          '<b>&#9654;</b><span>试玩示例</span></button>' +
       '</div>' +
       '<div class="m-home-note">' +
         '<div class="m-home-note-t">都在你手上</div>' +
@@ -332,6 +336,21 @@
   if (nb) nb.addEventListener("click", newProject);
   var ib = $("mHomeImport");
   if (ib) ib.addEventListener("click", importProject);
+  // P126：探一下 game.html 在不在。用 GET + no-store 而不是 HEAD：部分 WebView
+  // 对 HEAD 直接不返回，探不出来就永远不显示这个入口。
+  (function () {
+    var db = $("mHomeDemo");
+    if (!db) return;
+    db.addEventListener("click", function () {
+      if (db.dataset.ok === "1") { location.href = "./game.html"; return; }
+      toast("这个版本没带示例");
+    });
+    try {
+      fetch("./game.html", {cache: "no-store"}).then(function (r) {
+        if (r.ok) { db.style.display = ""; db.dataset.ok = "1"; }
+      }).catch(function () {});
+    } catch (e) { /* 老 WebView 没有 fetch 就算了，不显示 */ }
+  })();
   Array.prototype.forEach.call(layer.querySelectorAll(".m-step"), function (b) {
     b.addEventListener("click", function () { goStep(b.dataset.step); });
   });
