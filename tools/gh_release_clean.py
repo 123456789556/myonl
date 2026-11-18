@@ -1,0 +1,150 @@
+#!/usr/bin/env python3
+"""清理 GitHub Release：只留最近几个安卓包，旧的连 tag 一起删。
+
+为什么要这个脚本：GitHub 插件（github-remote）没有删 Release 的能力，本机也没装 gh CLI，
+所以 apk-1 / apk-2 … 这些早期包一直堆在 Releases 页面上，玩家点进去看见一堆不确定能不能
+用的旧包。CI 里每次打 tag 会自动清一次（见 .github/workflows/android-apk.yml），
+这个脚本是给"手动补一刀"和"排查为什么没删"用的。
+
+用法（只读列举，不需要 token）：
+    py -3 tools\\gh_release_clean.py --list
+
+真正删除（需要提交 token，建议 scope 只给 repo）：
+    set GITHUB_TOKEN=ghp_xxx
+    py -3 tools\\gh_release_clean.py --prune --keep 5 --dry-run     # 先看会删谁
+    py -3 tools\\gh_release_clean.py --prune --keep 5 --yes         # 真删
+
+规则：
+  * 只处理 tag 形如 apk-<数字> 的 Release，其它 Release 一律不碰；
+  * 按数字大小排序（apk-10 排在 apk-9 前面，字符串排序会排错），保留最大的 KEEP 个；
+  * 删 Release 时连 tag 一起删（--cleanup），否则 tag 还在，下次又会有人以为是新包；
+  * 永远不删"最新那一个"（就算 KEEP 传 0 也至少留 1 个）。
+"""
+from __future__ import annotations
+
+import argparse
+import json
+import os
+import re
+import sys
+import urllib.error
+import urllib.request
+
+REPO = "123456789556/myonl"
+API = "https://api.github.com"
+TAG_RE = re.compile(r"^apk-(\d+)$")
+
+
+def _req(method: str, path: str, token: str | None) -> tuple[int, object]:
+    url = path if path.startswith("http") else API + path
+    data = b"" if method in ("DELETE", "POST") else None
+    r = urllib.request.Request(url, method=method, data=data)
+    r.add_header("Accept", "application/vnd.github+json")
+    r.add_header("User-Agent", "myonl-release-clean")
+    if token:
+        r.add_header("Authorization", f"Bearer {token}")
+    try:
+        with urllib.request.urlopen(r, timeout=30) as resp:
+            body = resp.read()
+            return resp.status, (json.loads(body) if body else {})
+    except urllib.error.HTTPError as e:
+        body = e.read()
+        try:
+            detail = json.loads(body)
+        except Exception:
+            detail = body.decode("utf-8", "ignore")[:200]
+        return e.code, detail
+
+
+def list_releases(token: str | None, repo: str) -> list[dict]:
+    """拿全量 Release（REST 一页 30 条，翻到空为止）。"""
+    out: list[dict] = []
+    page = 1
+    while True:
+        code, data = _req("GET", f"/repos/{repo}/releases?per_page=30&page={page}", token)
+        if code != 200:
+            print(f"取 Release 失败 HTTP {code}: {data}")
+            sys.exit(2 if not token else 1)
+        if not isinstance(data, list) or not data:
+            break
+        out.extend(data)
+        page += 1
+        if page > 20:      # 兜底，别无限翻
+            break
+    return out
+
+
+def apk_no(tag: str) -> int | None:
+    m = TAG_RE.match(tag or "")
+    return int(m.group(1)) if m else None
+
+
+def main() -> int:
+    ap = argparse.ArgumentParser(description="清理 GitHub Release（只留最近几个安卓包）")
+    ap.add_argument("--repo", default=REPO)
+    ap.add_argument("--token", default=None, help="默认读 GITHUB_TOKEN / GH_TOKEN")
+    ap.add_argument("--list", action="store_true", help="只列出来看看")
+    ap.add_argument("--prune", action="store_true", help="按 --keep 删掉多余的")
+    ap.add_argument("--keep", type=int, default=5, help="保留最近几个（按 tag 数字，默认 5）")
+    ap.add_argument("--dry-run", action="store_true", help="只说会删谁，不动手")
+    ap.add_argument("--yes", action="store_true", help="确认真删")
+    args = ap.parse_args()
+
+    token = args.token or os.environ.get("GITHUB_TOKEN") or os.environ.get("GH_TOKEN")
+    rels = list_releases(token, args.repo)
+
+    # 分两堆：apk-<数字> 的、其它的
+    apks: list[tuple[int, dict]] = []
+    others: list[dict] = []
+    for r in rels:
+        n = apk_no(r.get("tag_name", ""))
+        (apks.append((n, r)) if n is not None else others.append(r))
+    apks.sort(key=lambda x: x[0], reverse=True)
+
+    print(f"仓库 {args.repo}：共 {len(rels)} 个 Release"
+          f"（安卓包 {len(apks)} 个，其它 {len(others)} 个）")
+    for n, r in apks:
+        assets = ", ".join(f"{a['name']} {a['size'] / 1048576:.1f}MB" for a in r.get("assets", []))
+        print(f"  apk-{n:<3}  {r.get('published_at', '')[:19]}  {assets or '(无附件)'}")
+    for r in others:
+        print(f"  {r.get('tag_name', '')}  (非安卓包，不动)")
+
+    if args.list or not args.prune:
+        if not args.prune and not args.list:
+            print("\n只列举。要清理请加 --prune --keep N --yes（建议先 --dry-run）。")
+        return 0
+
+    keep = max(1, args.keep)          # 至少留一个，别把自己锁死
+    doomed = apks[keep:]
+    if not doomed:
+        print(f"\n{len(apks)} 个 ≤ 保留数 {keep}，没有要删的。")
+        return 0
+
+    if not token:
+        print("\n没有 token —— 无法删除。请设置 GITHUB_TOKEN（或 --token），再重跑。")
+        return 3
+
+    print(f"\n保留最近 {keep} 个，要删 {len(doomed)} 个：")
+    for n, r in doomed:
+        print(f"  - apk-{n}  {r.get('published_at', '')[:19]}")
+    if args.dry_run or not args.yes:
+        print("\n（dry-run，没有真删。确认没问题再加 --yes）")
+        return 0
+
+    fails = 0
+    for n, r in doomed:
+        tag = r.get("tag_name", "")
+        code, detail = _req("DELETE", f"/repos/{args.repo}/releases/{r['id']}", token)
+        if code not in (204, 200):
+            print(f"  删 Release {tag} 失败 HTTP {code}: {detail}")
+            fails += 1
+            continue
+        code2, detail2 = _req("DELETE", f"/repos/{args.repo}/git/refs/tags/{tag}", token)
+        # tag 可能已经被 --cleanup 删掉，404 不算失败
+        print(f"  删 {tag}：" + ("好" if code2 in (204, 200) else f"tag HTTP {code2}（可能已随 Release 删掉）"))
+    print(f"\n完成：成功 {len(doomed) - fails} 个，失败 {fails} 个。")
+    return 0 if not fails else 1
+
+
+if __name__ == "__main__":
+    sys.exit(main())

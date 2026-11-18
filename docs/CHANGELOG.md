@@ -2,6 +2,20 @@
 
 > 只记 release 级变化，一句话 + 证据链接。单项细节见 git 历史（原 archive/ 已删除）。
 
+## 2026-11-18（P106：旧包不再堆在 Releases 上）
+
+Releases 页面是玩家真正看"要下哪个"的地方，apk-1 到 apk-N 一路堆上去，没人分得清哪个是最新、
+哪个是坏包。而 GitHub 插件没有删 Release 的能力、本机也没有 gh CLI —— 所以**造一个**：
+
+1. `tools/gh_release_clean.py`：只用标准库打 REST，`--list` 只读列举（不需要 token），
+   `--prune --keep 5 --yes` 真删。按 **tag 数字**倒序（`apk-10` 排在 `apk-9` 前面，
+   字符串排序会排反），至少留一个，删 Release 时连 tag 一起删（`--cleanup-tag`），
+   默认 dry-run，没有 `--yes` 一个字都不动。
+2. CI（`.github/workflows/android-apk.yml`）发完新包**自己清一次**，只留最近 5 个；
+   这一步 `continue-on-error: true` —— 清理失败不能把已经发好的包判红。
+3. `tests/test_p106_release_hygiene.py` 盯住四件事：脚本按数字排序、默认不动手、
+   CI 带 `--cleanup-tag` 且容错、README 的下载入口 tag 与文件名对得上。
+
 ## 2026-11-18（P105b：换版本不丢档）
 
 存档键 = `myonl:v2:save:<标题哈希>-<剧本哈希>`，而剧本哈希里带着剧本内容。作者发新版改一句台词，

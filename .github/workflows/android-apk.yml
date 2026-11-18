@@ -86,3 +86,30 @@ jobs:
           files: out/*.apk
           fail_on_unmatched_files: true
 
+      # 旧包自动清：Releases 页面上堆一串 apk-1..apk-N，玩家根本分不清哪个能装。
+      # 只保留最近 5 个（按 tag 数字，apk-10 要排在 apk-9 前面 —— 字符串排序会排错），
+      # 删 Release 时连 tag 一起删，否则 tag 还在、下次又像"新包"。
+      # 本步失败不影响已经发好的包（放在最后，且不把 job 判红）。
+      - name: 只保留最近 5 个安卓包
+        if: startsWith(github.ref, 'refs/tags/')
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -uo pipefail
+          KEEP=5
+          mapfile -t tags < <(gh release list --repo "$GITHUB_REPOSITORY" --limit 200 \
+            --json tagName -q '.[].tagName' | grep -E '^apk-[0-9]+$' | sort -t- -k2 -n -r)
+          n=${#tags[@]}
+          echo "现在有 $n 个 apk Release，保留最近 $KEEP 个"
+          if [ "$n" -le "$KEEP" ]; then
+            echo "不用删"
+            exit 0
+          fi
+          for ((i=KEEP; i<n; i++)); do
+            t="${tags[$i]}"
+            echo "删除旧包 $t"
+            gh release delete "$t" --repo "$GITHUB_REPOSITORY" --yes --cleanup-tag || echo "删 $t 失败，跳过"
+          done
+          echo "清理完成"
+
