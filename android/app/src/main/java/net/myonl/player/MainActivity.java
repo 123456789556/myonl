@@ -36,9 +36,24 @@ public class MainActivity extends Activity {
     private static final int REQ_SAVE = 1001;
     private String pendingName, pendingMime, pendingB64;
 
+    // 一次导出能塞多大。
+    // base64 字符串本身占一份，decode 出来的 byte[] 又占一份 —— 峰值约两倍。
+    // 中低端机 WebView 拿不到几百 MB，不设这条线的时候大作品导出就是闪退，
+    // 用户以为是存档坏了，实际是内存被自己吃光了。
+    // 真超过这个量，该走「文件夹 / zip 发行」，不是单文件 HTML。
+    private static final int MAX_SAVE_B64_CHARS = 64 * 1024 * 1024;
+
     public class SaveBridge {
         @android.webkit.JavascriptInterface
         public void save(final String filename, final String mime, final String base64) {
+            if (base64 == null || base64.isEmpty()) {
+                say("没内容可存");
+                return;
+            }
+            if (base64.length() > MAX_SAVE_B64_CHARS) {
+                say("成品太大（" + (base64.length() / 1024 / 1024) + " MB），先精简素材再导出");
+                return;
+            }
             pendingName = filename;
             pendingMime = mime;
             pendingB64 = base64;
@@ -74,6 +89,11 @@ public class MainActivity extends Activity {
         if (req != REQ_SAVE) return;
         if (res != RESULT_OK || data == null || data.getData() == null) {
             say("没有保存");
+            pendingB64 = null;     // 用户取消就要立刻松手，别一直占着几十 MB
+            return;
+        }
+        if (pendingB64 == null) {
+            say("没有待存的内容");
             return;
         }
         byte[] bytes;
