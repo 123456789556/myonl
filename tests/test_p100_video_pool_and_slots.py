@@ -72,7 +72,7 @@ def test_missing_video_sequence_does_not_black_screen():
 def test_readme_matches_what_ships():
     """README 是门面，别让它继续挂着 rc15 / 1021 那套旧数。"""
     readme = (ROOT / "README.md").read_text(encoding="utf-8")
-    assert "apk-10" in readme, "README 没给安卓包的下载入口"
+    assert "apk-11" in readme, "README 没给安卓包的下载入口"
     assert "1168" in readme, "测试数还是旧的"
     assert "v1.0.0--rc15" not in readme, "release 徽章还是 rc15"
     assert "docs/images/m-game.jpg" in readme, "界面还是桌面截图"
