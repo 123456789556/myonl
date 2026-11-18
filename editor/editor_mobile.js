@@ -186,16 +186,160 @@
     openSheet(card);
   }, true);
 
+  /* ======================= 剧本页：逐句 / 源码（P110） =======================
+   * 关键判断：手机上「看不见的场景编辑器」= 认知负担的根。
+   * 桌面顶栏那个「场景」小字在窄屏是隐藏的，所以手机用户只能面对 @character 文本。
+   * 这里在剧本正文上方放一个两格切换：默认「逐句编辑」直接开可视化场景页，
+   * 「源码」才是那一坨 @ 指令。不写代码的人永远不会被丢进源码。
+   */
+  var modeBar = null;
+
+  function buildScriptModes() {
+    if (!narrow() || modeBar) return;
+    var wrap = document.getElementById("sourceWrap");
+    if (!wrap || !wrap.parentNode) return;
+    modeBar = document.createElement("div");
+    modeBar.className = "m-modebar";
+    modeBar.innerHTML =
+      '<button type="button" class="m-mode on" data-mode="sent">逐句编辑</button>' +
+      '<button type="button" class="m-mode" data-mode="code">源码</button>';
+    wrap.parentNode.insertBefore(modeBar, wrap);
+    modeBar.addEventListener("click", function (e) {
+      var b = e.target.closest ? e.target.closest(".m-mode") : null;
+      if (!b) return;
+      setScriptMode(b.dataset.mode);
+    });
+  }
+
+  function sceneOpen() {
+    var p = document.getElementById("scenePage");
+    return !!(p && p.classList.contains("open"));
+  }
+
+  function markMode(m) {
+    if (!modeBar) return;
+    Array.prototype.forEach.call(modeBar.querySelectorAll(".m-mode"), function (b) {
+      b.classList.toggle("on", b.dataset.mode === m);
+    });
+  }
+
+  function setScriptMode(m) {
+    markMode(m);
+    if (m === "sent") {
+      if (window.__openSceneEditor && !sceneOpen()) window.__openSceneEditor();
+      exitDetail();
+    } else if (sceneOpen()) {
+      var c = document.getElementById("sceneClose");
+      if (c) c.click();
+    }
+  }
+
+  /* ==================== 场景页：手机上的「列表 → 单个场景」 ==================== */
+  var scnBack = null, scnMore = null, scnPop = null;
+
+  function closePop() { if (scnPop) scnPop.classList.remove("on"); }
+
+  function enterDetail() {
+    var p = document.getElementById("scenePage");
+    if (p) p.classList.add("m-detail");
+    closePop();
+  }
+
+  function exitDetail() {
+    var p = document.getElementById("scenePage");
+    if (p) p.classList.remove("m-detail");
+    closePop();
+  }
+
+  function buildSceneMobile() {
+    if (!narrow()) return;
+    var p = document.getElementById("scenePage");
+    if (!p || p.dataset.mBuilt === "1") return;
+    var head = p.querySelector(".cp-head");
+    if (!head) return;
+
+    // 返回：从「单个场景」退回「场景列表」，只在详情页出现
+    scnBack = document.createElement("button");
+    scnBack.type = "button";
+    scnBack.className = "cp-btn scn-back";
+    scnBack.innerHTML = "&#8249; 场景列表";
+    scnBack.addEventListener("click", exitDetail);
+    head.insertBefore(scnBack, head.firstChild);
+
+    // ⋯：复制/删除/刷新原来挤在顶栏，窄屏上根本点不准，收进一个弹层
+    if (!scnPop) {
+      scnPop = document.createElement("div");
+      scnPop.className = "scn-pop";
+      [["sceneCopy", "复制这一幕"], ["sceneDel", "删除这一幕"], ["sceneRefresh", "重新读取剧本"]]
+        .forEach(function (it) {
+          var b = document.createElement("button");
+          b.type = "button";
+          b.textContent = it[1];
+          b.addEventListener("click", function () {
+            var src = document.getElementById(it[0]);
+            closePop();
+            if (src) src.click();
+          });
+          scnPop.appendChild(b);
+        });
+      p.appendChild(scnPop);
+    }
+    scnMore = document.createElement("button");
+    scnMore.type = "button";
+    scnMore.className = "cp-btn scn-more";
+    scnMore.textContent = "\u22EF";
+    scnMore.addEventListener("click", function (e) {
+      e.stopPropagation();
+      if (scnPop) scnPop.classList.toggle("on");
+    });
+    var closeBtn = document.getElementById("sceneClose");
+    if (closeBtn) head.insertBefore(scnMore, closeBtn);
+    else head.appendChild(scnMore);
+
+    // 顶栏原来 7 个按钮，窄屏一律挤成两行还被截断。
+    // 只留「＋新场景 / 保存修改 / ✕」三个，其余（角色库、复制、删除…）标成 scn-extra 由 CSS 收进 ⋯。
+    var KEEP = { sceneAdd: 1, sceneSave: 1, sceneClose: 1 };
+    Array.prototype.forEach.call(head.querySelectorAll(".cp-btn"), function (b) {
+      if (b === scnBack || b === scnMore) return;
+      if (b.id && KEEP[b.id]) return;
+      b.classList.add("scn-extra");
+    });
+
+    p.dataset.mBuilt = "1";
+  }
+
+  // 捕获阶段：不阻断原来的 selectScene（它在 listEl 上冒泡），只管切页
+  document.addEventListener("click", function (e) {
+    if (!narrow()) return;
+    var t = e.target;
+    if (t && t.closest && t.closest("#sceneList .scene-item")) {
+      buildSceneMobile();
+      setTimeout(enterDetail, 0);
+      return;
+    }
+    closePop();
+  }, true);
+
+  // 关掉场景页（✕）就回到「源码」那格的高亮，不能让两格都说自己是当前
+  document.addEventListener("click", function (e) {
+    var t = e.target;
+    if (t && t.closest && t.closest("#sceneClose")) markMode("code");
+  });
+
   /* ============================ 启动与重入 ============================ */
 
   function boot() {
     if (narrow()) {
       buildGroups();
       refreshSummaries();
+      buildScriptModes();
+      buildSceneMobile();
     } else {
       // 回到桌面宽度：把面板还回去，别留在二级页里
       closeGroup();
       closeSheet();
+      exitDetail();
+      markMode("code");
     }
   }
 

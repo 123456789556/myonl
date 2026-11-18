@@ -2780,3 +2780,93 @@ input[type="color"] {
   }
 }
 
+/* ======================================================================
+   P110：场景编辑在手机上（一栏两页）
+
+   390 宽的旧样子：列表 236px + 表单 154px，顶栏 7 个按钮挤成两行被截断，
+   表单里"开场设置"竖着断行、下拉框只露一半、舞台预览只有 100px 宽。
+   窄屏改成「场景列表」和「单个场景」两页，一次只给一件事；
+   桌面端一行不跑（下面全部包在窄屏媒体查询里）。
+   ====================================================================== */
+.m-modebar { display: none; }
+
+@media (max-width: 860px), (max-height: 520px), (pointer: coarse) and (hover: none) and (max-width: 1400px) {
+  /* 剧本页：先选「逐句编辑」还是「源码」——不写代码的人不用看见 @character */
+  .m-modebar {
+    display: flex; gap: 8px; flex-shrink: 0;
+    padding: 10px 12px 6px; background: var(--base);
+  }
+  .m-modebar .m-mode {
+    flex: 1 1 0; height: 42px; border-radius: 11px; cursor: pointer;
+    border: 1px solid var(--surface1); background: var(--surface0);
+    color: var(--subtext0); font-size: 14px; font-weight: 600;
+    transition: background .16s, border-color .16s, color .16s;
+  }
+  .m-modebar .m-mode.on {
+    background: rgba(79, 140, 255, .14); border-color: rgba(79, 140, 255, .5); color: #cfe0ff;
+  }
+  :root[data-theme="light"] .m-modebar .m-mode.on {
+    background: rgba(79, 140, 255, .1); color: #2b5fd0;
+  }
+
+  /* 场景页：两栏 -> 一栏堆叠，一次只显示一页 */
+  .scene-page .scene-body { flex-direction: column; overflow: hidden; }
+  .scene-page .scene-list { width: 100%; flex: 1 1 auto; min-height: 0; border-right: 0; }
+  .scene-page .scene-form { width: 100%; flex: 1 1 auto; min-height: 0; overflow: auto; display: none; }
+  .scene-page.m-detail .scene-list { display: none; }
+  .scene-page.m-detail .scene-form { display: block; }
+  .scene-page.m-detail .scene-tools { display: none; }
+
+  /* 顶栏：只留返回/新场景/⋯/保存/关闭，其余收进 ⋯ */
+  .scene-page .cp-head { padding: 8px 10px; gap: 7px; min-height: 50px; align-items: center; flex-wrap: nowrap; overflow: hidden; }
+  .scene-page .cp-title { font-size: 14.5px; }
+  .scene-page .cp-btn { height: 38px; padding: 0 11px; font-size: 13px; border-radius: 9px; flex-shrink: 0; }
+  .scene-page #sceneFilter, .scene-page #sceneCopy, .scene-page #sceneDel, .scene-page #sceneRefresh { display: none !important; }
+  /* 列表页：只要「＋新场景 / ⋯ / ✕」；详情页：只要「‹ 场景列表 / 保存修改 / ✕」 */
+  .scene-page:not(.m-detail) .scn-extra,
+  .scene-page:not(.m-detail) #sceneSave { display: none !important; }
+  .scene-page.m-detail .scn-extra,
+  .scene-page.m-detail #sceneAdd,
+  .scene-page.m-detail .scn-more { display: none !important; }
+  /* 场景页盖住底部 tab：它是"一页"，不是抽屉，靠 ✕ 退出去 */
+  .scene-page { z-index: 340 !important; bottom: 0 !important; }
+  .scene-page .scn-back { display: none; }
+  .scene-page.m-detail .scn-back { display: inline-flex; align-items: center; }
+  .scene-page.m-detail .cp-title { display: none; }
+  .scene-page .scn-more {
+    display: none; width: 38px; padding: 0; font-size: 17px; line-height: 1;
+  }
+  .scene-page:not(.m-detail) .scn-more { display: inline-flex; align-items: center; justify-content: center; }
+  .scene-page .scn-pop {
+    position: absolute; z-index: 30; right: 10px; top: 56px; min-width: 150px;
+    background: var(--mantle); border: 1px solid var(--surface1); border-radius: 11px;
+    box-shadow: 0 14px 30px rgba(0, 0, 0, .45); padding: 6px; display: none;
+  }
+  .scene-page .scn-pop.on { display: block; }
+  .scene-page .scn-pop button {
+    display: block; width: 100%; text-align: left; height: 42px; padding: 0 12px;
+    background: none; border: 0; color: var(--text); font-size: 14px; border-radius: 8px; cursor: pointer;
+  }
+  .scene-page .scn-pop button:active { background: var(--surface0); }
+
+  /* 表单：标签单独一行、控件满宽满高 —— 手指点得到 */
+  .scene-page .scene-form { padding: 12px 13px 28px; font-size: 14px; }
+  .scene-page .sf-scene { font-size: 15px; padding-bottom: 8px; }
+  .scene-page .sf-row { display: block; }
+  .scene-page .sf-label { display: block; width: auto; margin-bottom: 6px; font-size: 12.5px; opacity: .7; }
+  .scene-page .sf-row select, .scene-page .sf-row input { width: 100%; max-width: none !important; height: 44px; font-size: 14px; }
+  /* 桌面规定下拉最长 440px（一行太宽不好读）；窄屏要满宽，否则平板右半边一片空 */
+  .scene-page .scene-form select, .scene-page .scene-form input { max-width: none !important; }
+  .scene-page .sf-stage-wrap { margin: 10px 0 4px; }
+  .scene-page .sf-stage { height: 0; padding-bottom: 56%; position: relative; border-radius: 12px; overflow: hidden; }
+  .scene-page .sf-stage-hint { font-size: 11.5px; }
+  .scene-page .sf-cast, .scene-page .sf-say, .scene-page .sf-opt { flex-wrap: wrap; gap: 6px; padding: 8px; border-radius: 10px; }
+  .scene-page .sf-cast select, .scene-page .sf-say select, .scene-page .sf-say textarea,
+  .scene-page .sf-cast input, .scene-page .sf-opt input { min-height: 42px; font-size: 14px; }
+  .scene-page .sf-say textarea { width: 100%; }
+  .scene-page .sf-actions { padding: 14px 0 8px; }
+  .scene-page #sfSaveBtn { width: 100% !important; height: 48px !important; font-size: 15px; font-weight: 600;
+    background: rgba(79, 140, 255, .14) !important; border: 1px solid rgba(79, 140, 255, .5) !important; color: #cfe0ff !important; border-radius: 12px !important; }
+  .scene-page .sf-add, .scene-page .icon-btn { min-width: 42px; min-height: 38px; }
+}
+
