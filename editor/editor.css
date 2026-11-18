@@ -2902,3 +2902,50 @@ input[type="color"] {
   }
 }
 
+
+/* ============================================================
+   P112：窄屏把「场景 → 角色 → 台词」提到最前。
+   手机上进一幕，第一眼该看到自己写的那几句词，
+   而不是背景/音乐/视频三个下拉——那属于配菜，排在后面。
+   只用 order 重排，桌面端顺序一点不动。
+   ============================================================ */
+@media (max-width: 860px), (max-height: 520px), (pointer: coarse) and (hover: none) and (max-width: 1400px) {
+  #sceneForm { display: flex; flex-direction: column; }
+  #sceneForm > * { flex: 0 0 auto; min-width: 0; }
+  #sceneForm > .sf-scene       { order: 0; }
+  #sceneForm > .sf-sec-char    { order: 1; }
+  #sceneForm > #sfChars        { order: 2; }
+  #sceneForm > .sf-sec-say     { order: 3; }
+  #sceneForm > #sfSays         { order: 4; }
+  #sceneForm > .sf-stage-wrap  { order: 5; }
+  #sceneForm > .sf-sec-layer   { order: 6; }
+  #sceneForm > #sfLayers       { order: 7; }
+  #sceneForm > .sf-row         { order: 8; }
+  #sceneForm > .sf-sec-opt     { order: 9; }
+  #sceneForm > #sfOpts         { order: 10; }
+  #sceneForm > .sf-actions     { order: 20; }
+}
+
+/* ============================================================
+   P112：场景页别把底部五个 tab 盖死。
+   手机上从「剧本」切到「素材/外观/预览/导出」必须退两步才点得到，
+   等于把分层的意义抵消了。让出 tabbar 那一条即可。
+   ============================================================ */
+@media (max-width: 860px), (max-height: 520px), (pointer: coarse) and (hover: none) and (max-width: 1400px) {
+  #scenePage { bottom: calc(52px + env(safe-area-inset-bottom)) !important; }
+  #scenePage .cp-body { height: auto !important; min-height: 0; }
+}
+@media (max-width: 860px), (max-height: 520px), (pointer: coarse) and (hover: none) and (max-width: 1400px) {
+  #scenePage { bottom: calc(52px + env(safe-area-inset-bottom)) !important; height: auto !important; max-height: none !important; }
+  #scenePage .cp-body, #scenePage .scene-body { height: auto !important; min-height: 0; overflow: auto; }
+}
+/* 底部 tab 压在场景页之上：场景页 z 是 340，把 tabbar 提到 420，
+   这样切「素材/外观/预览/导出」永远点得到，不用先关场景页。 */
+@media (max-width: 860px), (max-height: 520px), (pointer: coarse) and (hover: none) and (max-width: 1400px) {
+  .m-tabbar { z-index: 420 !important; }
+}
+/* 「导出」这一层浮在场景页之上：点导出就是要把成品拿走，
+   被场景页压住等于点了没反应。关掉导出页回到原处，不丢编辑状态。 */
+@media (max-width: 860px), (max-height: 520px), (pointer: coarse) and (hover: none) and (max-width: 1400px) {
+  .center-page.open.mode-export { z-index: 440 !important; }
+}

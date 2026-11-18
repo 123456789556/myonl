@@ -509,6 +509,11 @@
       }
       if (which === "export") {
         closeDrawers();
+        // 场景页开着时先关掉：它也是 .center-page.open，不关的话下面
+        // querySelector(".center-page.open") 拿到的是场景页，
+        // 加 mode-export 就把场景编辑切成了导出模式。
+        var scn = document.querySelector("#scenePage.open");
+        if (scn) { var sc = $("sceneClose"); if (sc) sc.click(); }
         var ui2 = $("btnUIDesign");
         if (ui2) ui2.click();       // 导出在「界面设计」弹窗里，手机端一步到位
         // 导出卡在「界面设计」最底下：打开后把中心页面切成「导出」模式，

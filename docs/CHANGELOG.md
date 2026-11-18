@@ -2,6 +2,36 @@
 
 > 只记 release 级变化，一句话 + 证据链接。单项细节见 git 历史（原 archive/ 已删除）。
 
+## 2026-11-18（P112：手机上真的能编游戏了 —— 砍掉 `--lan`，换离线内核）
+
+上一版把手机接电脑的路（`--lan` 局域网 + token）做出来了，但方向是错的：手机连电脑就是个大 U 盘，
+用户根本不想要局域网。这一版把 `--lan` 整个删掉，改成让**手机自己有内核**。
+
+- **删 `--lan`**：`_lan_gate` / `serve()` 的 `host` 与 `lan_token` / `--lan` 参数 / token 打印全清，
+  `serve()` 回硬绑 `127.0.0.1`（那套接口能改剧本、能删文件，只绑本机是刻意的）。
+- **新增 `editor/gal_offline.js`（离线内核）**：探测到没有后端（`file://`、APK 的 `appassets`、
+  或 `/api/version` 不是 JSON）就接管 `fetch`，把整套 `/api/*` 接到 `localStorage` ——
+  作品库、剧本读写、角色表、素材列表、检查，全在本机跑，不联网、不上云。
+  `file://` 下不再发任何探测请求，控制台零 404、零 error（`single_e2e.py` 8/8）。
+- **`tools/build_editor_single.py`**：把编辑器打成 `dist/web/editor-single.html`（0.66 MB，
+  内联 12 个脚本 + 1 个样式），`file://` 双击就能用。
+- **APK 换芯**：`android/app/src/main/assets/index.html` 从"播放器"换成编辑器单文件，
+  `game.html` 放内置成品。装上 APK 打开就是「我的作品」，能新建、能编、能存、能导出。
+- **导出这一层浮在最上层**（`.center-page.open.mode-export` `z-index: 440`）：原来点「导出」
+  会被场景页盖住，等于点了没反应。同时把离线时打后端的三个废按钮收起来，换成真能用的
+  「拿出这个作品（.gal）」「拿出全部作品（.json）」。
+- **场景页让出底部五个 tab**：`#scenePage` 底部留 52px、高度自适应，`.m-tabbar` 提到 `z-index: 420`
+  —— 编辑当前幕时也能直接切「素材 / 外观 / 预览 / 导出」，不用先关页面。
+- **顺手修的真缺陷**：`parseScenes` 没有 `@label` 时返回空列表（新建作品第一眼一片空白，
+  现在整份文件当一个场景）；`editor_mobile.js::boot()` 只建了「逐句/源码」按钮却从没调
+  `setScriptMode`（默认高亮「逐句」、界面还是源码）；只有一个场景时自动进详情。
+
+验证：`pytest -q` **1200 passed + 1 skipped**；`off_e2e.py` 9/9、`single_e2e.py` 8/8、
+`export_e2e.py` 5/5（`_tools/tmp/`）。
+
+**边界写明**：手机端能编、能存、能导出 `.gal`；`.gal → 指令 JSON` 的解析仍是 Python，
+打成能双击玩的成品 HTML 还在电脑上跑。传输走数据线，不做局域网、不做扫码。
+
 ## 2026-11-18（P111：手机怎么真的打开编辑器 + 横屏首页不砍最常用的路）
 
 P110 把手机上"看得见可视化编辑器"解决了，但还有一道坎：`serve()` 一直硬绑 `127.0.0.1`，

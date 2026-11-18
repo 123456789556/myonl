@@ -334,6 +334,20 @@
       refreshSummaries();
       buildScriptModes();
       buildSceneMobile();
+      // 按钮默认就高亮「逐句」，但以前只建了按钮、没真的打开场景页，
+      // 结果用户看到「逐句编辑」是选中的、界面却还是源码 + 一片空白。
+      setScriptMode("sent");
+      // 只有一个场景（空剧本、单幕故事）时直接进那一幕。
+      // 否则第一眼是「一条列表 + 整屏空白」，手机上看就是没东西。
+      setTimeout(function () {
+        var p = document.getElementById("scenePage");
+        if (!p || p.classList.contains("m-detail")) return;
+        var items = document.querySelectorAll("#sceneList .scene-item");
+        if (items.length === 1) {
+          items[0].click();
+          enterDetail();
+        }
+      }, 260);
     } else {
       // 回到桌面宽度：把面板还回去，别留在二级页里
       closeGroup();

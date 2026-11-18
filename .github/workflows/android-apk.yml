@@ -41,15 +41,19 @@ jobs:
             "$SDKMANAGER" --install "platforms;android-34" "build-tools;34.0.0" > /dev/null 2>&1 || true
           fi
 
-      - name: 生成单文件 HTML（素材全内嵌）
+      - name: 打两个单文件（编辑器 / 内置游戏）
         env:
           SDL_VIDEODRIVER: dummy
         run: |
           python3 -m pip install --quiet --upgrade pip
           python3 -m pip install --quiet pillow pygame-ce
           mkdir -p android/app/src/main/assets
-          python3 -c "from engine.webpack import build_single; build_single('games/研修日志', 'android/app/src/main/assets/index.html', title='研修日志')"
-          ls -lh android/app/src/main/assets/index.html
+          # index.html = 编辑器：装上就能在手机上新建作品、写剧本、存本机、导出 .gal
+          python3 tools/build_editor_single.py
+          cp dist/web/editor-single.html android/app/src/main/assets/index.html
+          # game.html = 内置成品：想直接玩的话从这里进
+          python3 -c "from engine.webpack import build_single; build_single('games/研修日志', 'android/app/src/main/assets/game.html', title='研修日志')"
+          ls -lh android/app/src/main/assets/
 
       - uses: gradle/actions/setup-gradle@v4
         with:
@@ -80,8 +84,10 @@ jobs:
           body: |
             直接装：下载下面的 .apk（约 3.7 MB）传进手机，允许"未知来源"安装即可。
 
-            - 覆盖安装不会丢档（签名固定）；**卸载**才会清空存档。
-            - 换手机/换包名之前，先在游戏里「导出」一次存档码。
+            装上打开就是**编辑器**：新建作品、写剧本、存本机、随时把 `.gal` 导出带走（不上云，不需要联网）。
+
+            - 覆盖安装不会丢档（签名固定）；**卸载**才会清空你的作品。
+            - 手机上先写剧本，成品打包交给电脑（`.gal` 用数据线拷过去，一条命）——手机做后台解析还需要把解析器搬成 JS，这一版没做。
             - 竖屏横屏都支持，转屏自动重排；返回键先关面板、再开菜单、最后才退出。
           files: out/*.apk
           fail_on_unmatched_files: true

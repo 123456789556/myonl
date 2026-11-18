@@ -70,6 +70,13 @@
       if (m) marks.push({ name: m[1], start: i });
     }
     var out = [];
+    // 一个 @label 都没有（新建的空剧本就是这样）时，整份文件当成一个场景，
+    // 否则场景列表一片空白，手机第一眼看到的就是「什么都没有」。
+    if (!marks.length) {
+      var any = lines.some(function (x) { return x.trim() && !/^\s*#/.test(x); });
+      if (any) out.push({ name: "剧本", start: 0, end: lines.length, head: true });
+      return out;
+    }
     // 第一个 @label 之前的内容（@character/@bg/@set 等）也当成一个「开场设置」场景，避免看不到
     if (marks.length && marks[0].start > 0) {
       var headHas = lines.slice(0, marks[0].start).some(function (x) { return x.trim() && !/^\s*#/.test(x); });
@@ -370,7 +377,7 @@
     });
     rows.push('<div class="sf-layer fixed bg"><span class="sf-layer-tag">最下</span>' +
       '<span class="sf-layer-name">背景' + (model.bg ? " · " + esc(model.bg.name) : "") + "</span></div>");
-    return '<div class="sf-sec">图层顺序 <span class="sf-hint">拖动立绘行改 z，越上越靠前</span></div>' +
+    return '<div class="sf-sec sf-sec-layer">图层顺序 <span class="sf-hint">拖动立绘行改 z，越上越靠前</span></div>' +
       '<div class="sf-layers" id="sfLayers">' + rows.join("") + "</div>";
   }
 
@@ -477,7 +484,7 @@
     h.push('<datalist id="sfExprList">' + Object.keys(exprs).map(function (k) { return '<option value="' + esc(k) + '">'; }).join("") + "</datalist>");
     h.push('<div class="sf-stage-wrap"><div class="sf-stage" id="sfStage"></div><div class="sf-stage-hint">拖动角色调整位置 · 双击复位 · 也可用下面的位置下拉</div></div>');
     h.push(layerPanelHtml());
-    h.push('<div class="sf-sec">角色 <button type="button" class="icon-btn" id="sfAddChar">＋ 加角色</button></div>');
+    h.push('<div class="sf-sec sf-sec-char">角色 <button type="button" class="icon-btn" id="sfAddChar">＋ 加角色</button></div>');
     h.push('<div id="sfChars">');
     model.chars.forEach(function (c, i) {
       if (c.del) return;
@@ -493,7 +500,7 @@
         '<button type="button" class="icon-btn sf-del" data-kind="char" data-i="' + i + '">✕</button></div>');
     });
     h.push("</div>");
-    h.push('<div class="sf-sec">台词 <button type="button" class="icon-btn" id="sfAddSay">＋ 加台词</button></div>');
+    h.push('<div class="sf-sec sf-sec-say">台词 <button type="button" class="icon-btn" id="sfAddSay">＋ 加台词</button></div>');
     h.push('<div id="sfSays">');
     model.says.forEach(function (s, i) {
       if (s.del) return;
@@ -502,7 +509,7 @@
         '<button type="button" class="icon-btn sf-del" data-kind="say" data-i="' + i + '">✕</button></div>');
     });
     h.push("</div>");
-    h.push('<div class="sf-sec">选项（@choice） <button type="button" class="icon-btn" id="sfAddOpt">＋ 加选项</button></div>');
+    h.push('<div class="sf-sec sf-sec-opt">选项（@choice） <button type="button" class="icon-btn" id="sfAddOpt">＋ 加选项</button></div>');
     h.push('<div id="sfOpts">');
     model.options.forEach(function (o, i) {
       if (o.del) return;
