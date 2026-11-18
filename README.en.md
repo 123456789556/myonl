@@ -1,23 +1,23 @@
-# MYONL Engine
+# MYONL · Phone-first Game Maker
 
 [简体中文](README.md) | **English**
 
 ![tests](https://github.com/123456789556/myonl/actions/workflows/tests.yml/badge.svg?branch=main)
-![Release](https://img.shields.io/badge/release-apk--10%20%2B%20v1.0.0--rc21-blue)
+![Release](https://img.shields.io/badge/release-apk--20%20%2B%20v1.0.0--rc27-blue)
 ![Android](https://img.shields.io/badge/Android-7.0%2B%20phone%20%26%20tablet-3DDC84)
-![Windows](https://img.shields.io/badge/Windows-editor%20%2B%20packager-0078D4)
+![Windows](https://img.shields.io/badge/Windows-辅助%20packager-0078D4)
 ![Python](https://img.shields.io/badge/Python-3.9%2B-3776AB)
 ![License](https://img.shields.io/badge/License-MIT-green)
 
-**A fully offline, MIT-licensed visual-novel engine and authoring tool.**
+**Make a game on your phone.** Install one APK, open it, and you can create a project, write
+scenes, keep everything on the device, and export it — no network, no account, no cloud.
 
-Write a plain-text script, preview it live, and ship it as a single-file HTML bundle that fills a
-phone screen in both orientations, as an Android APK, or as a Windows folder your player
-double-clicks — no Python on their machine, no installer, no network.
-
+> **Phone first, desktop assists.** The phone does the authoring: new project → dialogue / characters /
+> choices → saved locally (`localStorage`) → export `.gal`. The desktop does the two things a phone
+> cannot: **packaging** (`.gal` → a double-clickable single-file HTML / APK) and **bulk asset work**.
+> Transfer goes over a USB cable — the phone is just a thumb drive. No LAN, no QR pairing.
+>
 > This is an **engine/tool for creators**, not a game. The bundled sample is a starting point you are meant to rewrite.
-> **Player side targets phones and Android tablets.** The Windows desktop build ships in parallel.
-> Editor / packager: Windows 10 21H2+ / Windows 11 · Python 3.9+ · pygame-ce · MIT · 100% offline
 
 ## Grab something playable
 
