@@ -20,6 +20,7 @@ import errno
 import json
 import os
 import re
+import socket
 import subprocess
 import sys
 import tempfile
@@ -867,10 +868,55 @@ class _EditorHandler(BaseHTTPRequestHandler):
         except json.JSONDecodeError:
             return {}
 
+    # ---- 局域网闸门（只有 --lan 启动时才生效） ----
+
+    def _lan_gate(self, parsed) -> bool:
+        """返回 True = 放行。
+
+        默认 serve() 只绑 127.0.0.1，lan_token 为空 → 这里直接放行，本地开发零成本。
+        只有显式 --lan 才生成 token：手机第一次要用电脑打印的完整链接（末尾 ?t=…）打开，
+        服务端种一个 cookie 后跳回干净地址，之后前端所有相对路径 fetch 自动带 cookie。
+        目的很实际：绑 0.0.0.0 等于把"能改剧本、能删文件"的接口交给整个 WiFi，不能裸奔。
+        """
+        tok = getattr(self.app, "lan_token", "") or ""
+        if not tok:
+            return True
+        qs = parse_qs(parsed.query)
+        if tok in (qs.get("t") or []):
+            self.send_response(302)
+            self.send_header("Location", parsed.path or "/")
+            self.send_header("Set-Cookie", f"myonl_t={tok}; Path=/; SameSite=Lax")
+            self.send_header("Content-Length", "0")
+            self.end_headers()
+            return False
+        for part in (self.headers.get("Cookie") or "").split(";"):
+            k, _, v = part.strip().partition("=")
+            if k == "myonl_t" and v == tok:
+                return True
+        if parsed.path in ("", "/"):
+            body = (
+                "<!doctype html><meta charset=utf-8>"
+                "<body style='background:#11131a;color:#cfe0ff;font:16px/1.8 system-ui;padding:28px'>"
+                "<h3 style='margin:0 0 12px'>这条链接没带 token</h3>"
+                "<p>请用电脑端启动时打印的那条完整链接打开（末尾带 <code>?t=&hellip;</code>）。</p>"
+                "<p style='opacity:.65'>手机和电脑要在同一个 WiFi 下；打不开就先关掉电脑的防火墙提示。</p>"
+                "</body>"
+            ).encode("utf-8")
+            self.send_response(401)
+            self.send_header("Content-Type", "text/html; charset=utf-8")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+            return False
+        self._send_json(401, {"error": "token 无效或已过期，请用电脑重新打开那条链接"})
+        return False
+
     # ---- 分发（只做路由，不含业务） ----
 
     def do_GET(self) -> None:
         parsed = urlparse(self.path)
+        if not self._lan_gate(parsed):
+            return
         if parsed.path.startswith("/api/asset/"):
             self._get_asset(parsed.path)
             return
@@ -886,7 +932,10 @@ class _EditorHandler(BaseHTTPRequestHandler):
         self._dispatch("GET", parsed)
 
     def do_POST(self) -> None:
-        self._dispatch("POST", urlparse(self.path))
+        parsed = urlparse(self.path)
+        if not self._lan_gate(parsed):
+            return
+        self._dispatch("POST", parsed)
 
     def _dispatch(self, method: str, parsed) -> None:
         name = self._ROUTES.get((method, parsed.path))
@@ -2624,16 +2673,64 @@ class EditorApp:
         return Handler
 
 
-def serve(project_root: str, port: int = 8000, script_path: str | None = None) -> None:
-    """启动编辑器 HTTP 服务（阻塞）。端口被占 → 中文报错退出。"""
+def _lan_ips() -> list[str]:
+    """尽力找出本机局域网 IPv4，用来在 --lan 启动时打印"手机该输的那条地址"。
+
+    取不到不算错误：Windows 上多网卡/虚拟网卡经常解析出一堆 169.254 之类，
+    这里只保证"有就给"，宁缺毋滥。
+    """
+    out: list[str] = []
+    s = None
+    try:  # 取默认出口的本地地址（UDP 不真的发包，没网也不报错）
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.connect(("8.8.8.8", 80))
+        ip = s.getsockname()[0]
+        if ip and not ip.startswith(("127.", "169.254.")):
+            out.append(ip)
+    except OSError:
+        pass
+    finally:
+        if s is not None:
+            try:
+                s.close()
+            except OSError:
+                pass
+    try:  # 兜底：主机名解析
+        for info in socket.getaddrinfo(socket.gethostname(), None, socket.AF_INET):
+            ip = info[4][0]
+            if ip.startswith(("127.", "169.254.")) or ip in out:
+                continue
+            out.append(ip)
+    except OSError:
+        pass
+    return out
+
+
+def serve(project_root: str, port: int = 8000, script_path: str | None = None,
+          host: str = "127.0.0.1", lan_token: str = "") -> None:
+    """启动编辑器 HTTP 服务（阻塞）。端口被占 → 中文报错退出。
+
+    host 默认 127.0.0.1（只有本机能访问）。`--lan` 时才绑 0.0.0.0 并带 token，
+    好让手机/平板在同一个 WiFi 下用浏览器打开同一个编辑器。
+    """
     app = EditorApp(project_root, script_path)
+    app.lan_token = lan_token
     # 清理上次异常退出/被 Windows 占用删不掉的临时剧本（只认 mkstemp 命名，避免误删）
     for dirpath, _dirnames, _filenames in os.walk(app.project_root):
         _cleanup_stale_tmp(dirpath)
-    server = ThreadingHTTPServer(("127.0.0.1", port), app.make_handler())
+    server = ThreadingHTTPServer((host, port), app.make_handler())
     print(f"MYONL 编辑器已启动：http://127.0.0.1:{port}")
     print(f"项目目录：{app.project_root}")
     print(f"默认剧本：{app.script_path}")
+    if lan_token:
+        print("\n手机 / 平板（同一个 WiFi）用这条打开，第一次之后就不用再带 token：")
+        ips = _lan_ips()
+        if ips:
+            for ip in ips:
+                print(f"  http://{ip}:{port}/?t={lan_token}")
+        else:
+            print(f"  没取到局域网 IP，请手动查一下本机 IPv4，再用 http://<那个IP>:{port}/?t={lan_token}")
+        print("  （只在这个 WiFi 可信时这么开；关掉服务就失效，不会留在系统里）")
     print("按 Ctrl+C 停止。")
     try:
         server.serve_forever()
@@ -2650,10 +2747,15 @@ def main(argv=None) -> int:
     ap.add_argument("--script", default=None, help="默认打开的剧本路径（必须在项目目录内）")
     ap.add_argument("--project", default=None,
                     help="项目根目录（默认：当前目录；有 .editor_config.json 时用其中 last_project）")
+    ap.add_argument("--lan", action="store_true",
+                    help="让同一 WiFi 下的手机/平板也能用浏览器打开（绑 0.0.0.0 + 一次性 token）")
     args = ap.parse_args(argv)
     project = args.project if args.project not in (None, "") else _default_project(os.getcwd())
+    host, token = "127.0.0.1", ""
+    if args.lan:
+        host, token = "0.0.0.0", binascii.hexlify(os.urandom(4)).decode()
     try:
-        serve(project, args.port, args.script)
+        serve(project, args.port, args.script, host=host, lan_token=token)
     except OSError as e:
         print(f"错误：端口 {args.port} 被占用或无法绑定（{e}），请换个端口重试。", file=sys.stderr)
         return 1

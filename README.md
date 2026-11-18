@@ -3,7 +3,7 @@
 **简体中文** | [English](README.en.md)
 
 [![tests](https://github.com/123456789556/myonl/actions/workflows/tests.yml/badge.svg?branch=main)](https://github.com/123456789556/myonl/actions/workflows/tests.yml)
-![Release](https://img.shields.io/badge/release-apk--16%20%2B%20v1.0.0--rc24-blue)
+![Release](https://img.shields.io/badge/release-apk--17%20%2B%20v1.0.0--rc24-blue)
 ![Android](https://img.shields.io/badge/Android-7.0%2B%20phone%20%26%20tablet-3DDC84)
 ![Windows](https://img.shields.io/badge/Windows-editor%20%2B%20packager-0078D4)
 ![Python](https://img.shields.io/badge/Python-3.9%2B-3776AB)
@@ -19,7 +19,7 @@
 
 | 你要什么 | 拿哪个 | 多大 |
 | :--- | :--- | :--- |
-| 安卓手机 / 安卓平板直接装 | [**MYONL-apk-16.apk**](https://github.com/123456789556/myonl/releases/download/apk-16/MYONL-apk-16.apk) | 4.0 MB |
+| 安卓手机 / 安卓平板直接装 | [**MYONL-apk-17.apk**](https://github.com/123456789556/myonl/releases/download/apk-17/MYONL-apk-17.apk) | 4.0 MB |
 | 任何浏览器打开，不装东西 | 自己导出的单文件 HTML（`dist/web/研修日志.html`） | 约 3.0 MB |
 | Windows 双击即玩（编辑器 + 打包器） | 仓库内 `py -3 tools\build_release_zip.py --version v1.0.0-rc24` 自建（发行包体积大，没挂 Release） | 67.9 MB |
 
@@ -202,7 +202,7 @@ py -3 -m engine.demo games/我的第一个游戏/script.gal --assets games/我�
 
 ```powershell
 py -3 -m pytest -q -m "not slow"      # 日常快跑（约 70s）
-py -3 -m pytest -q                    # 全量 1193 passed + 1 skipped（含 slow，耗时较长）
+py -3 -m pytest -q                    # 全量 1198 passed + 1 skipped（含 slow，耗时较长）
 py -3 -m pytest -q -m slow            # 真实打包 / 全渲染 / 性能用例
 ```
 
@@ -266,7 +266,7 @@ Typography is pinned to physical CSS size, not logical pixels, so text stays the
 390 px phone and an 800 px tablet; body text is capped at 720 CSS px (~39 chars per line).
 
 - Editor / packager from source: Python 3.9+ + `pygame-ce>=2.5` (Windows only).
-- Tests: `pytest -q` → 1193 passed + 1 skipped headless cases.
+- Tests: `pytest -q` → 1198 passed + 1 skipped headless cases.
 - Documentation is written in Chinese: [快速上手](docs/快速上手.md) · [engine spec](docs/engine_spec.md).
 
 ## 许可

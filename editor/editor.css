@@ -2353,9 +2353,9 @@ input[type="color"] {
 .m-hero-veil {
   background: linear-gradient(to bottom, rgba(4,6,12,0) 40%, rgba(4,6,12,.40) 74%, rgba(4,6,12,.64) 100%);
 }
-/* 横屏只有 390 高，一张 178 的大卡吃掉一半还把小卡拉等高：横屏直接不要大卡，全走双列网格 */
+/* 横屏只有 390 高，一张 178 的大卡吃掉一半：大卡在横屏换成一行的窄条（见文件末尾 P111 段），
+   这里只管头部与标题密度 */
 @media (max-height: 520px) {
-  .m-home-hero { display: none !important; }
   .m-home-head { margin-bottom: 10px; }
   .m-home-title { font-size: 19px !important; }
 }
@@ -2868,5 +2868,37 @@ input[type="color"] {
   .scene-page #sfSaveBtn { width: 100% !important; height: 48px !important; font-size: 15px; font-weight: 600;
     background: rgba(79, 140, 255, .14) !important; border: 1px solid rgba(79, 140, 255, .5) !important; color: #cfe0ff !important; border-radius: 12px !important; }
   .scene-page .sf-add, .scene-page .icon-btn { min-width: 42px; min-height: 38px; }
+}
+
+/* ======================================================================
+   横屏（手机躺下、平板横拿）的首页：「最近编辑」这张大卡
+
+   原来窄高（max-height:520）直接把它 display:none —— 理由是 178 高的卡
+   吃掉 390 高的一半。可它是首页唯一"一键回去接着做"的入口，藏掉等于
+   把最常用的那条路砍了。改成一行窄条：左 112×72 封面，中间名字+元信息，
+   右边「继续编辑」。只占 96px，比小卡还矮，但路径留住了。
+   ====================================================================== */
+@media (max-height: 520px) {
+  .m-home-hero {
+    display: flex !important; align-items: center; gap: 12px;
+    height: 96px !important; aspect-ratio: auto !important;
+    padding: 0 13px; border-radius: 14px;
+  }
+  .m-hero-cover {
+    position: static !important; flex: 0 0 auto;
+    width: 112px; height: 72px; border-radius: 11px;
+  }
+  .m-hero-veil { display: none !important; }
+  .m-hero-text {
+    position: static !important; flex: 1 1 auto; min-width: 0;
+    text-align: left;
+  }
+  .m-hero-tag { font-size: 10px; padding: 3px 7px; margin-bottom: 5px; }
+  .m-hero-name { font-size: 17px !important; text-shadow: none; }
+  .m-hero-meta { margin-top: 3px; }
+  .m-hero-go {
+    position: static !important; flex: 0 0 auto;
+    font-size: 12px; padding: 6px 11px;
+  }
 }
 
