@@ -3,7 +3,7 @@
 **简体中文** | [English](README.en.md)
 
 [![tests](https://github.com/123456789556/myonl/actions/workflows/tests.yml/badge.svg?branch=main)](https://github.com/123456789556/myonl/actions/workflows/tests.yml)
-![Release](https://img.shields.io/badge/release-v1.1.0-blue)
+![Release](https://img.shields.io/badge/release-v1.1.1-blue)
 ![License](https://img.shields.io/badge/License-MIT-green)
 
 **装在安卓手机上，就能自己做视觉小说。** 写台词、放图、放音乐，点一下导出，
@@ -11,10 +11,10 @@
 
 ## 装它
 
-**[⬇ 下载 MYONL-v1.1.0.apk](https://github.com/123456789556/myonl/releases/download/v1.1.0/MYONL-v1.1.0.apk)** · 2.1 MB · 安卓 7.0 以上 · 手机平板同一个包
+**[⬇ 下载 MYONL-v1.1.1.apk](https://github.com/123456789556/myonl/releases/download/v1.1.1/MYONL-v1.1.1.apk)** · 2.1 MB · 安卓 7.0 以上 · 手机平板同一个包
 
 装好打开就是书架，点「新建作品」开始。**点右上角「导出」存作品 —— 会弹系统的「保存到」，
-选个位置就真的进你手机里了。**（旧版本这里点了没反应还会提示"已导出"，v1.1.0 修掉了。）
+选个位置就真的进你手机里了。**（旧版本这里点了没反应还提示「已导出」，v1.1.1 修掉了。）
 
 ## 三步出东西
 
@@ -69,7 +69,7 @@ APK 的 `minSdk` 是 24（安卓 7.0），一个包同时装手机和安卓平�
 | :--- | :--- | :--- |
 | 任何浏览器打开，不装东西 | 自己导出的单文件 HTML（编辑器底部「导出」一点就有） | 看你的素材量 |
 | 编辑器单文件（`file://` 双击就能编，带离线内核） | `py -3 tools\build_editor_single.py` → `dist/web/editor-single.html` | 0.72 MB |
-| Windows 双击即玩（编辑器 + 打包器） | 仓库内 `py -3 tools\build_release_zip.py --version v1.1.0` 自建（体积大，没挂 Release） | 67.9 MB |
+| Windows 双击即玩（编辑器 + 打包器） | 仓库内 `py -3 tools\build_release_zip.py --version v1.1.1` 自建（体积大，没挂 Release） | 67.9 MB |
 
 要手动清旧包：`py -3 tools\gh_release_clean.py --list`（只读，不要 token）或 `--prune --yes`（真删，读 `GITHUB_TOKEN`），
 `--keep-rc 0` 表示 Windows 这一类全清。
