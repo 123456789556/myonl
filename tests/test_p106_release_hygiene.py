@@ -38,7 +38,8 @@ def test_清理脚本默认不动手():
 
 def test_CI_发完包自己清旧包():
     wf = _read(".github", "workflows", "android-apk.yml")
-    assert "只保留最近 5 个安卓包" in wf, "CI 要在发 Release 之后清旧包"
+    assert "只保留最近 3 个安卓包" in wf, "CI 要在发 Release 之后清旧包"
+    assert re.search(r"^\s+KEEP=3\s*$", wf, re.M), "保留数写死 3，别跟脚本默认值漂移"
     assert "continue-on-error: true" in wf, "清理失败不能把已经发好的包判红"
     assert "--cleanup-tag" in wf, "删 Release 要连 tag 一起删，否则 tag 残留像新包"
     assert re.search(r"sort -t- -k2 -n -r", wf), "CI 里也要按数字倒序，别按字符串"

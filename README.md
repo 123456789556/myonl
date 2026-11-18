@@ -3,7 +3,7 @@
 **简体中文** | [English](README.en.md)
 
 [![tests](https://github.com/123456789556/myonl/actions/workflows/tests.yml/badge.svg?branch=main)](https://github.com/123456789556/myonl/actions/workflows/tests.yml)
-![Release](https://img.shields.io/badge/release-apk--12%20%2B%20v1.0.0--rc23-blue)
+![Release](https://img.shields.io/badge/release-apk--13%20%2B%20v1.0.0--rc23-blue)
 ![Android](https://img.shields.io/badge/Android-7.0%2B%20phone%20%26%20tablet-3DDC84)
 ![Windows](https://img.shields.io/badge/Windows-editor%20%2B%20packager-0078D4)
 ![Python](https://img.shields.io/badge/Python-3.9%2B-3776AB)
@@ -19,7 +19,7 @@
 
 | 你要什么 | 拿哪个 | 多大 |
 | :--- | :--- | :--- |
-| 安卓手机 / 安卓平板直接装 | [**MYONL-apk-12.apk**](https://github.com/123456789556/myonl/releases/download/apk-12/MYONL-apk-12.apk) | 4.0 MB |
+| 安卓手机 / 安卓平板直接装 | [**MYONL-apk-13.apk**](https://github.com/123456789556/myonl/releases/download/apk-13/MYONL-apk-13.apk) | 4.0 MB |
 | 任何浏览器打开，不装东西 | 自己导出的单文件 HTML（`dist/web/研修日志.html`） | 约 3.0 MB |
 | Windows 双击即玩（编辑器 + 打包器） | 仓库内 `py -3 tools\build_release_zip.py --version v1.0.0-rc23` 自建（发行包体积大，没挂 Release） | 67.9 MB |
 
@@ -27,9 +27,9 @@ APK 的 `minSdk` 是 24（安卓 7.0），一个包同时装手机和安卓平�
 存档留在设备本机（`localStorage`），升级只换安装包、不动存档 —— 用的是固定签名，不会要求卸载重装；
 作者发新版改了剧本也不会丢档（存档键里的作品指纹变了会自动把旧档搬过来，旧键保留可回滚）。
 
-> Releases 页面只保留最近 5 个安卓包（每次发新版自动清旧的，连 tag 一起删），
+> Releases 页面只保留最近 3 个安卓包（每次发新版自动清旧的，连 tag 一起删），
 > 所以列表里不会出现一堆分不清的 apk-1、apk-2。要手动补一刀：
-> `py -3 tools\gh_release_clean.py --list`（只读）或 `--prune --keep 5 --yes`（需要 `GITHUB_TOKEN`）。
+> `py -3 tools\gh_release_clean.py --list`（只读）或 `--prune --keep 3 --yes`（需要 `GITHUB_TOKEN`）。
 
 ## 一部真的作品：《研修日志》
 
