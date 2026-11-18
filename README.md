@@ -3,7 +3,7 @@
 **简体中文** | [English](README.en.md)
 
 [![tests](https://github.com/123456789556/myonl/actions/workflows/tests.yml/badge.svg?branch=main)](https://github.com/123456789556/myonl/actions/workflows/tests.yml)
-![Release](https://img.shields.io/badge/release-v1.0.0-blue)
+![Release](https://img.shields.io/badge/release-v1.0.1-blue)
 ![Android](https://img.shields.io/badge/Android-7.0%2B%20phone%20%26%20tablet-3DDC84)
 ![Windows](https://img.shields.io/badge/Windows-辅助%20packager-0078D4)
 ![Python](https://img.shields.io/badge/Python-3.9%2B-3776AB)
@@ -23,7 +23,7 @@
 
 | 你要什么 | 拿哪个 | 多大 |
 | :--- | :--- | :--- |
-| 安卓手机 / 安卓平板直接装（**装上就能编游戏**） | [**MYONL-v1.0.0.apk**](https://github.com/123456789556/myonl/releases/download/v1.0.0/MYONL-v1.0.0.apk) | 4.3 MB |
+| 安卓手机 / 安卓平板直接装（**装上就能编游戏**） | [**MYONL-v1.0.1.apk**](https://github.com/123456789556/myonl/releases/download/v1.0.1/MYONL-v1.0.1.apk) | 4.3 MB |
 | 任何浏览器打开，不装东西 | 自己导出的单文件 HTML（`dist/web/研修日志.html`） | 约 3.0 MB |
 | 编辑器单文件（`file://` 双击就能编，带离线内核） | `py -3 tools\build_editor_single.py` → `dist/web/editor-single.html` | 0.71 MB |
 | Windows 双击即玩（编辑器 + 打包器） | 仓库内 `py -3 tools\build_release_zip.py --version v1.0.0` 自建（发行包体积大，没挂 Release） | 67.9 MB |

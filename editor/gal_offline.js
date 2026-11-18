@@ -139,6 +139,20 @@
     try { localStorage.setItem(IDX_KEY, JSON.stringify(a)); } catch (e) {}
   }
 
+  // 素材分两类，处置方式不一样：图压过再存、进成品当画面；音频原样存、进成品当 BGM / 音效。
+  // 类型另存一份（名字索引里只有名字），这样同步的 /api/assets 也能把两类分开答。
+  var KIND_KEY = "myonl:assets:kind:v1";
+  function kindRead() {
+    try {
+      var o = JSON.parse(localStorage.getItem(KIND_KEY) || "{}");
+      return (o && typeof o === "object") ? o : {};
+    } catch (e) { return {}; }
+  }
+  function kindWrite(o) {
+    try { localStorage.setItem(KIND_KEY, JSON.stringify(o || {})); } catch (e) {}
+  }
+  function kindOf(name) { return kindRead()[name] === "audio" ? "audio" : "image"; }
+
   function dbOpen() {
     return new Promise(function (res, rej) {
       if (!window.indexedDB) { rej(new Error("这个浏览器没有 IndexedDB")); return; }
@@ -208,6 +222,17 @@
     return want + "_" + i;
   }
 
+  // 音频不压：mp3 / ogg / m4a 本来就是有损或用专门编码压过的，
+  // 再转一道只有掉质量、不掉体积。原样转 dataURL 存着，成品里 base64 直接喂给 new Audio。
+  function audioDataUrl(file) {
+    return new Promise(function (res, rej) {
+      var fr = new FileReader();
+      fr.onload = function () { res(String(fr.result || "")); };
+      fr.onerror = function () { rej(new Error("这段音频读不出来")); };
+      fr.readAsDataURL(file);
+    });
+  }
+
   function dataUrlToResponse(dataUrl) {
     var comma = dataUrl.indexOf(",");
     var meta = dataUrl.slice(5, comma);          // image/png;base64
@@ -228,20 +253,36 @@
 
   window.MYONLAssets = {
     list: function () { return idxRead(); },
+    kindOf: kindOf,
     // 加一组文件，返回真的加进去的名字（重名会自动加 _2）
+    // 图片：压到最长边 1280；音频：原样存；其它类型一律不收（成品里用不上，收了只是白占空间）
     add: function (files, onEach) {
       var list = Array.prototype.slice.call(files || []);
       var taken = idxRead();
+      var kinds = kindRead();
       var added = [];
       return list.reduce(function (chain, f) {
         return chain.then(function () {
-          if (!/^image\//i.test(f.type || "")) return null;
-          return shrinkImage(f).then(function (r) {
+          var t = String(f.type || "");
+          var isImg = /^image\//i.test(t);
+          var isAud = /^audio\//i.test(t);
+          if (!isImg && !isAud) {
+            // 跳过也要回一次，否则多选里混进一个视频，进度条就永远卡在"导入中"
+            if (onEach) onEach(null, added.length, list.length, new Error("只收图片和音频"));
+            return null;
+          }
+          var step = isImg
+            ? shrinkImage(f).then(function (r) { return { dataUrl: r.dataUrl, kind: "image" }; })
+            : audioDataUrl(f).then(function (u) { return { dataUrl: u, kind: "audio" }; });
+          return step.then(function (r) {
             var name = uniqueName(baseName(f), taken);
             taken.push(name);
+            kinds[name] = r.kind;
             added.push(name);
-            idxWrite(taken);
-            return dbRun("readwrite", function (st) { return st.put(r, name); }).then(function () {
+            idxWrite(taken); kindWrite(kinds);
+            return dbRun("readwrite", function (st) {
+              return st.put({ dataUrl: r.dataUrl, kind: r.kind }, name);
+            }).then(function () {
               if (onEach) onEach(name, added.length, list.length);
             });
           });
@@ -256,9 +297,10 @@
     remove: function (name) {
       return dbRun("readwrite", function (st) { return st.delete(name); }).then(function () {
         idxWrite(idxRead().filter(function (n) { return n !== name; }));
+        var k = kindRead(); delete k[name]; kindWrite(k);
       });
     },
-    // 导出用：{名字: dataURL}，一次全取
+    // 导出用：{名字: dataURL}，一次全取（图片 / 音频合在一起，调用方自己分）
     all: function () {
       var names = idxRead();
       var map = {};
@@ -270,6 +312,21 @@
         });
       }, Promise.resolve()).then(function () { return map; });
     },
+    // 导出时直接能用的两份：画面素材 / 声音素材
+    allSplit: function () {
+      var names = idxRead();
+      var kinds = kindRead();
+      var out = { assets: {}, audio: {} };
+      return names.reduce(function (chain, n) {
+        return chain.then(function () {
+          return dbRun("readonly", function (st) { return st.get(n); }).then(function (v) {
+            if (!v || !v.dataUrl) return;
+            if (kinds[n] === "audio") out.audio[n] = v.dataUrl;
+            else out.assets[n] = v.dataUrl;
+          });
+        });
+      }, Promise.resolve()).then(function () { return out; });
+    },
     totalBytes: function () {
       return this.all().then(function (map) {
         var n = 0;
@@ -277,6 +334,35 @@
         return n;
       });
     },
+  };
+
+  // ---------- 2c. 从别的 App 分享进来 ----------
+  // 安卓壳（MainActivity）把文件读成 base64 直推过来，这里还原成 File 再走同一条素材链路。
+  // 手机分屏把文件拖进 WebView 做不到（WebView 不接系统级拖放），分享是安卓上那条稳定的路。
+  function dataUrlToFile(o) {
+    var s = String((o && o.dataUrl) || "");
+    var comma = s.indexOf(",");
+    if (comma < 0) throw new Error("分享过来的不是文件");
+    var meta = s.slice(5, comma);
+    var bin = atob(s.slice(comma + 1));
+    var arr = new Uint8Array(bin.length);
+    for (var i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+    return new File([arr], o.name || ("分享_" + Date.now()), { type: o.type || "application/octet-stream" });
+  }
+  window.__MYONLShareReceive = function (items) {
+    if (!items || !items.length || !window.MYONLAssets) return;
+    var files = [];
+    for (var i = 0; i < items.length; i++) {
+      try { files.push(dataUrlToFile(items[i])); } catch (e) {}
+    }
+    if (!files.length) return;
+    window.MYONLAssets.add(files).then(function (names) {
+      if (window.__refreshAssets) window.__refreshAssets();
+      var bar = document.querySelector(".off-assets");
+      if (bar && bar.__refresh) bar.__refresh();
+      if (names.length) toast("已收到分享的 " + names.length + " 个：" + names.join("、"));
+      else toast("分享的内容收不了：只收图片和音频", true);
+    }).catch(function () { toast("分享的文件没存进去，重试一次", true); });
   };
 
   // ---------- 3. HTTP 小工具 ----------
@@ -418,10 +504,15 @@
   };
 
   ROUTES["GET /api/assets"] = function () {
-    // 手机上现在真的有图了（从相册导进来、压在 IndexedDB 里），
+    // 手机上现在真的有素材了（从相册/文件选进来、压在 IndexedDB 里），
     // 名字从 localStorage 索引同步读，所以这个同步接口照样答得上来。
+    // 图片和音频分开报：图片列表里不能混进 mp3 的名字，否则前端会拿它当立绘。
+    var kinds = kindRead();
+    var names = idxRead();
+    var imgs = names.filter(function (n) { return kinds[n] !== "audio"; });
+    var auds = names.filter(function (n) { return kinds[n] === "audio"; });
     return jsonRes({ ok: true, assets: {
-      images: idxRead(), videos: [], anims: [], audio: [], fonts: []
+      images: imgs, videos: [], anims: [], audio: auds, fonts: []
     } });
   };
 
@@ -577,23 +668,28 @@
     if (!window.MYONLPack || !window.MYONLParser) { toast("打包器没加载，刷新一下", true); return; }
     toast("正在把剧本编成成品…");
     // 素材以前一律传空 —— 于是手机上出的成品永远是纯文字配渐变底。
-    // 现在从 IndexedDB 把图全取出来塞进 pack，成品里就是真的画面了。
-    var assetsP = (window.MYONLAssets ? window.MYONLAssets.all() : Promise.resolve({}));
+    // 现在从 IndexedDB 把素材全取出来，图和音频分开塞进 pack：画面归 assets，声音归 audio。
+    var assetsP = (window.MYONLAssets ? window.MYONLAssets.allSplit() : Promise.resolve({ assets: {}, audio: {} }));
     Promise.all([playerSources(), assetsP]).then(function (both) {
-      var src = both[0], assets = both[1] || {};
+      var src = both[0], sp = both[1] || {};
+      var assets = sp.assets || {}, audio = sp.audio || {};
       var names = Object.keys(assets);
       var mb = 0;
       names.forEach(function (k) { mb += assets[k].length; });
+      Object.keys(audio).forEach(function (k) { mb += audio[k].length; });
       mb = Math.round(mb / 1024 / 1024 * 10) / 10;
       var r = window.MYONLPack.buildPack({
         title: p.name, scriptText: p.text,
-        assets: assets, audio: {}, videos: {}, config: {}, orientation: "any",
+        assets: assets, audio: audio, videos: {}, config: {}, orientation: "any",
       });
       if (!r.ok) { toast("剧本第 " + r.error.line + " 行：" + r.error.message, true); return; }
       var html = window.MYONLPack.renderSingle(r.pack, src);
       download(html, p.name + ".html", "text/html;charset=utf-8");
-      toast(names.length
-        ? ("成品好了：带了 " + names.length + " 张图，约 " + mb + " MB")
+      var parts = [];
+      if (names.length) parts.push(names.length + " 张图");
+      if (Object.keys(audio).length) parts.push(Object.keys(audio).length + " 段音频");
+      toast(parts.length
+        ? ("成品好了：带了 " + parts.join(" + ") + "，约 " + mb + " MB")
         : "成品好了（还没有素材，画面是渐变色）");
     }).catch(function () {
       toast("这台设备取不到播放器内核，成品导出请在装好的 APK 里用", true);
@@ -659,58 +755,126 @@
   // 素材条：手机上原来素材页永远是空的（/api/assets 回空清单），
   // 用户只能用编辑器自带的渐变当背景 —— 这就是"看着像 demo 不像游戏"的根。
   // 这条给一个真入口：从相册选图 → 压缩 → 存进 IndexedDB → 素材页立刻看得到。
+  // 手机端做游戏真正卡住的地方是素材进不来：相册里翻半天、也不确定压没压。
+  // 这条给一个「投递区」——点一下选文件，桌面还能直接把文件拖进来。
+  // 收什么、压多大、存哪儿，全写在框里，不用猜。
+  var MAX_FILES = 20;
+  var MAX_BYTES = 24 * 1024 * 1024;
+  function mbText(n) { return (Math.round((n / 1048576) * 10) / 10).toFixed(1) + " MB"; }
+
   function assetBar() {
     var bar = document.createElement("div");
     bar.className = "off-assets";
     bar.style.cssText = "padding:12px 14px 14px;border-bottom:1px solid rgba(255,255,255,.08);" +
       "background:rgba(79,140,255,.07)";
 
-    var tip = document.createElement("div");
-    tip.style.cssText = "font-size:12px;line-height:1.6;color:#9fb2d0;margin-bottom:10px";
-    tip.textContent = "从相册挑几张图进来（走廊、教室、天台都行），选好会被压到最长边 1280，" +
-      "存在这台设备上、不上传。不加图也能跑，成品会自动用蓝渐变当背景。";
-    bar.appendChild(tip);
+    var drop = document.createElement("div");
+    drop.style.cssText = "border:1.5px dashed rgba(79,140,255,.52);border-radius:14px;" +
+      "background:rgba(79,140,255,.05);padding:16px 12px 15px;text-align:center;cursor:pointer;" +
+      "transition:background .15s,border-color .15s;-webkit-tap-highlight-color:transparent";
 
-    var btn = document.createElement("button");
-    btn.type = "button";
-    btn.textContent = "从相册选图";
-    btn.style.cssText = "display:block;width:100%;margin:0;padding:11px 14px;border-radius:12px;" +
-      "border:1px solid rgba(79,140,255,.45);background:rgba(79,140,255,.14);color:#dce8ff;" +
-      "font-size:14px;line-height:1.3;box-sizing:border-box;text-align:center;min-height:0;height:auto";
+    var t1 = document.createElement("div");
+    t1.style.cssText = "font-size:15px;line-height:1.4;color:#dce8ff;font-weight:600";
+    t1.textContent = "把文件放进来";
+
+    var t2 = document.createElement("div");
+    t2.style.cssText = "font-size:12px;line-height:1.75;color:#8fa3c0;margin-top:6px";
+    t2.innerHTML = "点这里选，桌面上也可以直接拖进来<br>" +
+      "图片压到最长边 1280 · 音频原样存 · 视频暂不收<br>" +
+      "一次最多 " + MAX_FILES + " 个，单个不超过 24 MB";
+
+    drop.appendChild(t1);
+    drop.appendChild(t2);
+    bar.appendChild(drop);
 
     var input = document.createElement("input");
     input.type = "file";
-    input.accept = "image/*";
+    input.accept = "image/*,audio/*";
     input.multiple = true;
     input.style.display = "none";
+    bar.appendChild(input);
 
-    btn.addEventListener("click", function () { input.click(); });
-    input.addEventListener("change", function () {
-      var files = input.files;
-      if (!files || !files.length) return;
-      var names = [];
-      var failed = 0;
+    var usage = document.createElement("div");
+    usage.style.cssText = "font-size:12px;line-height:1.6;color:#8fa3c0;margin-top:9px";
+    bar.appendChild(usage);
+
+    function refreshUsage() {
+      if (!window.MYONLAssets) return;
+      var names = window.MYONLAssets.list();
+      var img = 0;
+      names.forEach(function (n) { if (window.MYONLAssets.kindOf(n) !== "audio") img++; });
+      var aud = names.length - img;
+      window.MYONLAssets.totalBytes().then(function (n) {
+        usage.textContent = names.length
+          ? ("已存 " + img + " 张图" + (aud ? " / " + aud + " 段音频" : "") + "，共 " + mbText(n))
+          : "这个作品还没有素材，成品会用蓝渐变当背景";
+      }).catch(function () {});
+    }
+    refreshUsage();
+    bar.__refresh = refreshUsage;   // 分享进来 / 别处加完图，让用量行跟着动
+
+    function take(files) {
       if (!window.MYONLAssets) { toast("素材库没加载，刷新一下页面", true); return; }
-      btn.textContent = "导入中…";
-      window.MYONLAssets.add(files, function (name, done, total, err) {
+      var arr = Array.prototype.slice.call(files || []);
+      if (!arr.length) return;
+      if (arr.length > MAX_FILES) {
+        toast("一次最多 " + MAX_FILES + " 个，先挑了前 " + MAX_FILES + " 个", true);
+        arr = arr.slice(0, MAX_FILES);
+      }
+      var big = arr.filter(function (f) { return (f.size || 0) > MAX_BYTES; });
+      if (big.length) {
+        toast(big.length + " 个超过 24 MB 没放进来：" +
+          big.slice(0, 2).map(function (f) { return f.name; }).join("、"), true);
+        arr = arr.filter(function (f) { return (f.size || 0) <= MAX_BYTES; });
+      }
+      if (!arr.length) return;
+
+      var names = [], failed = 0, errMsg = "";
+      drop.style.pointerEvents = "none";
+      drop.style.opacity = ".6";
+      t1.textContent = "导入中 0/" + arr.length;
+      window.MYONLAssets.add(arr, function (name, done, total, err) {
         if (name) names.push(name);
-        if (err) failed++;
-        btn.textContent = total && done < total ? ("导入中 " + done + "/" + total) : "从相册选图";
-        if (done >= total) {
+        if (err) { failed++; errMsg = err.message || ""; }
+        var settled = done + failed;
+        t1.textContent = settled >= total ? "把文件放进来" : ("导入中 " + settled + "/" + total);
+        if (settled >= total) {
+          drop.style.pointerEvents = "";
+          drop.style.opacity = "";
           if (window.__refreshAssets) window.__refreshAssets();
+          refreshUsage();
           if (names.length) {
-            toast("已加入 " + names.length + " 张：" + names.join("、") +
-              (failed ? "（" + failed + " 张失败）" : ""));
+            toast("已加入 " + names.length + " 个：" + names.join("、") +
+              (failed ? "（" + failed + " 个没收：" + errMsg + "）" : ""));
           } else {
-            toast("一张都没加进去" + (failed ? "，可能不是图片格式" : ""), true);
+            toast("一个都没加进去" + (errMsg ? "：" + errMsg : ""), true);
           }
           input.value = "";
         }
       });
+    }
+
+    drop.addEventListener("click", function () { input.click(); });
+    input.addEventListener("change", function () { take(input.files); });
+
+    // 桌面上拖拽：进来时框亮起来，松手就收
+    function lit(on) {
+      drop.style.background = on ? "rgba(79,140,255,.18)" : "rgba(79,140,255,.05)";
+      drop.style.borderColor = on ? "rgba(79,140,255,.95)" : "rgba(79,140,255,.52)";
+    }
+    ["dragenter", "dragover"].forEach(function (ev) {
+      drop.addEventListener(ev, function (e) {
+        e.preventDefault(); e.stopPropagation(); lit(true);
+      });
+    });
+    ["dragleave", "dragend"].forEach(function (ev) {
+      drop.addEventListener(ev, function () { lit(false); });
+    });
+    drop.addEventListener("drop", function (e) {
+      e.preventDefault(); e.stopPropagation(); lit(false);
+      take(e.dataTransfer && e.dataTransfer.files);
     });
 
-    bar.appendChild(btn);
-    bar.appendChild(input);
     return bar;
   }
   function injectAssetBar() {

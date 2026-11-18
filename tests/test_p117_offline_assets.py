@@ -38,11 +38,34 @@ def test_素材真图有单独取图分支():
 
 
 def test_成品导出带上素材():
-    seg = OFF.split("window.__myonlExportPack = function")[1][:900]
-    assert "MYONLAssets.all()" in seg
+    seg = OFF.split("window.__myonlExportPack = function")[1][:1100]
+    assert "MYONLAssets.allSplit()" in seg
     assert "assets: assets" in seg
-    # 旧写法（一律传空）不许再回来
-    assert "assets: {}, audio: {}" not in seg
+    assert "audio: audio" in seg
+    # 传空的老写法（buildPack 两个参数都是空）不许再回来
+    assert "assets: {}, audio: {}, videos" not in seg
+
+
+def test_素材分图片和音频两类():
+    assert 'KIND_KEY = "myonl:assets:kind:v1"' in OFF
+    assert 'out.audio[n] = v.dataUrl' in OFF
+    # 音频原样存，不走压缩链路（压了只掉质量不掉体积）
+    assert "function audioDataUrl(file)" in OFF
+
+
+def test_接口把图片和音频分开报():
+    seg = OFF.split('ROUTES["GET /api/assets"]')[1][:520]
+    assert "audio: auds" in seg
+    assert "images: imgs" in seg
+
+
+def test_投递区能拖也能点():
+    assert 'drop.addEventListener("drop"' in OFF
+    assert "MAX_FILES = 20" in OFF
+    assert "MAX_BYTES = 24 * 1024 * 1024" in OFF
+    assert 'input.accept = "image/*,audio/*"' in OFF
+    # 多选里混进不能收的类型，进度不能卡在「导入中」
+    assert "done + failed" in OFF
 
 
 def test_素材缩略图地址会被换成真数据():
