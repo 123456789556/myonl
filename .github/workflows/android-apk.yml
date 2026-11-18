@@ -1,11 +1,13 @@
 name: 安卓 APK
 
 # 自建 WebView 壳 + 固定签名，不依赖 node / 第三方壳框架。
-# 触发：Actions 页面手动跑，或推 apk-* 标签。
+# 触发：Actions 页面手动跑，或推版本 tag。
+# v1 起 tag 名就是版本号（v1.0.0），apk-* 留着兼容旧包与旧链接。
 on:
   workflow_dispatch:
   push:
     tags:
+      - "v*"
       - "apk-*"
 
 # 发 Release 要写权限

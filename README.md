@@ -3,7 +3,7 @@
 **简体中文** | [English](README.en.md)
 
 [![tests](https://github.com/123456789556/myonl/actions/workflows/tests.yml/badge.svg?branch=main)](https://github.com/123456789556/myonl/actions/workflows/tests.yml)
-![Release](https://img.shields.io/badge/release-apk--23%20%2B%20v1.0.0--rc30-blue)
+![Release](https://img.shields.io/badge/release-v1.0.0-blue)
 ![Android](https://img.shields.io/badge/Android-7.0%2B%20phone%20%26%20tablet-3DDC84)
 ![Windows](https://img.shields.io/badge/Windows-辅助%20packager-0078D4)
 ![Python](https://img.shields.io/badge/Python-3.9%2B-3776AB)
@@ -23,23 +23,29 @@
 
 | 你要什么 | 拿哪个 | 多大 |
 | :--- | :--- | :--- |
-| 安卓手机 / 安卓平板直接装（**装上就能编游戏**） | [**MYONL-apk-23.apk**](https://github.com/123456789556/myonl/releases/download/apk-23/MYONL-apk-23.apk) | 4.0 MB |
+| 安卓手机 / 安卓平板直接装（**装上就能编游戏**） | [**MYONL-v1.0.0.apk**](https://github.com/123456789556/myonl/releases/download/v1.0.0/MYONL-v1.0.0.apk) | 4.3 MB |
 | 任何浏览器打开，不装东西 | 自己导出的单文件 HTML（`dist/web/研修日志.html`） | 约 3.0 MB |
-| 编辑器单文件（`file://` 双击就能编，带离线内核） | `py -3 tools\build_editor_single.py` → `dist/web/editor-single.html` | 0.69 MB |
-| Windows 双击即玩（编辑器 + 打包器） | 仓库内 `py -3 tools\build_release_zip.py --version v1.0.0-rc30` 自建（发行包体积大，没挂 Release） | 67.9 MB |
+| 编辑器单文件（`file://` 双击就能编，带离线内核） | `py -3 tools\build_editor_single.py` → `dist/web/editor-single.html` | 0.71 MB |
+| Windows 双击即玩（编辑器 + 打包器） | 仓库内 `py -3 tools\build_release_zip.py --version v1.0.0` 自建（发行包体积大，没挂 Release） | 67.9 MB |
 
 APK 的 `minSdk` 是 24（安卓 7.0），一个包同时装手机和安卓平板，横过来竖过去都在满屏范围内重排。
-**这一版 APK 里装的是编辑器**：打开就是「我的作品」，能新建、能写剧本、能存本机、能把 `.gal` 导出带走，全程不联网、不上云。
-作品留在设备本机（`localStorage`），升级只换安装包、不动数据 —— 用的是固定签名，不会要求卸载重装；
+**这一版 APK 里装的是编辑器**：打开就是「我的作品」，能新建、能写剧本、能放图、能存本机、能把成品导出带走，全程不联网、不上云。
+作品剧本留在设备本机（`localStorage`），素材（图片）存在 `IndexedDB`（那儿才放得下几 MB 一张的图）。
+升级只换安装包、不动数据 —— 用的是固定签名，不会要求卸载重装；
 改了剧本也不会丢档（存档键里的作品指纹变了会自动把旧档搬过来，旧键保留可回滚）。
 
-> 手机端边界（rc30 起变了）：**能编、能存、能自己出成品**。
+> **v1.0.0 的手机端边界：能编、能存、能放图、能自己出成品。**
 > 剧本由 `engine/parser.js` 解析，和电脑端 `engine/parser.py` **逐字段一致**（`tools/pack_diff.py`
 > 拿 5 个真实工程对拍，452 条指令全部对上）；成品由 `engine/pack.js` 拼成单文件 HTML，在手机上点一下就能导出。
-> 手机仍然做不了只剩一件：**塞图片 / 音乐 / 立绘**——本地存储放不下素材，素材批处理和 APK 打包留在电脑。
+> **图片**：素材页点「从相册选图」，进来就压到最长边 1280，图存在设备本机，导成品时跟着进包——出来是真画面，不再是纯渐变底。
+> 一个已知上限：单文件 HTML 是把图内联进去的（base64 还会涨三分之一），素材总量到几十 MB 就不好开了。
+> 更大的素材要走「文件夹 / zip 发行」，那是 v1.1 的事，现在不硬撑。
 > 传输走数据线（手机连电脑就是个大 U 盘），不做局域网、不做扫码。
 
-> Releases 页面只保留最近 3 个安卓包（每次发新版自动清旧的，连 tag 一起删），所以不会出现一堆分不清的 apk-1、apk-2；Windows 包不挂 Release，仓库内自建。
+> **版本规则**：装最新那个就行，**存档不会丢**，不用比版本号。
+> 对外只有一套号：`v1.0.0` → `v1.1.0`（多出一个能做的事）→ `v1.1.1`（修掉影响使用的问题）。
+> 界面微调、重构、补测试这类外面看不出来的改动**不占版号**，攒着跟下一次一起发。
+> 细则见 [docs/版本规则.md](docs/版本规则.md)。
 > 要手动补一刀：`py -3 tools\gh_release_clean.py --list`（只读，不要 token）或 `--prune --yes`（真删，读 `GITHUB_TOKEN`），`--keep-rc 0` 表示 Windows 这一类全清。
 
 ## 一部真的作品：《研修日志》

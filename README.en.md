@@ -3,7 +3,7 @@
 [简体中文](README.md) | **English**
 
 ![tests](https://github.com/123456789556/myonl/actions/workflows/tests.yml/badge.svg?branch=main)
-![Release](https://img.shields.io/badge/release-apk--23%20%2B%20v1.0.0--rc30-blue)
+![Release](https://img.shields.io/badge/release-v1.0.0-blue)
 ![Android](https://img.shields.io/badge/Android-7.0%2B%20phone%20%26%20tablet-3DDC84)
 ![Windows](https://img.shields.io/badge/Windows-辅助%20packager-0078D4)
 ![Python](https://img.shields.io/badge/Python-3.9%2B-3776AB)
@@ -23,9 +23,14 @@ scenes, keep everything on the device, and export it — no network, no account,
 
 | You want | Take | Size |
 | :--- | :--- | :--- |
-| Android phone or tablet, installed | [**MYONL-apk-10.apk**](https://github.com/123456789556/myonl/releases/download/apk-10/MYONL-apk-10.apk) | 3.6 MB |
+| Android phone or tablet, installed | [**MYONL-v1.0.0.apk**](https://github.com/123456789556/myonl/releases/download/v1.0.0/MYONL-v1.0.0.apk) | 4.3 MB |
 | Any browser, nothing installed | a single-file HTML you exported | ~3.0 MB |
-| Windows, double-click (editor + packager) | build it in-repo: `py -3 tools\build_release_zip.py --version v1.0.0-rc21` (too big to host on Releases) | 66.5 MB |
+| Windows, double-click (editor + packager) | build it in-repo: `py -3 tools\build_release_zip.py --version v1.0.0` (too big to host on Releases) | 66.5 MB |
+
+> **Versioning**: just install the latest — **saves never get wiped**, and you don't have to compare
+> version numbers. One public series: `v1.0.0` → `v1.1.0` (a new thing you can do) → `v1.1.1`
+> (a fix for something broken). Invisible work (refactors, tests, pixel nudges) does not take a
+> version number. Details in [docs/版本规则.md](docs/版本规则.md).
 
 The APK targets `minSdk` 24 (Android 7.0); one package serves phones and Android tablets and reflows
 in both orientations. Saves live in the app's own storage, and the APK is signed with a fixed key —

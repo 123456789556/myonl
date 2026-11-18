@@ -1976,6 +1976,8 @@
     updateMissingBar();
     if (window.__proAfterAssets) window.__proAfterAssets();
   }
+  // 离线素材库加完图后要能立刻刷出来（editor/gal_offline.js 那边调这个）
+  window.__refreshAssets = refreshAssets;
 
   function renderAssets() {
     if (assetCat === "characters") { renderCharacterAssets(); return; }

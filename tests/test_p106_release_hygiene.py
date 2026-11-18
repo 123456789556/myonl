@@ -52,8 +52,9 @@ def test_CI_发完包自己清旧包():
 
 def test_README_指向的是当前最新的包():
     readme = _read("README.md")
-    # README 的下载入口必须指到最新 tag，否则玩家点到的是旧包
-    m = re.search(r"releases/download/(apk-\d+)/MYONL-(apk-\d+)\.apk", readme)
+    # README 的下载入口必须指到最新 tag，否则玩家点到的是旧包。
+    # v1 起 tag 就是版本号（v1.0.0），旧的 apk-N 写法仍然认，两种都算数。
+    m = re.search(r"releases/download/((?:apk-\d+)|(?:v\d+\.\d+\.\d+))/MYONL-\1\.apk", readme)
     assert m, "README 没有安卓包下载入口"
-    assert m.group(1) == m.group(2), "下载链接的 tag 和文件名要对得上"
-    assert f"release-{m.group(1).replace('apk', 'apk--')}" in readme or True
+    assert m.group(1) == m.group(1), "下载链接的 tag 和文件名要对得上"
+    assert f"release-{m.group(1)}" in readme, "徽章里的版本号要和下载链接一致"

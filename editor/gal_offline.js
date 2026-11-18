@@ -118,6 +118,167 @@
     setTimeout(function () { try { el.remove(); } catch (e) {} }, 2200);
   }
 
+  // ---------- 2b. 素材库（IndexedDB） ----------
+  // 为什么不能用 localStorage 存图：它总共 5MB 出头，手机拍的一张图转 base64 就三四兆，
+  // 两张直接爆，然后整段作品库被挤坏。IndexedDB 在安卓 WebView 里通常几百 MB，
+  // 图放这里才装得下、也不会拖累文案。
+  //
+  // 名字索引另存一份在 localStorage：/api/assets 是同步接口，得能立刻答上「有哪些图」，
+  // 真图才走异步的 IndexedDB。
+  var IDX_KEY = "myonl:assets:index:v1";
+  var ADB = "myonl-assets";
+  var ASTORE = "files";
+
+  function idxRead() {
+    try {
+      var a = JSON.parse(localStorage.getItem(IDX_KEY) || "[]");
+      return Array.isArray(a) ? a : [];
+    } catch (e) { return []; }
+  }
+  function idxWrite(a) {
+    try { localStorage.setItem(IDX_KEY, JSON.stringify(a)); } catch (e) {}
+  }
+
+  function dbOpen() {
+    return new Promise(function (res, rej) {
+      if (!window.indexedDB) { rej(new Error("这个浏览器没有 IndexedDB")); return; }
+      var req = window.indexedDB.open(ADB, 1);
+      req.onupgradeneeded = function () {
+        var db = req.result;
+        if (!db.objectStoreNames.contains(ASTORE)) db.createObjectStore(ASTORE);
+      };
+      req.onsuccess = function () { res(req.result); };
+      req.onerror = function () { rej(req.error || new Error("打不开素材库")); };
+    });
+  }
+  function dbRun(mode, fn) {
+    return dbOpen().then(function (db) {
+      return new Promise(function (res, rej) {
+        var tx = db.transaction(ASTORE, mode);
+        var st = tx.objectStore(ASTORE);
+        var out;
+        var r = fn(st);
+        if (r) r.onsuccess = function () { out = r.result; };
+        tx.oncomplete = function () { res(out); };
+        tx.onerror = function () { rej(tx.error || new Error("素材库写入失败")); };
+      });
+    });
+  }
+
+  // 压一下再存：手机相册原图动辄 4000px / 6MB，直接塞进作品，
+  // 导出成 HTML 会变成几十兆，发给谁都打不开。
+  // 最长边 1280、jpg 0.82 —— 视觉小说满屏看也够，一张大概 100~200KB。
+  var MAX_SIDE = 1280;
+  function shrinkImage(file) {
+    return new Promise(function (res, rej) {
+      var fr = new FileReader();
+      fr.onload = function () {
+        var img = new Image();
+        img.onload = function () {
+          var w = img.naturalWidth || img.width;
+          var h = img.naturalHeight || img.height;
+          var m = Math.max(w, h);
+          if (m > MAX_SIDE) { var k = MAX_SIDE / m; w = Math.round(w * k); h = Math.round(h * k); }
+          var cv = document.createElement("canvas");
+          cv.width = w; cv.height = h;
+          var cx = cv.getContext("2d");
+          // 透明底（png/webp）铺黑：播放器舞台本来就是深色，白底会在黑边里炸出来
+          var isPng = /png|webp/i.test(file.type || "");
+          if (!isPng) { cx.fillStyle = "#000"; cx.fillRect(0, 0, w, h); }
+          cx.drawImage(img, 0, 0, w, h);
+          var out = isPng ? cv.toDataURL("image/png") : cv.toDataURL("image/jpeg", 0.82);
+          res({ dataUrl: out, w: w, h: h, type: isPng ? "image/png" : "image/jpeg" });
+        };
+        img.onerror = function () { rej(new Error("这张图读不出来（可能不是图片）")); };
+        img.src = fr.result;
+      };
+      fr.onerror = function () { rej(new Error("读文件失败")); };
+      fr.readAsDataURL(file);
+    });
+  }
+
+  function baseName(file) {
+    var n = String(file.name || "图片").replace(/\.[^.]+$/, "").trim() || "图片";
+    return n.slice(0, 40);
+  }
+  function uniqueName(want, taken) {
+    if (taken.indexOf(want) < 0) return want;
+    var i = 2;
+    while (taken.indexOf(want + "_" + i) >= 0) i++;
+    return want + "_" + i;
+  }
+
+  function dataUrlToResponse(dataUrl) {
+    var comma = dataUrl.indexOf(",");
+    var meta = dataUrl.slice(5, comma);          // image/png;base64
+    var mime = (meta.split(";")[0] || "image/png").trim();
+    var body = dataUrl.slice(comma + 1);
+    var bin;
+    if (/;base64/i.test(meta)) {
+      var raws = atob(body);
+      bin = new Uint8Array(raws.length);
+      for (var i = 0; i < raws.length; i++) bin[i] = raws.charCodeAt(i);
+    } else {
+      var dec = decodeURIComponent(body);
+      bin = new Uint8Array(dec.length);
+      for (var j = 0; j < dec.length; j++) bin[j] = dec.charCodeAt(j);
+    }
+    return new Response(bin, { status: 200, headers: { "Content-Type": mime } });
+  }
+
+  window.MYONLAssets = {
+    list: function () { return idxRead(); },
+    // 加一组文件，返回真的加进去的名字（重名会自动加 _2）
+    add: function (files, onEach) {
+      var list = Array.prototype.slice.call(files || []);
+      var taken = idxRead();
+      var added = [];
+      return list.reduce(function (chain, f) {
+        return chain.then(function () {
+          if (!/^image\//i.test(f.type || "")) return null;
+          return shrinkImage(f).then(function (r) {
+            var name = uniqueName(baseName(f), taken);
+            taken.push(name);
+            added.push(name);
+            idxWrite(taken);
+            return dbRun("readwrite", function (st) { return st.put(r, name); }).then(function () {
+              if (onEach) onEach(name, added.length, list.length);
+            });
+          });
+        }).catch(function (e) {
+          if (onEach) onEach(null, added.length, list.length, e);
+        });
+      }, Promise.resolve()).then(function () { return added; });
+    },
+    get: function (name) {
+      return dbRun("readonly", function (st) { return st.get(name); });
+    },
+    remove: function (name) {
+      return dbRun("readwrite", function (st) { return st.delete(name); }).then(function () {
+        idxWrite(idxRead().filter(function (n) { return n !== name; }));
+      });
+    },
+    // 导出用：{名字: dataURL}，一次全取
+    all: function () {
+      var names = idxRead();
+      var map = {};
+      return names.reduce(function (chain, n) {
+        return chain.then(function () {
+          return dbRun("readonly", function (st) { return st.get(n); }).then(function (v) {
+            if (v && v.dataUrl) map[n] = v.dataUrl;
+          });
+        });
+      }, Promise.resolve()).then(function () { return map; });
+    },
+    totalBytes: function () {
+      return this.all().then(function (map) {
+        var n = 0;
+        Object.keys(map).forEach(function (k) { n += map[k].length; });
+        return n;
+      });
+    },
+  };
+
   // ---------- 3. HTTP 小工具 ----------
   function jsonRes(obj, status) {
     return new Response(JSON.stringify(obj), {
@@ -257,7 +418,11 @@
   };
 
   ROUTES["GET /api/assets"] = function () {
-    return jsonRes({ ok: true, assets: { images: [], videos: [], anims: [], audio: [], fonts: [] } });
+    // 手机上现在真的有图了（从相册导进来、压在 IndexedDB 里），
+    // 名字从 localStorage 索引同步读，所以这个同步接口照样答得上来。
+    return jsonRes({ ok: true, assets: {
+      images: idxRead(), videos: [], anims: [], audio: [], fonts: []
+    } });
   };
 
   ROUTES["GET /api/characters"] = function () {
@@ -333,6 +498,19 @@
         return Promise.resolve(jsonRes({ ok: false, message: "本地实现出错：" + e }, 500));
       }
     }
+    // 素材真图：路径里带名字，精确键匹配不上，这里单独接一段。
+    // 编辑器里所有缩略图都是 <img src="/api/asset/images/名字">，
+    // 离线时从 IndexedDB 取出来直接回二进制，缩略图才有东西显示。
+    var am = path.match(/^\/api\/asset\/images\/(.*)$/);
+    if (am) {
+      var nm = decodeURIComponent(am[1]);
+      return window.MYONLAssets.get(nm).then(function (v) {
+        if (v && v.dataUrl) return dataUrlToResponse(v.dataUrl);
+        return new Response("", { status: 404 });
+      }).catch(function () {
+        return new Response("", { status: 404 });
+      });
+    }
     if (/\/api\//.test(path)) {
       // 没实现的接口一律回一个「软失败」的 JSON，
       // 免得 404 的 HTML 被当 JSON 解析，控制台刷 "Unexpected token '<'"
@@ -398,14 +576,25 @@
     var p = curProject();
     if (!window.MYONLPack || !window.MYONLParser) { toast("打包器没加载，刷新一下", true); return; }
     toast("正在把剧本编成成品…");
-    playerSources().then(function (src) {
+    // 素材以前一律传空 —— 于是手机上出的成品永远是纯文字配渐变底。
+    // 现在从 IndexedDB 把图全取出来塞进 pack，成品里就是真的画面了。
+    var assetsP = (window.MYONLAssets ? window.MYONLAssets.all() : Promise.resolve({}));
+    Promise.all([playerSources(), assetsP]).then(function (both) {
+      var src = both[0], assets = both[1] || {};
+      var names = Object.keys(assets);
+      var mb = 0;
+      names.forEach(function (k) { mb += assets[k].length; });
+      mb = Math.round(mb / 1024 / 1024 * 10) / 10;
       var r = window.MYONLPack.buildPack({
         title: p.name, scriptText: p.text,
-        assets: {}, audio: {}, videos: {}, config: {}, orientation: "any",
+        assets: assets, audio: {}, videos: {}, config: {}, orientation: "any",
       });
       if (!r.ok) { toast("剧本第 " + r.error.line + " 行：" + r.error.message, true); return; }
       var html = window.MYONLPack.renderSingle(r.pack, src);
       download(html, p.name + ".html", "text/html;charset=utf-8");
+      toast(names.length
+        ? ("成品好了：带了 " + names.length + " 张图，约 " + mb + " MB")
+        : "成品好了（还没有素材，画面是渐变色）");
     }).catch(function () {
       toast("这台设备取不到播放器内核，成品导出请在装好的 APK 里用", true);
     });
@@ -467,6 +656,87 @@
     if (!host || host.querySelector(".off-export")) return;
     host.insertBefore(exportBar(), host.firstChild);
   }
+  // 素材条：手机上原来素材页永远是空的（/api/assets 回空清单），
+  // 用户只能用编辑器自带的渐变当背景 —— 这就是"看着像 demo 不像游戏"的根。
+  // 这条给一个真入口：从相册选图 → 压缩 → 存进 IndexedDB → 素材页立刻看得到。
+  function assetBar() {
+    var bar = document.createElement("div");
+    bar.className = "off-assets";
+    bar.style.cssText = "padding:12px 14px 14px;border-bottom:1px solid rgba(255,255,255,.08);" +
+      "background:rgba(79,140,255,.07)";
+
+    var tip = document.createElement("div");
+    tip.style.cssText = "font-size:12px;line-height:1.6;color:#9fb2d0;margin-bottom:10px";
+    tip.textContent = "从相册挑几张图进来（走廊、教室、天台都行），选好会被压到最长边 1280，" +
+      "存在这台设备上、不上传。不加图也能跑，成品会自动用蓝渐变当背景。";
+    bar.appendChild(tip);
+
+    var btn = document.createElement("button");
+    btn.type = "button";
+    btn.textContent = "从相册选图";
+    btn.style.cssText = "display:block;width:100%;margin:0;padding:11px 14px;border-radius:12px;" +
+      "border:1px solid rgba(79,140,255,.45);background:rgba(79,140,255,.14);color:#dce8ff;" +
+      "font-size:14px;line-height:1.3;box-sizing:border-box;text-align:center;min-height:0;height:auto";
+
+    var input = document.createElement("input");
+    input.type = "file";
+    input.accept = "image/*";
+    input.multiple = true;
+    input.style.display = "none";
+
+    btn.addEventListener("click", function () { input.click(); });
+    input.addEventListener("change", function () {
+      var files = input.files;
+      if (!files || !files.length) return;
+      var names = [];
+      var failed = 0;
+      if (!window.MYONLAssets) { toast("素材库没加载，刷新一下页面", true); return; }
+      btn.textContent = "导入中…";
+      window.MYONLAssets.add(files, function (name, done, total, err) {
+        if (name) names.push(name);
+        if (err) failed++;
+        btn.textContent = total && done < total ? ("导入中 " + done + "/" + total) : "从相册选图";
+        if (done >= total) {
+          if (window.__refreshAssets) window.__refreshAssets();
+          if (names.length) {
+            toast("已加入 " + names.length + " 张：" + names.join("、") +
+              (failed ? "（" + failed + " 张失败）" : ""));
+          } else {
+            toast("一张都没加进去" + (failed ? "，可能不是图片格式" : ""), true);
+          }
+          input.value = "";
+        }
+      });
+    });
+
+    bar.appendChild(btn);
+    bar.appendChild(input);
+    return bar;
+  }
+  function injectAssetBar() {
+    // 素材面板真实容器：手机端点「素材」后弹出的是 aside.asset-pane，
+    // 里面 div.asset-body 放列表 —— 条要插在列表之前，不能盖住面板标题。
+    var body = document.querySelector("div.asset-body");
+    if (body && body.parentNode) {
+      if (body.parentNode.querySelector(".off-assets")) return;
+      body.parentNode.insertBefore(assetBar(), body);
+      return;
+    }
+    var host = document.querySelector(".m-subbody") || document.querySelector(".modal-body") || document.querySelector("aside.asset-pane");
+    if (!host) return;
+    if (host.querySelector(".off-assets")) return;
+    host.insertBefore(assetBar(), host.firstChild);
+  }
+  document.addEventListener("click", function (e) {
+    var row = e.target && e.target.closest ? e.target.closest(".m-group-row, .m-tab, .uid-tab, button") : null;
+    if (!row) return;
+    if (/素材|图片|立绘/.test(row.textContent || "") && !/角色/.test(row.textContent || "")) {
+      setTimeout(injectAssetBar, 320);
+      setTimeout(injectAssetBar, 820);
+      setTimeout(injectAssetBar, 1400);
+    }
+  }, true);
+
   document.addEventListener("click", function (e) {
     var row = e.target && e.target.closest ? e.target.closest(".m-group-row, .uid-tab, .m-tab, button") : null;
     if (!row) return;
@@ -476,6 +746,27 @@
       setTimeout(injectExportBar, 820);
     }
   }, true);
+
+  // 缩略图补丁：<img src="/api/asset/images/x"> 走的是浏览器自己的取图通道，
+  // 绕不过 fetch 劫持 —— 不补的话素材页永远是一排空框（naturalWidth 0）。
+  // 这里把地址里的名字取出来，换成真 dataURL，图上就出来了。
+  function fixAssetImages() {
+    var ims = document.querySelectorAll('img[src*="/api/asset/images/"]');
+    for (var i = 0; i < ims.length; i++) {
+      var im = ims[i];
+      if (im.dataset.offFixed) continue;
+      im.dataset.offFixed = "1";
+      var m = String(im.getAttribute("src") || "").match(/\/api\/asset\/images\/(.*)$/);
+      if (!m || !window.MYONLAssets) continue;
+      (function (img, nm) {
+        window.MYONLAssets.get(nm).then(function (v) {
+          if (v && v.dataUrl) img.src = v.dataUrl;
+        }).catch(function () {});
+      })(im, decodeURIComponent(m[1]));
+    }
+  }
+  setInterval(fixAssetImages, 700);
+  document.addEventListener("DOMContentLoaded", fixAssetImages);
 
   // ---------- 7. 封面与缩略图 ----------
   // 手机上没有任何素材，工作台卡片原本是一块纯黑（这就是"劣质感"的来源）。

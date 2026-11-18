@@ -77,10 +77,12 @@ def test_readme_matches_what_ships():
     等于自己给自己上锁。真正要守的是「徽章和下载链指向同一个包」。
     """
     readme = (ROOT / "README.md").read_text(encoding="utf-8")
-    dl = re.search(r"download/apk-(\d+)/", readme)
+    # v1 起 tag 就是版本号，旧的 apk-N 也认 —— 守的始终是「徽章和下载链同一个包」
+    dl = re.search(r"releases/download/((?:apk-\d+)|(?:v\d+\.\d+\.\d+))/MYONL-\1\.apk", readme)
     assert dl, "README 没给安卓包的下载入口"
-    badge = re.search(r"apk--(\d+)", readme)
-    assert badge and badge.group(1) == dl.group(1), "徽章和下载链指向的不是同一个包"
+    badge = re.search(r"release-((?:apk--\d+)|(?:v\d+\.\d+\.\d+))", readme)
+    assert badge, "README 缺 Release 徽章"
+    assert badge.group(1) == dl.group(1), "徽章和下载链指向的不是同一个包"
     nums = [int(n) for n in re.findall(r"(\d{4})\s*passed", readme)]
     assert nums and max(nums) >= 1100, "README 里的测试数还停在几年前那个数"
     assert "v1.0.0--rc15" not in readme, "release 徽章还是 rc15"

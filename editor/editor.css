@@ -3052,6 +3052,11 @@ body.m-home-open .m-tabbar { display: none !important; }
 .m-home-note-t { font-size: 12.5px; font-weight: 600; color: var(--subtext1); margin-bottom: 5px; }
 .m-home-note-b { font-size: 12px; line-height: 1.65; color: var(--subtext0); }
 
+/* 素材面板基础 z 只有 80，而场景详情页（.center-page.m-detail）在它上面 ——
+   手机端点「素材」时面板确实展开了（DOM 里 mobile-asset-open 也在），
+   但被详情页整层盖住，看上去就是「点了什么也没发生」。抬到 460。 */
+.main.mobile-asset-open .asset-pane { z-index: 460 !important; }
+
 /* 首页层降到 380：它是"外壳"，不该压过任何弹层。
    改版前它是 500，比设置抽屉(520)/二级页(400) 都高，于是设置点开后被整层盖住 —— 看着像没反应。
    tabbar(420) 高于它没关系：首页在的时候 tabbar 本来就是 display:none。 */
