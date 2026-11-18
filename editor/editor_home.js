@@ -32,19 +32,47 @@
 
   var layer = document.createElement("div");
   layer.className = "m-home";
+  // P116：首页自成一屏，不掺编辑器那套 tab —— 那五个 tab 是「作品内部」的事，
+  // 摆在工作台底下等于让人以为首页还有五个没展开的页。
+  document.body.classList.add("m-home-open");
   layer.innerHTML =
     '<div class="m-home-head">' +
       '<div><div class="m-home-title">我的作品</div>' +
       '<div class="m-home-sub" id="mHomeSub">本地保存 · 不上云</div></div>' +
-      '<button type="button" class="m-home-gear" id="mHomeSet" title="设置">' +
-        '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" ' +
-        'stroke-width="1.7" stroke-linecap="round" aria-hidden="true">' +
-        '<circle cx="12" cy="12" r="3.2"/>' +
-        '<path d="M12 3v2.2M12 18.8V21M21 12h-2.2M5.2 12H3M18.4 5.6l-1.6 1.6M7.2 16.8l-1.6 1.6' +
-        'M18.4 18.4l-1.6-1.6M7.2 7.2L5.6 5.6"/></svg></button>' +
+      '<button type="button" class="m-home-set" id="mHomeSet">设置</button>' +
     '</div>' +
     '<div class="m-home-list" id="mHomeList"></div>' +
-    '<div class="m-home-foot">本地作品 · 不上传云端</div>';
+    '<div class="m-home-side">' +
+      '<div class="m-home-sec">开始新的</div>' +
+      '<div class="m-quick">' +
+        '<button type="button" class="m-quick-item" id="mHomeNew">' +
+          '<b>＋</b><span>新建作品</span></button>' +
+        '<button type="button" class="m-quick-item" id="mHomeImport">' +
+          '<b>&#8615;</b><span>导入作品</span></button>' +
+        '<button type="button" class="m-quick-item" id="mHomeSet2">' +
+          '<b>&#9776;</b><span>设置</span></button>' +
+      '</div>' +
+      '<div class="m-home-note">' +
+        '<div class="m-home-note-t">都在你手上</div>' +
+        '<div class="m-home-note-b">作品、素材、存档只存这台设备，不上传。' +
+        '想给别人看，进作品后点底部「导出」里的「做成成品」——一个 .html，发过去就能打开。</div>' +
+      '</div>' +
+      '<div class="m-home-steps">' +
+        '<div class="m-home-sec">三步上手</div>' +
+        '<button type="button" class="m-step" data-step="script">' +
+          '<span class="m-step-n">1</span>' +
+          '<span class="m-step-t">写第一句台词</span>' +
+          '<span class="m-step-s">场景页里直接改，不用记语法</span></button>' +
+        '<button type="button" class="m-step" data-step="asset">' +
+          '<span class="m-step-n">2</span>' +
+          '<span class="m-step-t">挑一张背景</span>' +
+          '<span class="m-step-s">没有图也能先跑起来</span></button>' +
+        '<button type="button" class="m-step" data-step="export">' +
+          '<span class="m-step-n">3</span>' +
+          '<span class="m-step-t">做成成品发给朋友</span>' +
+          '<span class="m-step-s">一个 .html，对方手机直接打开</span></button>' +
+      '</div>' +
+    '</div>';
   document.body.appendChild(layer);
 
   function ago(ts) {
@@ -88,14 +116,12 @@
     if (!list) return;
     var sub = $("mHomeSub");
     if (sub) sub.textContent = projects.length + " 个作品 · 本地保存 · 不上云";
-    var cards = projects.map(card).join("");    list.innerHTML = cards +
-      '<button type="button" class="m-home-card m-home-new" id="mHomeNew">' +
-        '<span class="m-card-thumb m-card-thumb-new">＋</span>' +
-        '<span class="m-card-body">' +
-          '<span class="m-card-name">新建作品</span>' +
-          '<span class="m-card-meta">空剧本，一行示例台词，够你先看到画面</span>' +
-        '</span>' +
-      '</button>';
+    if (!projects.length) {
+      list.innerHTML = '<div class="m-home-empty">还没有作品。点下面「新建作品」，' +
+        '它自带一句示例台词，你能立刻看到画面。</div>';
+    } else {
+      list.innerHTML = projects.map(card).join("");
+    }
     // 缩略图单独请求：拿不到就留个空底，不阻塞列表
     list.querySelectorAll(".m-card-thumb[data-folder], .m-hero-cover[data-folder]").forEach(function (th) {
       var f = th.dataset.folder;
@@ -103,23 +129,61 @@
       img.onload = function () {
         th.style.backgroundImage = 'url("/api/thumb?folder=' + encodeURIComponent(f) + '")';
         th.classList.add("has");
+        // 有真封面才让大卡长起来（空工程铺满一整屏渐变像没加载完）
+        var hero = th.closest ? th.closest(".m-home-hero") : null;
+        if (hero) hero.classList.add("cover-on");
       };
       img.src = "/api/thumb?folder=" + encodeURIComponent(f);
     });
     list.querySelectorAll(".m-home-card[data-folder], .m-home-hero[data-folder]").forEach(function (b) {
       b.addEventListener("click", function () { openProject(b.dataset.folder, b); });
     });
-    var nb = $("mHomeNew");
-    if (nb) nb.addEventListener("click", function () {
-      // 复用编辑器自己的「新建游戏」弹窗：先进编辑器，再点它
-      enterEditor();
-      setTimeout(function () {
-        var menuFile = document.querySelector('.menu-item[data-menu="file"]');
-        if (menuFile) menuFile.click();
-        var ng = $("menuNewGame") || $("btnNewGame");
-        if (ng) ng.click();
-      }, 120);
+  }
+
+  function newProject() {
+    // 复用编辑器自己的「新建游戏」弹窗：先进编辑器，再点它
+    enterEditor();
+    setTimeout(function () {
+      var menuFile = document.querySelector('.menu-item[data-menu="file"]');
+      if (menuFile) menuFile.click();
+      var ng = $("menuNewGame") || $("btnNewGame");
+      if (ng) ng.click();
+    }, 120);
+  }
+
+  // 导入：手机上没有「打开文件对话框」以外的路子，所以走 <input type=file>。
+  // 只认离线作品库那份 JSON（和导出的同一格式），别的一律明确拒绝，不猜。
+  function importProject() {
+    var inp = document.createElement("input");
+    inp.type = "file";
+    inp.accept = ".json,application/json";
+    inp.style.display = "none";
+    document.body.appendChild(inp);
+    inp.addEventListener("change", function () {
+      var f = inp.files && inp.files[0];
+      if (!f) { inp.remove(); return; }
+      var rd = new FileReader();
+      rd.onload = function () {
+        var ok = false;
+        try {
+          if (window.__myonlImportLib) ok = window.__myonlImportLib(String(rd.result || ""));
+        } catch (e) { ok = false; }
+        if (ok) setTimeout(function () { location.reload(); }, 400);
+        else toast("这份文件读不出来——只认「导出」里导出的作品库 JSON。");
+        inp.remove();
+      };
+      rd.onerror = function () { toast("文件读不出来"); inp.remove(); };
+      rd.readAsText(f);
     });
+    inp.click();
+  }
+
+  function toast(msg) {
+    var t = document.createElement("div");
+    t.className = "m-home-toast";
+    t.textContent = msg;
+    document.body.appendChild(t);
+    setTimeout(function () { t.remove(); }, 2400);
   }
 
   function openProject(folder, btn) {
@@ -146,6 +210,7 @@
     try { sessionStorage.setItem(EDIT_KEY, "1"); } catch (e) {}
     hideEditor(false);
     layer.style.display = "none";
+    document.body.classList.remove("m-home-open");   // 回到作品内部，底部五个 tab 归位
   }
 
   // ---- 设置：主题 / 游戏方向 / 返回作品列表。做成一页，别学桌面端散在五个地方 ----
@@ -156,7 +221,9 @@
     var theme = "dark";
     try { theme = localStorage.getItem("gal_editor_theme") === "light" ? "light" : "dark"; } catch (e) {}
     sheet = document.createElement("div");
-    sheet.className = "m-sheet";
+    // 必须带 on：.m-sheet 默认是 translateY(100%) 藏在视口下方的抽屉，只有 .on 才归位。
+    // 上一版少了它，于是「设置」点开时抽屉其实一直在屏幕外面 —— 看着就像没反应。
+    sheet.className = "m-sheet m-set-sheet on";
     sheet.innerHTML =
       '<div class="m-sheet-mask"></div>' +
       '<div class="m-sheet-body">' +
@@ -178,7 +245,9 @@
         '<div class="m-set-note">「游戏画面」是给玩家看的：竖屏 / 横屏时，导出的网页会提示对方把手机转过来；选「跟随」就横竖都行。' +
         'MYONL 编辑器全部本地运行，工程和素材都在你自己的电脑/手机上，不上传任何服务器。</div>' +
       '</div>';
-    document.body.appendChild(sheet);
+    // 抽屉挂 <html> 而不是 <body>：body 上挂了编辑器各种档位类，fixed 定位在里面被算成流的位置
+  // （实测顶边跑到 1007，正好是内容底部）。挂 html 之后 fixed 的包含块就是视口本身。
+  document.documentElement.appendChild(sheet);
 
     sheet.querySelector(".m-sheet-mask").addEventListener("click", function () {
       sheet.remove(); sheet = null;
@@ -234,6 +303,28 @@
     if (sk) sk.addEventListener("click", enterEditor);
   });
 
-  var gear = $("mHomeSet");
-  if (gear) gear.addEventListener("click", openSettings);
+  // 点「三步上手」直接落到那一步：省掉「先找菜单再找图标」这一步，
+  // 这是手机端最容易劝退的地方（不知道从哪下手，就关掉了）。
+  function goStep(step) {
+    var label = step === "asset" ? "素材" : (step === "export" ? "导出" : "剧本");
+    enterEditor();
+    setTimeout(function () {
+      var tabs = document.querySelectorAll(".m-tab");
+      for (var i = 0; i < tabs.length; i++) {
+        if ((tabs[i].textContent || "").trim() === label) { tabs[i].click(); return; }
+      }
+    }, 380);
+  }
+
+  ["mHomeSet", "mHomeSet2"].forEach(function (id) {
+    var b = $(id);
+    if (b) b.addEventListener("click", openSettings);
+  });
+  var nb = $("mHomeNew");
+  if (nb) nb.addEventListener("click", newProject);
+  var ib = $("mHomeImport");
+  if (ib) ib.addEventListener("click", importProject);
+  Array.prototype.forEach.call(layer.querySelectorAll(".m-step"), function (b) {
+    b.addEventListener("click", function () { goStep(b.dataset.step); });
+  });
 })();

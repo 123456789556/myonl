@@ -2977,3 +2977,151 @@ input[type="color"] {
   /* 横屏地窄，台词框不用再拉满 */
   #scenePage .scene-form { padding-right: 10px; }
 }
+
+/* ============================================================
+   P116：首页重做 —— 从「一张卡 + 六成空白」变成有层的一屏。
+
+   改版前的实情（实测 412×915）：
+     标题 70 / hero 214 / 一张卡 / 虚线新建 / 然后 60% 全空 / 底部一行灰字。
+   底部五个 tab 明明存在（52px、z420），却永远看不见：首页层 z500 把它整个盖住。
+   也就是说首页既没内容，又替编辑器背着一排看不见的 tab。
+
+   这一版三件事：
+     1. 首页就是首页，不再含糊地盖着 tab（body.m-home-open 时直接藏掉）；
+     2. 内容按「继续上次 / 开始新的 / 还能做什么」分三段，不是一堆按钮平铺；
+     3. 大封面吃掉剩余高度 —— 一个作品时不空，多作品时它自动让位给列表。
+   ============================================================ */
+body.m-home-open .m-tabbar { display: none !important; }
+
+.m-home { padding: calc(14px + env(safe-area-inset-top)) 16px calc(12px + env(safe-area-inset-bottom)) !important; }
+.m-home-head { align-items: flex-start !important; margin-bottom: 12px !important; }
+.m-home-set {
+  height: 32px; padding: 0 13px; border-radius: 16px; cursor: pointer;
+  border: 1px solid var(--surface0); background: var(--mantle);
+  color: var(--subtext1); font-family: inherit; font-size: 12.5px;
+  -webkit-tap-highlight-color: transparent;
+}
+.m-home-set:active { background: var(--surface0); color: var(--text); }
+
+/* 列表段：作品卡按内容排，不留空白带 */
+.m-home-list {
+  flex: 0 0 auto !important; min-height: 0; display: flex;
+  flex-direction: column; gap: 10px; overflow-y: auto;
+}
+.m-home-list .m-home-card { flex: 0 0 auto; }
+
+/* 封面这件事得分开算：
+   有真封面（工程里有背景图）时，大卡铺满 = 好看的启动页；
+   空工程没有图，铺满就是一整屏渐变 = 像没加载完。
+   所以默认是紧凑卡，拿到缩略图才升级成大卡（JS 给 .cover-on）。 */
+.m-home-list .m-home-hero {
+  flex: 0 0 auto !important; height: 172px !important; aspect-ratio: auto !important;
+  min-height: 0 !important;
+}
+.m-home-list .m-home-hero.cover-on {
+  flex: 1 1 auto !important; height: auto !important; min-height: 208px !important;
+}
+.m-home-empty {
+  flex: 1 1 auto; display: flex; align-items: center; justify-content: center;
+  padding: 28px 22px; border-radius: 14px; text-align: left;
+  border: 1px dashed var(--surface1); color: var(--subtext0);
+  font-size: 13px; line-height: 1.7;
+}
+
+.m-home-side { display: flex; flex-direction: column; flex: 0 0 auto; }
+.m-home-sec {
+  font-size: 12.5px; color: var(--subtext0); margin: 14px 2px 8px; letter-spacing: .4px;
+}
+.m-quick { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.m-quick-item {
+  display: flex; flex-direction: column; align-items: flex-start; justify-content: center;
+  gap: 7px; min-height: 74px; padding: 11px 13px; cursor: pointer;
+  border-radius: 12px; border: 1px solid var(--surface0); background: var(--mantle);
+  color: var(--text); font-family: inherit; text-align: left;
+  -webkit-tap-highlight-color: transparent;
+}
+.m-quick-item b { font-size: 17px; line-height: 1; color: var(--blue); font-weight: 600; }
+.m-quick-item span { font-size: 12.5px; color: var(--subtext1); }
+.m-quick-item:active { background: var(--surface0); }
+.m-quick-item:active b { color: var(--blue); }
+
+.m-home-note {
+  margin-top: 16px; padding: 12px 14px; border-radius: 12px;
+  background: var(--mantle); border: 1px solid var(--surface0);
+}
+.m-home-note-t { font-size: 12.5px; font-weight: 600; color: var(--subtext1); margin-bottom: 5px; }
+.m-home-note-b { font-size: 12px; line-height: 1.65; color: var(--subtext0); }
+
+/* 首页层降到 380：它是"外壳"，不该压过任何弹层。
+   改版前它是 500，比设置抽屉(520)/二级页(400) 都高，于是设置点开后被整层盖住 —— 看着像没反应。
+   tabbar(420) 高于它没关系：首页在的时候 tabbar 本来就是 display:none。 */
+.m-home { z-index: 380 !important; }
+/* 设置抽屉复用 .m-sheet 的骨架，但它归位/遮罩全靠 .on；
+   这里再加一条兜底，免得哪天类名被改动后又静默藏到视口外。 */
+.m-set-sheet {
+  position: fixed !important; z-index: 620 !important;
+  top: 0 !important; left: 0 !important; right: 0 !important; bottom: 0 !important;
+  width: 100% !important; height: 100% !important;
+  transform: none !important;
+}
+/* 遮罩别压成一片死黑：抽屉只占下半屏，上面要能看见首页，才像"盖了一层"而不是"进了另一页" */
+.m-set-sheet .m-sheet-mask { display: block !important; background: rgba(0, 0, 0, .42); }
+.m-set-sheet .m-sheet-body { background: var(--mantle); }
+.m-home-set:focus { background: var(--mantle); color: var(--subtext1); outline: none; }
+.m-home-set:focus-visible { outline: 1px solid var(--blue); }
+
+/* 空态最怕「一屏东西 + 下半屏空」。下面这三步是真有用的内容：
+   点了直接落到对应的 tab，省掉「先找菜单再找图标」。
+   结构上刻意用 block + 绝对定位编号：flex 版被整行压成 28px 过一次，block 不会。 */
+.m-home-steps { display: block; flex: 0 0 auto; }
+.m-step {
+  display: block; position: relative; width: 100%; box-sizing: border-box;
+  padding: 12px 13px 12px 45px; margin-bottom: 8px; min-height: 52px;
+  border-radius: 12px; border: 1px solid var(--surface0); background: var(--mantle);
+  color: var(--text); font-family: inherit; text-align: left; cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.m-step:last-child { margin-bottom: 0; }
+.m-step-n {
+  position: absolute; left: 13px; top: 14px; width: 22px; height: 22px;
+  border-radius: 50%; background: var(--surface0); color: var(--blue);
+  font-size: 12px; font-weight: 600; line-height: 22px; text-align: center;
+}
+.m-step-t { display: block; font-size: 13px; line-height: 1.4; }
+.m-step-s { display: block; font-size: 11.5px; line-height: 1.5; color: var(--subtext0); margin-top: 3px; }
+.m-step:active { background: var(--surface0); }
+
+/* 横屏（844×390）：一屏太矮，竖向堆五段只会全挤成条。改两列 —— 左边作品，右边入口。 */
+@media (max-height: 520px) {
+  .m-home {
+    display: grid !important; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr); align-content: start; gap: 10px 14px;
+    padding: calc(10px + env(safe-area-inset-top)) 14px 10px !important;
+  }
+  .m-home-head { grid-column: 1 / -1; grid-row: 1; margin-bottom: 0 !important; }
+  .m-home-list { grid-column: 1; grid-row: 2; overflow-y: auto; }
+  .m-home-side { grid-column: 2; grid-row: 2; overflow-y: auto; }
+  /* 横屏行高本来就只有 300 出头。原来固定 108 高，卡里只填中间一条；
+     拉满 300 又变成一条竖长条封面 —— 142 高 + 96 宽缩略是两边都能接受的折中。 */
+  .m-home-list .m-home-hero {
+    flex: 0 0 auto !important; height: 142px !important; min-height: 0 !important;
+    max-height: none !important; aspect-ratio: auto !important;
+  }
+  .m-hero-cover {
+    position: static !important; flex: 0 0 96px !important;
+    width: 96px !important; height: 100% !important; border-radius: 11px;
+  }
+  .m-home-list .m-home-card { min-height: 58px !important; }
+  .m-home-empty { padding: 16px 14px; font-size: 12px; }
+  .m-home-sec { margin: 0 2px 6px !important; }
+  .m-quick-item { min-height: 56px; padding: 8px 10px; gap: 4px; }
+  .m-quick-item b { font-size: 15px; }
+  .m-quick-item span { font-size: 11.5px; }
+  .m-home-note { margin-top: 10px; padding: 9px 11px; }
+  .m-home-note-t { font-size: 11.5px; margin-bottom: 3px; }
+  .m-home-note-b { font-size: 11px; line-height: 1.45; }
+  /* 横屏左列已经吃满，右列再塞三步会滚动；横屏时不放，返回按钮那套足够。
+     标题也在这个容器里，所以整组一起收掉，不会留一个孤零零的「三步上手」。 */
+  .m-home-steps { display: none; }
+  .m-home-set { background: var(--mantle) !important; color: var(--subtext1) !important; }
+}
