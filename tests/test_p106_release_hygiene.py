@@ -27,13 +27,16 @@ def test_清理脚本存在且按数字排序():
     src = _read("tools", "gh_release_clean.py")
     assert "apk-<数字>" in src
     assert "sort(key=lambda x: x[0], reverse=True)" in src, "必须按 tag 数字倒序，字符串排序会把 apk-9 排到 apk-10 前面"
-    assert "max(1, args.keep)" in src, "保留数至少 1，别把最新包也删了"
+    assert "max(1," in src, "保留数至少 1，别把最新包也删了"
     assert '"DELETE"' in src and "/git/refs/tags/" in src, "删 Release 之后还要删 tag"
+    assert 'v1\\.0\\.0-rc' in src, "Windows 发行候选也要能清，两类各自按数字排"
 
 
 def test_清理脚本默认不动手():
     src = _read("tools", "gh_release_clean.py")
     assert "args.dry_run or not args.yes" in src, "没有 --yes 一律只说不做"
+    # dry-run 不需要 token：先给出"会删谁"，再说没 token 删不了
+    assert src.index("args.dry_run or not args.yes") < src.index('if not token:'), "dry-run 不能卡在 token 检查后面"
 
 
 def test_CI_发完包自己清旧包():

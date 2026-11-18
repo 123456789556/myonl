@@ -32,7 +32,12 @@ import urllib.request
 
 REPO = "123456789556/myonl"
 API = "https://api.github.com"
-TAG_RE = re.compile(r"^apk-(\d+)$")
+# 两类可以有多个历史包的 Release：安卓包 apk-N、Windows 发行候选 v1.0.0-rcN。
+# 分组各自保留最近 keep 个 —— 安卓包和桌面包的"最近"不是一回事，不能混着排。
+FAMILIES = [
+    ("apk", re.compile(r"^apk-(\d+)$"), "安卓包", 3),
+    ("rc", re.compile(r"^v1\.0\.0-rc(\d+)$"), "Windows 发行候选", 1),
+]
 
 
 def _req(method: str, path: str, token: str | None) -> tuple[int, object]:
@@ -74,18 +79,22 @@ def list_releases(token: str | None, repo: str) -> list[dict]:
     return out
 
 
-def apk_no(tag: str) -> int | None:
-    m = TAG_RE.match(tag or "")
-    return int(m.group(1)) if m else None
+def tag_no(tag: str) -> tuple[str | None, int | None]:
+    """把一个 tag 归到某个家族，并取它的编号。"""
+    for key, rx, _label, _keep in FAMILIES:
+        m = rx.match(tag or "")
+        if m:
+            return key, int(m.group(1))
+    return None, None
 
 
 def main() -> int:
-    ap = argparse.ArgumentParser(description="清理 GitHub Release（只留最近几个安卓包）")
+    ap = argparse.ArgumentParser(description="清理 GitHub Release（每类只留最近几个）")
     ap.add_argument("--repo", default=REPO)
     ap.add_argument("--token", default=None, help="默认读 GITHUB_TOKEN / GH_TOKEN")
     ap.add_argument("--list", action="store_true", help="只列出来看看")
-    ap.add_argument("--prune", action="store_true", help="按 --keep 删掉多余的")
-    ap.add_argument("--keep", type=int, default=5, help="保留最近几个（按 tag 数字，默认 5）")
+    ap.add_argument("--prune", action="store_true", help="按保留数删掉多余的")
+    ap.add_argument("--keep", type=int, default=None, help="两类共用同一个保留数（不指定则安卓 3 / Windows 1）")
     ap.add_argument("--dry-run", action="store_true", help="只说会删谁，不动手")
     ap.add_argument("--yes", action="store_true", help="确认真删")
     args = ap.parse_args()
@@ -93,43 +102,53 @@ def main() -> int:
     token = args.token or os.environ.get("GITHUB_TOKEN") or os.environ.get("GH_TOKEN")
     rels = list_releases(token, args.repo)
 
-    # 分两堆：apk-<数字> 的、其它的
-    apks: list[tuple[int, dict]] = []
+    groups: dict[str, list[tuple[int, dict]]] = {k: [] for k, _, _, _ in FAMILIES}
     others: list[dict] = []
     for r in rels:
-        n = apk_no(r.get("tag_name", ""))
-        (apks.append((n, r)) if n is not None else others.append(r))
-    apks.sort(key=lambda x: x[0], reverse=True)
+        key, n = tag_no(r.get("tag_name", ""))
+        if key is None:
+            others.append(r)
+        else:
+            groups[key].append((n, r))
+    for key in groups:
+        groups[key].sort(key=lambda x: x[0], reverse=True)
 
-    print(f"仓库 {args.repo}：共 {len(rels)} 个 Release"
-          f"（安卓包 {len(apks)} 个，其它 {len(others)} 个）")
-    for n, r in apks:
-        assets = ", ".join(f"{a['name']} {a['size'] / 1048576:.1f}MB" for a in r.get("assets", []))
-        print(f"  apk-{n:<3}  {r.get('published_at', '')[:19]}  {assets or '(无附件)'}")
-    for r in others:
-        print(f"  {r.get('tag_name', '')}  (非安卓包，不动)")
+    keep_by = {k: max(1, args.keep if args.keep is not None else dk) for k, _, _, dk in FAMILIES}
+
+    print(f"仓库 {args.repo}：共 {len(rels)} 个 Release")
+    labels = {k: label for k, _, label, _ in FAMILIES}
+    for key in groups:
+        print(f"\n[{labels[key]}] {len(groups[key])} 个（保留 {keep_by[key]}）")
+        for n, r in groups[key]:
+            assets = ", ".join(f"{a['name']} {a['size'] / 1048576:.1f}MB" for a in r.get("assets", []))
+            print(f"  {r.get('tag_name', ''):<14} {r.get('published_at', '')[:10]}  {assets or '(无附件)'}")
+    if others:
+        print(f"\n[不清理] {len(others)} 个")
+        for r in others:
+            print(f"  {r.get('tag_name', '')}")
 
     if args.list or not args.prune:
         if not args.prune and not args.list:
-            print("\n只列举。要清理请加 --prune --keep N --yes（建议先 --dry-run）。")
+            print("\n只列举。要清理请加 --prune --yes（建议先 --dry-run）。")
         return 0
 
-    keep = max(1, args.keep)          # 至少留一个，别把自己锁死
-    doomed = apks[keep:]
+    doomed: list[dict] = []
+    for key in groups:
+        doomed.extend(r for _n, r in groups[key][keep_by[key]:])
     if not doomed:
-        print(f"\n{len(apks)} 个 ≤ 保留数 {keep}，没有要删的。")
+        print("\n每类都不超过保留数，没有要删的。")
+        return 0
+
+    print(f"\n要删 {len(doomed)} 个：")
+    for r in doomed:
+        print(f"  - {r.get('tag_name', '')}  {r.get('published_at', '')[:10]}")
+    if args.dry_run or not args.yes:
+        print("\n（dry-run，没有真删。确认没问题再加 --yes）")
         return 0
 
     if not token:
         print("\n没有 token —— 无法删除。请设置 GITHUB_TOKEN（或 --token），再重跑。")
         return 3
-
-    print(f"\n保留最近 {keep} 个，要删 {len(doomed)} 个：")
-    for n, r in doomed:
-        print(f"  - apk-{n}  {r.get('published_at', '')[:19]}")
-    if args.dry_run or not args.yes:
-        print("\n（dry-run，没有真删。确认没问题再加 --yes）")
-        return 0
 
     fails = 0
     for n, r in doomed:

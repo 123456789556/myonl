@@ -29,7 +29,7 @@ APK 的 `minSdk` 是 24（安卓 7.0），一个包同时装手机和安卓平�
 
 > Releases 页面只保留最近 3 个安卓包（每次发新版自动清旧的，连 tag 一起删），
 > 所以列表里不会出现一堆分不清的 apk-1、apk-2。要手动补一刀：
-> `py -3 tools\gh_release_clean.py --list`（只读）或 `--prune --keep 3 --yes`（需要 `GITHUB_TOKEN`）。
+> `py -3 tools\gh_release_clean.py --list`（只读）或 `--prune --yes`（需要 `GITHUB_TOKEN`）。
 
 ## 一部真的作品：《研修日志》
 
