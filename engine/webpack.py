@@ -406,9 +406,63 @@ SHRINK_OVER_BYTES = 300 * 1024
 SHRINK_MAX_EDGE = 1600
 SHRINK_QUALITY = 82
 
+# P101（手机内存预算）：只限单张长边是不够的——张数没有上限。
+# 解码后的位图按 w*h*4 字节算，一张 1600×900 就是 5.6 MB，40 张背景直接 220 MB，
+# 低端安卓的 WebView 在这个量级会白屏/闪退。所以打包时先量总解码量，
+# 超了就自动换更小的长边重压，压到不能再压就明确报出来，别让玩家手机去扛。
+DECODE_BUDGET = 96 * 1024 * 1024          # 超过这个，自动加狠压缩
+DECODE_WARN = 64 * 1024 * 1024            # 超过这个，只提醒不动作
+DECODE_EDGE_LADDER = (SHRINK_MAX_EDGE, 1280, 1024, 800)   # 逐级加狠
 
-def _shrink_image(blob: bytes) -> tuple[bytes, str] | None:
-    """把大图压小：缩到最大边 1600 内，存 WebP。不值得（压不下 10% / 没 PIL）返回 None。
+
+def _estimate_decode(blob: bytes, edge: int) -> int:
+    """按「将会缩到 edge」估算解码后位图字节（w*h*4）。读不到图头就返回 0。"""
+    try:
+        import io
+
+        from PIL import Image
+    except ImportError:
+        return 0
+    try:
+        im = Image.open(io.BytesIO(blob))
+        w, h = im.size
+        if max(w, h) > edge:
+            s = edge / float(max(w, h))
+            w, h = max(1, int(w * s)), max(1, int(h * s))
+        return w * h * 4
+    except Exception:   # noqa: BLE001 — 读不动就当不算，绝不因为估算把导出搞挂
+        return 0
+
+
+def _pick_edge(blobs: list[bytes]) -> tuple[int, int]:
+    """在所有候选图里挑一个「总解码量不超预算」的最大长边。返回 (edge, 总解码字节)。"""
+    for edge in DECODE_EDGE_LADDER:
+        total = sum(_estimate_decode(b, edge) for b in blobs)
+        if total <= DECODE_BUDGET:
+            return edge, total
+    edge = DECODE_EDGE_LADDER[-1]
+    return edge, sum(_estimate_decode(b, edge) for b in blobs)
+
+
+def _over_edge(blob: bytes, edge: int) -> bool:
+    """这张图的长边是否超过 edge（超了就该缩，哪怕文件本身不大）。"""
+    try:
+        import io
+
+        from PIL import Image
+    except ImportError:
+        return False
+    try:
+        im = Image.open(io.BytesIO(blob))
+        return max(im.size) > edge
+    except Exception:   # noqa: BLE001
+        return False
+
+
+
+def _shrink_image(blob: bytes, max_edge: int = SHRINK_MAX_EDGE,
+                  quality: int = SHRINK_QUALITY) -> tuple[bytes, str] | None:
+    """把大图压小：缩到最大边 max_edge 内，存 WebP。不值得（压不下 10% / 没 PIL）返回 None。
 
     不改变逻辑尺寸，只降像素与码率——单文件里一张 2 MB 立绘能让整包卡在加载。
     """
@@ -420,17 +474,18 @@ def _shrink_image(blob: bytes) -> tuple[bytes, str] | None:
         import io
 
         im = Image.open(io.BytesIO(blob))
-        if max(im.size) > SHRINK_MAX_EDGE:
-            im.thumbnail((SHRINK_MAX_EDGE, SHRINK_MAX_EDGE),
+        if max(im.size) > max_edge:
+            im.thumbnail((max_edge, max_edge),
                          Image.Resampling.LANCZOS)
         buf = io.BytesIO()
-        im.save(buf, "WEBP", quality=SHRINK_QUALITY, method=4)
+        im.save(buf, "WEBP", quality=quality, method=4)
         small = buf.getvalue()
     except Exception:   # noqa: BLE001 — 压不动就老实原样，别让导出因此失败
         return None
     if len(small) >= len(blob) * 0.9:
         return None
     return small, "image/webp"
+
 
 
 
@@ -456,6 +511,10 @@ def build_single(project_root: str, out_file: str, *, title: str = "") -> dict:
 
         assets: dict[str, str] = {}
         saved = 0
+
+        # 先把图都读进来，量出「解码后要占多少手机内存」再决定压多狠。
+        # 不这么做的话，大工程也能出包，但到了玩家手机上就是白屏。
+        raws: list[tuple[str, bytes, str, str]] = []
         for name, rel in (pack.get("assets") or {}).items():
             path = os.path.join(tmp, rel.replace("/", os.sep))
             ext = os.path.splitext(path)[1].lower()
@@ -465,9 +524,30 @@ def build_single(project_root: str, out_file: str, *, title: str = "") -> dict:
                     blob = f.read()
             except OSError:
                 continue
+            raws.append((name, blob, mime, ext))
+
+        edge, decode_bytes = _pick_edge([b for _, b, _, _ in raws])
+        if decode_bytes > DECODE_BUDGET:
+            # 压到最小档还是超：照样出包（用户的作品不能被卡住），但必须说清后果。
+            memory_warning = (
+                f"素材解码后约 {decode_bytes // (1024 * 1024)} MB，"
+                f"超过手机安全线 {DECODE_BUDGET // (1024 * 1024)} MB。"
+                f"包能出，但低端机可能白屏——建议拆章，或把背景/立绘换小一点。"
+            )
+        elif decode_bytes > DECODE_WARN:
+            memory_warning = (
+                f"素材解码后约 {decode_bytes // (1024 * 1024)} MB（已自动把长边收到 {edge}）。"
+                f"再往上加图就得注意低端机内存了。"
+            )
+        else:
+            memory_warning = ""
+
+        for name, blob, mime, ext in raws:
             # P62：大图压一道再内嵌。base64 本身还要再涨 37%，不压会更夸张。
-            if len(blob) > SHRINK_OVER_BYTES and ext in (".png", ".jpg", ".jpeg", ".bmp"):
-                shrunk = _shrink_image(blob)
+            # P101：长边用上面按内存预算挑出来的 edge；哪怕文件不大，只要超了 edge 也缩。
+            if ext in (".png", ".jpg", ".jpeg", ".bmp") \
+                    and (len(blob) > SHRINK_OVER_BYTES or _over_edge(blob, edge)):
+                shrunk = _shrink_image(blob, max_edge=edge)
                 if shrunk:
                     saved += len(blob) - len(shrunk[0])
                     blob, mime = shrunk
@@ -501,7 +581,7 @@ def build_single(project_root: str, out_file: str, *, title: str = "") -> dict:
                 except OSError:
                     continue
                 if len(blob) > SHRINK_OVER_BYTES and mime == "image/png":
-                    shrunk = _shrink_image(blob)
+                    shrunk = _shrink_image(blob, max_edge=edge)
                     if shrunk:
                         blob, mime = shrunk
                 arr.append(f"data:{mime};base64," + base64.b64encode(blob).decode("ascii"))
@@ -539,6 +619,10 @@ def build_single(project_root: str, out_file: str, *, title: str = "") -> dict:
         "missing": stat["missing"],
         "unsupported": stat["unsupported"],
         "bytes": size,
+        # P101：手机内存体检结果，给上层决定要不要提示用户
+        "decode_mb": round(decode_bytes / (1024 * 1024), 1),
+        "decode_edge": edge,
+        "memory_warning": memory_warning,
     }
 
 
@@ -654,6 +738,11 @@ def main(argv: list[str] | None = None) -> int:
                   f"{SHRINK_OVER_BYTES // 1024} KB 的会转 WebP）")
         if s["missing"]:
             print(f"  [缺素材 {len(s['missing'])}]：" + "、".join(s["missing"]))
+        # P101：手机内存体检。这个数是「玩家打开时手机要摊多少位图」，不是文件大小。
+        print(f"  手机内存：素材解码后约 {s.get('decode_mb', 0)} MB"
+              f"（长边收到 {s.get('decode_edge', 0)}）")
+        if s.get("memory_warning"):
+            print(f"  [注意] {s['memory_warning']}")
         print("  玩法：手机浏览器直接打开这个 .html，或把它发给别人")
         return 0
     out = args.out or os.path.join("dist", "web", os.path.basename(os.path.abspath(args.project)))

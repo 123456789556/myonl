@@ -99,26 +99,57 @@ def test_每个测试文件声明分层marker():
     assert not bad, f"pytestmark 里没有合法分层：{bad}"
 
 
-# ==================== 3. 文档结构与状态页 ====================
+# ==================== 3. 文档结构：公开的留，内部的走 ====================
+#
+# P117 起立规矩：公开仓库只放「陌生人下载下来就能用、能看懂」的文档。
+# 内部状态页、路线图、待办、唯一计划页、逐条变更说明 —— 一律留在本地 myonl-publish。
+# 下面这些断言就是那道闸门，不是建议：谁把内部文档推上来，测试就红。
 
-def test_权威文档齐全():
-    """四件套 + 唯一计划页必须存在（防止又被新计划文档替代而忘了改入口）。"""
-    for name in ("STATUS.md", "ROADMAP.md", "BACKLOG.md", "CHANGELOG.md"):
+# 陌生人需要看的（必须存在）
+_PUBLIC_DOCS = (
+    "CHANGELOG.md",        # 这版改了什么
+    "engine_spec.md",       # 指令全集：想写剧本的人得查它
+    "快速上手.md",          # 怎么开始
+    "手机端编游戏.md",       # 手机这条路怎么走
+    "素材导入指南.md",       # 图和音乐怎么放进去
+    "打包使用指南.md",       # 怎么出成品
+    "存档与升级.md",         # 玩家最怕的那件事
+    "版本规则.md",           # 版本号怎么算
+    "贡献指南.md",           # 想搭把手的人从哪进
+    "插件开发指南.md",       # 想扩展引擎的人
+    "架构说明.md",           # 代码怎么组织的
+)
+
+# 内部自己看的（必须不在仓库里）
+_INTERNAL_DOCS = (
+    "STATUS.md",
+    "ROADMAP.md",
+    "BACKLOG.md",
+    "接手规矩.md",
+    "md-规范说明.md",
+    "展示_60秒分镜与投稿包.md",
+    "计划",
+)
+
+
+def test_对外文档齐全():
+    for name in _PUBLIC_DOCS:
         assert (ROOT / "docs" / name).is_file(), f"缺少 docs/{name}"
-    assert (ROOT / "docs" / "计划" / "00-总览.md").is_file(), "缺少唯一计划页 docs/计划/00-总览.md"
+
+
+def test_内部文档不许进公开仓库():
+    """谁把内部文档推上来，这条就红——规矩得能拦住人才算规矩。"""
+    for name in _INTERNAL_DOCS:
+        assert not (ROOT / "docs" / name).exists(), (
+            f"docs/{name} 是内部文档，按发布纪律应留在本地 myonl-publish/内部文档")
+    strays = sorted(p.name for p in (ROOT / "docs").glob("变更说明-P*.md"))
+    assert not strays, f"逐条变更说明不进公开仓库：{strays[:5]}"
 
 
 def test_历史文档不再进仓库():
     """2026-11-01 用户授权：历史只在 git（原 docs/archive 104 篇 + 项目协作制度 已删除）。"""
     assert not (ROOT / "docs" / "archive").exists(), "docs/archive 已删除，历史查 git 历史"
     assert not (ROOT / "docs" / "项目协作制度.md").exists(), "项目协作制度已并入项目外总纲"
-
-
-def test_STATUS含自动数字块():
-    """tools/status.py 依赖这两个标记；缺失或重复都会让数字页失效。"""
-    text = (ROOT / "docs" / "STATUS.md").read_text(encoding="utf-8")
-    assert text.count("<!-- auto:begin -->") == 1
-    assert text.count("<!-- auto:end -->") == 1
 
 
 # ==================== 4. 编辑器反馈结构（E-1，M1.5） ====================

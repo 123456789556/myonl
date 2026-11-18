@@ -741,19 +741,29 @@
     return {ok: true, n: n};
   }
 
+  /* 导出存档。
+     安卓壳里必须走保存桥：WebView 对 createObjectURL + <a download> 什么都不做，
+     不接这条就会「提示已导出、手机上啥也没有」—— 玩家的跨设备保命手段直接失效。
+     返回值：\"bridge\"=系统「保存到」存好了 / \"download\"=走浏览器下载 / false=没成功。 */
   function storeExportFile(code) {
+    const d = new Date();
+    const p2 = (x) => (x < 10 ? "0" : "") + x;
+    const name = "MYONL存档-" + d.getFullYear() + p2(d.getMonth() + 1) + p2(d.getDate())
+               + "-" + p2(d.getHours()) + p2(d.getMinutes()) + ".txt";
+    const br = window.__MYONLSave;
+    if (br && typeof br.save === "function") {
+      try { br.save(name, "text/plain", b64encode(code)); return "bridge"; } catch (e) { /* 桥坏了再往下退 */ }
+    }
     try {
       const blob = new Blob([code], {type: "text/plain;charset=utf-8"});
+      const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
-      const d = new Date();
-      const p2 = (x) => (x < 10 ? "0" : "") + x;
-      a.href = URL.createObjectURL(blob);
-      a.download = "MYONL存档-" + d.getFullYear() + p2(d.getMonth() + 1) + p2(d.getDate())
-                   + "-" + p2(d.getHours()) + p2(d.getMinutes()) + ".txt";
+      a.href = url;
+      a.download = name;
       document.body.appendChild(a);
       a.click();
-      setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
-      return true;
+      setTimeout(() => { URL.revokeObjectURL(url); a.remove(); }, 1000);
+      return "download";
     } catch (e) { return false; }
   }
 
@@ -3278,8 +3288,10 @@
     if (id === "exp") {
       const code = storeExportCode();
       if (!code) { notice("还没有可导出的存档", false); return; }
-      const ok = storeExportFile(code);
-      notice(ok ? "已导出到下载目录" : "导出被拦，换个浏览器试", ok);
+      const how = storeExportFile(code);
+      if (how === "bridge") notice("已导出（在「保存到」选的位置里）", true);
+      else if (how === "download") notice("已导出（在浏览器的下载里）", true);
+      else notice("导出被拦，换个浏览器试", false);
       return;
     }
     if (id === "imp") { storeImportFile(); return; }

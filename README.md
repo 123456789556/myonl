@@ -290,7 +290,7 @@ py -3 -m pytest -q -m slow            # 真实打包 / 全渲染 / 性能用例
 - 开发者指南：[docs/开发者使用指南.md](docs/开发者使用指南.md)
 - 打包指南：[docs/打包使用指南.md](docs/打包使用指南.md)
 - 素材导入指南：[docs/素材导入指南.md](docs/素材导入指南.md)
-- 变更记录：[docs/CHANGELOG.md](docs/CHANGELOG.md) · 当前状态：[docs/STATUS.md](docs/STATUS.md)
+- 变更记录：[docs/CHANGELOG.md](docs/CHANGELOG.md)
 
 ## 常见问题
 
