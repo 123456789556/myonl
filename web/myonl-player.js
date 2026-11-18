@@ -799,8 +799,11 @@
     cam.panX = 0; cam.panY = 0; cam.panDur = 0;
     cam.shakeUntil = 0;
     if (fromSave) {
-      const a = storeAuto();
+      // 自动档没了（比如玩家清空后导入的档里没有 auto）就退到最近一格手动档，
+      // 都没有才重开 —— 否则「继续游戏」看起来按了，实际从第一句重来。
+      const a = storeAuto() || latestSlot();
       if (a) vm.load(a.s);
+      else vm.restart();
     } else {
       vm.restart();
       storeSetAuto(null);        // 新开局清掉自动档，免得"继续游戏"跳回上一局
@@ -821,6 +824,32 @@
     // P62：音乐也要续上（存档只记名字，不记播放进度——重头放，玩家基本感知不到）
     if (fromSave && vm.state.music) playMusic(vm.state.music, 0, 0);
     next();
+    settleAfterLoad();
+  }
+
+  /* 读档/继续之后不能停在 @wait 的静默里 —— 那里没有台词，玩家一进来是一片空画面，
+     会以为档坏了。把剩余等待抹平，继续走到下一句台词 / 选项 / 结局为止。
+     只在"这一帧没有台词"时推进，并用 pc 是否前进来防死循环。 */
+  function settleAfterLoad() {
+    let lastPc = vm.state.pc;
+    for (let k = 0; k < 80 && vm && !state.say && !state.choice && !state.ended; k++) {
+      if (state.waitUntil > performance.now()) state.waitUntil = 0;
+      next();
+      if (!vm || vm.state.pc === lastPc) break;
+      lastPc = vm.state.pc;
+    }
+  }
+
+  /* 最近一格手动档：自动档缺失时拿它顶上「继续游戏」 */
+  function latestSlot() {
+    const d = storeRead();
+    const sl = (d && d.slots) || {};
+    let best = null;
+    for (const k in sl) {
+      const v = sl[k];
+      if (v && v.s && (!best || (Number(v.t) || 0) > (Number(best.t) || 0))) best = v;
+    }
+    return best;
   }
 
   // ---------- 输入 ----------
@@ -863,17 +892,15 @@
     const p = point(e);
 
     if (UI.open) return onMenuTap(p);
-    // 章节卡 / @wait 期间不响应翻页（这是演出节奏，不是玩家该跳过的）
-    if (state.waitUntil > performance.now()) return;
-    // 菜单键在喇叭左边：点它开菜单，不翻页
+    // 菜单键 / 喇叭 / 右侧竖列是「界面入口」，@wait 与章节卡期间也必须能用 ——
+    // 否则玩家在长段落等得不耐烦想存个档，点了没反应，会以为程序卡死。
+    // 拦的是"翻页"，不是"开面板"。
     if (state.scene === "game" && inRect(p, menuRect())) return openMenu();
-
-    // 喇叭优先：点它只静音，不翻页
     if (state.scene === "game" && inRect(p, muteRect())) return toggleMute();
-
-    // 右侧竖列：存档/回顾/设置直接开面板，不必先进菜单
     const oi = orbitHit(p);
     if (oi) return openPanel(oi);
+    // 章节卡 / @wait 期间不响应翻页（这是演出节奏，不是玩家该跳过的）
+    if (state.waitUntil > performance.now()) return;
 
     if (state.scene === "title") {
       tryFullscreen();
@@ -1770,8 +1797,14 @@
       }
     }
 
+    // P85 之后存档搬到了 myonl:v2:save:<作品指纹>（一份记录装 6 格 + 自动档），
+    // 这里却还在看旧版的单键，于是"继续游戏"永远不出现 —— 玩家只能从头开始。
+    // 现在按新结构判断：有自动档或任意一格手动档，标题页就给「继续游戏」。
     let hasSave = false;
-    try { hasSave = !!localStorage.getItem(saveKey()); } catch (e) { hasSave = false; }
+    try {
+      const d = storeRead();
+      hasSave = !!(d && (d.auto || Object.keys(d.slots || {}).length));
+    } catch (e) { hasSave = false; }
 
     // P97：竖屏不要卡片。
     // 一张圆角板贴在底边，无论怎么调圆角和透明度，它都是"网页落地页"的样子 ——
@@ -2051,6 +2084,12 @@
         preventDefault: function () {},
       });
     },
+    // 存档码的纯逻辑入口：验收脚本用它验"导出→清空→导入"的往返，
+    // 不必绕系统文件选择器（那条路要真机手势，浏览器不让脚本点）。
+    exportCode: () => storeExportCode(),
+    importCode: (code) => storeImportCode(code),
+    // 标题页「继续游戏」按钮的位置：验收要能验"重开还能接着上次进度"
+    get continueRect() { return state.continueRect ? Object.assign({}, state.continueRect) : null; },
   };
 
   // P67：作者在编辑器「设置」里选了「竖屏 / 横屏」时，玩家拿反了就提示一句。
@@ -2185,7 +2224,8 @@
     // 没有在跑的进度就明说（storeErr=2），不要静默 return ——
     // 玩家点了格子、什么都没有发生，只会以为"存上了"。
     if (!vm) { UI.storeErr = 2; return; }
-    storeSetSlot(i, {s: vm.save(), t: Date.now(), say: previewLine(), bg: state.bg || ""});
+    storeSetSlot(i, {s: vm.save(), t: Date.now(), say: previewLine(), bg: state.bg || "",
+                     char: (state.say && state.say.char) || ""});
     UI.t0 = performance.now();
   }
 
@@ -2210,6 +2250,15 @@
     if (state.video) { state.video.t0 = performance.now(); warmVideo(); }
     if (vm.state.music) playMusic(vm.state.music, 0, 0);
     next();
+    settleAfterLoad();
+    // 走到脚本末尾也没有台词（作者在结尾只放了 @end）时，存档那句补上，
+    // 别让"读档"变成一个纯黑画面。
+    if (!state.say && !state.choice && !state.ended && d.say) {
+      state.say = {char: d.char || "", text: String(d.say)};
+      state.lines = wrap(String(d.say), L.textW);
+      state.typeStart = performance.now() - 9999;
+      state.typedBefore = 0;
+    }
   }
 
   function openMenu() { UI.open = true; UI.view = "menu"; UI.t0 = performance.now(); }

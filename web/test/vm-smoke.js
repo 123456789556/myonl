@@ -220,4 +220,36 @@ assert.strictEqual(vmG.state.fg.name, "雨");
 assert.strictEqual(vmG.state.anim["甲"].x.to, 120);
 assert.strictEqual(vmG.state.anim["甲"].x.from, 120);   // 读档后起点=终点，直接落到结果画面
 
+// ---- 存读同一句：pc 没跟着存的话，读档会一路退回开头（P105 修的就是这个）----
+{
+  const p2 = {characters: [], ins: [
+    {op: "label", name: "start"},
+    {op: "say", char: null, text: "第一句"},
+    {op: "say", char: null, text: "第二句"},
+    {op: "wait", seconds: 2},
+    {op: "say", char: null, text: "第三句"},
+  ]};
+  const a = createVM(p2);
+  a.restart("start");
+  assert.strictEqual(a.next().text, "第一句");
+  assert.strictEqual(a.next().text, "第二句");
+  const snap2 = a.save();
+  const obj = JSON.parse(snap2);
+  assert.ok(Number.isInteger(obj.pc) && obj.pc > 0,
+            "存档里要带真实的指令位置，不能是 undefined；实得 pc=" + obj.pc);
+  const b2 = createVM(p2);
+  assert.ok(b2.load(snap2));
+  assert.strictEqual(b2.next().text, "第二句", "读档要回到存档当时那一句，不能退回开头");
+  assert.strictEqual(b2.next().type, "wait");
+  assert.strictEqual(b2.next().text, "第三句", "读档后往下走不能乱");
+
+  // 存档点正好落在 @wait 上：核心只负责如实回到那条指令，
+  // "别停在没有台词的静默里"是播放器的事（loadSlot 里抹平等待）。
+  const c3 = createVM(p2);
+  c3.restart("start");
+  c3.next(); c3.next();
+  const atWait = JSON.parse(c3.save()).pc;
+  assert.ok(atWait >= 0 && atWait <= 3, "存档位置不能越界");
+}
+
 console.log("vm-smoke: 全部通过");

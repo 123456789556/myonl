@@ -305,7 +305,11 @@
         const d = finals[c] = {};
         for (const p in state.anim[c]) d[p] = state.anim[c][p].to;
       }
-      return JSON.stringify({pc: state.pc, vars: state.vars, bg: state.bg,
+      // P105：pc 之前写的是 state.pc —— 那个字段从来没更新过，永远是 undefined，
+      // 于是 JSON 里没有 pc，读档一律从第 0 条指令重来，玩家读的是"开头"不是"存档点"。
+      // frame.pc 在取指令时先取后自增，所以它指向**下一条**；这里存 -1 让读档重放
+      // 存档当时显示的那一句，而不是悄悄跳到下一句。
+      return JSON.stringify({pc: Math.max(0, frame.pc - 1), vars: state.vars, bg: state.bg,
                              cg: state.cg, music: state.music,
                              cameraZoom: state.cameraZoom, fg: state.fg,
                              video: state.video ? {name: state.video.name,
