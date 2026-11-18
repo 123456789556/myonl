@@ -3,7 +3,7 @@
 **简体中文** | [English](README.en.md)
 
 [![tests](https://github.com/123456789556/myonl/actions/workflows/tests.yml/badge.svg?branch=main)](https://github.com/123456789556/myonl/actions/workflows/tests.yml)
-![Release](https://img.shields.io/badge/release-apk--6%20%2B%20v1.0.0--rc19-blue)
+![Release](https://img.shields.io/badge/release-apk--9%20%2B%20v1.0.0--rc20-blue)
 ![Android](https://img.shields.io/badge/Android-7.0%2B%20phone%20%26%20tablet-3DDC84)
 ![Windows](https://img.shields.io/badge/Windows-editor%20%2B%20packager-0078D4)
 ![Python](https://img.shields.io/badge/Python-3.9%2B-3776AB)
@@ -19,7 +19,7 @@
 
 | 你要什么 | 拿哪个 | 多大 |
 | :--- | :--- | :--- |
-| 安卓手机 / 安卓平板直接装 | [**MYONL-apk-6.apk**](https://github.com/123456789556/myonl/releases/download/apk-6/MYONL-apk-6.apk) | 3.6 MB |
+| 安卓手机 / 安卓平板直接装 | [**MYONL-apk-9.apk**](https://github.com/123456789556/myonl/releases/download/apk-9/MYONL-apk-9.apk) | 3.6 MB |
 | 任何浏览器打开，不装东西 | 自己导出的单文件 HTML（`dist/web/研修日志.html`） | 约 3.0 MB |
 | Windows 双击即玩（编辑器 + 打包器） | Release 页里的 Windows 免安装包 | 66.5 MB |
 
