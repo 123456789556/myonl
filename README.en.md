@@ -3,7 +3,7 @@
 [简体中文](README.md) | **English**
 
 ![tests](https://github.com/123456789556/myonl/actions/workflows/tests.yml/badge.svg?branch=main)
-![Release](https://img.shields.io/badge/release-apk--9%20%2B%20v1.0.0--rc20-blue)
+![Release](https://img.shields.io/badge/release-apk--10%20%2B%20v1.0.0--rc21-blue)
 ![Android](https://img.shields.io/badge/Android-7.0%2B%20phone%20%26%20tablet-3DDC84)
 ![Windows](https://img.shields.io/badge/Windows-editor%20%2B%20packager-0078D4)
 ![Python](https://img.shields.io/badge/Python-3.9%2B-3776AB)
@@ -23,9 +23,9 @@ double-clicks — no Python on their machine, no installer, no network.
 
 | You want | Take | Size |
 | :--- | :--- | :--- |
-| Android phone or tablet, installed | [**MYONL-apk-9.apk**](https://github.com/123456789556/myonl/releases/download/apk-9/MYONL-apk-9.apk) | 3.6 MB |
+| Android phone or tablet, installed | [**MYONL-apk-10.apk**](https://github.com/123456789556/myonl/releases/download/apk-10/MYONL-apk-10.apk) | 3.6 MB |
 | Any browser, nothing installed | a single-file HTML you exported | ~3.0 MB |
-| Windows, double-click (editor + packager) | build it in-repo: `py -3 tools\build_release_zip.py --version v1.0.0-rc20` (too big to host on Releases) | 66.5 MB |
+| Windows, double-click (editor + packager) | build it in-repo: `py -3 tools\build_release_zip.py --version v1.0.0-rc21` (too big to host on Releases) | 66.5 MB |
 
 The APK targets `minSdk` 24 (Android 7.0); one package serves phones and Android tablets and reflows
 in both orientations. Saves live in the app's own storage, and the APK is signed with a fixed key —
@@ -141,7 +141,7 @@ right-hand preview, and the web bundle: the preview is real engine rendering, no
 
 ## Quick start (release build, recommended)
 
-1. Unzip `MYONL引擎-v1.0.0-rc20.zip` anywhere **outside** `Program Files` (no admin rights needed)
+1. Unzip `MYONL引擎-v1.0.0-rc21.zip` anywhere **outside** `Program Files` (no admin rights needed)
 2. Double-click `editor/editor.exe`
 3. The editor opens the bundled `games/教程示例` project; live preview is on the right
 
