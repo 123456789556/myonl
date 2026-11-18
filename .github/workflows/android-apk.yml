@@ -81,8 +81,24 @@ jobs:
             echo "tag 不是 vX.Y.Z，跳过版本注入"
           fi
 
+      - name: 还原签名私钥（从 repository secret）
+        env:
+          MYONL_KEYSTORE_B64: ${{ secrets.MYONL_KEYSTORE_B64 }}
+        run: |
+          mkdir -p android/keystore
+          if [ -n "${MYONL_KEYSTORE_B64}" ]; then
+            printf '%s' "$MYONL_KEYSTORE_B64" | base64 -d > android/keystore/myonl-test.p12
+            echo "私钥已还原（$(stat -c%s android/keystore/myonl-test.p12) 字节）"
+          else
+            echo "::warning::没有 MYONL_KEYSTORE_B64，这次签不了名。"
+            echo "::warning::Settings → Secrets and variables → Actions 加这个 secret，值是 p12 的 base64。"
+          fi
+
       - name: 打 release APK
         working-directory: android
+        env:
+          MYONL_STORE_PASS: ${{ secrets.MYONL_STORE_PASS }}
+          MYONL_KEY_PASS: ${{ secrets.MYONL_KEY_PASS }}
         run: gradle assembleRelease --no-daemon --stacktrace
 
       - name: 收产物
@@ -90,6 +106,24 @@ jobs:
           mkdir -p out
           cp android/app/build/outputs/apk/release/app-release.apk "out/MYONL-${GITHUB_REF_NAME:-manual}.apk"
           ls -lh out
+
+      # 没签名的包装不上。与其让人下载一个点不开的文件，不如这里就红。
+      # 以前这一步不存在，签名的兜底密码就写在 build.gradle 里 —— 出包永远成功，
+      # 代价是私钥公开。现在兜底没了，缺 secret 就会走到这条上。
+      - name: 确认包签过名
+        run: |
+          APK="out/MYONL-${GITHUB_REF_NAME:-manual}.apk"
+          SIGNER="$(ls "$ANDROID_HOME"/build-tools/*/apksigner 2>/dev/null | head -1)"
+          if [ -z "$SIGNER" ]; then
+            echo "::error::找不到 apksigner，没法校验签名"
+            exit 1
+          fi
+          if "$SIGNER" verify --print-certs "$APK"; then
+            echo "签名正常"
+          else
+            echo "::error::这个包没有有效签名，装不上，不能发出去"
+            exit 1
+          fi
 
       - uses: actions/upload-artifact@v4
         with:

@@ -20,8 +20,23 @@ from engine.pwa import _icon_png  # noqa: E402  同一套图标，手机桌面�
 ANDROID = ROOT / "android" / "app" / "src" / "main" / "res"
 DENSITIES = (("mdpi", 48), ("hdpi", 72), ("xhdpi", 96), ("xxhdpi", 144), ("xxxhdpi", 192))
 KEYSTORE = ROOT / "android" / "keystore" / "myonl-test.p12"
-PASSWORD = "[REDACTED-BY-P104]"
 ALIAS = "myonl"
+
+
+def _password() -> str:
+    """签名密码从环境变量读，别写在代码里。
+
+    这个脚本能生成一份新的 p12 —— 生成的是**别的签名**，冒充不了已在用的那份，
+    所以风险不大。但把密码明文摆在公开仓库里，等于告诉所有人「这个项目的私钥
+    密码长这样」，顺手就给撞库的人省了事。规矩就一条：要密码就从外面给。
+    """
+    pw = os.environ.get("MYONL_STORE_PASS", "").strip()
+    if not pw:
+        raise SystemExit(
+            "缺 MYONL_STORE_PASS。生成签名需要密码，从环境变量给，不要写进代码。\n"
+            "  例：$env:MYONL_STORE_PASS=\"...\"  然后重跑本脚本"
+        )
+    return pw
 
 
 def write_icons() -> None:
@@ -62,7 +77,7 @@ def write_keystore() -> None:
     )
     blob = pkcs12.serialize_key_and_certificates(
         ALIAS.encode("utf-8"), key, cert, None,
-        serialization.BestAvailableEncryption(PASSWORD.encode("utf-8"))
+        serialization.BestAvailableEncryption(_password().encode("utf-8"))
     )
     KEYSTORE.parent.mkdir(parents=True, exist_ok=True)
     KEYSTORE.write_bytes(blob)

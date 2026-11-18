@@ -118,6 +118,9 @@ _PUBLIC_DOCS = (
     "贡献指南.md",           # 想搭把手的人从哪进
     "插件开发指南.md",       # 想扩展引擎的人
     "架构说明.md",           # 代码怎么组织的
+    "产品说明书.md",         # 这东西到底是什么：README 在链它
+    "开发者使用指南.md",     # 上手做游戏：被 快速上手 / 架构说明 / 贡献指南 交叉引用
+    "en/quick-start.md",     # 英文入口
 )
 
 # 内部自己看的（必须不在仓库里）
@@ -138,6 +141,20 @@ _INTERNAL_DOCS = (
 def test_对外文档齐全():
     for name in _PUBLIC_DOCS:
         assert (ROOT / "docs" / name).is_file(), f"缺少 docs/{name}"
+
+
+def test_公开文档没有漏登记的():
+    """上面那条只查「清单里的在不在」，查不出「磁盘上多出来的没登记」。
+
+    两份文档就这样在仓库里躺了很久 —— README 链着它们、别的文档互相引用它们，
+    但 _PUBLIC_DOCS 里没有。清单和磁盘各说各话，谁也没红。
+    这里反着查一遍：顶层 docs/*.md 要么登记成公开，要么明确在内部清单里。
+    """
+    known = set(_PUBLIC_DOCS) | set(_INTERNAL_DOCS)
+    on_disk = {p.name for p in (ROOT / "docs").glob("*.md")}
+    unknown = sorted(on_disk - known)
+    assert not unknown, (
+        f"这些文档既不在公开清单、也不在内部清单里 —— 是哪一类得明说：{unknown}")
 
 
 def test_内部文档不许进公开仓库():

@@ -65,3 +65,12 @@ android/.gradle/
 android/build/
 android/app/build/
 android/local.properties
+
+# 签名私钥：绝不入库。
+# 公开仓库里放 p12 + 明文密码 = 任何人能签一个包名和签名都相同的 APK，
+# 覆盖装在已装正版的手机上，把你的作品全带走。
+# CI 需要它就从 repository secret 还原（见 .github/workflows/android-apk.yml）。
+android/keystore/
+*.p12
+*.jks
+*.keystore
