@@ -39,7 +39,7 @@ def _main_new(argv) -> int:
         "--template",
         default="default",
         choices=TEMPLATES,
-        help="项目模板：default=教学骨架，moonlight=复刻《月光漫步》全量资源",
+        help="项目模板：default=教学骨架，standard=标准成品模板，hello=极简空包",
     )
     # P46：UI 主题与正文对齐（写入 config.json，建后也可手改）
     ap.add_argument("--theme", default="black", choices=THEMES,

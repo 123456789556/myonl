@@ -327,6 +327,29 @@
         });
       }, Promise.resolve()).then(function () { return out; });
     },
+    // 恢复备份用：**按原名写回，不再压缩、不改名**。
+    // 名字就是剧本里 @bg / @音乐 后面那个词，改名等于把整部作品的图全变成缺图——
+    // 所以这里绝不能走 add()（它会 uniqueName + 重新压一遍）。
+    restore: function (map, kinds) {
+      var names = idxRead();
+      var kd = kindRead();
+      var list = Object.keys(map || {});
+      var changed = false;
+      return list.reduce(function (chain, n) {
+        return chain.then(function () {
+          var k = (kinds && kinds[n]) || "image";
+          if (names.indexOf(n) < 0) { names.push(n); changed = true; }
+          kd[n] = k;
+          return dbRun("readwrite", function (st) {
+            return st.put({ dataUrl: map[n], kind: k }, n);
+          });
+        });
+      }, Promise.resolve()).then(function () {
+        if (changed) idxWrite(names);
+        kindWrite(kd);
+        return list.length;
+      });
+    },
     totalBytes: function () {
       return this.all().then(function (map) {
         var n = 0;
@@ -647,8 +670,29 @@
     var p = curProject();
     download(p.text, p.name + ".gal");
   };
+  // 备份要连素材一起走：只带剧本的备份是假备份 —— 换台手机恢复出来是一堆找不着图的作品，
+  // 比没备份更让人上火。素材在 IndexedDB，所以这一步是异步的。
   window.__myonlExportLib = function () {
-    download(JSON.stringify(readLib(), null, 1), "myonl-作品库.json");
+    var bag = readLib();
+    var sp = window.MYONLAssets ? window.MYONLAssets.allSplit()
+      : Promise.resolve({ assets: {}, audio: {} });
+    toast("正在打包作品和素材…");
+    return sp.then(function (s) {
+      var n = Object.keys((s && s.assets) || {}).length;
+      var m = Object.keys((s && s.audio) || {}).length;
+      var out = {
+        myonl: "lib", v: 2,
+        projects: bag.projects || [], current: bag.current || "",
+        assets: (s && s.assets) || {}, audio: (s && s.audio) || {}
+      };
+      download(JSON.stringify(out, null, 1), "myonl-作品库.json");
+      toast("已导出 " + (out.projects.length) + " 个作品、" + n + " 张图、" + m + " 段音频");
+    }).catch(function () {
+      // 素材读不出来也至少把剧本带走，别让整件事白跑
+      download(JSON.stringify({ myonl: "lib", v: 1, projects: bag.projects || [], current: bag.current || "" }, null, 1),
+        "myonl-作品库.json");
+      toast("素材没读到，只导出了剧本", true);
+    });
   };
 
   // 成品导出：手机上**自己**把剧本编成能双击就玩的单文件 HTML。
@@ -695,14 +739,41 @@
       toast("这台设备取不到播放器内核，成品导出请在装好的 APK 里用", true);
     });
   };
+  // 导入：剧本先落地，素材再按原名铺回去。返回 Promise<boolean>，
+  // 调用方必须等它 —— 素材没铺完就 reload，等于恢复了一半。
   window.__myonlImportLib = function (json) {
+    var lib;
     try {
-      var lib = typeof json === "string" ? JSON.parse(json) : json;
-      if (!lib || !lib.projects || !lib.projects.length) throw new Error("格式不对");
-      writeLib(lib);
-      toast("已导入 " + lib.projects.length + " 个作品");
+      lib = typeof json === "string" ? JSON.parse(json) : json;
+      if (!lib || !lib.projects || !lib.projects.length) throw new Error("这份文件里没有作品");
+      writeLib({ projects: lib.projects, current: lib.current || "" });
+    } catch (e) {
+      toast("导入失败：" + (e.message || e), true);
+      return Promise.resolve(false);
+    }
+    var n = lib.projects.length;
+    var assets = (lib.assets && typeof lib.assets === "object") ? lib.assets : {};
+    var audio = (lib.audio && typeof lib.audio === "object") ? lib.audio : {};
+    var na = Object.keys(assets).length, nu = Object.keys(audio).length;
+    if (!na && !nu) {
+      toast("已导入 " + n + " 个作品（这份备份里没有素材）");
+      return Promise.resolve(true);
+    }
+    if (!window.MYONLAssets || !window.MYONLAssets.restore) {
+      toast("已导入 " + n + " 个作品；素材这条链路没加载，图和声音要重新放", true);
+      return Promise.resolve(true);
+    }
+    var all = {};
+    var kinds = {};
+    Object.keys(assets).forEach(function (k) { all[k] = assets[k]; kinds[k] = "image"; });
+    Object.keys(audio).forEach(function (k) { all[k] = audio[k]; kinds[k] = "audio"; });
+    return window.MYONLAssets.restore(all, kinds).then(function (cnt) {
+      toast("已导入 " + n + " 个作品、" + cnt + " 个素材（原名放回）");
       return true;
-    } catch (e) { toast("导入失败：" + e, true); return false; }
+    }).catch(function (e) {
+      toast("作品导入了，素材没铺完：" + (e.message || e), true);
+      return true;
+    });
   };
 
   // 导出条：手机上原来的「导出」分组点开是皮肤参数 + 三个打后端的按钮，

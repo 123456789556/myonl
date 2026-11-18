@@ -3,7 +3,7 @@
 **简体中文** | [English](README.en.md)
 
 [![tests](https://github.com/123456789556/myonl/actions/workflows/tests.yml/badge.svg?branch=main)](https://github.com/123456789556/myonl/actions/workflows/tests.yml)
-![Release](https://img.shields.io/badge/release-v1.0.1-blue)
+![Release](https://img.shields.io/badge/release-v1.1.0-blue)
 ![License](https://img.shields.io/badge/License-MIT-green)
 
 **装在安卓手机上，就能自己做视觉小说。** 写台词、放图、放音乐，点一下导出，
@@ -11,7 +11,7 @@
 
 ## 装它
 
-**[⬇ 下载 MYONL-v1.0.1.apk](https://github.com/123456789556/myonl/releases/download/v1.0.1/MYONL-v1.0.1.apk)** · 4.3 MB · 安卓 7.0 以上 · 手机平板同一个包
+**[⬇ 下载 MYONL-v1.1.0.apk](https://github.com/123456789556/myonl/releases/download/v1.1.0/MYONL-v1.1.0.apk)** · 4.3 MB · 安卓 7.0 以上 · 手机平板同一个包
 
 装好打开就是书架，点「新建作品」开始。
 
@@ -66,23 +66,26 @@ APK 的 `minSdk` 是 24（安卓 7.0），一个包同时装手机和安卓平�
 
 | 你要什么 | 拿哪个 | 多大 |
 | :--- | :--- | :--- |
-| 任何浏览器打开，不装东西 | 自己导出的单文件 HTML（`dist/web/研修日志.html`） | 约 3.0 MB |
+| 任何浏览器打开，不装东西 | 自己导出的单文件 HTML（编辑器底部「导出」一点就有） | 看你的素材量 |
 | 编辑器单文件（`file://` 双击就能编，带离线内核） | `py -3 tools\build_editor_single.py` → `dist/web/editor-single.html` | 0.72 MB |
-| Windows 双击即玩（编辑器 + 打包器） | 仓库内 `py -3 tools\build_release_zip.py --version v1.0.1` 自建（体积大，没挂 Release） | 67.9 MB |
+| Windows 双击即玩（编辑器 + 打包器） | 仓库内 `py -3 tools\build_release_zip.py --version v1.1.0` 自建（体积大，没挂 Release） | 67.9 MB |
 
 要手动清旧包：`py -3 tools\gh_release_clean.py --list`（只读，不要 token）或 `--prune --yes`（真删，读 `GITHUB_TOKEN`），
 `--keep-rc 0` 表示 Windows 这一类全清。
 
-## 一部真的作品：《研修日志》
+## 示例工程（都是自己造的，不是别人的作品）
 
-引擎能不能做出东西，看这个而不是看说明：`games/研修日志/` 是一部 **12~15 分钟**的短篇 ——
-5 章、281 句台词、一个分支、两个结局（要不要把十七张照片贴到那条快拆的街的卷帘门上）。
-7 张真背景、5 张立绘、6 段音频全部随工程带，`missing []`。
+`games/` 里三个，打开就能改：
 
-- **手机上直接玩**：导出的单文件 HTML 传进手机，任何浏览器打开，竖屏横屏都满屏
-- **改它**：编辑器打开 `games/研修日志/`，左栏点 `script.gal`，改一句就 `Ctrl+S`
-- **它同时是回归样本**：`tests/test_p89_mobile_branch_and_game.py` 盯着「脚本能解析 / 两个结局 label 都在 /
-  剧本引用的图一张不缺」—— 这个作品坏掉，测试先红
+- **教程示例**（14 个文件）—— 指令怎么用，一句一句都标好了
+- **标准示例**（24 个文件）—— 一个完整工程长什么样：剧本、素材、配置齐全
+- **新游戏模板**（21 个文件）—— 从空的开始，删干净只剩骨架
+
+素材全是自己造的占位图，随便改、随便删，不用惦记版权。
+
+> **这里不放别人的作品。** 拿别人的游戏当「引擎能做到什么」的样板，最省事，
+> 也最容易吃官司——推上去就是再分发。要参考、要复刻，放在本地的 `myonl-publish`，
+> 不进这个仓库。规矩写在 [docs/发布纪律.md](docs/发布纪律.md)。
 
 ## 手机 / 平板优先
 
@@ -272,7 +275,7 @@ py -3 -m pytest -q -m slow            # 真实打包 / 全渲染 / 性能用例
 | `web/` | 手机 / 平板播放器（`myonl-player.js`、`myonl-layout.js`）与布局契约测试 |
 | `android/` | APK 工程（WebView 壳 + 固定签名 + Gradle 配置） |
 | `editor/` | Web 编辑器前端（HTML/CSS/JS，无构建） |
-| `games/` | 示例工程（研修日志 / 标准示例 / 教程示例 / 新游戏模板） |
+| `games/` | 示例工程（标准示例 / 教程示例 / 新游戏模板，全是自造素材） |
 | `tests/` | pytest 无头测试套件（unit / ui / integration / slow） |
 | `tools/` | 门禁与工具脚本（coverage / pyright / 打包验证 / 素材导入等） |
 | `docs/` | 上手 / 产品说明 / 引擎规格 / 存档与升级 / 开发者与打包指南 |

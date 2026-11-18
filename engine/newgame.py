@@ -25,9 +25,12 @@ from .sdl_env import dummy_video
 _NAME = re.compile(r"^[0-9A-Za-z_一-鿿]+$")
 _MAX_LEN = 20
 
-# 可用模板：hello = 极简空包（一行旁白）；default = 教学骨架；
-# moonlight = 复刻《月光漫步》全量资源；standard = 内置素材成品模板
-TEMPLATES = ("hello", "default", "moonlight", "standard")
+# 可用模板：hello = 极简空包（一行旁白）；default = 教学骨架；standard = 内置素材成品模板
+# 原来的 moonlight 模板已移除：它的源是别人的示例游戏（版权归原作者），拿它当"新建游戏"的
+# 底子等于替别人分发素材。真要用就在本地 myonl-publish 里放，不进这个仓库。
+TEMPLATES = ("hello", "default", "standard")
+REMOVED_TEMPLATES = {"moonlight": "这个模板已移除：它的素材是别人的作品，版权归原作者。"
+                                "仓库里不再带，改用 default 或 standard 起步。"}
 
 # P46 UI 主题模板：新建游戏时三选一，也可建后改 config.json 的 theme/colors 换肤
 THEMES = ("black",)  # 标准版唯一：不再提供 purple/white 风格
@@ -35,10 +38,6 @@ THEME_LABELS = {"black": "标准版（近黑面板 + 白字 + 暖金强调）"}
 # P46 正文对齐：left（左对齐顶格，默认）/ center / right
 ALIGNS = ("left", "center", "right")
 ALIGN_LABELS = {"left": "左对齐·顶格（默认）", "center": "居中", "right": "右对齐·顶格"}
-
-# 月光漫步模板源目录（相对引擎仓库根）；moonlight 模板从这里复制，排除 saves/ 和 src/（Ren'Py 源码参考）
-_MOONLIGHT_SRC_DIR_NAME = "月光漫步"
-_MOONLIGHT_EXCLUDE_DIRS = {"saves", "src"}
 
 # default 模板的配置文件：默认值即一套现代 UI（开发者不改也能打包出"像成品"的游戏）
 # P44：title_text_visible=true —— 背景图（images/title_bg.png）上也叠作品名，避免"图是图、字没有"
@@ -223,13 +222,14 @@ def create_game(name, base_dir="games", template="default",
     template:
       - "hello"：极简空包——只有一行可改可删的旁白，不带素材（编辑器新建游戏默认用这个）
       - "default"：教学骨架（script.gal + 占位素材 + config/settings/gallery_config）
-      - "moonlight"：复刻《月光漫步》全量资源（剧本 + 章节 + 图片 + 音频 + 配置）
       - "standard"：标准成品模板（P44-B1：自绘素材 + 示例小故事 + 现代 UI 配置）
-    theme: 仅 black（标准版；保留参数兼容旧调用，moonlight 模板忽略）
-    align: P46 正文对齐 left/center/right（moonlight 模板忽略）
+    theme: 仅 black（标准版；保留参数兼容旧调用）
+    align: P46 正文对齐 left/center/right
     """
     name = validate_name(name)
     template = (template or "default").lower()
+    if template in REMOVED_TEMPLATES:
+        raise ValueError(REMOVED_TEMPLATES[template])
     if template not in TEMPLATES:
         raise ValueError(f'未知模板 "{template}"，可选：{", ".join(TEMPLATES)}')
     theme = (theme or "black").lower()
@@ -242,9 +242,7 @@ def create_game(name, base_dir="games", template="default",
     if root.exists():
         raise ValueError(f"游戏「{name}」已存在，换个名字吧（不会覆盖已有目录）")
     try:
-        if template == "moonlight":
-            _copy_moonlight_template(root)
-        elif template == "standard":
+        if template == "standard":
             _create_standard_skeleton(root, theme=theme, align=align)
         elif template == "hello":
             _create_hello_skeleton(root, theme=theme, align=align)
@@ -300,36 +298,6 @@ def _create_hello_skeleton(root: Path, theme: str = "black", align: str = "left"
     (root / "fonts").mkdir()
     (root / "script.gal").write_text(HELLO_TEMPLATE, encoding="utf-8")
     _write_project_meta(root, theme, align)
-
-
-def _copy_moonlight_template(root: Path) -> None:
-    """moonlight 模板：从 作品/副产物/月光漫步/ 复制全部游戏资源（排除 saves/、src/ Ren'Py 源码）。
-    源目录定位：P44 起月光漫步位于 作品/副产物/（旧 games/ 位置兼容兜底）。
-    """
-    import shutil
-
-    src = _resolve_moonlight_src()
-    if src is None:
-        raise ValueError("moonlight 模板源目录 作品/副产物/月光漫步/ 不存在，无法生成")
-    root.mkdir(parents=True)
-    for entry in src.iterdir():
-        if entry.is_dir() and entry.name in _MOONLIGHT_EXCLUDE_DIRS:
-            continue
-        dest = root / entry.name
-        if entry.is_dir():
-            shutil.copytree(entry, dest)
-        else:
-            shutil.copy2(entry, dest)
-
-
-def _resolve_moonlight_src() -> Path | None:
-    """定位月光漫步模板源目录：P44 起月光漫步移出主线，位于 作品/副产物/月光漫步/（旧位置 games/ 兼容兜底）。"""
-    repo_root = Path(__file__).resolve().parent.parent
-    for rel in ("作品/副产物/月光漫步", "games/月光漫步"):
-        candidate = repo_root / rel
-        if candidate.is_dir():
-            return candidate
-    return None
 
 
 def _standard_template_dir() -> Path | None:

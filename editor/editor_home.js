@@ -168,13 +168,16 @@
       if (!f) { inp.remove(); return; }
       var rd = new FileReader();
       rd.onload = function () {
-        var ok = false;
-        try {
-          if (window.__myonlImportLib) ok = window.__myonlImportLib(String(rd.result || ""));
-        } catch (e) { ok = false; }
-        if (ok) setTimeout(function () { location.reload(); }, 400);
-        else toast("这份文件读不出来——只认「导出」里导出的作品库 JSON。");
-        inp.remove();
+        var txt = String(rd.result || "");
+        if (!window.__myonlImportLib) { toast("这台设备没有离线内核，导入不了"); inp.remove(); return; }
+        // 必须等它：素材是按 IndexedDB 一个个铺回去的，铺到一半就 reload 等于恢复了一半
+        Promise.resolve(window.__myonlImportLib(txt)).then(function (ok) {
+          inp.remove();
+          if (ok) setTimeout(function () { location.reload(); }, 600);
+        }).catch(function (e) {
+          inp.remove();
+          toast("导入失败：" + (e.message || e));
+        });
       };
       rd.onerror = function () { toast("文件读不出来"); inp.remove(); };
       rd.readAsText(f);

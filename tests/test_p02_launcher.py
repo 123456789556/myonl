@@ -47,47 +47,27 @@ def test_default模板生成配置文件(tmp_path):
     assert images == {"bg_教室.png", "bg_天台.png", "林晚_微笑.png", "林晚_生气.png"}
 
 
-# ---------- 2. moonlight 模板：全量资源复刻 ----------
+# ---------- 2. moonlight 模板已移除（版权原因）----------
 
-def test_moonlight模板复刻全量资源(tmp_path):
-    root = create_game("月光复刻", str(tmp_path), template="moonlight")
-    # 根目录关键文件
-    for fn in ("script.gal", "开场.gal", "config.json", "settings.json", "gallery_config.json"):
-        assert (root / fn).is_file(), f"缺少 {fn}"
-    # 章节目录存在且非空
-    chapter_dir = root / "章节"
-    assert chapter_dir.is_dir()
-    gal_files = list(chapter_dir.glob("*.gal"))
-    assert len(gal_files) >= 10, f"章节 .gal 数量不足：{len(gal_files)}"
-    # images 和 audio 非空
-    assert any((root / "images").iterdir())
-    assert any((root / "audio").iterdir())
-    # gallery_config 是合法 JSON 且非空（月光漫步有 8 个 CG）
-    gallery = json.loads((root / "gallery_config.json").read_text(encoding="utf-8"))
-    assert len(gallery) >= 6
-    # config.window_title 是月光漫步
-    config = json.loads((root / "config.json").read_text(encoding="utf-8"))
-    assert config.get("window_title") == "月光漫步"
+def test_moonlight模板已移除_并说明理由(tmp_path):
+    # 原来这个模板是把别人的示例游戏整套复制过来。版权归原作者，仓库不再带，
+    # 现在必须明确拒绝并说清原因 —— 不能静默退化成一个空骨架让人以为"就是空的"。
+    with pytest.raises(ValueError, match="已移除"):
+        create_game("月光复刻", str(tmp_path), template="moonlight")
 
 
-# ---------- 3. moonlight 排除 saves/ 和 src/ ----------
-
-def test_moonlight排除存档和源码(tmp_path):
-    root = create_game("月光干净", str(tmp_path), template="moonlight")
-    assert not (root / "saves").exists(), "不应复制 saves/ 存档目录"
-    assert not (root / "src").exists(), "不应复制 src/ Ren'Py 源码参考目录"
-
-
-# ---------- 4. 未知模板拒绝 ----------
+# ---------- 3. 未知模板拒绝 ----------
 
 def test_未知模板拒绝(tmp_path):
     with pytest.raises(ValueError, match="未知模板"):
         create_game("坏模板", str(tmp_path), template="不存在的模板")
 
 
-def test_TEMPLATES常量包含两种模板():
+def test_TEMPLATES里不再有moonlight():
     assert "default" in TEMPLATES
-    assert "moonlight" in TEMPLATES
+    assert "hello" in TEMPLATES
+    assert "standard" in TEMPLATES
+    assert "moonlight" not in TEMPLATES
 
 
 # ---------- 5. engine.new.main 入口 ----------
@@ -103,15 +83,12 @@ def test_new模块入口_default(tmp_path, capsys):
     assert "模板：default" in out
 
 
-def test_new模块入口_moonlight(tmp_path, capsys):
-    rc = new.main(["月光新", "--dir", str(tmp_path), "--template", "moonlight"])
-    assert rc == 0
-    root = tmp_path / "月光新"
-    assert (root / "script.gal").is_file()
-    assert (root / "开场.gal").is_file()
-    assert (root / "章节").is_dir()
-    out = capsys.readouterr().out
-    assert "模板：moonlight" in out
+def test_new命令行拒绝已移除的模板(tmp_path, capsys):
+    # --template 的 choices 已经不收 moonlight；传进去 argparse 直接退出码 2
+    with pytest.raises(SystemExit) as excinfo:
+        new.main(["月光新", "--dir", str(tmp_path), "--template", "moonlight"])
+    assert excinfo.value.code == 2
+    assert not (tmp_path / "月光新").exists(), "被拒的模板不该留下半个目录"
 
 
 def test_new模块入口_未知模板退出码1(tmp_path, capsys):
@@ -122,35 +99,23 @@ def test_new模块入口_未知模板退出码1(tmp_path, capsys):
     assert "已创建游戏" not in capsys.readouterr().out
 
 
-# ---------- 6. engine.cli new --template moonlight ----------
+# ---------- 6. engine.cli new 也拒绝已移除的模板 ----------
 
-def test_cli_new_moonlight模板(tmp_path):
-    rc = cli.main(["new", "cli月光", "--dir", str(tmp_path), "--template", "moonlight"])
-    assert rc == 0
-    root = tmp_path / "cli月光"
-    assert (root / "script.gal").is_file()
-    assert (root / "章节").is_dir()
-    assert (root / "gallery_config.json").is_file()
-
-
-# ---------- 7. moonlight 剧本可解析（@include 全展开） ----------
-
-def test_moonlight剧本可解析(tmp_path):
-    root = create_game("月光解析", str(tmp_path), template="moonlight")
-    instrs = parse_file(root / "script.gal")
-    assert len(instrs) > 0
-    # @include 展开后应该包含角色定义
-    ops = {i["op"] for i in instrs}
-    assert "character" in ops
-    assert "say" in ops
+def test_cli_new拒绝已移除的模板(tmp_path):
+    try:
+        cli.main(["new", "cli月光", "--dir", str(tmp_path), "--template", "moonlight"])
+    except SystemExit as e:
+        assert e.code == 2
+    # 本质断言：不管退出码怎么报，都不能真生出一个游戏目录
+    assert not (tmp_path / "cli月光").exists()
 
 
-# ---------- 8. 重名不覆盖（moonlight 模板） ----------
+# ---------- 7. 重名不覆盖 ----------
 
-def test_moonlight重名不覆盖(tmp_path):
-    root = create_game("月光重名", str(tmp_path), template="moonlight")
+def test_重名不覆盖(tmp_path):
+    root = create_game("重名测试", str(tmp_path), template="default")
     marker = root / "script.gal"
     marker.write_text("# 用户已修改\n", encoding="utf-8")
     with pytest.raises(ValueError, match="已存在"):
-        create_game("月光重名", str(tmp_path), template="moonlight")
+        create_game("重名测试", str(tmp_path), template="default")
     assert marker.read_text(encoding="utf-8") == "# 用户已修改\n"

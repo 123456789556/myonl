@@ -127,9 +127,9 @@ def build(version: str, out: Path) -> Path:
             zf.write(ROOT / "docs" / doc, f"{prefix}/文档/{doc}")
             entries += 1
         entries += _add_tree(zf, ROOT / "dist" / "editor", f"{prefix}/editor")
-        # 两个示例工程都进包：教程示例（改这个）、《研修日志》（引擎能做出什么）。清了三处废料之后
-        # 剩下的就只有这两个，别再手写名单（手写过一次，漏了什么都不报错）。
-        for proj in ("教程示例", "研修日志"):
+        # 示例工程进包：教程示例（改这个）、标准示例（看结构）。
+        # 原来还带过一部完整短篇，那部作品版权归原作者、不进公开仓库，已移到 myonl-publish。
+        for proj in ("教程示例", "标准示例"):
             src = ROOT / "games" / proj
             if src.is_dir():
                 entries += _add_tree(zf, src, f"{prefix}/games/{proj}")

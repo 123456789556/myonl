@@ -2,7 +2,7 @@
 
 用法：
     python -m engine.new 游戏名                  # default 教学骨架
-    python -m engine.new 游戏名 --template moonlight  # 复刻《月光漫步》全量资源
+    python -m engine.new 游戏名 --template standard  # 标准成品模板
     python -m engine.new 游戏名 --dir projects   # 指定生成位置（默认 games/）
 
 与 engine.cli new 子命令共用 newgame.create_game；本模块是独立入口，
@@ -28,7 +28,7 @@ def main(argv=None) -> int:
         "--template",
         default="default",
         choices=TEMPLATES,
-        help="项目模板：default=教学骨架，moonlight=复刻《月光漫步》全量资源",
+        help="项目模板：default=教学骨架，standard=标准成品模板，hello=极简空包",
     )
     # P46：UI 主题与正文对齐（写入 config.json，建后也可手改）
     ap.add_argument("--theme", default="black", choices=THEMES,

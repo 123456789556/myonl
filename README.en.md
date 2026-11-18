@@ -3,7 +3,7 @@
 [简体中文](README.md) | **English**
 
 ![tests](https://github.com/123456789556/myonl/actions/workflows/tests.yml/badge.svg?branch=main)
-![Release](https://img.shields.io/badge/release-v1.0.1-blue)
+![Release](https://img.shields.io/badge/release-v1.1.0-blue)
 ![Android](https://img.shields.io/badge/Android-7.0%2B%20phone%20%26%20tablet-3DDC84)
 ![Windows](https://img.shields.io/badge/Windows-辅助%20packager-0078D4)
 ![Python](https://img.shields.io/badge/Python-3.9%2B-3776AB)
@@ -23,7 +23,7 @@ scenes, keep everything on the device, and export it — no network, no account,
 
 | You want | Take | Size |
 | :--- | :--- | :--- |
-| Android phone or tablet, installed | [**MYONL-v1.0.1.apk**](https://github.com/123456789556/myonl/releases/download/v1.0.1/MYONL-v1.0.1.apk) | 4.3 MB |
+| Android phone or tablet, installed | [**MYONL-v1.1.0.apk**](https://github.com/123456789556/myonl/releases/download/v1.1.0/MYONL-v1.1.0.apk) | 4.3 MB |
 | Any browser, nothing installed | a single-file HTML you exported | ~3.0 MB |
 | Windows, double-click (editor + packager) | build it in-repo: `py -3 tools\build_release_zip.py --version v1.0.0` (too big to host on Releases) | 66.5 MB |
 
@@ -203,7 +203,7 @@ py -3 -m pytest -q -m slow            # real packaging / full render / performan
 | `web/` | Phone / tablet player (`myonl-player.js`, `myonl-layout.js`) and layout contract tests |
 | `android/` | APK project (WebView shell + fixed signing key + Gradle config) |
 | `editor/` | Web editor frontend (HTML/CSS/JS, no build step) |
-| `games/` | Sample projects (研修日志 / standard / tutorial / new-game templates) |
+| `games/` | Sample projects (standard / tutorial / new-game templates; all placeholder art we made) |
 | `tests/` | Headless pytest suite (unit / ui / integration / slow) |
 | `tools/` | Gates and scripts (coverage / pyright / release verification / asset import) |
 | `docs/` | Getting started, product description, engine spec, save & upgrade, developer and packaging guides |
