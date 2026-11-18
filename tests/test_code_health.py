@@ -129,6 +129,9 @@ _INTERNAL_DOCS = (
     "md-规范说明.md",
     "展示_60秒分镜与投稿包.md",
     "计划",
+    # 发布纪律讲的是"我们的仓库该放什么"，还写着本机绝对路径 ——
+    # 文件名干净，内容全是内部信息。它就是被下面那条内容检查抓出来的。
+    "发布纪律.md",
 )
 
 
@@ -150,6 +153,52 @@ def test_历史文档不再进仓库():
     """2026-11-01 用户授权：历史只在 git（原 docs/archive 104 篇 + 项目协作制度 已删除）。"""
     assert not (ROOT / "docs" / "archive").exists(), "docs/archive 已删除，历史查 git 历史"
     assert not (ROOT / "docs" / "项目协作制度.md").exists(), "项目协作制度已并入项目外总纲"
+
+
+# ---- 上面三条只拦文件名。文件名合规、内容照样能泄露，所以下面两条查内容 ----
+
+_INTERNAL_MARKERS = (
+    "STATUS.md",
+    "ROADMAP.md",
+    "BACKLOG.md",
+    "变更说明-P",
+    "接手规矩",
+    "md-规范说明",
+    "展示_60秒",
+    "计划/00-总览",
+)
+
+
+def test_公开文档不许链到已移出的内部文档():
+    """文件移走了，链接还留在正文里 —— 读者点过去 404，还得猜是不是没写完。
+
+    这种泄露比"多出一个文件"更隐蔽：文件名干干净净，内容在指路。
+    """
+    leaks = []
+    for md in sorted((ROOT / "docs").rglob("*.md")):
+        text = md.read_text(encoding="utf-8", errors="ignore")
+        for marker in _INTERNAL_MARKERS:
+            if marker in text:
+                leaks.append(f"{md.relative_to(ROOT)} 里出现 {marker}")
+    assert not leaks, f"公开文档在链已移出的内部文档：{leaks[:6]}"
+
+
+def test_公开文档不许泄露本机路径():
+    """`D:\\娱乐工作区` 只该出现在我们自己的笔记里。
+
+    写进公开文档等于把目录结构摊开，而且读者照抄一定失败。
+    """
+    patterns = ("D:\\娱乐工作区", "C:\\Users", "myonl-publish")
+    leaks = []
+    for md in sorted((ROOT / "docs").rglob("*.md")):
+        text = md.read_text(encoding="utf-8", errors="ignore")
+        for pat in patterns:
+            if pat in text:
+                leaks.append(f"{md.relative_to(ROOT)} 里出现 {pat}")
+    assert not leaks, f"公开文档泄露本机路径：{leaks[:6]}"
+    readme = (ROOT / "README.md").read_text(encoding="utf-8", errors="ignore")
+    for pat in patterns:
+        assert pat not in readme, f"README 泄露本机路径：{pat}"
 
 
 # ==================== 4. 编辑器反馈结构（E-1，M1.5） ====================
