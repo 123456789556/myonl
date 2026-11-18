@@ -178,7 +178,7 @@ py -3 -m engine.demo games/我的第一个游戏/script.gal --assets games/我�
 
 ```powershell
 py -3 -m pytest -q -m "not slow"      # daily run (~70s)
-py -3 -m pytest -q                    # full suite: 1155 passed + 1 skipped
+py -3 -m pytest -q                    # full suite: 1162 passed + 1 skipped
 py -3 -m pytest -q -m slow            # real packaging / full render / performance cases
 ```
 

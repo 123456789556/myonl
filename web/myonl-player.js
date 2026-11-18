@@ -2014,6 +2014,12 @@
   // 调试口：给 tools/web_shot.py 之类的验收脚本读状态（只读，不改剧情）
   window.MYONL_DEBUG = {
     get layout() { return L; },
+    // 面板实测几何：验收脚本要看面板有没有出屏（h 超过 viewH 就是被裁）
+    get panel() {
+      const r = menuPanel();
+      return {view: UI.view, open: !!UI.open, x: r.x, y: r.y, w: r.w, h: r.h,
+              viewH: L.viewH, viewW: L.viewW};
+    },
     // 菜单/存档/设置里当帧可点的按钮（id + 布局坐标），验收脚本靠它点，不靠猜像素
     get rects() { return UI.rects.slice(); },
     get state() {
@@ -2315,7 +2321,8 @@
   }
 
   /* 横屏只有 390 高，5 个按钮按竖屏的尺寸会顶到屏幕上下边 */
-  function menuRowH() { return Math.round(L.fs * (L.landscape ? 1.75 : 2.3)); }
+  // P102：竖屏菜单从 8 行变 9 行，行高 2.3 → 2.12，否则最底下「回到标题」会被屏底裁掉半行
+  function menuRowH() { return Math.round(L.fs * (L.landscape ? 1.75 : 2.12)); }
   function menuGap() { return Math.round(L.fs * (L.landscape ? 0.22 : 0.16)); }
   function setRowH() { return Math.round(L.fs * (L.landscape ? 2.0 : 2.4)); }
   /* 回顾一页几行：横屏矮，一页 6 行；竖屏高，7 行 */
@@ -2333,9 +2340,9 @@
     const gap = Math.round(L.fs * 0.55);
     let bodyH;
     if (UI.view === "menu") {
-      // 列表行：竖屏 8 行一列；横屏 4 行两列
+      // 列表行：竖屏 9 行一列；横屏 5 行两列（P102 菜单多了「画面方向」，行数跟着改）
       bodyH = Math.round(L.fs * 0.35)
-              + (L.landscape ? 4 : 8) * (menuRowH() + menuGap());
+              + (L.landscape ? 5 : 9) * (menuRowH() + menuGap());
     } else if (UI.view === "settings") {
       // 横屏两列（3 行）—— 单列 6 组在横屏里会把面板撑到顶边，一点留白都没有
       bodyH = Math.round(L.fs * 0.3) + (L.landscape ? 3 : 6) * (setRowH() + gap);
@@ -2367,7 +2374,10 @@
     // 设置页的说明文案 P97 已删，再按 footH 留就是一块纯空。
     const footUsed = (UI.view === "save" || UI.view === "load")
       ? Math.round(L.fs * 1.6)
-      : UI.view === "settings" ? Math.round(L.fs * 0.45) : footH;
+      : UI.view === "settings" ? Math.round(L.fs * 0.45)
+        // P102：菜单页最后一项就是「回到标题」，脚注区没有字可写 —— 按 footH 留 42px
+        // 会在列表下面挂一块空幕，背景台词从缝里透出来，一眼就是没画完。
+        : UI.view === "menu" ? Math.round(L.fs * 0.5) : footH;
     const h = Math.min(headH + bodyH + footUsed + pad2, L.viewH * (land ? 0.96 : 0.88));
     // 竖屏做成"底部抽屉"：贴屏底、左右留 3% 边。原来垂直居中浮在半空，
     // 上下各一整块黑，看着像一张贴在墙上的纸。
@@ -2409,6 +2419,12 @@
     hit(id, x, y, w, h);
   }
 
+  // 画面方向的三档文字：菜单里直接点一次循环切换，不用再进「设置 → 画面方向」
+  function orientLabel() {
+    return PREF.orient === "portrait" ? "竖屏"
+      : PREF.orient === "landscape" ? "横屏" : "自动";
+  }
+
   function drawMenuList(x, y, w, p) {
     const items = [
       ["resume", "继续游戏"],
@@ -2417,6 +2433,9 @@
       ["toLoad", "读取进度"],
       ["skip", PREF.skip ? "快进 · 已开" : "快进 · 关", 1],
       ["autoTgl", PREF.auto ? "自动 · " + PREF.auto + " 秒" : "自动 · 关", 1],
+      // P102：演出模式（竖 / 横 / 自动）提到菜单第一层 —— 手机上换个握法是很高的频操作，
+      // 藏进设置里要点三层，玩家不会去点。
+      ["orient", "画面方向 · " + orientLabel(), 1],
       ["toSet", "设置"],
       ["toTitle", "回到标题"],
     ];
@@ -2433,7 +2452,11 @@
       const id = pair[0];
       const label = pair[1];
       const toggle = !!pair[2];
-      const on = id === "resume" || (toggle && (id === "skip" ? !!PREF.skip : !!PREF.auto));
+      const on = id === "resume"
+        || (id === "skip" && !!PREF.skip)
+        || (id === "autoTgl" && !!PREF.auto)
+        // 画面方向亮着 = 已经锁定了一个方向（自动时不高亮，代表"跟着手机转"）
+        || (id === "orient" && PREF.orient !== "auto");
       const ci = Math.floor(idx / perCol);
       const ri = idx % perCol;
       const bx = x + ci * (colW + colGap);
@@ -2865,7 +2888,9 @@
     ctx.shadowColor = "rgba(0,0,0,.45)";
     ctx.shadowBlur = Math.round(L.fs * 1.2);
     ctx.shadowOffsetY = Math.round(L.fs * 0.35);
-    roundRect(p.x, p.y, p.w, p.h, rr, "rgba(13,16,24,.90)");
+    // P102：菜单是一列字，透出背景就是"字压在台词上"。设置/存档/回顾是有卡片的，透一点反而透气。
+    roundRect(p.x, p.y, p.w, p.h, rr,
+              UI.view === "menu" ? "rgba(13,16,24,.970)" : "rgba(13,16,24,.90)");
     ctx.restore();
     ctx.strokeStyle = "rgba(255,255,255,.09)";
     ctx.lineWidth = 1;
@@ -2928,6 +2953,14 @@
     if (id === "back") { UI.view = "menu"; return; }
     if (id === "resume") { UI.open = false; return; }
     if (id === "skip") { PREF.skip = PREF.skip ? 0 : 1; savePrefs(); state.skipAt = 0; return; }
+    // P102：点一次循环 自动 → 竖屏 → 横屏 → 自动。切完立即按新方向重算布局（fit 内部会 rewrap 正文）
+    if (id === "orient") {
+      PREF.orient = PREF.orient === "auto" ? "portrait"
+        : PREF.orient === "portrait" ? "landscape" : "auto";
+      savePrefs();
+      fit();
+      return;
+    }
     if (id === "autoTgl") { PREF.auto = PREF.auto ? 0 : 3; savePrefs(); state.autoAt = 0; return; }
     if (id === "toSave") { UI.view = "save"; return; }
     if (id === "toLoad") { UI.view = "load"; return; }
