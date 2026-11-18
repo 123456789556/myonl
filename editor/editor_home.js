@@ -35,6 +35,12 @@
   // P116：首页自成一屏，不掺编辑器那套 tab —— 那五个 tab 是「作品内部」的事，
   // 摆在工作台底下等于让人以为首页还有五个没展开的页。
   document.body.classList.add("m-home-open");
+  // 书架还空着的时候，说明卡（"都在你手上…"）和三步上手说的是同一件事：先建作品。
+  // 第一次打开的人面前不该同时摆七块可读的东西 —— 说明卡收起来，留三步上手当唯一指引。
+  try {
+    var lib0 = JSON.parse(localStorage.getItem("myonl:off:lib:v1") || "{}");
+    if (!((lib0 && lib0.projects) || []).length) document.body.classList.add("m-home-empty");
+  } catch (e) { }
   layer.innerHTML =
     '<div class="m-home-head">' +
       '<div><div class="m-home-title">我的作品</div>' +
