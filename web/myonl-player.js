@@ -27,6 +27,7 @@
   const PREF = {speed: 1, text: 1, vol: 0.7, auto: 0, quality: 1, skip: 0, orient: "auto", dlg: 1};
   const PREF_KEY = "myonl:v2:prefs";   // P85：带版本，旧键由 loadPrefs 迁移
   let helpSeen = false;                 // 首次引导标记：跟设置一起存（以前是裸键）
+  let setupDone = false;                // 首启配置询问问过没有：问过就不再拦人
   const UI = {open: false, view: "menu", rects: [], t0: 0, logPage: 0};
   let pack = null;
   let FOCAL = {};          // 构图锚点：{背景名: [x, y]}，0 贴左/上、0.5 居中
@@ -140,6 +141,7 @@
     waitUntil: 0,
     ended: false,
     continueRect: null,
+    setup: null,           // 首启配置询问（null = 不在向导里）
     error: "",
   };
 
@@ -926,13 +928,15 @@
   function onTap(e) {
     e.preventDefault();
     if (state.error) return;
+    const p = point(e);
+    // 首启配置询问：这一层盖在标题页上，连"开始新故事"都不该被点到
+    if (state.setup) return onSetupTap(p);
     // 引导页：这一下只关引导，不推进剧情（否则第一次点就直接跳过一句话）
     if (state.guide) {
       state.guide = false;
       markHelpSeen();
       return;
     }
-    const p = point(e);
 
     if (UI.open) return onMenuTap(p);
     // 菜单键 / 喇叭 / 右侧竖列是「界面入口」，@wait 与章节卡期间也必须能用 ——
@@ -2048,6 +2052,12 @@
       /* 等加载 */
     } else if (state.scene === "title") {
       drawTitle();
+      // 首次打开作品：先问三件事（画面方向 / 台词排法 / 怎么玩），问完直接进游戏。
+      // 老玩家 hasSave 或看过引导的不再弹，别拿流程拦人。
+      if (!setupDone && !state.setup) {
+        state.setup = {step: 0, picks: {orient: PREF.orient, dlg: PREF.dlg}, t0: now};
+      }
+      if (state.setup) drawSetup();
     } else if (state.scene === "ending") {
       drawEnding();
     } else {
@@ -2105,6 +2115,7 @@
         cg: state.cg,
         lines: state.lines, ended: state.ended, error: state.error,
         guide: !!state.guide,
+        setup: state.setup ? {step: state.setup.step, picks: state.setup.picks} : null,
         panelH: panelHNow(), panelTop: panelTopY(),
       };
     },
@@ -2222,6 +2233,8 @@
       }
       const v = JSON.parse(localStorage.getItem(PREF_KEY) || "{}");
       if (v.helpSeen === 1) helpSeen = true;
+      // 老玩家（已经看过「怎么玩」的）不再弹首启配置询问：那是给第一次打开的人看的
+      if (v.setupDone === 1 || helpSeen) setupDone = true;
       if (typeof v.speed === "number") PREF.speed = v.speed;
       if (typeof v.text === "number") PREF.text = v.text;
       if (typeof v.vol === "number") PREF.vol = v.vol;
@@ -2238,7 +2251,7 @@
   }
 
   function savePrefs() {
-    const o = Object.assign({}, PREF, {helpSeen: helpSeen ? 1 : 0});
+    const o = Object.assign({}, PREF, {helpSeen: helpSeen ? 1 : 0, setupDone: setupDone ? 1 : 0});
     try { localStorage.setItem(PREF_KEY, JSON.stringify(o)); } catch (e) { /* 禁写 */ }
   }
 
@@ -2879,6 +2892,214 @@
     uiButton("guideOk", x + pad, y + h - pad - bh, w - pad * 2, bh, "开始",
              {on: true, fs: Math.round(bh * 0.44)});
     ctx.restore();
+  }
+
+  /* ---------- 首启配置询问 ----------
+     一屏只问一件事：三个大按钮 + 一句话 + 右下「下一步」。
+     为什么不把设置项堆一页：第一次打开的人不知道自己想要什么，
+     六项并排只会让人关掉。问完这三屏（画面 / 台词排法 / 怎么玩）就够开局了，
+     剩下的细节全在设置里，随时能改。 */
+  const SETUP_Q = [
+    {key: "orient", q: "用哪种画面？", hint: "拿不准就选自动，转手机时会自己换", 
+     opts: [["自动", "跟着手机转", "auto"], ["竖屏", "单手拿，字更大", "portrait"], ["横屏", "画面更宽，像看电影", "landscape"]]},
+    {key: "dlg", q: "台词怎么排？", hint: "三档都只是换个样子，剧情不受影响",
+     opts: [["幕", "居中的一句话，留白多", 1], ["经典", "叠在画面底部", 0], ["字幕", "贴底细条，最不挡画面", 2]]},
+  ];
+
+  function setupStep() { return Math.min(state.setup ? state.setup.step : 0, SETUP_Q.length); }
+
+  function drawSetup() {
+    const s = state.setup;
+    const W = L.viewW, H = L.viewH, u = Math.min(W, H), land = W > H;
+    const a = Math.min(1, (performance.now() - (s.t0 || 0)) / 180);
+    ctx.save();
+    ctx.globalAlpha = a;
+    // 标题页的字是纯白 + 亮蓝，只压 .92 还是会从底下透出来抢眼（横屏尤其明显）。
+    // 压到 .955：背景只剩一点氛围，"正在玩哪个作品"仍然认得出来，但不会跟向导打架。
+    ctx.fillStyle = "rgba(6,8,14,.955)";
+    ctx.fillRect(0, 0, W, H);
+
+    const step = setupStep();
+    const isHow = step >= SETUP_Q.length;
+    const w = land ? Math.min(W * 0.66, 800) : W * 0.88;
+    const pad = Math.round(w * 0.062);
+    const fs = L.fs;
+    const rowH = Math.round(fs * (land ? 1.95 : 2.15));
+    const gap = Math.round(fs * 0.36);
+    const btnH = Math.round(fs * 2.2);
+    const headH = Math.round(fs * 1.35);
+    const titleH = Math.round(fs * 1.6);
+    const hintH = Math.round(fs * 1.25);
+    const rows = 3;
+    const h = pad + headH + titleH + hintH + rows * (rowH + gap) - gap + btnH + pad;
+    const x = Math.round((W - w) / 2);
+    const y = Math.round((H - h) / 2);
+    const rr = Math.round(w * 0.036);
+
+    roundRect(x, y, w, h, rr, "rgba(15,18,27,.99)");
+    ctx.save();
+    ctx.strokeStyle = "rgba(255,255,255,.10)";
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(x + rr, y);
+    ctx.arcTo(x + w, y, x + w, y + h, rr);
+    ctx.arcTo(x + w, y + h, x, y + h, rr);
+    ctx.arcTo(x, y + h, x, y, rr);
+    ctx.arcTo(x, y, x + w, y, rr);
+    ctx.closePath();
+    ctx.stroke();
+    ctx.restore();
+
+    // 抬头：左边说是第几步，右边三个点 —— 让玩家知道"还有几屏就结束"
+    ctx.textAlign = "left";
+    ctx.textBaseline = "middle";
+    ctx.fillStyle = "rgba(240,244,255,.40)";
+    ctx.font = `600 ${Math.round(fs * 0.46)}px ${FACE}`;
+    ctx.fillText("首次设置 · " + (step + 1) + "/" + (SETUP_Q.length + 1), x + pad, y + pad + headH * 0.4);
+    const dotR = Math.round(fs * 0.15), dotGap = Math.round(fs * 0.55);
+    const dotsW = (SETUP_Q.length + 1) * dotGap;
+    for (let i = 0; i <= SETUP_Q.length; i++) {
+      const cx = x + w - pad - dotsW + dotGap * i + dotR;
+      ctx.beginPath();
+      ctx.arc(cx, y + pad + headH * 0.4, dotR, 0, Math.PI * 2);
+      ctx.fillStyle = i <= step ? "rgba(79,140,255,.95)" : "rgba(255,255,255,.16)";
+      ctx.fill();
+    }
+
+    // 标题 + 一句解释
+    const q = isHow ? {q: "怎么玩", hint: "手机上没有右键和滚轮，记住这三个动作就够"} : SETUP_Q[step];
+    ctx.fillStyle = "#f4f7ff";
+    ctx.font = `800 ${Math.round(fs * 1.02)}px ${FACE}`;
+    ctx.fillText(q.q, x + pad, y + pad + headH + titleH * 0.5);
+    ctx.fillStyle = "rgba(240,244,255,.52)";
+    ctx.font = `400 ${Math.round(fs * 0.48)}px ${FACE}`;
+    ctx.fillText(q.hint, x + pad, y + pad + headH + titleH + hintH * 0.35);
+
+    let yy = y + pad + headH + titleH + hintH;
+    const rowX = x + pad, rowW = w - pad * 2;
+    const rowRR = Math.round(rowH * 0.24);
+
+    if (isHow) {
+      // 第三屏：不讲设置，讲操作 —— 原来那张「怎么玩」卡并进来，少一步点
+      const rowsHow = [
+        ["轻点画面", "推进一句；没读完再点，整句立刻出来"],
+        ["长按画面", "叫出菜单：存档、读档、回顾、设置"],
+        ["选项出现", "直接点你想选的那一句"],
+      ];
+      for (const r of rowsHow) {
+        roundRect(rowX, yy, rowW, rowH, rowRR, "rgba(255,255,255,.045)");
+        ctx.textAlign = "left";
+        ctx.textBaseline = "middle";
+        ctx.fillStyle = "#9dbcff";
+        ctx.font = `700 ${Math.round(fs * 0.6)}px ${FACE}`;
+        ctx.fillText(r[0], rowX + pad * 0.62, yy + rowH / 2);
+        ctx.fillStyle = "rgba(240,244,255,.50)";
+        ctx.font = `400 ${Math.round(fs * 0.44)}px ${FACE}`;
+        ctx.textAlign = "right";
+        ctx.fillText(r[1], rowX + rowW - pad * 0.62, yy + rowH / 2 + 1);
+        yy += rowH + gap;
+      }
+      ctx.textAlign = "left";
+    } else {
+      q.opts.forEach((o, i) => {
+        const on = s.picks[q.key] === o[2];
+        roundRect(rowX, yy, rowW, rowH, rowRR,
+                  on ? "rgba(79,140,255,.17)" : "rgba(255,255,255,.05)");
+        ctx.save();
+        ctx.strokeStyle = on ? "rgba(79,140,255,.78)" : "rgba(255,255,255,.09)";
+        ctx.lineWidth = on ? 2 : 1;
+        ctx.beginPath();
+        ctx.moveTo(rowX + rowRR, yy);
+        ctx.arcTo(rowX + rowW, yy, rowX + rowW, yy + rowH, rowRR);
+        ctx.arcTo(rowX + rowW, yy + rowH, rowX, yy + rowH, rowRR);
+        ctx.arcTo(rowX, yy + rowH, rowX, yy, rowRR);
+        ctx.arcTo(rowX, yy, rowX + rowW, yy, rowRR);
+        ctx.closePath();
+        ctx.stroke();
+        ctx.restore();
+        if (on) {
+          ctx.fillStyle = "#4f8cff";
+          ctx.fillRect(rowX + Math.round(pad * 0.28), yy + Math.round(rowH * 0.26),
+                       Math.max(3, Math.round(fs * 0.1)), Math.round(rowH * 0.48));
+        }
+        ctx.textAlign = "left";
+        ctx.textBaseline = "middle";
+        ctx.fillStyle = on ? "#eaf1ff" : "rgba(240,244,255,.84)";
+        ctx.font = `700 ${Math.round(fs * 0.62)}px ${FACE}`;
+        ctx.fillText(o[0], rowX + pad * 0.72, yy + rowH / 2 + 1);
+        ctx.textAlign = "right";
+        ctx.fillStyle = on ? "rgba(214,230,255,.72)" : "rgba(240,244,255,.42)";
+        ctx.font = `400 ${Math.round(fs * 0.44)}px ${FACE}`;
+        ctx.fillText(o[1], rowX + rowW - pad * 0.62, yy + rowH / 2 + 1);
+        hit("su:" + step + "." + i, rowX, yy, rowW, rowH);
+        yy += rowH + gap;
+      });
+      ctx.textAlign = "left";
+    }
+
+    // 底部：左边一个很轻的「跳过」，右边主按钮 —— 不想配的人一按就进，不挡路
+    const by = y + h - pad - btnH;
+    ctx.textAlign = "left";
+    ctx.textBaseline = "middle";
+    ctx.fillStyle = "rgba(240,244,255,.46)";
+    ctx.font = `500 ${Math.round(fs * 0.5)}px ${FACE}`;
+    ctx.fillText("跳过", x + pad + Math.round(fs * 0.1), by + btnH / 2);
+    hit("suSkip", x + pad - Math.round(fs * 0.3), by, Math.round(fs * 3), btnH);
+
+    const bw = Math.round(rowW * (land ? 0.42 : 0.5));
+    uiButton("suNext", x + w - pad - bw, by, bw, btnH, isHow ? "开始" : "下一步",
+             {on: true, fs: Math.round(btnH * 0.38)});
+
+    ctx.restore();
+  }
+
+  function onSetupTap(p) {
+    for (const r of UI.rects) {
+      if (p.x >= r.x && p.x <= r.x + r.w && p.y >= r.y && p.y <= r.y + r.h) {
+        setupAct(r.id);
+        return;
+      }
+    }
+  }
+
+  function setupAct(id) {
+    const s = state.setup;
+    if (!s) return;
+    if (id === "suSkip") return finishSetup(true);
+    if (id === "suNext") {
+      if (s.step < SETUP_Q.length) {
+        s.step++;
+        s.t0 = performance.now();
+        return;
+      }
+      return finishSetup(false);
+    }
+    if (id.indexOf("su:") === 0) {
+      const pair = id.slice(3).split(".");
+      const q = SETUP_Q[Number(pair[0])];
+      if (!q) return;
+      const o = q.opts[Number(pair[1])];
+      if (!o) return;
+      s.picks[q.key] = o[2];
+    }
+  }
+
+  /* 收尾：把三个选择落盘，然后直接进游戏。
+     helpSeen 一并置真 —— 第三屏已经把「怎么玩」讲完了，不该再弹一次同样的卡。 */
+  function finishSetup(skipped) {
+    if (!skipped && state.setup) {
+      PREF.orient = state.setup.picks.orient;
+      PREF.dlg = Math.max(0, Math.min(2, Math.trunc(state.setup.picks.dlg)));
+    }
+    state.setup = null;
+    setupDone = true;
+    helpSeen = true;
+    savePrefs();
+    fit();
+    // 「开始」这一下本身就是用户手势，正是浏览器允许进全屏的时机。
+    // 不给 setup 拦掉：第一次玩的人反而最需要全屏（手机浏览器工具栏会吃掉一截画面）。
+    tryFullscreen();
+    startGame(false);
   }
 
   function drawSettings(x, y, w, p) {
