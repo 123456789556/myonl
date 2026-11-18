@@ -55,8 +55,6 @@
           '<b>＋</b><span>新建作品</span></button>' +
         '<button type="button" class="m-quick-item" id="mHomeImport">' +
           '<b>&#8615;</b><span>导入作品</span></button>' +
-        '<button type="button" class="m-quick-item" id="mHomeSet2">' +
-          '<b>&#9776;</b><span>设置</span></button>' +
       '</div>' +
       '<div class="m-home-note">' +
         '<div class="m-home-note-t">都在你手上</div>' +
@@ -234,7 +232,8 @@
       '<div class="m-sheet-mask"></div>' +
       '<div class="m-sheet-body">' +
         '<div class="m-sheet-grab"></div>' +
-        '<div class="m-sheet-title">设置</div>' +
+        '<div class="m-sheet-title">设置' +
+          '<button type="button" class="m-set-done" id="mSetDone">完成</button></div>' +
         '<div class="m-set-row"><span>界面</span>' +
           '<span class="m-seg" id="mSetTheme">' +
             '<button type="button" data-v="dark" class="' + (theme === "dark" ? "on" : "") + '">深色</button>' +
@@ -246,10 +245,7 @@
             '<button type="button" data-v="portrait" class="' + (orient === "portrait" ? "on" : "") + '">竖屏</button>' +
             '<button type="button" data-v="landscape" class="' + (orient === "landscape" ? "on" : "") + '">横屏</button>' +
           '</span></div>' +
-        '<div class="m-set-row"><span>作品列表</span>' +
-          '<button type="button" class="m-set-btn" id="mSetHome">返回</button></div>' +
-        '<div class="m-set-note">「游戏画面」是给玩家看的：竖屏 / 横屏时，导出的网页会提示对方把手机转过来；选「跟随」就横竖都行。' +
-        'MYONL 编辑器全部本地运行，工程和素材都在你自己的电脑/手机上，不上传任何服务器。</div>' +
+        '<div class="m-set-note">拿不准就选「跟随」—— 横过来竖着都能玩，导出时不用再选。</div>' +
       '</div>';
     // 抽屉挂 <html> 而不是 <body>：body 上挂了编辑器各种档位类，fixed 定位在里面被算成流的位置
   // （实测顶边跑到 1007，正好是内容底部）。挂 html 之后 fixed 的包含块就是视口本身。
@@ -269,8 +265,12 @@
       seg.querySelectorAll("button").forEach(function (x) { x.classList.toggle("on", x === b); });
     });
 
-    var hb = sheet.querySelector("#mSetHome");
-    if (hb) hb.addEventListener("click", function () { window.__myonlShowHome(); });
+    // 「返回」那一行删了：抽屉点遮罩本来就能关，多一行「作品列表 / 返回」反而像在问"要回哪去"。
+    // 现在只有一个入口——标题栏的「完成」，点它关抽屉，回哪儿去不用想。
+    var dn = sheet.querySelector("#mSetDone");
+    if (dn) dn.addEventListener("click", function () {
+      if (sheet) { sheet.remove(); sheet = null; }
+    });
 
     var ob = sheet.querySelector("#mSetOrient");
     if (ob) ob.addEventListener("click", function (e) {
@@ -322,10 +322,9 @@
     }, 380);
   }
 
-  ["mHomeSet", "mHomeSet2"].forEach(function (id) {
-    var b = $(id);
-    if (b) b.addEventListener("click", openSettings);
-  });
+  // 设置只剩页头右上角一个入口（三格里的那个删了，同一功能摆两处会让人以为是两件事）
+  var sb = $("mHomeSet");
+  if (sb) sb.addEventListener("click", openSettings);
   var nb = $("mHomeNew");
   if (nb) nb.addEventListener("click", newProject);
   var ib = $("mHomeImport");

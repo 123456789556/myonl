@@ -1973,7 +1973,17 @@ input[type="color"] {
   max-height: 70dvh; overflow-y: auto;
 }
 .m-sheet-grab { width: 36px; height: 4px; border-radius: 2px; background: var(--surface1); margin: 0 auto 12px; }
-.m-sheet-title { font-size: 17px; font-weight: 600; margin-bottom: 6px; }
+.m-sheet-title {
+  font-size: 17px; font-weight: 600; margin-bottom: 6px;
+  display: flex; align-items: center; justify-content: space-between;
+}
+/* 抽屉只有这一个出口：右上「完成」。原来底部那行「作品列表 / 返回」语义不清，删了。 */
+.m-set-done {
+  height: 30px !important; padding: 0 14px !important;
+  background: transparent !important; color: var(--blue) !important;
+  border: 1px solid var(--blue) !important; border-radius: 999px !important;
+  font-size: 13px !important;
+}
 .m-set-row {
   display: flex; align-items: center; justify-content: space-between;
   padding: 14px 0; border-bottom: 1px solid var(--surface0); font-size: 14px;
@@ -3032,7 +3042,9 @@ body.m-home-open .m-tabbar { display: none !important; }
 .m-home-sec {
   font-size: 12.5px; color: var(--subtext0); margin: 14px 2px 8px; letter-spacing: .4px;
 }
-.m-quick { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+/* 只两格：设置不属于"开始新的"——它在页头右上角已经有一个入口，
+   同一功能摆两处，人会先猜"这两个设置是不是不一样"。 */
+.m-quick { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
 .m-quick-item {
   display: flex; flex-direction: column; align-items: flex-start; justify-content: center;
   gap: 7px; min-height: 74px; padding: 11px 13px; cursor: pointer;
@@ -3055,6 +3067,13 @@ body.m-home-open .m-tabbar { display: none !important; }
 /* 书架为空时不摆说明卡：它和「三步上手」说的都是"先建作品"，
    第一次打开的人面前同时摆七块可读的东西，反而不知道该点哪个。 */
 body.m-home-empty .m-home-note { display: none !important; }
+
+/* 首页模式下别让编辑器的新手引导浮层（#obCard / #obMask / #obRing）露出来：
+   那三块是"作品内部"的三步引导，摆在书架底下等于在问一个还没建作品的人
+   "你看到底部五个 tab 了吗" —— 他连作品都还没进。 */
+body.m-home-open .ob-mask,
+body.m-home-open .ob-ring,
+body.m-home-open .ob-card { display: none !important; }
 
 /* 素材面板基础 z 只有 80，而场景详情页（.center-page.m-detail）在它上面 ——
    手机端点「素材」时面板确实展开了（DOM 里 mobile-asset-open 也在），
@@ -3104,6 +3123,17 @@ body.m-home-empty .m-home-note { display: none !important; }
 .m-step-s { display: block; font-size: 11.5px; line-height: 1.5; color: var(--subtext0); margin-top: 3px; }
 .m-step:active { background: var(--surface0); }
 
+/* 横屏只有三四百像素高：设置行按桌面间距排会让抽屉吃掉 7 成屏，
+   行距收到一半，一屏内刚好放完，手也不用滚。
+   （这段必须在 .m-set-row 基础定义之后 —— 写在前面会被后写的基础样式盖掉，实测过。） */
+@media (max-height: 520px) {
+  .m-set-sheet { max-height: 88vh !important; }
+  .m-set-sheet .m-sheet-body { max-height: 88vh !important; }
+  .m-sheet-title { font-size: 15px; }
+  .m-set-row { padding: 7px 0 !important; }
+  .m-set-note { padding-top: 8px !important; font-size: 11px; }
+}
+
 /* 横屏（844×390）：一屏太矮，竖向堆五段只会全挤成条。改两列 —— 左边作品，右边入口。 */
 @media (max-height: 520px) {
   .m-home {
@@ -3126,6 +3156,9 @@ body.m-home-empty .m-home-note { display: none !important; }
   }
   .m-home-list .m-home-card { min-height: 58px !important; }
   .m-home-empty { padding: 16px 14px; font-size: 12px; }
+  /* 横屏右边这一列本来就只够放「开始新的 + 三步上手」；纯文字说明卡挤在里面
+     只会被设置抽屉从半行处切开，看起来像坏了。横屏收起它，三步上手能点，留着。 */
+  .m-home-note { display: none !important; }
   .m-home-sec { margin: 0 2px 6px !important; }
   .m-quick-item { min-height: 56px; padding: 8px 10px; gap: 4px; }
   .m-quick-item b { font-size: 15px; }
