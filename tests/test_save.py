@@ -309,20 +309,44 @@ def test_version_migration(tmp_path, monkeypatch):
     (Path("saves") / "slot_1.json").write_text(
         json.dumps(base, ensure_ascii=False), encoding="utf-8")
 
-    # 没有迁移路径：明确报错，不静默
-    with pytest.raises(SaveError, match="没有可用的迁移路径"):
-        save_api.load(1)
+    # P119：最老的存档没写 version（按 0 处理）。以前这里会报"没有可用的迁移路径"，
+    # 老玩家升级引擎后档还在、读不了。现在 0→1 内置了（结构一致，只让链能走），
+    # 所以能一路迁到当前版本。
+    data = save_api.load(1)
+    assert data["version"] == save_api.SCHEMA_VERSION
+    assert data["state"]["gallery"] == [], "v3 迁移应该补上 gallery"
 
-    # 注册迁移函数：v0 → v1 补一个字段
+    # 真正的"没有迁移路径"：中间某一环被挖掉，必须明确报错、不能静默当成功
+    monkeypatch.delitem(save_api.MIGRATIONS, 3)
+    (Path("saves") / "slot_3.json").write_text(
+        json.dumps({**base, "version": 3}, ensure_ascii=False), encoding="utf-8")
+    with pytest.raises(SaveError, match="没有可用的迁移路径"):
+        save_api.load(3)
+    monkeypatch.setitem(save_api.MIGRATIONS, 3, save_api._migrate_v3_to_v4)
+
+    # 自定义迁移也能挂上去：v0 → v1 补一个字段
     def up_v0(d):
         d["state"] = {**d["state"], "extra_field": "补上了"}
         return d
 
     monkeypatch.setitem(save_api.MIGRATIONS, 0, up_v0)
     data = save_api.load(1)
-    assert data["version"] == save_api.SCHEMA_VERSION  # v0 →（测试迁移）→ v1 → v2 → v3 →（内置迁移）→ v4
     assert data["state"]["extra_field"] == "补上了"
-    assert data["state"]["gallery"] == []  # v3 迁移补默认值
+
+    # 未来版本（version 99）→ 中文拦截
+    (Path("saves") / "slot_2.json").write_text(
+        json.dumps({**base, "version": 99}, ensure_ascii=False), encoding="utf-8")
+    with pytest.raises(SaveError, match="更新的引擎版本"):
+        save_api.load(2)
+
+    # 自定义迁移也能挂上去：v0 → v1 补一个字段
+    def up_v0(d):
+        d["state"] = {**d["state"], "extra_field": "补上了"}
+        return d
+
+    monkeypatch.setitem(save_api.MIGRATIONS, 0, up_v0)
+    data = save_api.load(1)
+    assert data["state"]["extra_field"] == "补上了"
 
     # 未来版本（version 99）→ 中文拦截
     (Path("saves") / "slot_2.json").write_text(
