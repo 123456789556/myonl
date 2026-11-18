@@ -13,8 +13,8 @@ android {
         // 版本号不许再写死：写死的后果是每个包 system 都当"同一版"，
         // 覆盖安装时行为不可控，用户也看不出自己更新了没有。
         // CI 从 tag 推导后传进来（v1.1.0 -> 1.0.0 的 versionName + 10100 的 versionCode）。
-        versionCode(System.getenv("MYONL_VERSION_CODE") ?: "1").toInteger()
-        versionName System.getenv("MYONL_VERSION_NAME") ?: "1.0.0"
+        versionCode = (System.getenv("MYONL_VERSION_CODE") ?: "1").toInteger()
+        versionName = System.getenv("MYONL_VERSION_NAME") ?: "1.0.0"
     }
 
     // 签名固定在一个测试 keystore 上（android/keystore/myonl-test.p12）。
