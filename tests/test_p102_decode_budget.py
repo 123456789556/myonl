@@ -56,9 +56,34 @@ def test_启动循环按上限起跑():
 def test_完成一个补一个():
     """腾出槽位要立刻补位，否则并发上限变成串行，几十张图等到天亮。"""
     body = _load_body()
-    at = body.index("const done")
+    at = body.index("const settle")
     seg = body[at:body.index("};", at)]
-    assert "startOne()" in seg, "完成回调里没有补位，并发会被拖成串行"
+    assert "startOne()" in seg, "settle 里没有补位，并发会被拖成串行"
+    # 两个出口（解好了 / 解坏了）都得走 settle，不能各自 resolve
+    assert body.count("flying--; settle()") >= 2, "onload/onerror 没有都交回 settle"
+
+
+def test_预热到预算就停手():
+    """全摊开会把手机压死。必须有个字节门禁，到量就停，剩下的按需解。"""
+    src = _src()
+    m = re.search(r"ASSET_WARM_BYTES\s*=\s*(\d+)\s*\*\s*1024\s*\*\s*1024", src)
+    assert m, "没有预解上限——启动时又会把几十张图全摊开"
+    assert 32 <= int(m.group(1)) <= 256, f"预解上限 {m.group(1)} MB 不在合理区间"
+    body = _load_body()
+    assert "bytes > ASSET_WARM_BYTES" in body, "预算没有接进起跑判断"
+    assert "assetMostlyDone = true" in body, "停手后要能通知出去"
+    # 到量以后不能傻等：必须把 promise 结掉，否则首屏永远不出来
+    assert "stopped" in body and "resolve()" in body
+
+
+def test_按需解码有兜底():
+    """没预解到的图，第一次画到时必须能自己解出来，不能永远空白。"""
+    src = _src()
+    assert "function getAsset" in src
+    body = src[src.index("function getAsset"):]
+    body = body[:body.index("function loadAssets")]
+    assert "new Image()" in body, "getAsset 不会自己起解码"
+    assert "delete assets[name]" in body, "坏图必须连占位一起撤，否则整局都是空的"
 
 
 def test_封面先解():

@@ -390,6 +390,31 @@
   // 分批把峰值压到 4 张，总量不变。
   const DECODE_CONCURRENCY = 4;
 
+  // 预解到这么多就停手，剩下的第一次画到时再解（见 getAsset）。
+  // 一批 50 张背景 + 立绘全摊开能吃掉几百 MB，手机上最先看到的是「玩到一半闪退」。
+  // 首屏要用的排在最前面，所以停手时该有的都已经有了。
+  const ASSET_WARM_BYTES = 96 * 1024 * 1024;
+  const assetPending = {};
+  let assetMostlyDone = false;      // 预热跑完一轮没？
+
+  function getAsset(name) {
+    if (!name) return null;
+    const a = assets[name];
+    if (a && a.complete && a.naturalWidth) return a;
+    // 没预解到（或上次被回收了）：现在起一次，下一帧 frame() 自己会补上
+    if (!a && !assetPending[name] && pack && pack.assets && pack.assets[name]) {
+      assetPending[name] = true;
+      const img = new Image();
+      img.onload = () => { assets[name] = img; delete assetPending[name]; };
+      // 坏图要连占位一起撤掉：留着它，下次判断「已经有这一项了」就再也不重试，
+      // 那张图在整局里永远是空的。
+      img.onerror = () => { delete assetPending[name]; delete assets[name]; };
+      img.src = pack.assets[name];
+      assets[name] = img;           // 先占位，重复画不会起第二个解码
+    }
+    return null;                    // 还没好就先不画，比画半张花屏强
+  }
+
   function loadAssets() {
     const all = Object.keys(pack.assets || {});
     if (!all.length) return Promise.resolve();
@@ -405,17 +430,30 @@
 
     return new Promise((resolve) => {
       let next = 0;
-      let left = names.length;
+      let flying = 0;          // 正在解的
+      let bytes = 0;           // 已经解出来的字节
+      let stopped = false;     // 到预算了，不再往下解
+      const settle = () => {
+        if (flying > 0) return;
+        if (stopped || next >= names.length) {
+          assetMostlyDone = true;
+          resolve();
+          return;
+        }
+        startOne();
+      };
       const startOne = () => {
-        if (next >= names.length) return;
+        if (next >= names.length) { settle(); return; }
+        if (bytes > ASSET_WARM_BYTES) { stopped = true; settle(); return; }
         const name = names[next++];
+        flying++;
         const img = new Image();
-        const done = () => {
-          if (--left === 0) resolve();
-          else startOne();      // 腾出一个槽位就补一张，别空着
+        img.onload = () => {
+          bytes += img.naturalWidth * img.naturalHeight * 4;
+          assets[name] = img;
+          flying--; settle();      // 腾出一个槽位就补一张，别空着
         };
-        img.onload = () => { assets[name] = img; done(); };
-        img.onerror = () => { done(); };
+        img.onerror = () => { flying--; settle(); };
         img.src = pack.assets[name];
       };
       for (let i = 0; i < DECODE_CONCURRENCY && i < names.length; i++) startOne();
@@ -1050,7 +1088,9 @@
   // 竖屏优先用竖版构图（images/{名}_p.png），没有就回退主图
   function pickBgName(name) {
     if (!name) return "";
-    if (!L.landscape && assets[name + "_p"]) return name + "_p";
+    // 这里问的是「这张竖版图在工程里存不存在」，不是「解出来没有」：
+    // 用 getAsset 会把还没解码的那张判成不存在，竖屏永远回退到横版。
+    if (!L.landscape && pack && pack.assets && pack.assets[name + "_p"]) return name + "_p";
     return name;
   }
 
@@ -1059,7 +1099,7 @@
   // 居中裁掉的是两边各三成，人脸常常被切 —— 给一个锚点就不用改图。
   function blitNamed(name, alpha) {
     const key = pickBgName(name);
-    const img = assets[key] || assets[name];
+    const img = getAsset(key) || getAsset(name);
     if (!img) return false;
     const f = FOCAL[name] || FOCAL[key];
     const m = sceneMargin();
@@ -1103,6 +1143,11 @@
   // 10 秒 24fps 就是 240 帧 —— 循环走完第一轮就吃掉 2 GB，手机上直接白屏。
   // 所以只留「最近用过的 N 帧」（N 覆盖约半秒，够回头兜底），超出就丢掉引用交给 GC。
   const VIDEO_KEEP = 14;
+  // 帧数不等于内存。1080×1920 一帧解码后约 8 MB，14 帧就是 110 MB ——
+  // 手机上再来一张满屏背景就直接被系统杀掉。所以帧数之外再压一道字节上限：
+  // 超了就丢最旧的，反正循环播是往前走的，丢的那些下一次绕回来会重新解。
+  // 64 MB 是「一张满屏背景 + 几帧视频 + 几张立绘」还能喘气的量级。
+  const VIDEO_KEEP_BYTES = 64 * 1024 * 1024;
   const videoCache = {};        // key → Image
   const videoKeys = [];         // 最近使用的 key，越靠后越新
   let videoCachedFor = "";      // 当前缓的是哪个视频（换视频就清空）
@@ -1113,12 +1158,25 @@
     videoCachedFor = "";
   }
 
+  function videoBytes(img) {
+    // 还没解出来的算 0：多半正等着解码，这时候赶它走等于白读一遍
+    return (img && img.naturalWidth) ? img.naturalWidth * img.naturalHeight * 4 : 0;
+  }
+
   function touchVideo(key, img) {
     videoCache[key] = img;
     const i = videoKeys.indexOf(key);
     if (i >= 0) videoKeys.splice(i, 1);
     videoKeys.push(key);
     while (videoKeys.length > VIDEO_KEEP) delete videoCache[videoKeys.shift()];
+    // 字节上限。至少留 2 帧：正在播的这一帧和下一帧，砍到 0 会黑屏
+    let bytes = 0;
+    for (const k of videoKeys) bytes += videoBytes(videoCache[k]);
+    while (bytes > VIDEO_KEEP_BYTES && videoKeys.length > 2) {
+      const k = videoKeys.shift();
+      bytes -= videoBytes(videoCache[k]);
+      delete videoCache[k];
+    }
   }
 
   function videoSeq() {
@@ -1184,7 +1242,7 @@
     }
     const prevName = state.fadeFromBg;
     const bgName = state.bg;
-    const hasBg = !!(bgName && (assets[bgName] || assets[bgName + "_p"]));
+    const hasBg = !!(bgName && pack.assets && (pack.assets[bgName] || pack.assets[bgName + "_p"]));
     if (prevName && t < 1) blitNamed(prevName, 1);
     if (hasBg) {
       // @transition wipe / slide：新图按方向推进来；dissolve 就是普通淡入
@@ -1277,7 +1335,7 @@
     const nowT = performance.now() / 1000;
     list.forEach((sp, i) => {
       const key = sp.expr ? `${sp.char}_${sp.expr}` : sp.char;
-      const img = assets[key] || assets[sp.char];
+      const img = getAsset(key) || getAsset(sp.char);
       if (!img) return;
       const disp = animDisp(sp.char);
       const h = liveH * (disp.scale > 0 ? disp.scale : 1) * (L.landscape ? 1 : 0.95);
@@ -1347,7 +1405,7 @@
   function drawFg() {
     const fg = state.fg;
     if (!fg || !fg.name) return;
-    const img = assets[fg.name];
+    const img = getAsset(fg.name);
     if (!img) return;
     const k = L.viewW / 1280;
     const a = Math.max(0, Math.min(1, fg.alpha === undefined ? 1 : fg.alpha));
@@ -1366,7 +1424,7 @@
   // 语义与桌面端一致：@cg 上图 → 一直盖着（盖住背景和立绘）→ 直到下一条 @bg 才退场。
   function drawCg() {
     if (!state.cg) return;
-    const img = assets[state.cg];
+    const img = getAsset(state.cg);
     if (!img) {
       ctx.fillStyle = "#191c26";
       ctx.fillRect(0, 0, L.viewW, L.viewH);
@@ -1512,7 +1570,7 @@
     const w = rect.w;
     const h = rect.h;
     const radius = Math.max(vis.radius, 16);
-    const skin = vis.panel.image && assets[vis.panel.image];
+    const skin = vis.panel.image && getAsset(vis.panel.image);
     const classic = rect.style === 0;
     // P101：1 幕 / 2 字幕 —— 两档都不画矩形。
     // 半透明矩形的问题不在透明度，在"它是一条边界"：背景亮的地方露边、暗的地方消失，
@@ -1549,7 +1607,7 @@
       drawNineSlice(skin, x, y, w, h, sliceOf(vis.panel.slice),
                     Math.max(0.8, L.fs / 42));
       ctx.restore();
-      const tex = vis.panel.texture && assets[vis.panel.texture];
+      const tex = vis.panel.texture && getAsset(vis.panel.texture);
       if (tex && vis.panel.texAlpha > 0) {
         ctx.save();
         ctx.globalAlpha = vis.panel.texAlpha * vis.panel.alpha;
@@ -1806,11 +1864,11 @@
   function titleCover() {
     if (pack && pack.cover) {
       // 竖屏优先用封面的竖版构图，没有就主图（配合锚点裁）
-      if (!L.landscape && assets[pack.cover + "_p"]) return assets[pack.cover + "_p"];
-      if (assets[pack.cover]) return assets[pack.cover];
+      if (!L.landscape && getAsset(pack.cover + "_p")) return getAsset(pack.cover + "_p");
+      if (getAsset(pack.cover)) return getAsset(pack.cover);
     }
     const names = Object.keys(assets).filter(n => /bg|cover/i.test(n) && !/_p$/.test(n));
-    return names.length ? assets[names[0]] : null;
+    return names.length ? getAsset(names[0]) : null;
   }
 
   /* 字号自适应：长标题缩字号比换行更稳（换行会把底部卡片撑高） */
@@ -1866,12 +1924,12 @@
       // 立绘的判据不能用名字：打包后键就是「角色_表情」（林晚_微笑），
       // 剧本里的「全身」前缀不会出现在键里。按构图比例认 —— 竖长图 + 不是背景/CG。
       const heroName = Object.keys(assets).find(n => {
-        const im = assets[n];
+        const im = getAsset(n);
         if (!im || !im.width || !im.height) return false;
         if (/^(bg|cover|cg|title)/i.test(n)) return false;
         return im.height > im.width * 1.4;
       });
-      const hero = heroName && assets[heroName];
+      const hero = heroName && getAsset(heroName);
       if (hero && hero.width && hero.height) {
         const tallSrc = hero.height > hero.width * 2.2;
         const srcH = tallSrc ? Math.round(hero.height * 0.66) : hero.height;
@@ -2664,7 +2722,7 @@
     // P98：有档的格子铺一张当时的背景图。
     // 原来有档和空档长得一样（都是一行字），六个格子读起来是张列表；
     // 铺上图之后"哪一幕"不用读字就认出来了。老档没有 bg 字段 → 退回实底，不报错。
-    const shot = empty ? null : (assets[d.bg] || (d.bg ? assets[d.bg + "_p"] : null));
+    const shot = empty ? null : (getAsset(d.bg) || (d.bg ? getAsset(d.bg + "_p") : null));
     if (!empty && !shot) roundRect(x, y, w, h, r, "rgba(255,255,255,.085)");
     if (shot) {
       ctx.save();

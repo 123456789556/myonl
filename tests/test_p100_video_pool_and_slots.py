@@ -36,6 +36,18 @@ def test_video_cache_is_bounded_not_unbounded():
     assert "while (videoKeys.length > VIDEO_KEEP)" in src
 
 
+def test_video_cache_also_capped_by_bytes():
+    """帧数上限拦不住 1080p：14 帧 × 8 MB ≈ 110 MB，手机上照样被杀。
+
+    所以帧数之外还要有字节上限。同时必须至少留 2 帧 ——
+    正在播的那一帧被踢掉，画面就黑一下。
+    """
+    src = _src()
+    assert "const VIDEO_KEEP_BYTES" in src, "只有帧数上限，没有字节上限"
+    assert "while (bytes > VIDEO_KEEP_BYTES" in src, "字节上限没接进淘汰"
+    assert "videoKeys.length > 2" in src, "字节上限必须保住正在播的两帧"
+
+
 def test_video_warms_on_entry_and_releases_on_bg():
     """进 @video 预热头几帧（否则黑一下），@bg 接管时整片释放。"""
     src = _src()
