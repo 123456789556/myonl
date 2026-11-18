@@ -83,6 +83,11 @@ public class MainActivity extends Activity {
         } catch (Throwable ignored) { }
     }
 
+    /** 页面弹窗的统一外壳：跟播放器的深色底一致，别让一行浅色系统框突然跳出来。 */
+    private android.app.AlertDialog.Builder buildDialog() {
+        return new android.app.AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert);
+    }
+
     @Override
     protected void onActivityResult(int req, int res, android.content.Intent data) {
         super.onActivityResult(req, res, data);
@@ -152,6 +157,55 @@ public class MainActivity extends Activity {
             public void onPageFinished(WebView view, String url) {
                 // 冷启动时分享进来的文件早就读好了，等页面能跑 JS 了再递过去
                 flushShare();
+            }
+
+            @Override
+            public void onReceivedError(WebView view, WebResourceRequest req,
+                                        android.webkit.WebResourceError err) {
+                // 主页没加载出来不能只留一片黑屏：玩家只会以为 App 坏了
+                if (req != null && req.isForMainFrame()) {
+                    say("界面没加载出来，重开一次试试");
+                }
+            }
+        });
+
+        // 没有 WebChromeClient，页面里的 alert / confirm / prompt 会被 WebView 直接吞掉 ——
+        // 不弹窗、不报错、直接返回 undefined。播放器「导入备份」那一步用的是 confirm，
+        // 结果就是点了没反应，玩家以为导入成功了其实什么都没发生。
+        web.setWebChromeClient(new android.webkit.WebChromeClient() {
+            @Override
+            public boolean onJsAlert(WebView view, String url, String message,
+                                     android.webkit.JsResult result) {
+                buildDialog().setMessage(message)
+                        .setPositiveButton("知道了", (d, w) -> result.confirm())
+                        .setOnCancelListener(d -> result.confirm())
+                        .show();
+                return true;
+            }
+
+            @Override
+            public boolean onJsConfirm(WebView view, String url, String message,
+                                       android.webkit.JsResult result) {
+                buildDialog().setMessage(message)
+                        .setPositiveButton("确定", (d, w) -> result.confirm())
+                        .setNegativeButton("取消", (d, w) -> result.cancel())
+                        .setOnCancelListener(d -> result.cancel())
+                        .show();
+                return true;
+            }
+
+            @Override
+            public boolean onJsPrompt(WebView view, String url, String message,
+                                      String defaultValue, android.webkit.JsPromptResult result) {
+                android.widget.EditText input = new android.widget.EditText(MainActivity.this);
+                input.setText(defaultValue == null ? "" : defaultValue);
+                buildDialog().setMessage(message)
+                        .setView(input)
+                        .setPositiveButton("确定", (d, w) -> result.confirm(input.getText().toString()))
+                        .setNegativeButton("取消", (d, w) -> result.cancel())
+                        .setOnCancelListener(d -> result.cancel())
+                        .show();
+                return true;
             }
         });
 

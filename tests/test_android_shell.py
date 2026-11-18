@@ -104,3 +104,29 @@ def test_assets_html_is_generated_not_committed():
     """3 MB 的单文件 HTML 是 CI 产物，不该进仓库。"""
     ignore = _read(ROOT / ".gitignore")
     assert "android/app/src/main/assets/index.html" in ignore
+
+
+def test_webview_can_show_page_dialogs():
+    """没装 WebChromeClient，页面里的 alert/confirm/prompt 会被 WebView 直接吞掉。
+
+    播放器「导入备份」那一步用的就是 confirm：没有 WebChromeClient 时点了没反应，
+    玩家以为导入成功了，其实什么都没发生。三个回调必须都在。
+    """
+    src = _read(MAIN / "java" / "net" / "myonl" / "player" / "MainActivity.java")
+    assert "setWebChromeClient" in src, "WebView 没装 WebChromeClient，页面弹窗全哑"
+    assert "onJsAlert" in src
+    assert "onJsConfirm" in src
+    assert "onJsPrompt" in src
+    # 玩家点确认必须真的传到 JS，取消也必须真的取消
+    assert "result.confirm()" in src
+    assert "result.cancel()" in src
+    # 页面弹窗用的也是 confirm/prompt：确认这条依赖真实存在
+    player = _read(ROOT / "web" / "myonl-player.js")
+    assert "confirm(" in player, "播放器依赖 confirm，壳必须能弹"
+
+
+def test_webview_reports_load_failure():
+    """主页加载失败不能只留黑屏 —— 玩家只会以为 App 坏了。"""
+    src = _read(MAIN / "java" / "net" / "myonl" / "player" / "MainActivity.java")
+    assert "onReceivedError" in src
+    assert "isForMainFrame" in src
