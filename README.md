@@ -1,19 +1,23 @@
-# MYONL 引擎
+# MYONL · 手机游戏制作器
 
 **简体中文** | [English](README.en.md)
 
 [![tests](https://github.com/123456789556/myonl/actions/workflows/tests.yml/badge.svg?branch=main)](https://github.com/123456789556/myonl/actions/workflows/tests.yml)
 ![Release](https://img.shields.io/badge/release-apk--20%20%2B%20v1.0.0--rc27-blue)
 ![Android](https://img.shields.io/badge/Android-7.0%2B%20phone%20%26%20tablet-3DDC84)
-![Windows](https://img.shields.io/badge/Windows-editor%20%2B%20packager-0078D4)
+![Windows](https://img.shields.io/badge/Windows-辅助%20packager-0078D4)
 ![Python](https://img.shields.io/badge/Python-3.9%2B-3776AB)
 ![License](https://img.shields.io/badge/License-MIT-green)
 
-写几行中文脚本，做出一部能玩、能存档、能打包的视觉小说。
+**在手机上做游戏**：装一个 APK，打开就能新建作品、写场景、存本机、导出带走。
+写的是中文 `.gal` 脚本，出来的是竖屏横屏都能满屏跑的视觉小说。
 
-> **这是一个引擎工具（给创作者用），不是游戏作品**；仓库里的小样板只是可以随便改的起点。
-> **玩家侧主线是手机 + 安卓平板**：同一个工程 → 竖屏横屏都能满屏跑的网页包 → 一个 APK 同时吃手机和平板；
-> 桌面端是并行出口（编辑器和打包器在 Windows 上跑），不是唯一的出口。
+> **手机是主场，电脑是辅助位。**
+> 手机上：新建 → 写台词/角色/选项 → 存本机（`localStorage`，不联网、不上云）→ 导出 `.gal`。
+> 电脑上做两件手机做不了的事：**打包成品**（`.gal` → 能双击玩的单文件 HTML / APK）、**批量处理素材**。
+> 传输走数据线——手机连电脑就是个大 U 盘，不做局域网、不做扫码。
+>
+> 这是一个引擎工具（给创作者用），不是游戏作品；仓库里的小样板只是可以随便改的起点。
 
 ## 先拿个能玩的
 
