@@ -17,7 +17,6 @@ import subprocess
 # adb 默认找位置：环境变量 → 仓库同级 _tools/platform-tools → PATH
 _ADB_HINTS = (
     os.environ.get("MYONL_ADB", ""),
-    r"D:\娱乐工作区\_tools\platform-tools\adb.exe",
 )
 _PHONE_DIR = "/sdcard/Download/MYONL"
 
@@ -26,6 +25,20 @@ def _adb_path() -> str:
     for hint in _ADB_HINTS:
         if hint and os.path.isfile(hint):
             return hint
+    # 仓库同级 _tools/platform-tools（相对路径，不写死任何人自己的机器）
+    here = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    for cand in (
+        os.path.join(here, "_tools", "platform-tools", "adb.exe"),
+        os.path.join(here, "_tools", "platform-tools", "adb"),
+    ):
+        if os.path.isfile(cand):
+            return cand
+    # PATH
+    for name in ("adb.exe", "adb"):
+        for d in os.environ.get("PATH", "").split(os.pathsep):
+            cand = os.path.join(d, name)
+            if os.path.isfile(cand):
+                return cand
     return ""
 
 

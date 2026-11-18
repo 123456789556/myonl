@@ -10,9 +10,9 @@
   py -3 tools\android_probe.py shot android-1
   py -3 tools\android_probe.py logcat 20
 
-为什么要 TEMP 覆盖：这台机器上 adb daemon 在默认 %TEMP% 下写 adb.log 会被拒
+为什么要 TEMP 覆盖：部分机器上 adb daemon 在默认 %TEMP% 下写 adb.log 会被拒
 （Permission denied），daemon 直接起不来。所以每个子进程都把 TEMP 指到
-D:\\娱乐工作区\\_tools\\tmp。
+一个可写目录（可用环境变量 MYONL_TMP 指定，不指定就用系统临时目录）。
 """
 
 from __future__ import annotations
@@ -20,10 +20,33 @@ from __future__ import annotations
 import os
 import subprocess
 import sys
+import tempfile
 import time
 
-ADB = r"D:\娱乐工作区\_tools\platform-tools\adb.exe"
-TMP = r"D:\娱乐工作区\_tools\tmp"
+
+def _find_adb() -> str:
+    """先看 MYONL_ADB，再查 PATH，最后试几个常见安装位置。"""
+    env = os.environ.get("MYONL_ADB")
+    if env and os.path.isfile(env):
+        return env
+    for name in ("adb", "adb.exe"):
+        for d in os.environ.get("PATH", "").split(os.pathsep):
+            cand = os.path.join(d, name)
+            if os.path.isfile(cand):
+                return cand
+    for cand in ("/usr/bin/adb", "/usr/local/bin/adb",
+                 os.path.expanduser("~/Android/Sdk/platform-tools/adb.exe"),
+                 os.path.expanduser("~/AppData/Local/Android/Sdk/platform-tools/adb.exe")):
+        if os.path.isfile(cand):
+            return cand
+    raise SystemExit(
+        "找不到 adb。装好 platform-tools 后，把 adb 放进 PATH，"
+        "或设环境变量 MYONL_ADB 指向它的完整路径。"
+    )
+
+
+ADB = _find_adb()
+TMP = os.environ.get("MYONL_TMP") or os.path.join(tempfile.gettempdir(), "myonl-probe")
 SHOTS = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "screenshots")
 
 ENV = dict(os.environ, TEMP=TMP, TMP=TMP)
