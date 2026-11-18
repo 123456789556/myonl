@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import copy
 import json
+import os
 import sys
 from datetime import datetime
 from pathlib import Path
@@ -30,6 +31,19 @@ PERSISTENT_FILE = "persistent.json"  # P26 T4：全局解锁记录（跨存档/�
 #   MIGRATIONS[n] = 函数(存档 dict) -> dict，把 version=n 的存档升级为 version=n+1。
 #   未来加字段/改结构时在此注册迁移函数；函数只允许补字段/改格式，禁止删数据。
 MIGRATIONS: dict[int, object] = {}
+
+
+def _migrate_v0_to_v1(data: dict) -> dict:
+    """v0 → v1：最早的存档没写 version 字段。
+
+    结构上与 v1 一致，这里什么都不改，只是让迁移链能往下走。
+    没有这一环时 MIGRATIONS.get(0) 是 None，最老的存档直接判"过旧、没有迁移路径"，
+    老玩家升级引擎后打开游戏 —— 档还在，读不了。
+    """
+    return data
+
+
+MIGRATIONS[0] = _migrate_v0_to_v1
 
 
 def _migrate_v1_to_v2(data: dict) -> dict:
@@ -142,10 +156,44 @@ def save(state: dict, slot, anchor_stack=None, *,
     path = _slot_path(slot_key)
     try:
         path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(text, encoding="utf-8")
+        _atomic_write_text(path, text)
     except OSError as e:
         raise SaveError(f"存档失败：无法写入 {path}（{e}）")
     return str(path)
+
+
+def _atomic_write_text(path: Path, text: str) -> None:
+    """原子写：先写到同目录临时文件，刷盘后再 os.replace 换上去。
+
+    直接 write_text 覆盖时，进程被杀或断电会留下半截 JSON，
+    玩家下次读档就是"存档损坏"，比没存档更糟。
+    os.replace 在同一卷上是原子操作，读的人要么看到旧的完整文件，要么看到新的完整文件。
+
+    另外旧档先留一份 .bak：新档写完但校验不过时还能退回上一版。
+    """
+    tmp = path.with_name(path.name + ".tmp")
+    bak = path.with_name(path.name + ".bak")
+    try:
+        with open(tmp, "w", encoding="utf-8") as f:
+            f.write(text)
+            f.flush()
+            os.fsync(f.fileno())
+        if path.is_file():
+            try:
+                with open(path, "r", encoding="utf-8", errors="replace") as src, \
+                     open(bak, "w", encoding="utf-8") as dst:
+                    dst.write(src.read())
+                    dst.flush()
+                    os.fsync(dst.fileno())
+            except OSError:
+                pass  # 备份失败不影响主写入，只是少了退路
+        os.replace(tmp, path)
+    except BaseException:
+        try:
+            tmp.unlink()
+        except OSError:
+            pass
+        raise
 
 
 def load(slot) -> dict:
@@ -153,13 +201,28 @@ def load(slot) -> dict:
     slot_key = _normalize_slot(slot)
     path = _slot_path(slot_key)
     if not path.is_file():
-        raise SaveError(f"存档位 {slot_key} 没有存档")
+        # 主文件没了但上一版备份还在——上次替换中途被打断，别直接判"没有存档"
+        if not path.with_name(path.name + ".bak").is_file():
+            raise SaveError(f"存档位 {slot_key} 没有存档")
+    data = None
+    err = None
     try:
         data = json.loads(path.read_text(encoding="utf-8-sig"))
     except OSError as e:
-        raise SaveError(f"读取存档失败：{path}（{e}）")
+        err = SaveError(f"读取存档失败：{path}（{e}）")
     except ValueError as e:
-        raise SaveError(f"存档文件损坏：{path}（{e}）")
+        err = SaveError(f"存档文件损坏：{path}（{e}）")
+    if err is not None:
+        # 主文件读不了时退回上一版 .bak；救回来就顺手把主文件重写一遍，下次不用再兜底
+        bak = path.with_name(path.name + ".bak")
+        try:
+            data = json.loads(bak.read_text(encoding="utf-8-sig"))
+        except (OSError, ValueError):
+            raise err
+        try:
+            _atomic_write_text(path, json.dumps(data, ensure_ascii=False, indent=2))
+        except OSError:
+            pass
     if not isinstance(data, dict) or not isinstance(data.get("state"), dict):
         raise SaveError(f"存档文件损坏：{path}（缺少 state 字段）")
     if data.get("engine") not in ("moyul", "galengine"):  # galengine=旧引擎存档，兼容读取
@@ -267,7 +330,7 @@ def unlock_cg(name) -> None:
     path = _persistent_path()
     try:
         path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+        _atomic_write_text(path, json.dumps(data, ensure_ascii=False, indent=2))
     except OSError as e:
         print(f"[解锁警告] 全局解锁记录写入失败：{e}", file=sys.stderr)
 
