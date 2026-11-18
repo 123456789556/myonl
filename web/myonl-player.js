@@ -378,17 +378,42 @@
   }
 
   // ---------- 素材 ----------
+  // 解码并发上限。
+  // 打包器已经把「素材总量」压到手机扛得住的量（超了就降长边），但拦住的是总量，
+  // 拦不住「同时解码」这一下：一次性 new Image() 三十张，解码峰值能把低端机的
+  // 可用内存瞬间打穿 —— 图本身没超标，是一起解压的那一秒超了。
+  // 分批把峰值压到 4 张，总量不变。
+  const DECODE_CONCURRENCY = 4;
+
   function loadAssets() {
-    const names = Object.keys(pack.assets || {});
-    return new Promise((resolve) => {
-      let left = names.length;
-      if (!left) return resolve();
-      for (const name of names) {
-        const img = new Image();
-        img.onload = () => { assets[name] = img; if (--left === 0) resolve(); };
-        img.onerror = () => { if (--left === 0) resolve(); };
-        img.src = pack.assets[name];
+    const all = Object.keys(pack.assets || {});
+    if (!all.length) return Promise.resolve();
+
+    // 首屏要用的排前面：封面先到，才不至于点进去先看一片黑。
+    const names = [];
+    if (pack.cover) {
+      for (const n of [pack.cover + "_p", pack.cover]) {
+        if (all.includes(n) && !names.includes(n)) names.push(n);
       }
+    }
+    for (const n of all) if (!names.includes(n)) names.push(n);
+
+    return new Promise((resolve) => {
+      let next = 0;
+      let left = names.length;
+      const startOne = () => {
+        if (next >= names.length) return;
+        const name = names[next++];
+        const img = new Image();
+        const done = () => {
+          if (--left === 0) resolve();
+          else startOne();      // 腾出一个槽位就补一张，别空着
+        };
+        img.onload = () => { assets[name] = img; done(); };
+        img.onerror = () => { done(); };
+        img.src = pack.assets[name];
+      };
+      for (let i = 0; i < DECODE_CONCURRENCY && i < names.length; i++) startOne();
     });
   }
 
