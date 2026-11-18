@@ -3,7 +3,7 @@
 [简体中文](README.md) | **English**
 
 ![tests](https://github.com/123456789556/myonl/actions/workflows/tests.yml/badge.svg?branch=main)
-![Release](https://img.shields.io/badge/release-apk--21%20%2B%20v1.0.0--rc28-blue)
+![Release](https://img.shields.io/badge/release-apk--22%20%2B%20v1.0.0--rc29-blue)
 ![Android](https://img.shields.io/badge/Android-7.0%2B%20phone%20%26%20tablet-3DDC84)
 ![Windows](https://img.shields.io/badge/Windows-辅助%20packager-0078D4)
 ![Python](https://img.shields.io/badge/Python-3.9%2B-3776AB)

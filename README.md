@@ -3,7 +3,7 @@
 **简体中文** | [English](README.en.md)
 
 [![tests](https://github.com/123456789556/myonl/actions/workflows/tests.yml/badge.svg?branch=main)](https://github.com/123456789556/myonl/actions/workflows/tests.yml)
-![Release](https://img.shields.io/badge/release-apk--21%20%2B%20v1.0.0--rc28-blue)
+![Release](https://img.shields.io/badge/release-apk--22%20%2B%20v1.0.0--rc29-blue)
 ![Android](https://img.shields.io/badge/Android-7.0%2B%20phone%20%26%20tablet-3DDC84)
 ![Windows](https://img.shields.io/badge/Windows-辅助%20packager-0078D4)
 ![Python](https://img.shields.io/badge/Python-3.9%2B-3776AB)
@@ -23,17 +23,17 @@
 
 | 你要什么 | 拿哪个 | 多大 |
 | :--- | :--- | :--- |
-| 安卓手机 / 安卓平板直接装（**装上就能编游戏**） | [**MYONL-apk-21.apk**](https://github.com/123456789556/myonl/releases/download/apk-21/MYONL-apk-21.apk) | 4.0 MB |
+| 安卓手机 / 安卓平板直接装（**装上就能编游戏**） | [**MYONL-apk-22.apk**](https://github.com/123456789556/myonl/releases/download/apk-22/MYONL-apk-22.apk) | 4.0 MB |
 | 任何浏览器打开，不装东西 | 自己导出的单文件 HTML（`dist/web/研修日志.html`） | 约 3.0 MB |
 | 编辑器单文件（`file://` 双击就能编，带离线内核） | `py -3 tools\build_editor_single.py` → `dist/web/editor-single.html` | 0.69 MB |
-| Windows 双击即玩（编辑器 + 打包器） | 仓库内 `py -3 tools\build_release_zip.py --version v1.0.0-rc28` 自建（发行包体积大，没挂 Release） | 67.9 MB |
+| Windows 双击即玩（编辑器 + 打包器） | 仓库内 `py -3 tools\build_release_zip.py --version v1.0.0-rc29` 自建（发行包体积大，没挂 Release） | 67.9 MB |
 
 APK 的 `minSdk` 是 24（安卓 7.0），一个包同时装手机和安卓平板，横过来竖过去都在满屏范围内重排。
 **这一版 APK 里装的是编辑器**：打开就是「我的作品」，能新建、能写剧本、能存本机、能把 `.gal` 导出带走，全程不联网、不上云。
 作品留在设备本机（`localStorage`），升级只换安装包、不动数据 —— 用的是固定签名，不会要求卸载重装；
 改了剧本也不会丢档（存档键里的作品指纹变了会自动把旧档搬过来，旧键保留可回滚）。
 
-> 手机端边界（rc28 起变了）：**能编、能存、能自己出成品**。
+> 手机端边界（rc29 起变了）：**能编、能存、能自己出成品**。
 > 剧本由 `engine/parser.js` 解析，和电脑端 `engine/parser.py` **逐字段一致**（`tools/pack_diff.py`
 > 拿 5 个真实工程对拍，452 条指令全部对上）；成品由 `engine/pack.js` 拼成单文件 HTML，在手机上点一下就能导出。
 > 手机仍然做不了只剩一件：**塞图片 / 音乐 / 立绘**——本地存储放不下素材，素材批处理和 APK 打包留在电脑。
