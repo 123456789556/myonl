@@ -3,7 +3,7 @@
 **简体中文** | [English](README.en.md)
 
 [![tests](https://github.com/123456789556/myonl/actions/workflows/tests.yml/badge.svg?branch=main)](https://github.com/123456789556/myonl/actions/workflows/tests.yml)
-![Release](https://img.shields.io/badge/release-apk--18%20%2B%20v1.0.0--rc25-blue)
+![Release](https://img.shields.io/badge/release-apk--19%20%2B%20v1.0.0--rc26-blue)
 ![Android](https://img.shields.io/badge/Android-7.0%2B%20phone%20%26%20tablet-3DDC84)
 ![Windows](https://img.shields.io/badge/Windows-editor%20%2B%20packager-0078D4)
 ![Python](https://img.shields.io/badge/Python-3.9%2B-3776AB)
@@ -19,10 +19,10 @@
 
 | 你要什么 | 拿哪个 | 多大 |
 | :--- | :--- | :--- |
-| 安卓手机 / 安卓平板直接装（**装上就能编游戏**） | [**MYONL-apk-18.apk**](https://github.com/123456789556/myonl/releases/download/apk-18/MYONL-apk-18.apk) | 4.0 MB |
+| 安卓手机 / 安卓平板直接装（**装上就能编游戏**） | [**MYONL-apk-19.apk**](https://github.com/123456789556/myonl/releases/download/apk-19/MYONL-apk-19.apk) | 4.0 MB |
 | 任何浏览器打开，不装东西 | 自己导出的单文件 HTML（`dist/web/研修日志.html`） | 约 3.0 MB |
 | 编辑器单文件（`file://` 双击就能编，带离线内核） | `py -3 tools\build_editor_single.py` → `dist/web/editor-single.html` | 0.66 MB |
-| Windows 双击即玩（编辑器 + 打包器） | 仓库内 `py -3 tools\build_release_zip.py --version v1.0.0-rc25` 自建（发行包体积大，没挂 Release） | 67.9 MB |
+| Windows 双击即玩（编辑器 + 打包器） | 仓库内 `py -3 tools\build_release_zip.py --version v1.0.0-rc26` 自建（发行包体积大，没挂 Release） | 67.9 MB |
 
 APK 的 `minSdk` 是 24（安卓 7.0），一个包同时装手机和安卓平板，横过来竖过去都在满屏范围内重排。
 **这一版 APK 里装的是编辑器**：打开就是「我的作品」，能新建、能写剧本、能存本机、能把 `.gal` 导出带走，全程不联网、不上云。
@@ -214,7 +214,7 @@ py -3 -m engine.demo games/我的第一个游戏/script.gal --assets games/我�
 
 ```powershell
 py -3 -m pytest -q -m "not slow"      # 日常快跑（约 70s）
-py -3 -m pytest -q                    # 全量 1200 passed + 1 skipped（含 slow，耗时较长）
+py -3 -m pytest -q                    # 全量 1204 passed + 1 skipped（含 slow，耗时较长）
 py -3 -m pytest -q -m slow            # 真实打包 / 全渲染 / 性能用例
 ```
 
@@ -278,7 +278,7 @@ Typography is pinned to physical CSS size, not logical pixels, so text stays the
 390 px phone and an 800 px tablet; body text is capped at 720 CSS px (~39 chars per line).
 
 - Editor / packager from source: Python 3.9+ + `pygame-ce>=2.5` (Windows only).
-- Tests: `pytest -q` → 1200 passed + 1 skipped headless cases.
+- Tests: `pytest -q` → 1204 passed + 1 skipped headless cases.
 - Documentation is written in Chinese: [快速上手](docs/快速上手.md) · [engine spec](docs/engine_spec.md).
 
 ## 许可
@@ -286,4 +286,5 @@ Typography is pinned to physical CSS size, not logical pixels, so text stays the
 MIT（见 [LICENSE](LICENSE)）。第三方组件与素材许可见 [NOTICE](NOTICE)。
 
 > 本产品完全离线运行，不依赖任何在线服务。
+
 
