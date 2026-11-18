@@ -221,8 +221,10 @@
         var k3 = p3.split("=")[0], v3 = p3.slice(k3.length + 1);
         if (k3 === "anim") anim = v3;
         else if (k3 === "pos") {
-          if (["左", "中", "右"].indexOf(v3) < 0) throw synErr(n, 'pos 只能是 左/中/右，实际为 "' + v3 + '"');
-          pos = v3;
+          // P115：中文和英文别名都认，但输出统一成中文（播放器只认中文，一行不用改）
+          var POSA = { "左": "左", left: "左", "中": "中", center: "中", mid: "中", "右": "右", right: "右" };
+          if (!POSA[v3]) throw synErr(n, 'pos 只能是 左/中/右（也可写 left/center/right），实际为 "' + v3 + '"');
+          pos = POSA[v3];
         } else if (k3 === "scale") {
           var sc = Number(v3);
           if (!NUMBER.test(v3)) throw synErr(n, 'scale 应为数字（范围 0.5~2.0），实际为 "' + v3 + '"');

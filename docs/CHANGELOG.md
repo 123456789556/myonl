@@ -2,6 +2,25 @@
 
 > 只记 release 级变化，一句话 + 证据链接。单项细节见 git 历史（原 archive/ 已删除）。
 
+## 2026-11-18（P115：中文取值加英文别名 —— 输入两种都认，输出统一成中文）
+
+这套语法一直是"英文指令 + 中文参数值"的混用体（`@bg` 英文、`pos=左` 中文），
+代价已经付过一次：JS 的 `\w` 不含中文，`@set 信任 = 0` 直接崩。
+
+这一版只做一件事，但把根上的味道改对：**中文取值都加英文别名**。
+
+- `pos=` 接受 `左/中/右` 与 `left/center/right`（含 `mid`）；
+- `@camera pan` / `@transition wipe|slide` 的方向接受 `左/右/上/下` 与 `left/right/up/down`；
+- `@fg none` 与 `@fg 无` 本就等价，这里补上断言。
+
+规矩一条：**输入宽松，输出唯一**。进指令 JSON 的永远是中文，
+所以播放器、旧剧本、旧存档一行都不用改，也不存在"半新半旧"的中间状态。
+
+- Python（`engine/parser.py`）加 `_POS_ALIAS` / `_DIR_ALIAS`，`_DIRS` 集合退役。
+- JS（`engine/parser.js`）`pos` 同步加别名表。
+- `tests/test_p115_value_aliases.py`：6 条，含"JS 侧与 Python 侧对同一段文本产出一致"。
+- 回归：`pytest -q` 全绿；`tools/pack_diff.py` 5 个工程 452 条仍然逐字段一致。
+
 ## 2026-11-18（P114：手机端能**自己出成品**了 —— JS 解析器 + JS 打包器）
 
 P112 之后手机能编、能存、能导 `.gal`，但**打不出成品**：`.gal → 指令 JSON` 只有 Python 有。

@@ -33,7 +33,15 @@ _ANIM_PARAMS = ("x", "y", "alpha", "scale")   # P30-C-c：@anim 可补间的立�
 _NUMBER = re.compile(r"-?\d+(?:\.\d+)?")
 _CAM_KINDS = {"pan", "zoom", "shake", "reset"}
 _TRANS_KINDS = {"dissolve", "wipe", "slide"}
-_DIRS = {"左", "右", "上", "下"}
+# P115：取值里那几个中文词加英文别名。为什么做：
+# 语法是"英文指令 + 中文参数值"的混用体，JS 端的正则要为此到处维护 CJK 字符类，
+# 而且只要哪处漏了，中文变量/标签就静默解析失败（真崩过一次）。
+# 规则只有一条：**输入两种都认，输出统一成中文**——播放器、旧存档、旧剧本全不用动。
+# （原来的 _DIRS 集合被这两个别名表取代，不再单独存在。）
+_POS_ALIAS = {"左": "左", "left": "左", "中": "中", "center": "中", "mid": "中",
+              "右": "右", "right": "右"}
+_DIR_ALIAS = {"左": "左", "left": "左", "右": "右", "right": "右",
+              "上": "上", "up": "上", "下": "下", "down": "下"}
 
 
 class GalSyntaxError(Exception):
@@ -345,9 +353,9 @@ class _Parser:
                         raise self.error(n, f'@show 的参数应为 anim=动画名（如 anim=walk），实际为 "{part}"')
                     anim = value
                 elif key == "pos":
-                    if value not in ("左", "中", "右"):
-                        raise self.error(n, f'pos 只能是 左/中/右，实际为 "{value}"')
-                    pos = value
+                    if value not in _POS_ALIAS:
+                        raise self.error(n, f'pos 只能是 左/中/右（也可写 left/center/right），实际为 "{value}"')
+                    pos = _POS_ALIAS[value]
                 elif key == "scale":
                     try:
                         num = float(value)
@@ -482,15 +490,15 @@ class _Parser:
                 raise self.error(n, f'@camera 子命令 "{kind}" 不支持（pan/zoom/shake/reset）')
             args = parts[1:]
             if kind == "pan":
-                if len(args) != 2 or args[0] not in _DIRS:
-                    raise self.error(n, '@camera pan 格式：@camera pan 方向(左/右/上/下) 秒数')
+                if len(args) != 2 or args[0] not in _DIR_ALIAS:
+                    raise self.error(n, '@camera pan 格式：@camera pan 方向(左/右/上/下，也可 left/right/up/down) 秒数')
                 try:
                     secs = _num(args[1])
                 except ValueError:
                     raise self.error(n, f'@camera pan 的秒数应为数字，实际 "{args[1]}"')
                 if secs <= 0:
                     raise self.error(n, "@camera pan 的秒数必须 > 0")
-                return {"op": "camera", "kind": "pan", "args": [args[0], secs], "line": n}
+                return {"op": "camera", "kind": "pan", "args": [_DIR_ALIAS[args[0]], secs], "line": n}
             if kind == "zoom":
                 if len(args) != 2:
                     raise self.error(n, '@camera zoom 格式：@camera zoom 起始缩放 结束缩放')
@@ -541,15 +549,15 @@ class _Parser:
                 if secs <= 0:
                     raise self.error(n, "@transition dissolve 的秒数必须 > 0")
                 return {"op": "transition", "kind": "dissolve", "args": [secs], "line": n}
-            if len(args) != 2 or args[0] not in _DIRS:
-                raise self.error(n, f'@transition {kind} 格式：@transition {kind} 方向(左/右/上/下) 秒数')
+            if len(args) != 2 or args[0] not in _DIR_ALIAS:
+                raise self.error(n, f'@transition {kind} 格式：@transition {kind} 方向(左/右/上/下，也可 left/right/up/down) 秒数')
             try:
                 secs = _num(args[1])
             except ValueError:
                 raise self.error(n, f'@transition {kind} 的秒数应为数字，实际 "{args[1]}"')
             if secs <= 0:
                 raise self.error(n, f"@transition {kind} 的秒数必须 > 0")
-            return {"op": "transition", "kind": kind, "args": [args[0], secs], "line": n}
+            return {"op": "transition", "kind": kind, "args": [_DIR_ALIAS[args[0]], secs], "line": n}
 
         if head == "wait":
             # @wait 2.0 / @wait 500ms / @wait 1s / @wait 300（无单位默认秒）
