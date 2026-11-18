@@ -352,7 +352,7 @@
   @jump 结局_归档
 
 @label 结局_卷帘门
-@bg bg_走廊
+@bg bg_结局卷帘门
 @music bgm_day fadein=1.0
 @sfx door
 @hide 林晚
@@ -377,7 +377,7 @@
 @end
 
 @label 结局_归档
-@bg bg_教室
+@bg bg_结局归档
 @music bgm_day
 @sfx page
 @ 旁白 报告交了。PDF 三百七十兆，老师说做得很好，还放进了教研室的共享盘。
