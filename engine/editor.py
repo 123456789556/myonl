@@ -754,6 +754,8 @@ class _EditorHandler(BaseHTTPRequestHandler):
         ("GET", "/editor_utils.js"): "_serve_utils_js",
         # 手机离线内核：没有 Python 时由它顶替全部 /api/*（自带探测，有后端就退出）
         ("GET", "/gal_offline.js"): "_serve_offline_js",
+        ("GET", "/parser.js"): "_serve_parser_js",
+        ("GET", "/pack.js"): "_serve_pack_js",
         # E9：编辑器三档模式 Level 1–3（前端档位开关，状态存 localStorage）
         ("GET", "/editor_level.js"): "_serve_level_js",
         # T16 域拆分：游戏内 UI 设计区 / 壳层（菜单 + 命令面板 + 教程）
@@ -901,6 +903,9 @@ class _EditorHandler(BaseHTTPRequestHandler):
 
     def _serve_editor_file(self, name: str, mime: str) -> None:
         p = os.path.join(_editor_front_dir(), name)
+        if not os.path.isfile(p):
+            # parser.js / pack.js 是内核，住在 engine/，电脑端和手机端共用同一份
+            p = os.path.join(os.path.dirname(os.path.abspath(__file__)), name)
         try:
             with open(p, "rb") as f:
                 body = f.read()
@@ -1020,6 +1025,14 @@ class _EditorHandler(BaseHTTPRequestHandler):
         """手机离线内核。电脑端把它服务出去也没关系——它自带探测，
         有 Python 后端时会立刻 return 不劫持 fetch。"""
         self._serve_editor_file("gal_offline.js", "application/javascript; charset=utf-8")
+
+    def _serve_parser_js(self, parsed=None) -> None:
+        """JS 解析器：手机端靠它把 .gal 编成指令，和 engine/parser.py 逐字段一致。"""
+        self._serve_editor_file("parser.js", "application/javascript; charset=utf-8")
+
+    def _serve_pack_js(self, parsed=None) -> None:
+        """JS 打包器：手机端靠它把指令 + 素材拼成单文件成品 HTML。"""
+        self._serve_editor_file("pack.js", "application/javascript; charset=utf-8")
 
     def _serve_characters_js(self, parsed=None) -> None:
         self._serve_editor_file("editor_characters.js", "application/javascript; charset=utf-8")

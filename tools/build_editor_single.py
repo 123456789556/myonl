@@ -29,7 +29,10 @@ def build(out_file: Path) -> dict:
     # <script src="/x.js?v=p98"></script> → 内联
     def inline_js(m: re.Match) -> str:
         fname = m.group(1)
+        # parser.js / pack.js 住在 engine/（它们是内核，电脑端和手机端共用同一份）
         path = EDITOR / fname
+        if not path.is_file():
+            path = ROOT / "engine" / fname
         if not path.is_file():
             return ""     # 拿不到就留空，别让它变成一次 404
         body = path.read_text(encoding="utf-8")

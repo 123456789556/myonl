@@ -16,6 +16,12 @@ datas = [
     # 而且当时打包不报错，只有用户点到才知道。目录整体带就不会再有这种漏。
     (os.path.join(ROOT, "editor"), "editor"),
 ]
+# P114：JS 内核（parser.js / pack.js）住在 engine/，由 editor.py 回落到那个目录服务。
+# 漏了它们，发行版里手机端「做成成品」按钮点了没反应（素材/解析器全缺）。
+datas += [
+    (os.path.join(ROOT, "engine", name), "engine")
+    for name in ("parser.js", "pack.js")
+]
 # M1.5：内嵌教程（编辑器「帮助 → 教程 / 说明书」在发行包里也要能看）
 datas += [
     (os.path.join(ROOT, "docs", name), "docs")

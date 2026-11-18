@@ -51,6 +51,9 @@ jobs:
           # index.html = 编辑器：装上就能在手机上新建作品、写剧本、存本机、导出 .gal
           python3 tools/build_editor_single.py
           cp dist/web/editor-single.html android/app/src/main/assets/index.html
+          # 播放器内核三个脚本要和 index.html 同级：手机端「做成成品」按钮
+          # 在本地 fetch 它们拼单文件 HTML，拿不到就出不了成品。
+          cp web/myonl-core.js web/myonl-layout.js web/myonl-player.js android/app/src/main/assets/
           # game.html = 内置成品：想直接玩的话从这里进
           python3 -c "from engine.webpack import build_single; build_single('games/研修日志', 'android/app/src/main/assets/game.html', title='研修日志')"
           ls -lh android/app/src/main/assets/

@@ -347,11 +347,12 @@
   //   1) Blob 下载（部分浏览器给「保存到文件」）
   //   2) 系统分享（安卓 Chrome 支持 navigator.share 带文件）
   // 两条都试，谁成算谁；都不成至少有「复制全文」兜底。
-  function download(text, filename) {
-    var blob = new Blob([text], { type: "text/plain;charset=utf-8" });
+  function download(text, filename, mime) {
+    var type = mime || "text/plain;charset=utf-8";
+    var blob = new Blob([text], { type: type });
     try {
       if (navigator.canShare && navigator.share) {
-        var file = new File([blob], filename, { type: "text/plain" });
+        var file = new File([blob], filename, { type: type.split(";")[0] });
         if (navigator.canShare({ files: [file] })) {
           navigator.share({ files: [file], title: filename }).catch(function () { save(blob, filename); });
           return;
@@ -380,6 +381,35 @@
   window.__myonlExportLib = function () {
     download(JSON.stringify(readLib(), null, 1), "myonl-作品库.json");
   };
+
+  // 成品导出：手机上**自己**把剧本编成能双击就玩的单文件 HTML。
+  // 解析走 engine/parser.js（和电脑端 Python 逐字段一致，tools/pack_diff.py 对拍），
+  // 拼装走 engine/pack.js。播放器那三个脚本在 APK 里跟 index.html 同级，
+  // 所以这里直接 fetch；桌面上 file:// 取不到会诚实报错，不假装成功。
+  function playerSources() {
+    return Promise.all(["myonl-core.js", "myonl-layout.js", "myonl-player.js"].map(function (n) {
+      return fetch(n, { cache: "no-store" }).then(function (r) {
+        if (!r.ok) throw new Error(n);
+        return r.text();
+      });
+    }));
+  }
+  window.__myonlExportPack = function () {
+    var p = curProject();
+    if (!window.MYONLPack || !window.MYONLParser) { toast("打包器没加载，刷新一下", true); return; }
+    toast("正在把剧本编成成品…");
+    playerSources().then(function (src) {
+      var r = window.MYONLPack.buildPack({
+        title: p.name, scriptText: p.text,
+        assets: {}, audio: {}, videos: {}, config: {}, orientation: "any",
+      });
+      if (!r.ok) { toast("剧本第 " + r.error.line + " 行：" + r.error.message, true); return; }
+      var html = window.MYONLPack.renderSingle(r.pack, src);
+      download(html, p.name + ".html", "text/html;charset=utf-8");
+    }).catch(function () {
+      toast("这台设备取不到播放器内核，成品导出请在装好的 APK 里用", true);
+    });
+  };
   window.__myonlImportLib = function (json) {
     try {
       var lib = typeof json === "string" ? JSON.parse(json) : json;
@@ -400,11 +430,12 @@
       "background:rgba(79,140,255,.07)";
     var tip = document.createElement("div");
     tip.style.cssText = "font-size:12px;line-height:1.6;color:#9fb2d0;margin-bottom:10px";
-    tip.textContent = "手机本地模式：作品存在这台设备里，不上云。剧本现在就能带走；" +
-      "要打成能直接双击玩的成品，得在电脑上打包——数据线把 .gal 拷过去即可。";
+    tip.textContent = "作品存在这台设备里，不上云。剧本能带走，成品也能在这台手机上直接出——" +
+      "下面第一个按钮就是打包，出来的 .html 发给谁都能双击玩。";
     bar.appendChild(tip);
 
-    [["拿出这个作品（.gal）", function () { window.__myonlExportGal(); }],
+    [["做成成品（.html，能发人）", function () { window.__myonlExportPack(); }],
+     ["拿出这个作品（.gal）", function () { window.__myonlExportGal(); }],
      ["拿出全部作品（.json）", function () { window.__myonlExportLib(); }]
     ].forEach(function (it) {
       var b = document.createElement("button");

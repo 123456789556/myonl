@@ -2,6 +2,34 @@
 
 > 只记 release 级变化，一句话 + 证据链接。单项细节见 git 历史（原 archive/ 已删除）。
 
+## 2026-11-18（P114：手机端能**自己出成品**了 —— JS 解析器 + JS 打包器）
+
+P112 之后手机能编、能存、能导 `.gal`，但**打不出成品**：`.gal → 指令 JSON` 只有 Python 有。
+这一版把这条路补上了，手机端不再需要电脑配合才能出东西。
+
+- **`engine/parser.js`（新）**：`engine/parser.py` 的逐条复刻 —— 注释剥离、缩进块、`@if/@elif/@else`、
+  `@choice` 条件选项、`@show` 的 8 种参数、`say` 的三种形态（`@` / `@[名字]` / `@[[整屏]]`，含嵌套括号与
+  「名字后紧跟下一行」）、`@set` 三种形态、跳转目标校验。覆盖 5 个真实工程用到的 **15 种 op**；
+  其余（`@voice/@video/@anim/@fg/@cg/@camera/@transition/@plug/@include`）遇到就烧明确中文错误，不静默走偏。
+- **`tools/pack_diff.py`（新，对拍）**：同一份 `.gal` 跑 Python 与 Node，逐字段比对（只忽略 `file`）。
+  **5 个工程 452 条指令全部一致**（14 / 25 / 16 / 49 / 348）。这是"手机打的和电脑打的一样"的唯一证据。
+- **`engine/pack.js`（新）**：JS 版 `build_single` —— 指令 + 素材 data URI 拼成自包含单文件 HTML，
+  骨架与 `webpack.py` 同构（`#boot` 启动层 / `#stage` / `__MYONL_PACK__` / 三个播放器脚本）。
+  `tools/pack_js_e2e.py`：真 Chromium 打开 JS 造的成品，**5/5**（pack 注入 348 条、canvas 有尺寸、
+  点击推进有画面、零横向溢出、零 JS 异常）。
+- **手机 UI**：`gal_offline.js` 的导出条加第一个按钮「做成成品（.html，能发人）」，点了在本机 fetch
+  三个播放器脚本 → 解析 → 拼包 → 分享/下载。`download()` 支持指定 mime，不再一律 `text/plain`。
+- **踩到的真坑（已固化成测试）**：`pack.js` 里写字面脚本标签 → 它自己被内联进编辑器时，
+  HTML 解析器进入双转义状态、把脚本切成两段，`MYONLPack` 直接 `undefined`、按钮点了没反应。
+  现在一律拼 `T_OPEN`/`T_CLOSE`，`tests/test_p114_js_kernel.py` 里有断言守着。
+- **另一个真坑**：JS 的 `\w` 不含中文，`@character 林晚 #ffb3c8`、`@set 信任 = 0` 全挂；
+  正则改成显式 CJK 区间（`u4e00-\u9fff`）。
+- **打包链**：`editor/index.html` 挂 `/parser.js` + `/pack.js`（与 gal_offline 同一行，600 行上限没破）；
+  `_serve_editor_file` 回落 `engine/`；`editor.spec` 把这两个 js 带进发行包；CI 把三个播放器脚本
+  `cp` 到 APK 的 assets（否则手机 fetch 404、出不了成品）。
+- **新文档** `docs/手机端编游戏.md`：能做什么、不能做什么、成品怎么给别人、升级为什么不会丢档。
+- 回归：`pytest -q` → **1206 passed, 1 skipped**。
+
 ## 2026-11-18（P112：手机上真的能编游戏了 —— 砍掉 `--lan`，换离线内核）
 
 上一版把手机接电脑的路（`--lan` 局域网 + token）做出来了，但方向是错的：手机连电脑就是个大 U 盘，

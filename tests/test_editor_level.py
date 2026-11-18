@@ -85,6 +85,9 @@ def test_发行包打包清单覆盖前端全部模块():
     py = (ROOT / "engine" / "editor.py").read_text(encoding="utf-8")
     whole_dir = '(os.path.join(ROOT, "editor"), "editor")' in spec
     for name in refs:
-        assert (EDITOR / name).is_file(), f"index.html 引用了不存在的 editor/{name}"
+        # P114：parser.js / pack.js 是内核，住在 engine/（电脑端和手机端共用同一份），
+        # 由 engine/editor.py 的 _serve_editor_file 回落服务；其余仍在 editor/。
+        assert (EDITOR / name).is_file() or (ROOT / "engine" / name).is_file(), \
+            f"index.html 引用了不存在的 editor/{name} 或 engine/{name}"
         assert f'"/{name}"' in py, f"engine/editor.py 未注册 /{name} 路由"
         assert whole_dir or f'"{name}"' in spec, f"editor.spec 打包清单缺 {name}"
