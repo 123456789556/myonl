@@ -81,18 +81,34 @@ jobs:
             echo "tag 不是 vX.Y.Z，跳过版本注入"
           fi
 
+      # 先查 secret 齐不齐，缺就当场停。
+      # 以前是打到 apksigner 校验才红 —— 那时已经编译了 20 分钟，白等。
+      - name: 检查签名 secret 是否齐全
+        env:
+          MYONL_KEYSTORE_B64: ${{ secrets.MYONL_KEYSTORE_B64 }}
+          MYONL_STORE_PASS: ${{ secrets.MYONL_STORE_PASS }}
+          MYONL_KEY_PASS: ${{ secrets.MYONL_KEY_PASS }}
+        run: |
+          missing=""
+          [ -z "${MYONL_KEYSTORE_B64}" ] && missing="$missing MYONL_KEYSTORE_B64"
+          [ -z "${MYONL_STORE_PASS}" ]   && missing="$missing MYONL_STORE_PASS"
+          [ -z "${MYONL_KEY_PASS}" ]     && missing="$missing MYONL_KEY_PASS"
+          if [ -n "$missing" ]; then
+            echo "::error::缺签名 secret:$missing"
+            echo "::error::去 Settings → Secrets and variables → Actions 补齐这三条。"
+            echo "::error::没有它们，包签不了名，装上会被 Android 直接拒绝（解析失败）。"
+            echo "::error::所以在这里停，不白编译 20 分钟。"
+            exit 1
+          fi
+          echo "三条签名 secret 都在"
+
       - name: 还原签名私钥（从 repository secret）
         env:
           MYONL_KEYSTORE_B64: ${{ secrets.MYONL_KEYSTORE_B64 }}
         run: |
           mkdir -p android/keystore
-          if [ -n "${MYONL_KEYSTORE_B64}" ]; then
-            printf '%s' "$MYONL_KEYSTORE_B64" | base64 -d > android/keystore/myonl-test.p12
-            echo "私钥已还原（$(stat -c%s android/keystore/myonl-test.p12) 字节）"
-          else
-            echo "::warning::没有 MYONL_KEYSTORE_B64，这次签不了名。"
-            echo "::warning::Settings → Secrets and variables → Actions 加这个 secret，值是 p12 的 base64。"
-          fi
+          printf '%s' "$MYONL_KEYSTORE_B64" | base64 -d > android/keystore/myonl-test.p12
+          echo "私钥已还原（$(stat -c%s android/keystore/myonl-test.p12) 字节）"
 
       - name: 打 release APK
         working-directory: android
