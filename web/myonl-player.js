@@ -1658,6 +1658,18 @@
       // 名牌：淡底 + 角色色竖条 + 白字。原来那圈彩色描边胶囊像贴上去的标签，
       // 换一个角色形状就变一次；竖条只用一个色块交代"谁在说"，安静得多，
       // 白字在任何角色色下都读得清。
+      // P124：名牌左上角贴一条斜胶带 —— 手账里"贴"这个动作，比加边框更像人做的。
+      // 只在竖屏加：横屏面板矮，转 8 度的色块会顶到台词第一行。颜色跟角色色走，不引入橙色。
+      if (!L.landscape) {
+        const tapeW = Math.round(plateH * 1.05);
+        const tapeH = Math.round(plateH * 0.30);
+        ctx.save();
+        ctx.translate(plateX + Math.round(pw * 0.22), plateY - Math.round(tapeH * 0.40));
+        ctx.rotate(-0.13);
+        ctx.globalAlpha = 0.85;
+        roundRect(-tapeW / 2, 0, tapeW, tapeH, Math.round(tapeH * 0.22), hexA(tint, 0.55));
+        ctx.restore();
+      }
       roundRect(plateX, plateY, pw, plateH, Math.round(plateH * 0.30), "rgba(255,255,255,.075)");
       roundRect(plateX + Math.round(plateH * 0.28),
                 plateY + Math.round(plateH * 0.20),
@@ -1780,6 +1792,33 @@
 
     // 选项上方留一句「在答什么」：选项出现时对话框是藏起来的，
     // 光给几个按钮玩家会失去上下文（尤其横屏一整屏空着的时候）。
+    // P124：整块对话框藏起来时，连「谁在问」一起没了 —— 两个按钮浮在腿上，
+    // 玩家只看到一句无主的问话。名字单独补一块，放在问句上方。
+    if (state.say && state.say.char) {
+      const nfs = Math.round(L.fs * 0.92);
+      ctx.save();
+      ctx.font = `600 ${nfs}px ${FACE}`;
+      const ntw = ctx.measureText(state.say.char).width;
+      const nh = Math.round(nfs * 1.6);
+      const nw = ntw + Math.round(nh * 1.5);
+      // 名字牌要和下面那句问话同一条中轴：问话是 x + bw/2 居中，横竖都一样
+      const nx = Math.round(x + bw / 2 - nw / 2);
+      const ny = startY - Math.round(bh * 0.55) - Math.round(nfs * 3.4) - nh;
+      const tint0 = state.say.color || vis.accent;
+      // 底要够实：0.075 是给对话框面板用的（面板下面还有一整片渐变兜着），
+      // 这里浮在立绘/地板上，透上来就成一块糊斑。
+      roundRect(nx, ny, nw, nh, Math.round(nh * 0.30), "rgba(10,13,20,.86)");
+      roundRect(nx + Math.round(nh * 0.28), ny + Math.round(nh * 0.20),
+                Math.max(2, Math.round(nh * 0.105)), nh - Math.round(nh * 0.40),
+                2, hexA(tint0, 0.92));
+      ctx.fillStyle = "rgba(242,246,255,.96)";
+      ctx.textAlign = "left";
+      ctx.textBaseline = "middle";
+      ctx.fillText(state.say.char, nx + Math.round(nh * 0.62), ny + nh / 2 + 1);
+      ctx.restore();
+      ctx.textAlign = "left";
+      ctx.textBaseline = "alphabetic";
+    }
     if (state.say && state.lines && state.lines.length) {
       const qfs = Math.round(L.fs * 0.92);
       ctx.save();
@@ -1799,8 +1838,9 @@
       ctx.scale(1, Math.max(0.35, (qBandBot - qBandTop) / qBw));
       const rq = qBw * 0.62;
       const bandG = ctx.createRadialGradient(0, 0, qBw * 0.10, 0, 0, rq);
-      bandG.addColorStop(0, "rgba(9,11,17,.80)");
-      bandG.addColorStop(0.62, "rgba(9,11,17,.55)");
+      // P124：0.80 → 0.90。实拍里这句问话浮在立绘腿上，压亮背景时还是读不清。
+      bandG.addColorStop(0, "rgba(9,11,17,.90)");
+      bandG.addColorStop(0.62, "rgba(9,11,17,.66)");
       bandG.addColorStop(1, "rgba(9,11,17,0)");
       ctx.fillStyle = bandG;
       ctx.beginPath();
@@ -2512,6 +2552,9 @@
       const rad = r.h / 2;
       // P97：纯圆、无描边。底要压得住背景 —— 0.46 在课桌这类花纹上会"消失"，
       // 0.62 才既安静又看得见。
+      // P124：外面再套一道 1px 的亮边，像从纸上剪下来贴上去的贴纸。
+      // 不画外阴影：竖屏三个按钮离右边只有 3%，阴影会被裁掉一半，反而脏。
+      roundRect(r.x - 1, r.y - 1, r.w + 2, r.h + 2, rad + 1, "rgba(255,255,255,.14)");
       roundRect(r.x, r.y, r.w, r.h, rad, "rgba(12,14,20,.88)", 0.62);
       ctx.save();
       ctx.textAlign = "center";
