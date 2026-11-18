@@ -35,14 +35,35 @@ def test_webview_uses_asset_loader_not_file_scheme():
 
 
 def test_signing_is_fixed_and_present():
-    """覆盖安装要求同一签名；签名一变玩家就得卸载，localStorage 一起没。"""
+    """覆盖安装要求同一签名；签名一变玩家就得卸载，localStorage 一起没。
+
+    keystore 本身**不**在仓库里 —— P104 之后它是从 CI secret 还原的。
+    公开仓库里放 p12 + 明文密码，等于谁都能签一个 signature 相同的包，
+    覆盖装到已装正版的手机上。所以这里改守另外三件事：
+
+      1. 签名配置存在，且走 PKCS12
+      2. 文件名固定 —— 不是每次构建现生成一个新的（换了就等于换签名）
+      3. 密码来自环境变量，不是写死在文件里
+    """
     gradle = _read(ANDROID / "app" / "build.gradle")
     assert "signingConfigs" in gradle
     assert "PKCS12" in gradle
-    assert "myonl-test.p12" in gradle
-    store = ANDROID / "keystore" / "myonl-test.p12"
-    assert store.is_file(), "固定签名的 keystore 没进仓库"
-    assert store.stat().st_size > 1000
+    assert "myonl-test.p12" in gradle, "签名文件名不固定，换一个就等于换签名"
+    assert "myonl-apk-2026" not in gradle, "明文签名密码回到了 build.gradle"
+    assert "MYONL_STORE_PASS" in gradle, "密码没从环境变量读，等于又写死了"
+    assert "canSign" in gradle, "没有条件式签名，缺 secret 时会静默出一个签不了名的包"
+
+
+def test_ci_restores_keystore_from_secret():
+    """keystore 不在仓库里，CI 就必须自己还原，且必须校验签名有效。
+
+    没校验的话，CI 会开开心心发一个装不上的包 —— 下载的人点开只看到「解析失败」。
+    """
+    text = _read(ROOT / ".github" / "workflows" / "android-apk.yml")
+    assert "MYONL_KEYSTORE_B64" in text, "CI 没从 secret 还原 keystore"
+    assert "base64 -d" in text
+    assert "apksigner" in text, "没校验签名，可能发出去一个装不上的包"
+    assert "verify" in text
 
 
 def test_manifest_allows_all_orientations():
