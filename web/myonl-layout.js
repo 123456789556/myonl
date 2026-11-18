@@ -91,9 +91,17 @@
       // （一句台词约 1.9 行、长句会涨到 8 行），用布局里这个静态值算，人就被锁死在
       // 一个偏小的尺寸：平板上明明只有三行字，上面却按"九行面板"留空，人像站远处。
       // 实际可用高度由播放器按「当前」面板高度现算（panelTopY）。
-      spriteH: Math.round(viewH * (landscape ? 0.92 : 0.86)),
+      // P125：平板横屏单独收一档。手机上"人物贴底、被面板压住小腿"是横屏 galgame 的
+      // 标准构图，但平板横屏有 1280 CSS 宽、800 高，人物按 0.92 撑满就变成一堵墙，
+      // 面板再压上来只剩一张脸 —— 这是"平板没适配"最直观的那一条。收到 0.82。
+      spriteH: Math.round(viewH * (landscape ? (tablet ? 0.82 : 0.92) : 0.86)),
       // 横屏选项靠左占 0.42：再宽就压到人物身上，再窄中文字会换行
-      choiceW: Math.round(landscape ? Math.min(viewW * 0.42, 720) : viewW - marginX * 4),
+      // P125：平板横屏给 0.36 —— 宽画布上 0.42 会长到 500 多 CSS，按钮拉成一条带子
+      choiceW: Math.round(landscape
+        ? Math.min(viewW * (tablet ? 0.36 : 0.42), tablet ? 640 : 720)
+        // P125：平板竖屏按手机比例铺就是 86% 宽的一条带子，字和按钮离得太远。
+        // 收到 760 逻辑（800 CSS 竖屏上约 63%），和正文同一个"一行别太长"的道理。
+        : Math.min(viewW - marginX * 4, tablet ? 760 : viewW - marginX * 4)),
       // P58：选项按钮按手指来算——最小 120 逻辑 px（1080 短边下约 43 CSS px，接近 44pt 触摸推荐值）
       choiceH: Math.round(clamp(fs * 2.8, 120, 170)),
       choiceGap: Math.round(fs * (landscape ? 1.0 : 0.7)),

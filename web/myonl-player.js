@@ -394,13 +394,53 @@
   // 一批 50 张背景 + 立绘全摊开能吃掉几百 MB，手机上最先看到的是「玩到一半闪退」。
   // 首屏要用的排在最前面，所以停手时该有的都已经有了。
   const ASSET_WARM_BYTES = 96 * 1024 * 1024;
+  // P125：预热封顶只管"一进来别一次吃光"。玩到第 40 个场景时，前面几十张背景
+  // 还全在内存里 —— 长游戏在手机上照样会涨到被系统杀掉。
+  // 运行期再给一道天花板：过了就按"最久没画到"淘汰。当前这一帧正在用的绝不淘汰。
+  const ASSET_KEEP_BYTES = 160 * 1024 * 1024;
   const assetPending = {};
   let assetMostlyDone = false;      // 预热跑完一轮没？
+  const assetAt = {};               // 上一次真正被取用的时刻，淘汰按它排序
+  let assetSweepTick = 0;
+
+  function assetBytes(img) {
+    return (img && img.naturalWidth && img.naturalHeight)
+      ? img.naturalWidth * img.naturalHeight * 4 : 0;
+  }
+
+  // 当前这一帧真正在看的东西：背景、立绘、CG、封面。这几张被删掉就是当场一块空。
+  function assetInUse() {
+    const keep = {};
+    if (state.bg) { keep[state.bg] = 1; keep[state.bg + "_p"] = 1; }
+    if (state.cg) keep[state.cg] = 1;
+    if (pack && pack.cover) { keep[pack.cover] = 1; keep[pack.cover + "_p"] = 1; }
+    const sp = state.sprites || {};
+    for (const k in sp) if (sp[k]) { keep[k] = 1; if (sp[k].image) keep[sp[k].image] = 1; }
+    return keep;
+  }
+
+  function sweepAssets() {
+    const keep = assetInUse();
+    const names = Object.keys(assets);
+    let total = 0;
+    for (const n of names) total += assetBytes(assets[n]);
+    if (total <= ASSET_KEEP_BYTES) return;
+    // 从最久没画到的开始扔，扔到不超上限为止；正在用的和没解完的一律跳过
+    const order = names
+      .filter((n) => !keep[n] && !assetPending[n] && assets[n] && assets[n].complete)
+      .sort((a, b) => (assetAt[a] || 0) - (assetAt[b] || 0));
+    for (const n of order) {
+      if (total <= ASSET_KEEP_BYTES) break;
+      total -= assetBytes(assets[n]);
+      delete assets[n];
+      delete assetAt[n];
+    }
+  }
 
   function getAsset(name) {
     if (!name) return null;
     const a = assets[name];
-    if (a && a.complete && a.naturalWidth) return a;
+    if (a && a.complete && a.naturalWidth) { assetAt[name] = performance.now(); return a; }
     // 没预解到（或上次被回收了）：现在起一次，下一帧 frame() 自己会补上
     if (!a && !assetPending[name] && pack && pack.assets && pack.assets[name]) {
       assetPending[name] = true;
@@ -801,12 +841,15 @@
     }
     const keys = Object.keys(obj.data);
     if (!keys.length) return {ok: false, msg: "这份存档是空的"};
-    let n = 0;
+    let n = 0, bad = 0;
     keys.forEach((k) => {
       if (k.indexOf("myonl:") !== 0) return;       // 只认自家键，别的什么都不碰
-      try { localStorage.setItem(k, String(obj.data[k])); n++; } catch (e) {}
+      // P125：原来 catch 是空的 —— localStorage 写满时（手机 5MB 上限很容易撞），
+      // 一部分键写不进去，函数照样返回 ok，界面报「已导入 N 项」。
+      // 玩家以为备份恢复了，换机后才发现少了存档。写不进去的必须计数报出来。
+      try { localStorage.setItem(k, String(obj.data[k])); n++; } catch (e) { bad++; }
     });
-    return {ok: true, n: n};
+    return {ok: true, n: n, bad: bad};
   }
 
   /* 导出存档。
@@ -857,6 +900,12 @@
   function applyImport(raw) {
     const r = storeImportCode(raw);
     if (!r.ok) { notice("导入失败：" + r.msg, false); return; }
+    if (r.bad) {
+      // 写不进去就别刷新：一刷新，刚写进去的那几项也看不出是哪几项了。
+      notice("只导入 " + r.n + " 项，" + r.bad + " 项写不进去（本机存储已满）。"
+             + "先删掉一些旧存档再试。", false);
+      return;
+    }
     if (!confirm("导入会覆盖本机已有的 MYONL 进度（共 " + r.n + " 项）。继续？")) return;
     notice("已导入 " + r.n + " 项，正在刷新…", true);
     setTimeout(() => { location.reload(); }, 500);
@@ -2226,6 +2275,9 @@
       }
     }
     if (UI.open) drawMenu();
+    // P125：每 60 帧扫一次运行期内存（约 1 秒）。每帧扫太费 —— 解一张 1080p 图
+    // 就是 8 MB，扫一次要把所有图名遍历一遍算总量。
+    if (++assetSweepTick >= 60) { assetSweepTick = 0; sweepAssets(); }
     requestAnimationFrame(frame);
   }
 
@@ -2268,6 +2320,18 @@
               ready: Object.keys(videoCache).filter(k => videoCache[k].complete
                                                       && videoCache[k].naturalWidth).length};
     },
+    // P125：内存回收的实测读数 —— 验收脚本要知道"多少张在图里、共多少 MB"
+    get assets() {
+      const names = Object.keys(assets);
+      let bytes = 0, ready = 0;
+      for (const n of names) {
+        bytes += assetBytes(assets[n]);
+        if (assets[n] && assets[n].complete && assets[n].naturalWidth) ready++;
+      }
+      return {names: names.length, ready: ready, mb: Math.round(bytes / 1048576),
+              keepMb: Math.round(ASSET_KEEP_BYTES / 1048576)};
+    },
+    sweepAssets: () => sweepAssets(),
     tap: (x, y) => {
       const box = canvas.getBoundingClientRect();
       onTap({
