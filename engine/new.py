@@ -58,8 +58,10 @@ def main(argv=None) -> int:
     print(f"  编辑器打开：py -m engine.editor --project {root}")
     if args.template == "default":
         print(f"  占位素材：{root / 'images'}（4 张纯色块，替换同名文件即可）")
+    elif args.template == "hello":
+        print(f"  先写一句台词：py -m engine.demo {root / 'script.gal'} --assets {root}")
     else:
-        print(f"  月光漫步资源已就位，直接运行：py -m engine.demo {root / 'script.gal'} --assets {root}")
+        print(f"  自带素材和示例故事，直接跑一遍：py -m engine.demo {root / 'script.gal'} --assets {root}")
     return 0
 
 

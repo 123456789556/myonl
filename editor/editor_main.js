@@ -658,10 +658,28 @@
           setPreviewBar(false, `解析失败：${err.file} 第 ${err.line} 行：${err.message}`);
           return null;
         }
+        // 不是图就别当图用：离线版（手机 / 单文件 HTML）没有渲染服务，
+        // /api/preview 回的是 JSON 提示。直接 blob() 塞进 <img> 只会得到一个破图图标。
+        const ct = (r.headers.get("content-type") || "").toLowerCase();
+        if (!ct.startsWith("image/")) {
+          let msg = "预览需要电脑端的渲染服务，手机上请直接看中间舞台";
+          try {
+            const j = await r.json();
+            if (j && j.message) msg = j.message;
+          } catch (e) { /* 不是 JSON 就用默认话 */ }
+          return {__noimg: msg};
+        }
         return r.blob();
       });
       if (stale()) return;
-      if (blob) {
+      if (blob && blob.__noimg) {
+        previewWrap.innerHTML = "";
+        const ph = document.createElement("div");
+        ph.className = "preview-placeholder";
+        ph.textContent = blob.__noimg;
+        previewWrap.appendChild(ph);
+        setPreviewBar(false, blob.__noimg);
+      } else if (blob) {
         const url = URL.createObjectURL(blob);
         previewWrap.innerHTML = `<img src="${url}" alt="预览">`;
         setPreviewBar(true, "解析成功 · 实时预览");

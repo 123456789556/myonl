@@ -780,6 +780,7 @@
         // 图换了尺寸就变，选择框/拖拽层必须跟着重新定位（否则会停在上一帧的位置）
         img.onload = function () { uidPositionStage(); };
         img.src = url;
+        img.style.display = "";   // 有图了才显形，没图时不留一个破图图标
       }
       const stage = $("uidStage");
       if (stage) stage.classList.add("on");
@@ -1054,7 +1055,7 @@
       "</div>" +
       '<div class="uid-stage-scroll" id="uidStageScroll">' +
       '<div class="uid-stage" id="uidStage">' +
-      '<img id="uidStageImg" alt="UI 设计预览" title="点击放大">' +
+      '<img id="uidStageImg" alt="UI 设计预览" title="点击放大" style="display:none">' +
       '<div class="uid-drag-body" id="uidDragBody" title="拖动：上下移动对话框"></div>' +
       '<div class="uid-drag-edge" id="uidDragTop" title="拖上边缘：改对话框高度"></div>' +
       '<div class="uid-drag-edge-v" id="uidDragLeft" title="拖左边缘：改面板宽度"></div>' +

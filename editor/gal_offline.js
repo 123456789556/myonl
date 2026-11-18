@@ -580,9 +580,14 @@
     return jsonRes({ ok: true, count: list.length, errors: [], instructions: list });
   };
 
-  // 预览大图：手机上直接说「看中间舞台」，别让它挂
+  // 预览大图：这一版没有渲染服务，直接让人看中间舞台，别挂在那儿转
   ROUTES["POST /api/preview"] = function () {
-    return jsonRes({ ok: false, message: "手机上用中间的舞台看效果" });
+    return jsonRes({
+      ok: false,
+      message: window.innerWidth < 720
+        ? "手机上用中间的舞台看效果"
+        : "电脑上要看实时画面请用完整版；这一版请直接看中间的舞台",
+    });
   };
   ROUTES["GET /api/thumb"] = function () {
     return jsonRes({ ok: false, message: "手机本地没有缩略图" });
@@ -639,8 +644,26 @@
   //   1) Blob 下载（部分浏览器给「保存到文件」）
   //   2) 系统分享（安卓 Chrome 支持 navigator.share 带文件）
   // 两条都试，谁成算谁；都不成至少有「复制全文」兜底。
+  // 文本 -> base64（按 UTF-8 走，中文不会乱；分块只为别把大文件一次性摊成几百万个字符）
+  function b64OfText(text) {
+    var bytes = new TextEncoder().encode(text);
+    var bin = "", CH = 4096;
+    for (var i = 0; i < bytes.length; i += CH) {
+      bin += String.fromCharCode.apply(null, bytes.subarray(i, i + CH));
+    }
+    return btoa(bin);
+  }
   function download(text, filename, mime) {
     var type = mime || "text/plain;charset=utf-8";
+    // 安卓壳里必须有这条：WebView 不理 <a download> + blob，不走保存桥就永远落不了地，
+    // 而下面那句 toast 还会照喊「已导出」—— 那就是骗人。
+    var bridge = window.__MYONLSave;
+    if (bridge && typeof bridge.save === "function") {
+      try {
+        bridge.save(filename, type.split(";")[0], b64OfText(text));
+        return;
+      } catch (e) { /* 桥坏了再往下退 */ }
+    }
     var blob = new Blob([text], { type: type });
     try {
       if (navigator.canShare && navigator.share) {
@@ -661,9 +684,9 @@
       document.body.appendChild(a);
       a.click();
       setTimeout(function () { try { URL.revokeObjectURL(a.href); a.remove(); } catch (e) {} }, 4000);
-      toast("已导出 " + filename);
+      toast("已导出 " + filename + "（在浏览器的下载里找）");
     } catch (e) {
-      toast("导出失败，改用复制全文", true);
+      toast("这个环境不让直接下载，改用「复制全文」", true);
     }
   }
   window.__myonlExportGal = function () {
@@ -1095,7 +1118,12 @@
   try {
     if (!sessionStorage.getItem("myonl:off:told")) {
       sessionStorage.setItem("myonl:off:told", "1");
-      setTimeout(function () { toast("手机本地模式：作品存在这台设备里"); }, 500);
+      setTimeout(function () {
+        // 同一句话在电脑上不能叫"手机本地模式"：宽屏按电脑说法讲
+        var narrow = window.innerWidth < 720;
+        toast(narrow ? "手机本地模式：作品存在这台设备里"
+                     : "本地模式：作品和素材都存在这台电脑上，不联网也能用");
+      }, 500);
     }
   } catch (e) { /* ignore */ }
 })();

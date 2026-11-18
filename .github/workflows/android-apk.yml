@@ -56,13 +56,30 @@ jobs:
           # 播放器内核三个脚本要和 index.html 同级：手机端「做成成品」按钮
           # 在本地 fetch 它们拼单文件 HTML，拿不到就出不了成品。
           cp web/myonl-core.js web/myonl-layout.js web/myonl-player.js android/app/src/main/assets/
-          # game.html = 内置成品：想直接玩的话从这里进
-          python3 -c "from engine.webpack import build_single; build_single('games/研修日志', 'android/app/src/main/assets/game.html', title='研修日志')"
+          # game.html = 内置示例：装上就能直接玩一关，也用来证明素材能显示
+          python3 -c "from engine.webpack import build_single; build_single('games/newbie_demo', 'android/app/src/main/assets/game.html', title='新手示例')"
           ls -lh android/app/src/main/assets/
 
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: "8.7"
+
+      - name: 从 tag 推出版本号
+        run: |
+          # v1.1.0 -> 名称 1.1.0、代码 10100；不是 v 开头的 tag（apk-xx 之类）退回 1
+          RAW="$GITHUB_REF_NAME"
+          VER="${RAW#v}"
+          if [[ "$VER" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            MAJ=$(echo "$VER" | cut -d. -f1)
+            MIN=$(echo "$VER" | cut -d. -f2)
+            PAT=$(echo "$VER" | cut -d. -f3)
+            CODE=$((MAJ * 10000 + MIN * 100 + PAT))
+            echo "MYONL_VERSION_NAME=$VER" >> "$GITHUB_ENV"
+            echo "MYONL_VERSION_CODE=$CODE" >> "$GITHUB_ENV"
+            echo "版本名 $VER / 版本代码 $CODE"
+          else
+            echo "tag 不是 vX.Y.Z，跳过版本注入"
+          fi
 
       - name: 打 release APK
         working-directory: android

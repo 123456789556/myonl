@@ -15,7 +15,6 @@ from __future__ import annotations
 
 import json
 import os
-from pathlib import Path
 
 import pytest
 
@@ -24,7 +23,6 @@ os.environ.setdefault("SDL_AUDIODRIVER", "dummy")
 
 from engine import cli, new  # noqa: E402
 from engine.newgame import TEMPLATES, create_game  # noqa: E402
-from engine.parser import parse_file  # noqa: E402
 
 pytestmark = [pytest.mark.integration]
 

@@ -30,6 +30,71 @@ public class MainActivity extends Activity {
 
     private WebView web;
 
+    // ---------- 导出：让文件真的落到手机里 ----------
+    // WebView 不处理 <a download> + blob：点了什么都不会发生，而网页那边还会提示「已导出」。
+    // 所以开一条桥：JS 把内容转成 base64 递过来，这里走系统「保存到」（SAF），用户选位置，真落地。
+    private static final int REQ_SAVE = 1001;
+    private String pendingName, pendingMime, pendingB64;
+
+    public class SaveBridge {
+        @android.webkit.JavascriptInterface
+        public void save(final String filename, final String mime, final String base64) {
+            pendingName = filename;
+            pendingMime = mime;
+            pendingB64 = base64;
+            runOnUiThread(() -> {
+                try {
+                    android.content.Intent i = new android.content.Intent(
+                            android.content.Intent.ACTION_CREATE_DOCUMENT);
+                    i.addCategory(android.content.Intent.CATEGORY_OPENABLE);
+                    i.setType(mime == null || mime.isEmpty() ? "application/octet-stream" : mime);
+                    i.putExtra(android.content.Intent.EXTRA_TITLE, filename);
+                    startActivityForResult(i, REQ_SAVE);
+                } catch (Throwable t) {
+                    say("打不开系统的保存窗口");
+                }
+            });
+        }
+
+        @android.webkit.JavascriptInterface
+        public String platform() {
+            return "android";
+        }
+    }
+
+    private void say(String msg) {
+        try {
+            android.widget.Toast.makeText(this, msg, android.widget.Toast.LENGTH_SHORT).show();
+        } catch (Throwable ignored) { }
+    }
+
+    @Override
+    protected void onActivityResult(int req, int res, android.content.Intent data) {
+        super.onActivityResult(req, res, data);
+        if (req != REQ_SAVE) return;
+        if (res != RESULT_OK || data == null || data.getData() == null) {
+            say("没有保存");
+            return;
+        }
+        byte[] bytes;
+        try {
+            bytes = android.util.Base64.decode(pendingB64, android.util.Base64.DEFAULT);
+        } catch (Throwable t) {
+            say("内容坏了，没写进去");
+            return;
+        }
+        try (java.io.OutputStream out = getContentResolver().openOutputStream(data.getData())) {
+            if (out == null) { say("写不进去"); return; }
+            out.write(bytes);
+            out.flush();
+            say("已保存到手机：" + pendingName);
+        } catch (Throwable t) {
+            say("写入失败：" + t.getMessage());
+        } finally {
+            pendingB64 = null;
+        }
+    }
+
     @Override
     protected void onCreate(Bundle state) {
         super.onCreate(state);
@@ -48,6 +113,10 @@ public class MainActivity extends Activity {
         s.setSupportZoom(false);
         s.setBuiltInZoomControls(false);
         s.setTextZoom(100);
+
+        // 只给"保存文件"这一个能力：页面本身来自 appassets（自家 asset），不加载外部站点，
+        // 所以这里开接口是收得住口的 —— 页面能调到的只有 save/platform 两个方法。
+        web.addJavascriptInterface(new SaveBridge(), "__MYONLSave");
 
         final WebViewAssetLoader loader = new WebViewAssetLoader.Builder()
                 .addPathHandler("/assets/", new WebViewAssetLoader.AssetsPathHandler(this))

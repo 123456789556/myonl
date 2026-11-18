@@ -13,7 +13,6 @@ handle_input(ui_mode) 按 UI 模式分发键位——非 playing 模式统一翻
 from __future__ import annotations
 
 import os
-import random
 import sys
 import time
 from collections import OrderedDict
