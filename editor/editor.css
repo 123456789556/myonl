@@ -2163,6 +2163,10 @@ input[type="color"] {
   .main.mobile-asset-open .asset-pane { bottom: 42px !important; }
   .right-pane { bottom: 42px !important; }
   .main.mobile-tree-open .file-pane { bottom: 42px !important; }
+  /* 390 高的横屏里右侧抽屉本身就是塌的：只剩一条 34px 的「检查器 / 时间线」标签，
+     底下还漏出半截预览画面（土黄一条），像坏了。横屏一律不显示右侧抽屉，
+     要看效果走底部第四个 tab 的整页预览。 */
+  .right-pane { display: none !important; }
 }
 
 /* ==================== P68f：UI 设计区在手机上重排 ====================
