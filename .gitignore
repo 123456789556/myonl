@@ -74,3 +74,13 @@ android/keystore/
 *.p12
 *.jks
 *.keystore
+
+# 凭据类，一律不进
+*.key
+key.properties
+.env
+.env.*
+!.env.example
+secrets.json
+credentials.json
+
