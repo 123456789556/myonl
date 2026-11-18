@@ -19,6 +19,11 @@
 
   const canvas = document.getElementById("game");
   const ctx = canvas.getContext("2d");
+  // 手机上不给浏览器留手势权：默认状态下按住拖动会触发浏览器的滚动/回弹/双击缩放，
+  // 表现是"我按住想长按出菜单，结果页面自己上下抖了"。这里把画布上的默认手势全关掉，
+  // 点击/长按/滑动交给下面的 pointerdown-pointerup 判定自己处理。
+  canvas.style.touchAction = "none";
+  canvas.style.webkitUserSelect = "none";
   const FACE = '"PingFang SC", "Source Han Sans SC", "Microsoft YaHei", system-ui, sans-serif';
   const BASE_CPS = 32;                // 打字机基准：字/秒（设置里可调）
 

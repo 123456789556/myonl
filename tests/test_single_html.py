@@ -51,6 +51,23 @@ def test_单文件只有一个产物且素材内嵌(tmp_path):
 
 
 @pytest.mark.integration
+def test_单文件自身体积有报告(tmp_path):
+    """P119：解码内存预算管的是"摊在画面上要多少"，管不到"这个 HTML 自身多重"。
+
+    手机要先把整个文件读进内存才出第一句，40 MB 起明显慢、80 MB 大概率白屏，
+    所以打包结果必须单独报文件体积和警告。
+    """
+    out = tmp_path / "game.html"
+    stat = W.build_single(DEMO, str(out))
+    assert "file_mb" in stat, "打包结果缺 file_mb"
+    assert "file_warning" in stat, "打包结果缺 file_warning"
+    assert stat["file_mb"] > 0
+    assert stat["file_mb"] == round(os.path.getsize(out) / (1024 * 1024), 1)
+    # 小工程的示例包不该触发警告
+    assert stat["file_warning"] == "", f"示例工程不该报警告：{stat['file_warning']}"
+
+
+@pytest.mark.integration
 def test_内联的_pack_能解析且指令齐全(tmp_path):
     out = tmp_path / "game.html"
     W.build_single(DEMO, str(out))

@@ -436,6 +436,12 @@ DECODE_BUDGET = 96 * 1024 * 1024          # 超过这个，自动加狠压缩
 DECODE_WARN = 64 * 1024 * 1024            # 超过这个，只提醒不动作
 DECODE_EDGE_LADDER = (SHRINK_MAX_EDGE, 1280, 1024, 800)   # 逐级加狠
 
+# 单文件体积：解码内存预算管的是「同时摊在画面上要多少」，管不到「这个 HTML 自身多重」。
+# 手机 WebView 打开单文件版要先把整个 <script> 读进内存才出第一句，
+# base64 内联本身还比原图胖 37%。40 MB 开始明显慢，80 MB 大概率直接白屏。
+FILE_SOFT_WARN = 40 * 1024 * 1024
+FILE_HARD_WARN = 80 * 1024 * 1024
+
 
 def _estimate_decode(blob: bytes, edge: int) -> int:
     """按「将会缩到 edge」估算解码后位图字节（w*h*4）。读不到图头就返回 0。"""
@@ -631,6 +637,19 @@ def build_single(project_root: str, out_file: str, *, title: str = "") -> dict:
         f.write(html)
 
     size = os.path.getsize(out)
+    file_mb = size / (1024 * 1024)
+    if size > FILE_HARD_WARN:
+        file_warning = (
+            f"单文件 {file_mb:.0f} MB，超过 {FILE_HARD_WARN // (1024 * 1024)} MB 硬线。"
+            f"手机要先把整个文件读进内存才显示第一句，这个体积大概率白屏或闪退。"
+            f"删素材，或者拆成多个章节包分开出。"
+        )
+    elif size > FILE_SOFT_WARN:
+        file_warning = (
+            f"单文件 {file_mb:.0f} MB。低端机打开会明显慢一拍，还能用，但别再加素材了。"
+        )
+    else:
+        file_warning = ""
     return {
         "out": out,
         "title": pack["title"],
@@ -645,6 +664,9 @@ def build_single(project_root: str, out_file: str, *, title: str = "") -> dict:
         "decode_mb": round(decode_bytes / (1024 * 1024), 1),
         "decode_edge": edge,
         "memory_warning": memory_warning,
+        # P119：单文件自身体积（跟解码内存预算是两回事）
+        "file_mb": round(file_mb, 1),
+        "file_warning": file_warning,
     }
 
 
@@ -765,6 +787,10 @@ def main(argv: list[str] | None = None) -> int:
               f"（长边收到 {s.get('decode_edge', 0)}）")
         if s.get("memory_warning"):
             print(f"  [注意] {s['memory_warning']}")
+        # P119：文件自身体积。跟上面那个解码内存不是一回事。
+        print(f"  文件体积：{s.get('file_mb', 0)} MB")
+        if s.get("file_warning"):
+            print(f"  [注意] {s['file_warning']}")
         print("  玩法：手机浏览器直接打开这个 .html，或把它发给别人")
         return 0
     out = args.out or os.path.join("dist", "web", os.path.basename(os.path.abspath(args.project)))
