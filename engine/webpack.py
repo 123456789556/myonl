@@ -102,6 +102,27 @@ def _clean_focal(raw) -> dict:
     return out
 
 
+def _strip_local_paths(node) -> None:
+    """把产物里每条指令的 `file` 从本机绝对路径洗成文件名。
+
+    解析器给每个 op 记了来源文件（编辑器报错要指到具体行），那是对的。
+    但这个 op 列表会原样内联进成品 HTML —— 成品是发给玩家玩的，
+    玩家看到 `D:\\娱乐工作区\\玩具项目\\...\\script.gal` 一头雾水；
+    更严重的是，等于把开发机的目录结构跟着游戏一起发出去。
+
+    就地递归，只动 `file` 这一个键，别的字段不碰。
+    """
+    if isinstance(node, list):
+        for item in node:
+            _strip_local_paths(item)
+    elif isinstance(node, dict):
+        f = node.get("file")
+        if isinstance(f, str) and ("\\" in f or "/" in f):
+            node["file"] = os.path.basename(f)
+        for value in node.values():
+            _strip_local_paths(value)
+
+
 def _pick_script(root: str) -> str:
     """找主剧本：优先 script.gal，其次任意 *.gal（按名字排序取第一个）。"""
     direct = os.path.join(root, "script.gal")
@@ -272,6 +293,7 @@ def build_web(project_root: str, out_dir: str, *, title: str = "") -> dict:
         raise FileNotFoundError(f"项目目录不存在：{root}")
     script_path = _pick_script(root)
     ins = parser_mod.parse_file(script_path)
+    _strip_local_paths(ins)
     cfg = _load_config(root)
 
     out = os.path.abspath(out_dir)

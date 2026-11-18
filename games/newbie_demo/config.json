@@ -1,0 +1,31 @@
+{
+  "_说明": "MYONL 只读配置：只写要覆盖的键，其余走引擎默认值。完整可配项见 engine/config.py 的 DEFAULTS。",
+  "window_title": "新手示例",
+  "theme": {
+    "primary": [
+      79,
+      140,
+      255
+    ],
+    "primary_soft": [
+      40,
+      58,
+      96
+    ],
+    "surface": [
+      16,
+      20,
+      30
+    ],
+    "surface_alt": [
+      28,
+      34,
+      48
+    ]
+  },
+  "ui": {
+    "slots": {
+      "count": 10
+    }
+  }
+}
