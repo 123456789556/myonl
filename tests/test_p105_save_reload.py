@@ -76,3 +76,19 @@ def test_自动档没有时继续游戏退到最近一格():
     body = src[src.index("function startGame(fromSave)"):src.index("// ---------- 输入 ----------")]
     assert "storeAuto() || latestSlot()" in body, "自动档缺失时要退到最近一格手动档"
     assert "settleAfterLoad()" in body, "继续游戏也要抹平 @wait，别停在没有台词的静默里"
+
+
+def test_换版本不丢档():
+    """存档键里带着剧本哈希：作者改一句剧本指纹就变，旧档在新指纹下"看不见"了 ——
+    盘上还在，人以为丢了。首次读档要把同标题旧指纹的记录搬进来，且旧键不删（可回滚）。
+
+    同时守住一个坑：迁移函数曾被写成同名两份，后定义的那份静默覆盖前面，迁移一直没生效。
+    """
+    src = _read(os.path.join("web", "myonl-player.js"))
+    assert src.count("function storeMigrate(") == 1, "同名迁移函数只能有一份，否则后者会静默覆盖前者"
+    assert "function storeMigrateGid(" in src, "要有按指纹搬旧档的那一份"
+    read = src[src.index("function storeRead()"):src.index("function storeFlush()")]
+    assert "storeMigrateGid()" in read, "首次读档要扫一遍旧指纹"
+    gid = src[src.index("function storeMigrateGid()"):src.index("function storeRead()")]
+    assert "myonl:v2:save:" in gid and 'indexOf(pre) !== 0' in gid, "只搬同标题同作品的旧记录"
+    assert "localStorage.removeItem" not in gid, "旧键不许删，包更新出问题还得能退回去"

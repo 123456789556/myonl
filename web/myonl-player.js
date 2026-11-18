@@ -584,6 +584,42 @@
 
   function storeKey() { return "myonl:v2:save:" + storeGid(); }
 
+  let MIGRATED = false;      // 迁移只做一次，别每帧扫 localStorage
+
+  /* 升级不丢档（指纹维度）。
+     作品指纹里带了剧本内容（改一句剧本、删一条指令，指纹就变），于是作者发新版后，
+     玩家的旧档在新指纹下"看不见"了 —— 存档还在盘上，人却找不到，体验上就是丢档。
+     这里扫一遍 localStorage：同作品（标题哈希相同）的旧记录里挑最近的一份搬进当前指纹。
+     旧键一律不删，包更新出问题时还能退回旧版本的档。 */
+  function storeMigrateGid() {
+    try {
+      const cur = storeKey();
+      const pre = "myonl:v2:save:" + hash36((pack && pack.title) || "untitled") + "-";
+      let bestRaw = null, bestT = -1, bestKey = "";
+      for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i);
+        if (!k || k === cur || k.indexOf(pre) !== 0) continue;
+        const raw = localStorage.getItem(k);
+        if (!raw) continue;
+        let d = null;
+        try { d = JSON.parse(raw); } catch (e) { continue; }
+        if (!d || typeof d !== "object") continue;
+        if (!d.auto && !Object.keys(d.slots || {}).length) continue;   // 空记录不搬
+        let t = Number(d.auto && d.auto.t) || 0;
+        const sl = d.slots || {};
+        for (const s in sl) t = Math.max(t, Number(sl[s] && sl[s].t) || 0);
+        if (t > bestT) { bestT = t; bestRaw = raw; bestKey = k; }
+      }
+      if (!bestRaw) return 0;
+      const d2 = JSON.parse(bestRaw);
+      SAVE = {v: 2, auto: d2.auto || null,
+              slots: (d2.slots && typeof d2.slots === "object") ? d2.slots : {}};
+      try { localStorage.setItem("myonl:v2:migrated", cur + " <- " + bestKey + " @" + bestT); } catch (e) {}
+      storeFlush();
+      return 1;
+    } catch (e) { return 0; }
+  }
+
   function storeRead() {
     if (SAVE) return SAVE;
     SAVE = {v: 2, auto: null, slots: {}};
@@ -597,6 +633,13 @@
         }
       }
     } catch (e) { SAVE = {v: 2, auto: null, slots: {}}; }   // 坏档按空档处理，别让整页崩
+    // 只在首次读档时处理一次迁移：先搬旧版散装键（storeMigrate 内部会做），
+    // 当前指纹下仍然没有档，再看同作品的旧指纹还留着什么（作者发新版后玩家才不会"丢档"）。
+    if (!MIGRATED) {
+      MIGRATED = true;
+      storeMigrate();
+      if (!SAVE.auto && !Object.keys(SAVE.slots || {}).length) storeMigrateGid();
+    }
     return SAVE;
   }
 
@@ -2090,6 +2133,10 @@
     importCode: (code) => storeImportCode(code),
     // 标题页「继续游戏」按钮的位置：验收要能验"重开还能接着上次进度"
     get continueRect() { return state.continueRect ? Object.assign({}, state.continueRect) : null; },
+    // 一眼看清存档到底落在哪个键上（升级不丢档的迁移也要能验）
+    get saveKeyNow() { return storeKey(); },
+    get saveKeys() { return Object.keys(localStorage).filter((k) => k.indexOf("myonl:v2:save") === 0); },
+    migrateSave: () => storeMigrate() + storeMigrateGid(),
   };
 
   // P67：作者在编辑器「设置」里选了「竖屏 / 横屏」时，玩家拿反了就提示一句。
