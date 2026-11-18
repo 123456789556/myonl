@@ -27,9 +27,11 @@ def test_清理脚本存在且按数字排序():
     src = _read("tools", "gh_release_clean.py")
     assert "apk-<数字>" in src
     assert "sort(key=lambda x: x[0], reverse=True)" in src, "必须按 tag 数字倒序，字符串排序会把 apk-9 排到 apk-10 前面"
-    assert "max(1," in src, "保留数至少 1，别把最新包也删了"
+    assert "return max(0, v)" in src, "显式 0 表示这类全清；没传时用默认值（安卓 3 / Windows 1）"
     assert '"DELETE"' in src and "/git/refs/tags/" in src, "删 Release 之后还要删 tag"
     assert 'v1\\.0\\.0-rc' in src, "Windows 发行候选也要能清，两类各自按数字排"
+    # 真删那段曾经写成 for n, r in doomed（doomed 里是 dict）—— dry-run 全绿、一 --yes 就崩
+    assert "for n, r in doomed" not in src, "doomed 里是 Release 字典，别按 (编号, 字典) 解包"
 
 
 def test_清理脚本默认不动手():

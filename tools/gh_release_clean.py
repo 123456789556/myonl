@@ -94,7 +94,10 @@ def main() -> int:
     ap.add_argument("--token", default=None, help="默认读 GITHUB_TOKEN / GH_TOKEN")
     ap.add_argument("--list", action="store_true", help="只列出来看看")
     ap.add_argument("--prune", action="store_true", help="按保留数删掉多余的")
-    ap.add_argument("--keep", type=int, default=None, help="两类共用同一个保留数（不指定则安卓 3 / Windows 1）")
+    ap.add_argument("--keep", type=int, default=None,
+                    help="两类共用同一个保留数；0 表示这一类全清（默认安卓 3 / Windows 1）")
+    ap.add_argument("--keep-apk", type=int, default=None, help="只针对安卓包")
+    ap.add_argument("--keep-rc", type=int, default=None, help="只针对 Windows 发行候选")
     ap.add_argument("--dry-run", action="store_true", help="只说会删谁，不动手")
     ap.add_argument("--yes", action="store_true", help="确认真删")
     args = ap.parse_args()
@@ -113,7 +116,17 @@ def main() -> int:
     for key in groups:
         groups[key].sort(key=lambda x: x[0], reverse=True)
 
-    keep_by = {k: max(1, args.keep if args.keep is not None else dk) for k, _, _, dk in FAMILIES}
+    # 每类各自的保留数：--keep-apk / --keep-rc 优先，其次共用的 --keep，最后用默认值。
+    # 0 表示"这一类全清"，用来把过时的 Windows 包整批撤掉。
+    def _keep(key: str, default_keep: int) -> int:
+        v = {"apk": args.keep_apk, "rc": args.keep_rc}[key]
+        if v is None:
+            v = args.keep
+        if v is None:
+            v = default_keep
+        return max(0, v)
+
+    keep_by = {k: _keep(k, dk) for k, _, _, dk in FAMILIES}
 
     print(f"仓库 {args.repo}：共 {len(rels)} 个 Release")
     labels = {k: label for k, _, label, _ in FAMILIES}
@@ -151,7 +164,7 @@ def main() -> int:
         return 3
 
     fails = 0
-    for n, r in doomed:
+    for r in doomed:
         tag = r.get("tag_name", "")
         code, detail = _req("DELETE", f"/repos/{args.repo}/releases/{r['id']}", token)
         if code not in (204, 200):

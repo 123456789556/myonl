@@ -27,9 +27,8 @@ APK 的 `minSdk` 是 24（安卓 7.0），一个包同时装手机和安卓平�
 存档留在设备本机（`localStorage`），升级只换安装包、不动存档 —— 用的是固定签名，不会要求卸载重装；
 作者发新版改了剧本也不会丢档（存档键里的作品指纹变了会自动把旧档搬过来，旧键保留可回滚）。
 
-> Releases 页面只保留最近 3 个安卓包（每次发新版自动清旧的，连 tag 一起删），
-> 所以列表里不会出现一堆分不清的 apk-1、apk-2。要手动补一刀：
-> `py -3 tools\gh_release_clean.py --list`（只读）或 `--prune --yes`（需要 `GITHUB_TOKEN`）。
+> Releases 页面只保留最近 3 个安卓包（每次发新版自动清旧的，连 tag 一起删），所以不会出现一堆分不清的 apk-1、apk-2；Windows 包不挂 Release，仓库内自建。
+> 要手动补一刀：`py -3 tools\gh_release_clean.py --list`（只读，不要 token）或 `--prune --yes`（真删，读 `GITHUB_TOKEN`），`--keep-rc 0` 表示 Windows 这一类全清。
 
 ## 一部真的作品：《研修日志》
 
