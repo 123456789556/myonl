@@ -2921,7 +2921,12 @@
 
     const step = setupStep();
     const isHow = step >= SETUP_Q.length;
-    const w = land ? Math.min(W * 0.66, 800) : W * 0.88;
+    // 卡片宽度不能只按屏宽百分比：字号在 CSS 里是固定 ~18px，屏一宽卡片就跟着变宽，
+    // 于是行里 label 和说明被拉到两头、中间一大片空白（平板竖屏最明显）。
+    // 用「字号 × 22」当上限 —— 大约一行 20 个中文字，手机上不生效（本来就窄），平板上收回来。
+    const baseW = land ? Math.min(W * 0.66, 800) : W * 0.88;
+    // 横屏还要给右侧那行说明留位置，上限放宽到 32 个字宽。
+    const w = Math.min(baseW, L.fs * (land ? 32 : 22));
     const pad = Math.round(w * 0.062);
     const fs = L.fs;
     const rowH = Math.round(fs * (land ? 1.95 : 2.15));
@@ -2933,7 +2938,7 @@
     const rows = 3;
     const h = pad + headH + titleH + hintH + rows * (rowH + gap) - gap + btnH + pad;
     const x = Math.round((W - w) / 2);
-    const y = Math.round((H - h) / 2);
+    const y = Math.round((H - h) * (window.innerHeight >= 1000 ? 0.40 : 0.50));
     const rr = Math.round(w * 0.036);
 
     roundRect(x, y, w, h, rr, "rgba(15,18,27,.99)");
@@ -3037,14 +3042,20 @@
       ctx.textAlign = "left";
     }
 
-    // 底部：左边一个很轻的「跳过」，右边主按钮 —— 不想配的人一按就进，不挡路
+    // 底部：最后一屏左侧给「‹ 返回」让选错的人能回去改（这一屏按「开始」就进游戏了，
+    // 再放个「跳过」等于两个按钮做同一件事），前面两屏才放很轻的「跳过」。
     const by = y + h - pad - btnH;
     ctx.textAlign = "left";
     ctx.textBaseline = "middle";
     ctx.fillStyle = "rgba(240,244,255,.46)";
     ctx.font = `500 ${Math.round(fs * 0.5)}px ${FACE}`;
-    ctx.fillText("跳过", x + pad + Math.round(fs * 0.1), by + btnH / 2);
-    hit("suSkip", x + pad - Math.round(fs * 0.3), by, Math.round(fs * 3), btnH);
+    if (isHow) {
+      ctx.fillText("‹ 返回", x + pad + Math.round(fs * 0.1), by + btnH / 2);
+      hit("suBack", x + pad - Math.round(fs * 0.3), by, Math.round(fs * 3.4), btnH);
+    } else {
+      ctx.fillText("跳过", x + pad + Math.round(fs * 0.1), by + btnH / 2);
+      hit("suSkip", x + pad - Math.round(fs * 0.3), by, Math.round(fs * 3), btnH);
+    }
 
     const bw = Math.round(rowW * (land ? 0.42 : 0.5));
     uiButton("suNext", x + w - pad - bw, by, bw, btnH, isHow ? "开始" : "下一步",
@@ -3066,6 +3077,12 @@
     const s = state.setup;
     if (!s) return;
     if (id === "suSkip") return finishSetup(true);
+    if (id === "suBack") {
+      // 回上一步：picks 留着，所以回去时原来选的那项还是亮的
+      s.step = Math.max(0, s.step - 1);
+      s.t0 = performance.now();
+      return;
+    }
     if (id === "suNext") {
       if (s.step < SETUP_Q.length) {
         s.step++;
