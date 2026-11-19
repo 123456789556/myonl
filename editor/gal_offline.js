@@ -733,7 +733,13 @@
     var lib = readLib();
     // 手机本地一个作品只有一个 script.gal，path 用来判断来源，不参与定位
     var p = curProject(lib);
-    p.text = String(b.content == null ? (b.text || "") : b.content);
+    var next = String(b.content == null ? (b.text || "") : b.content);
+    // 落盘之前先把"改之前那一版"留一份：以后要还原，靠的就是它。
+    // 存独立 IndexedDB，不动作品库本身；写坏了也只丢快照，正文照旧。
+    if (p.text !== next && p.text && window.MYONLSnapshots) {
+      window.MYONLSnapshots.capture({ name: p.name, text: p.text }, next);
+    }
+    p.text = next;
     p.mtime = now();
     writeLib(lib);
     return jsonRes({ ok: true, path: "script.gal", message: "已保存到手机本地" });
@@ -1270,16 +1276,22 @@
       })
       .catch(function () { sizeLine.textContent = ""; });
 
-    [["做成成品（.html，能发人）", function () { window.__myonlExportPack(); }],
-     ["打成 APK（能直接装）", function () { window.__myonlExportApk(); }],
-     ["拿出这个作品（.gal）", function () { window.__myonlExportGal(); }],
-     ["拿出全部作品（.json）", function () { window.__myonlExportLib(); }]
+    [["做成成品（.html，能发人）", function () { window.__myonlExportPack(); }, 1],
+     ["打成 APK（能直接装）", function () { window.__myonlExportApk(); }, 1],
+     ["历史版本（改坏了能退回去）", function () { if (window.MYONLSnapshotsUI) window.MYONLSnapshotsUI.open(); }, 0],
+     ["拿出这个作品（.gal）", function () { window.__myonlExportGal(); }, 0],
+     ["拿出全部作品（.json）", function () { window.__myonlExportLib(); }, 0]
     ].forEach(function (it) {
       var b = document.createElement("button");
       b.type = "button";
       b.textContent = it[0];
+      // 主次要分：前两个是"真把东西发出去"，后面三个是导出备份 / 退回旧版。
+      // 五个长得一模一样，用户就不知道先点哪个。
+      var primary = it[2];
       b.style.cssText = "display:block;width:100%;margin:6px 0 0;padding:11px 14px;border-radius:12px;" +
-        "border:1px solid rgba(79,140,255,.45);background:rgba(79,140,255,.14);color:#dce8ff;" +
+        "border:1px solid rgba(79,140,255," + (primary ? ".55" : ".22") + ");" +
+        "background:rgba(79,140,255," + (primary ? ".22" : ".07") + ");" +
+        "color:" + (primary ? "#dce8ff" : "#9fb2d0") + ";" +
         "font-size:14px;line-height:1.3;box-sizing:border-box;text-align:left;min-height:0";
       b.style.height = "auto";
       b.addEventListener("click", it[1]);

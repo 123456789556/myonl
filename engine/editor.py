@@ -772,6 +772,8 @@ class _EditorHandler(BaseHTTPRequestHandler):
         ("GET", "/apk_sign.js"): "_serve_apk_sign_js",
         # P76：手机端多层交互（外观分组钻取 / 素材看大图）
         ("GET", "/editor_mobile.js"): "_serve_mobile_js",
+        # 版本快照（每次保存前把上一版留一份，独立 IndexedDB）
+        ("GET", "/editor_snapshots.js"): "_serve_snapshots_js",
         # P67：游戏画面方向（any / portrait / landscape），存进工程 config.json
         ("GET", "/api/orientation"): "_get_orientation",
         ("POST", "/api/orientation"): "_set_orientation",
@@ -1095,6 +1097,9 @@ class _EditorHandler(BaseHTTPRequestHandler):
 
     def _serve_mobile_js(self, parsed=None) -> None:
         self._serve_editor_file("editor_mobile.js", "application/javascript; charset=utf-8")
+
+    def _serve_snapshots_js(self, parsed=None) -> None:
+        self._serve_editor_file("editor_snapshots.js", "application/javascript; charset=utf-8")
 
     def _serve_apk_sign_js(self, parsed=None) -> None:
         self._serve_editor_file("apk_sign.js", "application/javascript; charset=utf-8")
