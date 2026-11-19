@@ -55,9 +55,9 @@ but there is no iOS installer.
   `engine/pack.js` assembles the single-file HTML on the device.
 - Images are downscaled to a 1280 longest edge on import; audio is stored as-is. Data lives on the
   device (images in `IndexedDB`, script in `localStorage`).
-- **A real limit**: the single-file HTML inlines assets as base64 (~+37% by size). A warning
-  starts at 40 MB; 80 MB is the hard line, past which low-end devices most likely white-screen.
-  A folder/zip release for larger assets is not built yet.
+- **A real limit**: the single-file HTML inlines assets as base64 (~+37% by size). A soft warning
+  starts at 40 MB and a strong warning at 80 MB (export is not blocked either way), but past 80 MB
+  low-end devices most likely white-screen. A folder/zip release for larger assets is not built yet.
 
 The phone parser does not implement `@voice`, `@anim`, `@fg`, `@cg`, `@camera`, `@transition`,
 `@plug`, or `@include`; using one raises a clear error with the line number. The full boundary is
