@@ -22,6 +22,9 @@ class UiScreensMixin:
     if TYPE_CHECKING:  # pragma: no cover - 仅供 pyright：实现在 TextMixin（render_text.py）
         def _cached_font_surface(self, font, text, antialias, color) -> pygame.Surface: ...
 
+    if TYPE_CHECKING:  # pragma: no cover - 仅供 pyright：实现在 MediaMixin（render_media.py）
+        def _title_cover(self) -> tuple[pygame.Surface | None, bool]: ...
+
     # C3：宿主注入属性 / 其他 Mixin 方法——仅静态检查声明。
     if TYPE_CHECKING:  # pragma: no cover
         config: Any

@@ -731,6 +731,10 @@ def _save_import(root: str, category: str, filename: str, data_b64: str,
     return resp
 
 
+class _BadJsonBody(Exception):
+    """POST 请求体解码失败（截断 / 非 JSON / 非 UTF-8）。由 do_POST 统一回 400。"""
+
+
 class _EditorHandler(BaseHTTPRequestHandler):
     """编辑器请求处理器：路由集中在 _ROUTES 注册表，每路由一个方法。
 
@@ -872,12 +876,13 @@ class _EditorHandler(BaseHTTPRequestHandler):
         self.send_header("Content-Length", "0")
         self.end_headers()
 
-    def _read_json(self) -> dict | None:
-        """读 POST JSON。空 body 返 {}；解码失败返 None（调用方回 400）。
+    def _read_json(self) -> dict:
+        """读 POST JSON。空 body 返 {}；解码失败抛 _BadJsonBody（do_POST 统一回 400）。
 
         A3：以前坏 body（截断/非 JSON/编码错）和空 body 一样静默回 {}，
         保存/角色库等路由拿到空 dict 后蒙过校验落盘，把剧本/角色清空，
-        前端还收到 200 ok:true。现在坏 body 明确返失败信号，不再静默。
+        前端还收到 200 ok:true。现在坏 body 抛错，在进业务路由前就被拦下。
+        返回值收窄成 dict（不再是 dict | None），调用方直接 .get 即可。
         """
         if self._body_cache is None:
             length = int(self.headers.get("Content-Length", 0) or 0)
@@ -887,8 +892,8 @@ class _EditorHandler(BaseHTTPRequestHandler):
             return {}
         try:
             return json.loads(raw.decode("utf-8"))
-        except (json.JSONDecodeError, UnicodeDecodeError):
-            return None
+        except (json.JSONDecodeError, UnicodeDecodeError) as exc:
+            raise _BadJsonBody("请求体不是合法 JSON") from exc
 
     # ---- 分发（只做路由，不含业务） ----
 
@@ -926,9 +931,10 @@ class _EditorHandler(BaseHTTPRequestHandler):
             return
         handler = getattr(self, name)
         # A3：先读 body；坏 JSON 在进业务路由前就回 400，避免空 dict 蒙过校验落盘
-        data = self._read_json()
-        if data is None:
-            self._send_json(400, {"ok": False, "message": "请求体不是合法 JSON"})
+        try:
+            self._read_json()
+        except _BadJsonBody as exc:
+            self._send_json(400, {"ok": False, "message": str(exc)})
             return
         handler(parsed)
 

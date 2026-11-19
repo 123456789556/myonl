@@ -29,6 +29,7 @@ class MediaMixin:
         assets_root: Any
         _screen: pygame.Surface
         _audio_ok: Any
+        _ui_scale: float  # T10 视觉比例（720p=1.0，1080p=1.5），_ui_int 换算用
         _now_ms: Any
         _voice_channel: Any
         _img_cache: Any

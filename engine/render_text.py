@@ -9,7 +9,7 @@ from __future__ import annotations
 import os
 import sys
 from collections import OrderedDict
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import pygame
 
@@ -38,6 +38,8 @@ class TextMixin:
     _font_book: "richtext.FontBook"
     size: tuple
     config: "Config"
+    settings: Any      # 玩家设置层（宿主注入，同 render_dialog / render_media 的声明口径）
+    assets_root: Any   # 素材根目录（宿主注入；空串表示当前工程根）
     # T8：缓存容器同样是宿主注入（OrderedDict，LRU）
     _text_cache: OrderedDict
     _text_cache_max: int
