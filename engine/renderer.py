@@ -325,6 +325,11 @@ class Renderer(TextMixin, SceneMixin, SpriteMixin, MediaMixin, DialogMixin,
             self._present()
             return
 
+        # @bg 切回静态背景时，CG 一起退场（与手机端 core.js state.cg 在 @bg 时清空同一语义；
+        # 之前桌面侧只靠手动点掉 CG，bg 切换后 CG 仍盖在上面，两端对不上）。
+        if bg and self._cg_showing is not None:
+            self._cg_showing = None
+
         # CG 全屏展示：屏蔽背景/立绘/对话框，只画 CG 大图，UI 层仍可覆盖
         if self._cg_showing is not None:
             finished = isinstance(state, dict) and bool(state.get("finished"))
