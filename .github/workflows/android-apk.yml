@@ -56,6 +56,11 @@ jobs:
           # 播放器内核三个脚本要和 index.html 同级：手机端「做成成品」按钮
           # 在本地 fetch 它们拼单文件 HTML，拿不到就出不了成品。
           cp web/myonl-core.js web/myonl-layout.js web/myonl-player.js android/app/src/main/assets/
+          # 打 APK 要用的两样：模板壳 + 签名材料。
+          # 有它们，手机上「文件 → 打成 APK」才能在本地换壳 + 自己签 v2，
+          # 不需要电脑、不需要 Java。代价是包大约多 2 MB。
+          cp android/template.apk android/app/src/main/assets/template.apk
+          cp editor/signkey.json android/app/src/main/assets/signkey.json
           # game.html = 内置示例：装上就能直接玩一关，也用来证明素材能显示
           python3 -c "from engine.webpack import build_single; build_single('games/newbie_demo', 'android/app/src/main/assets/game.html', title='新手示例')"
           ls -lh android/app/src/main/assets/

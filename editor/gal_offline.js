@@ -791,6 +791,29 @@
 
   // ---------- 5. 劫持 fetch ----------
   var origFetch = window.fetch ? window.fetch.bind(window) : null;
+
+  // P171：打 APK 要的两样东西。手机上它们跟 index.html 放在同一个 assets 目录，
+  // 直接按相对路径取原文件就行 —— 不走后端，也不进内存缓存。
+  //
+  // 注意必须用绝对 URL：直接 fetch("template.apk") 会被本文件的劫持再抓一次，
+  // path 还是 /template.apk，就自己调自己死循环了。
+  function fetchAsset(name) {
+    var abs = new URL(name, window.location.href).href;
+    return origFetch(abs);
+  }
+  ROUTES["GET /template.apk"] = function () {
+    return fetchAsset("template.apk").then(function (r) {
+      if (!r.ok) throw new Error("assets 里没有 template.apk");
+      return r;
+    });
+  };
+  ROUTES["GET /signkey.json"] = function () {
+    return fetchAsset("signkey.json").then(function (r) {
+      if (!r.ok) throw new Error("assets 里没有 signkey.json");
+      return r;
+    });
+  };
+
   window.fetch = function (input, init) {
     var method = String((init && init.method) || (input && input.method) || "GET").toUpperCase();
     var path = pathOf(input);
@@ -948,6 +971,87 @@
     });
     return pack;
   }
+  /** 二进制下载（APK 用）。文本那条走 UTF-8 编码，二进制不能那么转。 */
+  function downloadBinary(bytes, filename, mime) {
+    var bin = "", CH = 4096;
+    for (var i = 0; i < bytes.length; i += CH) {
+      bin += String.fromCharCode.apply(null, bytes.subarray(i, i + CH));
+    }
+    var b64 = btoa(bin);
+    var bridge = window.__MYONLSave;
+    if (bridge && typeof bridge.save === "function") {
+      try {
+        bridge.save(filename, mime, b64);
+        if (typeof bridge.share === "function") {
+          try { bridge.share(filename, mime, b64); } catch (e2) {}
+        }
+        return;
+      } catch (e) { /* 桥坏了再往下退 */ }
+    }
+    var blob = new Blob([bytes], { type: mime });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    a.click();
+    setTimeout(function () { URL.revokeObjectURL(url); }, 3000);
+  }
+
+  /**
+   * P171：在手机上直接出一个能装的 APK。
+   *
+   * 剧本 -> 单文件 html（复用做成成品那条路）-> 换进模板壳 -> 用 WebCrypto 签 v2。
+   * 全程不联网、不需要电脑、不需要 Java。
+   */
+  window.__myonlExportApk = function () {
+    if (!(window.crypto && window.crypto.subtle)) {
+      toast("这个环境没有 WebCrypto，签不了名", true);
+      return;
+    }
+    if (!window.MYONLApkSign) { toast("签名模块没加载，刷新一下", true); return; }
+    if (!window.MYONLPack || !window.MYONLParser) { toast("打包器没加载，刷新一下", true); return; }
+
+    var p = curProject();
+    toast("正在打 APK…");
+    var assetsP = (window.MYONLAssets ? window.MYONLAssets.allSplit()
+      : Promise.resolve({ assets: {}, audio: {} }));
+
+    Promise.all([playerSources(), assetsP]).then(function (both) {
+      var src = both[0], sp = both[1] || {};
+      var assets = sp.assets || {}, audio = sp.audio || {};
+      var moviesPack = moviesOf(sp, assets);
+      var r = window.MYONLPack.buildPack({
+        title: p.name, scriptText: p.text,
+        assets: assets, audio: audio, videos: {}, movies: moviesPack,
+        config: {}, orientation: "any",
+      });
+      if (!r.ok) { toast("剧本第 " + r.error.line + " 行：" + r.error.message, true); return; }
+
+      var html = window.MYONLPack.renderSingle(r.pack, src);
+      var payload = new TextEncoder().encode(html);
+
+      return Promise.all([
+        fetch("/template.apk").then(function (res) {
+          if (!res.ok) throw new Error("模板没找到");
+          return res.arrayBuffer();
+        }),
+        fetch("/signkey.json").then(function (res) {
+          if (!res.ok) throw new Error("签名材料没找到");
+          return res.json();
+        }),
+      ]).then(function (pair) {
+        return window.MYONLApkSign.signApk(
+          new Uint8Array(pair[0]), payload, pair[1]
+        );
+      }).then(function (apk) {
+        downloadBinary(apk, p.name + ".apk", "application/vnd.android.package-archive");
+        toast("APK 好了：" + (apk.length / 1048576).toFixed(2) + " MB，传到手机上点开就能装");
+      });
+    }).catch(function (e) {
+      toast("打 APK 失败：" + ((e && e.message) || e), true);
+    });
+  };
+
   window.__myonlExportPack = function () {
     var p = curProject();
     if (!window.MYONLPack || !window.MYONLParser) { toast("打包器没加载，刷新一下", true); return; }
@@ -1064,6 +1168,7 @@
     bar.appendChild(tip);
 
     [["做成成品（.html，能发人）", function () { window.__myonlExportPack(); }],
+     ["打成 APK（能直接装）", function () { window.__myonlExportApk(); }],
      ["拿出这个作品（.gal）", function () { window.__myonlExportGal(); }],
      ["拿出全部作品（.json）", function () { window.__myonlExportLib(); }]
     ].forEach(function (it) {

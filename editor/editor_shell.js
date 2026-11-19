@@ -57,6 +57,12 @@
   }
 
   async function exportApk() {
+    // WebCrypto 只在安全上下文（https / localhost）里有。用文件双击打开的单文件版
+    // 和微信里直接点开的页面都不是，点了也只会报一句看不懂的话，不如先说清楚。
+    if (!(window.crypto && window.crypto.subtle)) {
+      say("这个打开方式不能签名（没有 WebCrypto）。用编辑器本身来打，别用双击打开的 html。");
+      return;
+    }
     say("正在打 APK…");
     try {
       const single = await fetch("/api/export-single", {
@@ -64,7 +70,12 @@
         headers: { "Content-Type": "application/json" },
         body: "{}",
       }).then((r) => r.json());
-      if (!single.ok) { say(single.message || "先导不出单文件"); return; }
+      if (!single.ok) {
+        // 手机端没有 /api/export-single，那条路走离线版的导出面板
+        if (window.__myonlExportApk) { say("手机上请用「导出」面板里的「打成 APK」"); return; }
+        say(single.message || "先导不出单文件");
+        return;
+      }
 
       const [tplBuf, key, payload] = await Promise.all([
         fetch("/template.apk").then((r) => r.arrayBuffer()),

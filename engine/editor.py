@@ -768,6 +768,8 @@ class _EditorHandler(BaseHTTPRequestHandler):
         ("GET", "/editor_home.js"): "_serve_home_js",
         # 设置里的「插线推送到手机」面板（P88 砍扫码、P89 砍 AI）
         ("GET", "/editor_link.js"): "_serve_link_js",
+        # P171：浏览器里的 v2 签名（手机端出 APK 靠它）
+        ("GET", "/apk_sign.js"): "_serve_apk_sign_js",
         # P76：手机端多层交互（外观分组钻取 / 素材看大图）
         ("GET", "/editor_mobile.js"): "_serve_mobile_js",
         # P67：游戏画面方向（any / portrait / landscape），存进工程 config.json
@@ -1091,6 +1093,9 @@ class _EditorHandler(BaseHTTPRequestHandler):
 
     def _serve_mobile_js(self, parsed=None) -> None:
         self._serve_editor_file("editor_mobile.js", "application/javascript; charset=utf-8")
+
+    def _serve_apk_sign_js(self, parsed=None) -> None:
+        self._serve_editor_file("apk_sign.js", "application/javascript; charset=utf-8")
 
     def _check(self, parsed=None) -> None:
         data = self._read_json()
