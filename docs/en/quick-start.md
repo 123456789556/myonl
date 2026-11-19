@@ -1,87 +1,76 @@
-# Quick Start — your first scene in three minutes
+# Quick Start — get something playable
 
-> Goal: from nothing to "changed one line, previewed it, packed it into a double-clickable exe".
-> No programming needed — editing a text file is enough.
+> Goal: from nothing to "changed one line, previewed it, exported a bundle a friend can open".
+> No programming needed — editing a text line is enough. The phone / Android APK is the primary
+> route; the desktop is only needed for video/camera effects, APK builds, and tests.
 
-**Note on language:** the engine's directive keywords and the editor UI are Chinese by design (see the "Language" section of the [English README](../README.en.md)). This guide references UI elements by position, so you can follow it without reading Chinese.
+**Note on language:** the directive keywords and the editor UI are Chinese by design (see the
+"Language" section of the [English README](../README.en.md)). This guide refers to UI elements
+by position so you can follow it without reading Chinese.
 
-## 1. Get the engine
+## 1. Install and open
 
-### Route A — release build (recommended)
+**Phone / tablet (recommended)**
 
-1. Unzip `MYONL-v1.0.0-rc7-windows.zip` into any folder **outside** `Program Files` (no admin rights needed)
-2. Double-click `editor/editor.exe`
-3. The editor opens the bundled tutorial project automatically; the live preview appears in the right-hand pane
+1. Download `MYONL-v1.2.0.apk` from the Releases page (Android 7.0+; one package serves phones
+   and Android tablets).
+2. Install and open it: you land on the project shelf. Tap **new project** to start.
+3. To see what a finished game looks like first: tap **try the sample** on the home screen.
 
-> The editor relies on the system WebView2 runtime, which ships with Windows 10/11. If no window appears, use Route B.
+**Desktop browser (nothing installed)**
 
-### Route B — from source
+- A single-file `.html` someone exported opens in any browser. To author on a computer, see the
+  [developer guide](../docs/开发者使用指南.md) (Chinese).
 
-```powershell
-pip install -r requirements.txt
-py -3 -m engine.editor --project games/教程示例
-```
-
-Then open the `http://127.0.0.1:8000` address printed in the terminal.
+> There is no iOS build. On the player side, any modern browser can open the single-file bundle.
 
 ## 2. Five steps to your first scene
 
 | Step | What you do | Where |
 |---|---|---|
-| 1 | Click `script.gal` in the left file tree | Left pane |
-| 2 | Replace a line such as `@[林晚] 你还不走？` with your own dialogue | Center editor |
-| 3 | Press Ctrl+S — the preview on the right refreshes itself | Right pane |
-| 4 | Click the **▶ run** button at the top (or Ctrl+R) — a real game window opens | Top bar |
-| 5 | Click the **pack** button at the top, pick the project, type a game name, start | Top bar |
+| 1 | Create a project and open the script editor | Shelf, **＋ new project** |
+| 2 | Replace the sample line with your own dialogue, one line per beat | Center editor |
+| 3 | Save; the preview on the right refreshes itself | Save button / autosave |
+| 4 | Add a background image and a character line (syntax below) | Bottom **assets** tab |
+| 5 | Bottom **export** — you get one self-contained `.html` | **Export** tab |
 
-The build lands in `dist/<game name>/<game name>.exe`. Double-click it and hand the whole folder to a friend. The release build carries the player runtime inside, so **packing needs neither Python nor PyInstaller** and usually finishes in about a second.
+The exported `.html` inlines the player, script and assets into one file. Send it over chat or
+copy it to a computer; it opens in a browser — no engine install, no network, no server.
 
-## 3. Create your own project
+## 3. Your first script line
 
-- In the editor: "new game" button → name → theme → create
-- From the command line: `py -3 -m engine.cli new 我的第一个游戏`
-
-A project created in the editor is a **minimal empty shell**: one editable narration line, no images or audio. If you want to start from something that already looks like a scene (background + character art + audio + three acts), copy `games/教程示例` instead. The command-line variant creates an annotated teaching skeleton.
-
-Every project contains: the script `script.gal`, settings `config.json`, asset folders `images/` and `audio/`, and the packaging manifest `pack_config.json`.
-
-## 4. Scripting basics
+One directive per line, starting with `@`. A plain line without `@` is dialogue.
 
 | Goal | How to write it |
 |---|---|
-| Change background | `@bg bg_教室` (put the image in `images/`, filename must match) |
-| Show a character | `@show 林晚 微笑` (file `images/林晚_微笑.png`) |
-| Character line | `@[林晚] 你还不走？` (square brackets name the speaker, no registration needed) |
+| Change background | `@bg 教室` (image name matches the asset in the library) |
+| Play music | `@music bgm_night` |
+| Character speaks | `@[林晚] 你还不走？` (square brackets name the speaker, no registration needed) |
 | Narration | `@ 晚风很轻。` |
-| Branching choice | `@choice:` then indented `> option text -> label name` |
-| Variables / conditions | `@set 好感 += 1` / `@if 好感 >= 3:` with indented lines below |
-| See changes immediately | start with `--hot-reload`: script edits replay from the current scene in under 0.5s |
+| Branching choice | `@choice:` then an indented `> option text -> label` |
+| Variable / condition | `@set 好感 += 1` / `@if 好感 >= 3:` with indented lines below |
 
-> Mistakes are cheap: the editor reports which line failed and what it expected, and the preview marks the offending line.
+The full directive list is in [engine_spec.md](../docs/engine_spec.md) (Chinese); importing assets
+is covered by the [asset import guide](../docs/素材导入指南.md) (Chinese).
+
+## 4. What the phone cannot do
+
+The phone parser does not implement `@voice`, `@anim`, `@fg`, `@cg`, `@camera`, `@transition`,
+`@plug`, or `@include`. Using one raises a clear error with the line number — it is not silently
+dropped. Voice / animation / foreground / CG / camera / transition / plugins, multi-file scripts,
+APK builds and tests all go through the desktop route. The full boundary is in the
+[phone authoring guide](../docs/手机端编游戏.md) (Chinese).
 
 ## 5. Troubleshooting
 
 | Symptom | Cause / fix |
 |---|---|
-| Red text or placeholder blocks in the preview | The script references a missing asset: check filenames and letter case under `images/` |
-| `editor.exe` opens nothing | WebView2 missing: install the [WebView2 Runtime](https://developer.microsoft.com/microsoft-edge/webview2/), or use Route B |
-| Windows says "protected your PC" | SmartScreen on an unsigned binary: "More info" → "Run anyway" |
-| Packing feels slow, or the build is large | Packing copies the bundled runtime, about 1s; output is ~23 MB, and unused assets can be removed |
-| You want to replace the sample | Edit `games/教程示例` directly, or create a new game |
+| Red text or placeholder blocks in the preview | The script references a missing asset: check the asset name and letter case |
+| Exported file is very large | Assets inline as base64 (~+37%); warnings start at 40 MB, and past 80 MB a low-end device will likely white-screen. Shrink images or split chapters first |
+| You want to keep editing on desktop / build an APK | See the [packaging guide](../docs/打包使用指南.md) (Chinese) |
 
 ## 6. Where to go next
 
-- `docs/开发者使用指南.md` — full directive list, every editor panel, saves/gallery/themes (Chinese)
-- `docs/engine_spec.md` — engine specification: DSL, data structures, API (Chinese)
-- `docs/插件开发指南.md` — adding your own directives to the engine (Chinese)
-
-## Verify your build actually works
-
-If you want to confirm the whole chain end to end rather than trust the UI:
-
-```powershell
-# point --zip at the release package you downloaded
-py -3 tools/verify_release_flow.py --zip path\to\MYONL-v1.0.0-rc7-windows.zip
-```
-
-It unzips the package, launches the editor with an empty profile and no Python on PATH, edits one line, syntax-checks it, runs it, packs it, and then launches the packed build — each stage asserted, exit code 0 on success.
+- [Phone authoring guide](../docs/手机端编游戏.md) — exactly what the phone route can and cannot do
+- [engine_spec.md](../docs/engine_spec.md) — full directive set and syntax details (Chinese)
+- [Packaging guide](../docs/打包使用指南.md) — the three exits: single-file HTML, APK, Windows folder build
