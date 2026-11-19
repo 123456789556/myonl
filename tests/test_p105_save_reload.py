@@ -44,13 +44,16 @@ def test_读档不留在没有台词的静默里():
 
 
 def test_界面入口不被演出节奏吃掉():
+    """菜单 / 喇叭 / 存回设 现在统一走 gameCtrlHit（命中区放大到 44 CSS，
+    五个键的重叠区按离中心最近的分）。
+    守的是同一条：入口判定必须排在 @wait 之前，否则演出时点菜单没反应。"""
     src = _read(os.path.join("web", "myonl-player.js"))
     tap = src[src.index("function onTap(e)"):src.index("let tapStart = null;")]
     wait_at = tap.index("state.waitUntil > performance.now()")
-    menu_at = tap.index("inRect(p, menuRect())")
-    orbit_at = tap.index("orbitHit(p)")
-    assert menu_at < wait_at, "菜单键要在 @wait 之前判断，否则等演出时点菜单没反应"
-    assert orbit_at < wait_at, "右侧「存/回/设」也要在 @wait 之前判断"
+    ctl_at = tap.index("gameCtrlHit(p)")
+    assert ctl_at < wait_at, "菜单/喇叭/存回设要在 @wait 之前判断，否则等演出时点了没反应"
+    assert tap.index("openMenu()") > ctl_at, "判定在入口函数里，调用排在它后面"
+    assert tap.index("openPanel(ctl)") > ctl_at
 
 
 def test_存档码能被脚本直接调用():

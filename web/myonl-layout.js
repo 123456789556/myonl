@@ -84,6 +84,9 @@
     const choiceColW = wide ? Math.min(Math.round(viewW * 0.46), 640) : 0;
 
     return {
+      // CSS / 逻辑 的换算比。播放器要按"CSS 像素"定触摸下限（44），
+      // 必须拿它把 CSS 反推成逻辑值，否则 360 宽的竖屏上 78 逻辑只有 26 CSS。
+      scale: scale,
       landscape: landscape,
       tablet: tablet,
       aspect: aspect,

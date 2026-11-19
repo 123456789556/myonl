@@ -1134,10 +1134,10 @@
     // 菜单键 / 喇叭 / 右侧竖列是「界面入口」，@wait 与章节卡期间也必须能用 ——
     // 否则玩家在长段落等得不耐烦想存个档，点了没反应，会以为程序卡死。
     // 拦的是"翻页"，不是"开面板"。
-    if (state.scene === "game" && inRect(p, menuRect())) return openMenu();
-    if (state.scene === "game" && inRect(p, muteRect())) return toggleMute();
-    const oi = orbitHit(p);
-    if (oi) return openPanel(oi);
+    const ctl = gameCtrlHit(p);
+    if (ctl === "menu") return openMenu();
+    if (ctl === "mute") return toggleMute();
+    if (ctl) return openPanel(ctl);
     // 章节卡 / @wait 期间不响应翻页（这是演出节奏，不是玩家该跳过的）
     if (state.waitUntil > performance.now()) return;
 
@@ -2728,6 +2728,9 @@
     },
     // 菜单/存档/设置里当帧可点的按钮（id + 布局坐标），验收脚本靠它点，不靠猜像素
     get rects() { return UI.rects.slice(); },
+    // 命中区自测：给一个逻辑坐标，返回这五个常驻控件里最近的那个（"" = 都不是）。
+    // 走纯几何、不受场景门禁影响 —— 用来验"画 26 CSS、认 44 CSS"这条。
+    ctrlHit: (x, y) => ctrlHitRaw({x: x, y: y}),
     get state() {
       return {
         scene: state.scene, say: state.say, choice: state.choice,
@@ -3058,12 +3061,36 @@
     return {x: L.viewW - m - s2, y: top + i * (s2 + gap), w: s2, h: s2};
   }
 
-  function orbitHit(p) {
-    if (state.scene !== "game" || state.error || UI.open || state.guide) return "";
-    for (let i = 0; i < ORBIT.length; i++) {
-      if (inRect(p, orbitRect(i))) return ORBIT[i][0];
+  /* 画得小、点得大。
+     竖屏 360 宽时按钮只有 26 CSS（78 逻辑 / scale 3），不到手指舒适下限的一半，
+     点起来全靠运气。但按 44 CSS 画出来，右上角和竖列会把画面吃掉一大块 ——
+     这是当初把它缩到 0.072 的原因，不是不小心。
+     所以视觉尺寸一点不动，只把"认不认这一下"的判定区撑到 44 CSS；
+     按钮之间因此会重叠，重叠的那一圈归离中心最近的那个，不会串。 */
+  const TAP_MIN_CSS = 44;
+  // 纯几何：这个点离五个常驻控件里哪个最近（含 44 CSS 的判定半径）。
+  // 场景/面板这些门禁在 gameCtrlHit 里，这里只管"点到哪了"，方便单独验。
+  function ctrlHitRaw(p) {
+    const half = (TAP_MIN_CSS / (L.scale || 1)) / 2;
+    const cands = [
+      ["menu", menuRect()], ["mute", muteRect()],
+      ["save", orbitRect(0)], ["log", orbitRect(1)], ["settings", orbitRect(2)],
+    ];
+    let best = "", bestD = 2;
+    for (let i = 0; i < cands.length; i++) {
+      const r = cands[i][1];
+      const hw = Math.max(r.w / 2, half);
+      const dx = Math.abs(p.x - (r.x + r.w / 2)) / hw;
+      const dy = Math.abs(p.y - (r.y + r.h / 2)) / hw;
+      // 8 方向的方形判定，取"离中心最远那一维"当距离：最近的赢
+      const d = Math.max(dx, dy);
+      if (d <= 1 && d < bestD) { bestD = d; best = cands[i][0]; }
     }
-    return "";
+    return best;
+  }
+  function gameCtrlHit(p) {
+    if (state.scene !== "game" || state.error || UI.open || state.guide) return "";
+    return ctrlHitRaw(p);
   }
 
   function drawOrbit() {
@@ -3084,7 +3111,7 @@
       ctx.font = "500 " + Math.round(r.w * 0.36) + "px " + FACE;
       ctx.fillText(ORBIT[i][1], r.x + r.w / 2, r.y + r.h / 2 + 1);
       ctx.restore();
-      // 只用于验收脚本定位（onTap 走 orbitHit，不读这里）
+      // 只用于验收脚本定位（onTap 走 gameCtrlHit，不读这里）
       hit("orbit:" + ORBIT[i][0], r.x, r.y, r.w, r.h);
     }
     ctx.textAlign = "left";
