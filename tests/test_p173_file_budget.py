@@ -44,7 +44,7 @@ FILE_BUDGET: dict[str, int] = {
     "editor/editor_scene.js": 1215,  # P175 背景缺失占位 +5 行（修复用户提过的空白预览）
     "editor/editor_shell.js": 870,
     "editor/editor.css": 3330,   # 回滚 P177 模式改动，从 3340 降回 3330
-    "engine/editor.py": 3000,
+    "engine/editor.py": 3030,   # P178 体积体检路由 +17（新能力，非放宽）
     "engine/parser.py": 1080,
 }
 

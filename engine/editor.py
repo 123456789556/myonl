@@ -777,6 +777,8 @@ class _EditorHandler(BaseHTTPRequestHandler):
         ("POST", "/api/orientation"): "_set_orientation",
         # P67：工作台卡片缩略图（工程 icon.png，没有就退到 images/ 第一张）
         ("GET", "/api/thumb"): "_serve_thumb",
+        # P178：作品体积体检（素材多大、还能不能单文件发）
+        ("GET", "/api/asset-scan"): "_serve_asset_scan",
         # 角色库（characters.json，项目级角色资产）
         ("GET", "/api/characters"): "_characters_get",
         # V4：角色引用计数（扫描工程内全部 .gal，跨 @include 文件）
@@ -2478,6 +2480,29 @@ class _EditorHandler(BaseHTTPRequestHandler):
             self._send_json(500, {"ok": False, "message": f"写配置失败：{exc}"})
             return
         self._send_json(200, {"ok": True, "orientation": value})
+
+    def _serve_asset_scan(self, parsed=None) -> None:
+        """作品体积体检：素材总大小、能不能单文件发。
+
+        P178：作品要能长大。现在导出是"素材全 base64 内联进单个 HTML"，
+        小作品没问题，语音和高清 CG 一进来就会在某个体积上崩掉。
+        先把"多大、还能不能这么发"算清楚，让导出流程按档位说话。
+        只认 games/ 的直接子目录，路径不合法一律拒绝。
+        """
+        q = parse_qs(parsed.query if parsed else "")
+        folder = str((q.get("folder") or [""])[0]).strip()
+        games = self._games_dir()
+        if not folder or "/" in folder or "\\" in folder or folder in (".", ".."):
+            self._send_json(400, {"ok": False, "message": "folder 不对"})
+            return
+        base = os.path.realpath(games or "")
+        proj = os.path.realpath(os.path.join(base, folder))
+        if os.path.dirname(proj) != base or not os.path.isdir(proj):
+            self._send_json(404, {"ok": False, "message": "没有这个作品"})
+            return
+        from .asset_scan import scan as _scan_assets
+        body = dict(ok=True, **_scan_assets(proj))
+        self._send_json(200, body)
 
     def _serve_thumb(self, parsed=None) -> None:
         """工作台卡片缩略图：工程 icon.png；没有就用 images/ 里第一张图；都没有 → 404。
