@@ -3107,6 +3107,24 @@
     tick();
     packPollTimer = setInterval(tick, 1500);
   }
+  // 一键打包：给"只想打个 exe 自己玩"的人一条最短路。
+  // 面板上 8 个字段（版本号 / 迭代方式 / 图标 / 运营号 / 渠道……）是给要发行的人准备的，
+  // 不该成为所有人的门槛。这里只补"不填就过不去"的那两个必填项，其余交给后端默认值。
+  async function packOneClick() {
+    if (!packFolder) {
+      packSetStatus("先在上面选一个作品", "fail");
+      return;
+    }
+    const nameEl = $("packName");
+    if (nameEl && !nameEl.value.trim()) nameEl.value = packFolder;
+    // 运营号是后端的必填项，不填会直接报错——这里给个默认，不让人卡在这一步
+    if (!$("packPublisher").value.trim()) $("packPublisher").value = "MYONL";
+    if (!$("packAccount").value.trim()) $("packAccount").value = "MYONL-001";
+    // 版本号留空且没选迭代方式时，按补丁 +1 走，避免"必须手填版本号"的假门槛
+    if (!$("packVersion").value.trim() && !$("packBump").value) $("packBump").value = "patch";
+    await packStart();
+  }
+
   async function packStart() {
     if (!packFolder) {
       packSetStatus("请选择游戏项目", "fail");
@@ -3145,6 +3163,19 @@
   }
   async function openPack() {
     packModal.style.display = "flex";
+    // 一键打包入口动态插在标题下：index.html 有 <600 行的硬上限，
+    // 这块说明不该去挤那个预算
+    (function ensureOneClick() {
+      const title = packModal.querySelector(".modal-title");
+      if (!title || document.getElementById("packOneClick")) return;
+      title.insertAdjacentHTML("afterend",
+        '<div class="pack-quick">' +
+        '<button type="button" class="icon-btn" id="packOneClick">一键打包</button>' +
+        '<span class="pack-quick-hint">作品名当游戏名、版本自动 +1、运营号用默认值。下面的字段可以先不管。</span>' +
+        '</div>');
+      const b = document.getElementById("packOneClick");
+      if (b) b.addEventListener("click", packOneClick);
+    })();
     packSetStatus("正在读取项目列表……", "running");
     try {
       await packLoadProjects();

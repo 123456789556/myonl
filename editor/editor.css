@@ -589,6 +589,16 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 
 /* P35 打包发布 */
 .pack-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 14px; margin-top: 10px; }
+/* 一键打包：放在标题下面，跟 8 个高级字段拉开距离，让人一眼看见"不填也能走" */
+.pack-quick {
+  display: flex; align-items: center; gap: 12px;
+  margin: 12px 0 0; padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--bg2);
+}
+.pack-quick #packOneClick { flex: 0 0 auto; }
+.pack-quick-hint { font-size: 12px; line-height: 1.6; color: var(--subtext1); }
 .pack-grid .full { grid-column: 1 / -1; }
 .pack-field label { display: block; font-size: 12px; color: var(--subtext1); margin-bottom: 5px; }
 .pack-field input, .pack-field select, .pack-field textarea {
