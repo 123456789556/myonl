@@ -1257,8 +1257,7 @@
       "background:rgba(79,140,255,.07)";
     var tip = document.createElement("div");
     tip.style.cssText = "font-size:12px;line-height:1.6;color:#9fb2d0;margin-bottom:10px";
-    tip.textContent = "作品存在这台设备里。剧本能带走，成品也能在这台手机上直接出——" +
-      "下面第一个按钮就是打包，出来的 .html 发给谁都能双击玩。";
+    tip.textContent = "第一个按钮出 .html，发给谁都能双击玩。";
     bar.appendChild(tip);
     // 先让人看见有多大，再决定走哪条：单文件发人，还是打成 APK。
     // 点完才发现"打不开"是最糟的体验。
