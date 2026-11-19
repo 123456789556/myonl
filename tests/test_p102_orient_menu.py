@@ -30,7 +30,7 @@ def _fn(src: str, name: str) -> str:
 
 def test_orient_is_one_tap_in_menu():
     """菜单列表里要有 orient 这一项，且标签带当前值。"""
-    body = _fn(_src(), "drawMenuList")
+    body = _fn(_src(), "menuItems")
     assert '["orient",' in body, "菜单里没有「画面方向」这一项"
     assert "orientLabel()" in body, "标签没带当前值，玩家不知道现在是什么档"
 
@@ -52,11 +52,19 @@ def test_acting_on_orient_cycles_and_persists():
     assert "fit()" in tail, "没重算布局，画面不会真的转过去"
 
 
-def test_menu_row_count_matches_nine_items():
-    """菜单多一项，面板行数常量必须跟着走，否则面板算矮、列表溢出。"""
+def test_menu_panel_rows_come_from_the_item_list():
+    """面板行数必须由菜单项列表算出来，不能再写死常量。
+
+    原来写死 (L.landscape ? 5 : 9)，菜单一变（内嵌试玩多一项「退出试玩」）面板就矮一行，
+    最后一项被底边裁掉。现在两边都走 menuItems()，谁也不许单独硬编码行数。
+    """
     src = _src()
     panel = _fn(src, "menuPanel")
-    assert "(L.landscape ? 5 : 9)" in panel
+    assert "menuItems()" in panel, "面板高度没从菜单项列表算，改菜单就会算矮"
+    assert "Math.ceil" in panel, "行数没按列数取整，两列布局会少算一行"
+    # 列表本身也得用同一个来源，否则面板和列表还是各写各的
+    list_body = _fn(src, "drawMenuList")
+    assert "menuItems()" in list_body, "列表自己另写了一份 items"
 
 
 def test_vertical_menu_row_is_compressed():

@@ -423,13 +423,70 @@
       else layer.scrollTo({ top: 0, behavior: "smooth" });
     });
   }
+  // 试玩不能整页跳走。
+  // 原来的写法是 location.href = "./game.html"：编辑器被导航覆盖掉，游戏里又没有回程，
+  // 安卓上只能把应用杀掉重开（用户原话「必须得退出软件」）。
+  // 改成全屏内嵌层 + 顶部一条退出栏：编辑器状态原地保留，退出来还是刚才那页。
+  // 游戏内部也能退（标题页会 postMessage 过来），两条路都通。
+  function closeDemo() {
+    var w = $("mDemoLayer");
+    if (!w) return;
+    var f = $("mDemoFrame");
+    // 先把 iframe 换空白再拆：不这么做，里面的 BGM 会继续放，退出去还在响
+    if (f) { try { f.src = "about:blank"; } catch (e) { } }
+    if (w.parentNode) w.parentNode.removeChild(w);
+  }
+
+  function openDemo() {
+    if ($("mDemoLayer")) return;
+    var wrap = document.createElement("div");
+    wrap.id = "mDemoLayer";
+    wrap.style.cssText = "position:fixed;inset:0;z-index:99999;background:#000;" +
+      "display:flex;flex-direction:column";
+
+    var bar = document.createElement("div");
+    bar.style.cssText = "flex:0 0 auto;display:flex;align-items:center;gap:8px;" +
+      "padding:6px 10px;background:#101722;border-bottom:1px solid rgba(255,255,255,.09)";
+    var tip = document.createElement("div");
+    tip.textContent = "试玩中 · 不是发布出去的成品";
+    tip.style.cssText = "flex:1;min-width:0;color:#8fa3c0;font-size:12px;line-height:1.3;" +
+      "overflow:hidden;text-overflow:ellipsis;white-space:nowrap";
+    var out = document.createElement("button");
+    out.type = "button";
+    out.textContent = "退出试玩";
+    out.style.cssText = "flex:0 0 auto;padding:6px 12px;border-radius:8px;" +
+      "border:1px solid rgba(79,140,255,.55);background:rgba(79,140,255,.20);" +
+      "color:#dce8ff;font-size:13px;line-height:1.2";
+    out.addEventListener("click", closeDemo);
+    bar.appendChild(tip);
+    bar.appendChild(out);
+
+    var ifr = document.createElement("iframe");
+    ifr.id = "mDemoFrame";
+    ifr.src = "./game.html";
+    ifr.style.cssText = "flex:1 1 auto;display:block;width:100%;height:100%;border:0;background:#000";
+
+    wrap.appendChild(bar);
+    wrap.appendChild(ifr);
+    document.body.appendChild(wrap);
+  }
+
+  // 游戏里点「退出试玩」→ postMessage 回来。只认自己那个 iframe 发来的，
+  // 免得别的窗口/页面也能把这个层关掉。
+  window.addEventListener("message", function (ev) {
+    var f = $("mDemoFrame");
+    if (!ev || !ev.data || !f) return;
+    if (ev.source !== f.contentWindow) return;
+    if (ev.data.type === "myonl-exit-demo") closeDemo();
+  });
+
   // P126：探一下 game.html 在不在。用 GET + no-store 而不是 HEAD：部分 WebView
   // 对 HEAD 直接不返回，探不出来就永远不显示这个入口。
   (function () {
     var db = $("mHomeDemo");
     if (!db) return;
     db.addEventListener("click", function () {
-      if (db.dataset.ok === "1") { location.href = "./game.html"; return; }
+      if (db.dataset.ok === "1") { openDemo(); return; }
       toast("这个版本没带示例");
     });
     try {

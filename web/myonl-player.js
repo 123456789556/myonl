@@ -146,6 +146,7 @@
     waitUntil: 0,
     ended: false,
     continueRect: null,
+    exitRect: null,        // 被编辑器内嵌试玩时的「退出试玩」，单独发布时不出现
     setup: null,           // 首启配置询问（null = 不在向导里）
     error: "",
   };
@@ -1117,6 +1118,9 @@
     e.preventDefault();
     if (state.error) return;
     const p = point(e);
+    // 内嵌试玩的「退出试玩」排在最前面：下面每一层（首启向导、引导页、
+    // 标题页"点哪都开始"）都会把这一下吃掉，放后面就永远点不到。
+    if (state.exitRect && inRect(p, state.exitRect)) return exitDemo();
     // 首启配置询问：这一层盖在标题页上，连"开始新故事"都不该被点到
     if (state.setup) return onSetupTap(p);
     // 引导页：这一下只关引导，不推进剧情（否则第一次点就直接跳过一句话）
@@ -1138,6 +1142,9 @@
     if (state.waitUntil > performance.now()) return;
 
     if (state.scene === "title") {
+      // 退出键必须排在"点哪都开始"前面：标题页其余整屏都是 startGame，
+      // 放在后面永远点不到。
+      if (state.exitRect && inRect(p, state.exitRect)) return exitDemo();
       tryFullscreen();
       if (state.continueRect && inRect(p, state.continueRect)) return startGame(true);
       return startGame(false);
@@ -2494,6 +2501,52 @@
     }
     ctx.textAlign = "left";
     ctx.textBaseline = "alphabetic";
+
+    drawExitChip();
+  }
+
+  // 内嵌试玩时右上角那个「退出试玩」。
+  // 单独发布出去的 game.html 用不着（关掉网页就是退出），不在嵌入状态就不画。
+  // 抽成独立函数是因为标题页和首启向导都要画 —— 向导盖满整屏，
+  // 只画在标题页上等于没画，用户第一次试玩就卡在向导上出不来。
+  function drawExitChip() {
+    state.exitRect = null;
+    if (!isEmbedded()) return;
+    const W = L.viewW;
+    const u = Math.min(L.viewW, L.viewH);
+    const k = W / (window.innerWidth || W);
+    const ew = Math.max(Math.round(u * 0.20), 74 * k);
+    const eh = Math.max(Math.round(u * 0.062), 30 * k);
+    const ex = W - ew - Math.round(10 * k);
+    const ey = Math.round(10 * k);
+    ctx.save();
+    ctx.globalAlpha = 0.92;
+    roundRect(ex, ey, ew, eh, 9 * k, "rgba(16,22,33,.82)");
+    ctx.globalAlpha = 1;
+    ctx.strokeStyle = "rgba(120,160,220,.45)";
+    ctx.lineWidth = Math.max(1, k);
+    ctx.beginPath();
+    ctx.roundRect ? ctx.roundRect(ex, ey, ew, eh, 9 * k) : ctx.rect(ex, ey, ew, eh);
+    ctx.stroke();
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillStyle = "rgba(214,228,248,.92)";
+    ctx.font = `500 ${Math.round(eh * 0.40)}px ${FACE}`;
+    ctx.fillText("退出试玩", ex + ew / 2, ey + eh / 2 + 1);
+    ctx.textAlign = "left";
+    ctx.textBaseline = "alphabetic";
+    ctx.restore();
+    state.exitRect = {x: ex, y: ey, w: ew, h: eh};
+  }
+
+  // 是否运行在某层 iframe 里（编辑器内嵌试玩就是这种）。跨域会抛，按不可退处理。
+  function isEmbedded() {
+    try { return window.parent !== window; } catch (e) { return false; }
+  }
+
+  // 通知外层把自己这个层关掉。外层只认自己那个 iframe 发来的消息（见 editor_home.js）。
+  function exitDemo() {
+    try { window.parent.postMessage({type: "myonl-exit-demo"}, "*"); } catch (e) { }
   }
 
   function drawEnding() {
@@ -2603,13 +2656,20 @@
       drawTitle();
       // 首次打开作品：先问三件事（画面方向 / 台词排法 / 怎么玩），问完直接进游戏。
       // 老玩家 hasSave 或看过引导的不再弹，别拿流程拦人。
-      if (!setupDone && !state.setup) {
+      // 内嵌试玩例外：玩家只是想看一眼，不该先被问三个问题；
+      // 何况向导会盖满整屏，把「退出试玩」压在底下 —— 那就是"进得去出不来"。
+      if (!setupDone && !state.setup && !isEmbedded()) {
         state.setup = {step: 0, picks: {orient: PREF.orient, dlg: PREF.dlg}, t0: now};
       }
       if (state.setup) drawSetup();
     } else if (state.scene === "ending") {
+      // 结局页点一下回标题，那里才是出口；这里不挂退出键，清掉残留命中区
+      state.exitRect = null;
       drawEnding();
     } else {
+      // 游戏正文里不画「退出试玩」，那一格留给菜单里的同名项。
+      // 但上一屏留下的命中区必须清掉 —— 不清的话点右上角会误退。
+      state.exitRect = null;
       drawScene();
       drawChapter();
       drawChoiceVeil();
@@ -3031,9 +3091,12 @@
     const gap = Math.round(L.fs * 0.55);
     let bodyH;
     if (UI.view === "menu") {
-      // 列表行：竖屏 9 行一列；横屏 5 行两列（P102 菜单多了「画面方向」，行数跟着改）
+      // 列表行数跟着 menuItems() 走（竖屏一列 / 横屏两列），
+      // 写死 9 行的话，内嵌试玩多出来的「退出试玩」会被面板底边裁掉一半。
+      const mcols = L.landscape ? 2 : 1;
+      const mrows = Math.ceil(menuItems().length / mcols);
       bodyH = Math.round(L.fs * 0.35)
-              + (L.landscape ? 5 : 9) * (menuRowH() + menuGap());
+              + mrows * (menuRowH() + menuGap());
     } else if (UI.view === "settings") {
       // 横屏两列（3 行）—— 单列 6 组在横屏里会把面板撑到顶边，一点留白都没有
       bodyH = Math.round(L.fs * 0.3) + (L.landscape ? 3 : 6) * (setRowH() + gap);
@@ -3116,7 +3179,10 @@
       : PREF.orient === "landscape" ? "横屏" : "自动";
   }
 
-  function drawMenuList(x, y, w, p) {
+  // 菜单项统一在这里出。被内嵌试玩时多一项「退出试玩」——
+  // 试玩最容易让人骂的是"玩完想退，退不出去只能杀掉整个应用"。
+  // 面板高度也照这个列表算行数，所以两边不会对不上。
+  function menuItems() {
     const items = [
       ["resume", "继续游戏"],
       ["toLog", "回顾台词"],
@@ -3130,6 +3196,12 @@
       ["toSet", "设置"],
       ["toTitle", "回到标题"],
     ];
+    if (isEmbedded()) items.push(["exitDemo", "退出试玩"]);
+    return items;
+  }
+
+  function drawMenuList(x, y, w, p) {
+    const items = menuItems();
     const land = L.landscape;
     const cols = land ? 2 : 1;
     const perCol = Math.ceil(items.length / cols);
@@ -3476,6 +3548,8 @@
     uiButton("guideOk", x + pad, y + h - pad - bh, w - pad * 2, bh, "开始",
              {on: true, fs: Math.round(bh * 0.44)});
     ctx.restore();
+    // 引导层是半透明的满屏遮罩，退出键得压在它上面，不然第一次进游戏就退不出去
+    drawExitChip();
   }
 
   /* ---------- 首启配置询问 ----------
@@ -3646,6 +3720,8 @@
              {on: true, fs: Math.round(btnH * 0.38)});
 
     ctx.restore();
+    // 向导是满屏的，退出键必须画在它之后（也就是压在它上面），否则第一次试玩就出不去
+    drawExitChip();
   }
 
   function onSetupTap(p) {
@@ -3893,6 +3969,14 @@
     }
     if (id === "logNewer") { UI.logPage = Math.max(0, (UI.logPage || 0) - 1); return; }
     if (id === "toSet") { UI.view = "settings"; return; }
+    if (id === "exitDemo") {
+      // 退出前先存一次：玩家在试玩里改的进度不该因为"退出去"就丢
+      autoSave();
+      UI.open = false;
+      releaseMovie();
+      exitDemo();
+      return;
+    }
     if (id === "toTitle") {
       autoSave();
       UI.open = false;
