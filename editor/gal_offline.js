@@ -65,28 +65,85 @@
 
   function readLib() {
     if (memLib) return memLib;
+    var raw = "";
     try {
-      var raw = localStorage.getItem(LIB_KEY);
+      raw = localStorage.getItem(LIB_KEY) || "";
       if (raw) {
-        var lib = JSON.parse(raw);
-        if (lib && lib.projects && lib.projects.length) return lib;
+        try {
+          var lib = JSON.parse(raw);
+          if (lib && lib.projects && lib.projects.length) return lib;
+        } catch (pe) {
+          // P130：坏 JSON 原来直接落进下面的"重建空白并覆写"——
+          // 用户的作品就在那一瞬间被顶掉了，而且他看到的只是"我的作品变空了"。
+          // 先把原始串原样留一份，再重建；留不住也要告诉他去哪找。
+          keepBroken(raw);
+        }
       }
-    } catch (e) { /* 坏数据或禁用，重建 */ }
+    } catch (e) { /* localStorage 被禁用 */ }
     memLib = blankLib();
     writeLib(memLib);
     return memLib;
   }
+  // 把读坏的原始数据另存一份，绝不就地丢弃
+  function keepBroken(raw) {
+    if (!raw) return;
+    var key = LIB_KEY + ":broken:" + now();
+    try {
+      localStorage.setItem(key, raw);
+      toast("本地作品库读坏了，原数据已另存一份（键 " + key + "），先别关页面，导出一份备份");
+      return;
+    } catch (e) { /* 满了，落到 IndexedDB */ }
+    try {
+      dbRun("readwrite", function (st) { st.put(raw, "lib-broken:" + now()); })
+        .then(function () {
+          toast("本地作品库读坏了，原数据已存进本机素材库，先导出一份备份再继续");
+        })
+        .catch(function () {
+          toast("本地作品库读坏了，原始数据没留住。别新建作品，先找我要恢复办法");
+        });
+    } catch (e2) { toast("本地作品库读坏了，原始数据没留住"); }
+  }
+  // 按"当前作品优先、其次最近改的"挑出要留下的，保持原有顺序。
+  // 原来这里是 sort 完 slice(0,8) —— 列表顺序被打乱，而且砍掉哪些没说。
+  function trimLib(lib, keep) {
+    var cur = lib.current;
+    var order = lib.projects.map(function (p, i) {
+      return { i: i, t: (p.mtime || 0), cur: p.name === cur ? 1 : 0 };
+    }).sort(function (a, b) { return (b.cur - a.cur) || (b.t - a.t); });
+    var keepIdx = {};
+    order.slice(0, keep).forEach(function (o) { keepIdx[o.i] = 1; });
+    var kept = [], dropped = [];
+    lib.projects.forEach(function (p, i) { (keepIdx[i] ? kept : dropped).push(p); });
+    lib.projects = kept;
+    return dropped;
+  }
   function writeLib(lib) {
     memLib = lib;
-    try { localStorage.setItem(LIB_KEY, JSON.stringify(lib)); }
-    catch (e) {
-      // 超配额：保住当前作品，砍掉最旧的
-      try {
-        lib.projects.sort(function (a, b) { return (b.mtime || 0) - (a.mtime || 0); });
-        lib.projects = lib.projects.slice(0, 8);
-        localStorage.setItem(LIB_KEY, JSON.stringify(lib));
-      } catch (e2) { toast("本地存储写不进去了，先导出剧本再继续"); }
+    try { localStorage.setItem(LIB_KEY, JSON.stringify(lib)); return; }
+    catch (e) { /* 超配额 */ }
+    // 超配额：保住当前作品 + 最近改的 7 个，其余停用。
+    // 但"停用"不等于"扔掉"——先塞进 IndexedDB，塞不进去也要当用户的面说清楚。
+    var dropped = trimLib(lib, 8);
+    var ok = false;
+    try { localStorage.setItem(LIB_KEY, JSON.stringify(lib)); ok = true; } catch (e2) { }
+    if (!ok) {
+      // 连 8 个都写不下：不再继续砍。内存里留着，提示用户立刻导出。
+      toast("本机存储已满，这次没写进去。先导出一份备份，再删掉些旧作品");
+      return;
     }
+    var n = dropped.length;
+    if (!n) return;
+    var saved = false;
+    try {
+      dbRun("readwrite", function (st) {
+        dropped.forEach(function (p, i) {
+          st.put(JSON.stringify(p), "lib-trim:" + now() + ":" + p.name);
+        });
+      }).then(function () { saved = true; }).catch(function () { });
+    } catch (e3) { }
+    toast("本机存储不够，已把最旧的 " + n + " 个作品从列表拿掉（" +
+          (saved ? "原文已存进本机素材库" : "原文没能备份") +
+          "）。导出当前作品后就腾出空间了");
   }
   function curProject(lib) {
     lib = lib || readLib();

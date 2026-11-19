@@ -41,11 +41,18 @@
 每次发版都在 [docs/CHANGELOG.md](docs/CHANGELOG.md) 写清楚「你能感觉到什么变了」，
 不写内部流水账。细则见 [docs/版本规则.md](docs/版本规则.md)。
 
+**文档之间打架时，以最新的那份为准**（README > 最新 CHANGELOG > 版本规则 > 操作指南 >
+`engine_spec.md` / `产品说明书.md` 这类历史稿）。老文档会当场改或标"过时"，
+不会两份都留着让人自己猜。
+
 ---
 
 # 给想深究的人
 
 只想做游戏的话，上面那些就够了。下面是技术细节。
+
+> 全量测试：**1287 passed, 3 skipped**（2026-11-19 本机实测，Windows，退出码 0）。
+> 这个数是带日期的实测值，不是"大概多少"；下一版会变，届时一并更新。
 
 ## 手机端能做什么、做不到什么
 
@@ -110,8 +117,10 @@ APK 壳有三条不能省（细节在 `docs/存档与升级.md`）：assets 必�
 > 这段要说准：**手机单独用（不连电脑）能编游戏**——APK 或 `editor-single.html` 里带了一套离线内核
 > （`editor/gal_offline.js`），把原来打 `/api/*` 的请求全部接到 `localStorage`：
 > 作品库、剧本读写、角色表、素材列表、检查、导出，全在本机跑，不需要 Python、不需要联网、不上云。
-> 仍然是 Python 的地方：**`.gal` → 指令 JSON 的解析**。所以手机上编完的剧本能导出带走，
-> 打成能双击玩的成品 HTML 依旧在电脑上跑一次（`build_single`）。
+> 仍然是 Python 的地方：**只在电脑上跑的那条链路**（`engine/` 的 pytest、CLI 打包）。
+> 手机上编完就能就地出成品：`engine/pack.js` 会把剧本和素材拼成一个单文件 HTML，
+> 点「导出」下载带走，别人双击就能玩。**不需要先回电脑跑 `build_single`** ——
+> 那条命令只是桌面侧等价入口，两边产物同一种格式。
 > 想换个手机玩，数据线把单文件 HTML 或 APK 拷进去就行，不需要任何联网配对。
 
 **手机上的编辑器是一个"应用"，不是一张塞进 390px 的 IDE**：
@@ -255,7 +264,7 @@ py -3 -m engine.demo games/我的第一个游戏/script.gal --assets games/我�
 
 ```powershell
 py -3 -m pytest -q -m "not slow"      # 日常快跑（约 70s）
-py -3 -m pytest -q                    # 全量 1200 passed + 1 skipped（含 slow，耗时较长）
+py -3 -m pytest -q                    # 全量（含 slow，本机约 2 分钟；通过数以最新 CHANGELOG 为准）
 py -3 -m pytest -q -m slow            # 真实打包 / 全渲染 / 性能用例
 ```
 
@@ -320,7 +329,7 @@ Typography is pinned to physical CSS size, not logical pixels, so text stays the
 390 px phone and an 800 px tablet; body text is capped at 720 CSS px (~39 chars per line).
 
 - Editor / packager from source: Python 3.9+ + `pygame-ce>=2.5` (Windows only).
-- Tests: `pytest -q` → 1200 passed + 1 skipped headless cases.
+- Tests: `pytest -q` → full suite headless, all green (exact count in the latest CHANGELOG).
 - Documentation is written in Chinese: [快速上手](docs/快速上手.md) · [engine spec](docs/engine_spec.md).
 
 ## 许可

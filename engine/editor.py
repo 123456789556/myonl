@@ -1758,6 +1758,11 @@ class _EditorHandler(BaseHTTPRequestHandler):
             "audio": stat.get("audio", 0),
             "saved_kb": round(stat.get("saved", 0) / 1024),
             "missing": stat["missing"],
+            # P130：build_single 早就在算体积告警（40 MB / 80 MB 两档），
+            # 但这两个字段一直没往接口递 —— 作者导出完看到"导出成功"就走人，
+            # 手机上打开卡半天根本不知道为什么。现在原样透传，前端负责显示。
+            "file_mb": stat.get("file_mb", 0),
+            "file_warning": stat.get("file_warning", ""),
         })
 
     def _serve_single_file(self, path: str) -> None:

@@ -150,6 +150,23 @@
     error: "",
   };
 
+  // 底部安全区（全面屏手势条 / 刘海屏）：canvas 读不到 env()，用一个零尺寸探针量。
+  // 量不到就当 0 —— 普通屏上这个值本来就该是 0，不会改变原有排版。
+  let safeProbe = null;
+  function safeBottomCss() {
+    try {
+      if (!safeProbe) {
+        safeProbe = document.createElement("div");
+        safeProbe.style.cssText =
+          "position:fixed;left:0;bottom:0;width:0;height:0;padding-bottom:env(safe-area-inset-bottom,0px);" +
+          "pointer-events:none;visibility:hidden;z-index:-1";
+        document.body.appendChild(safeProbe);
+      }
+      const v = parseFloat(getComputedStyle(safeProbe).paddingBottom);
+      return Number.isFinite(v) && v > 0 ? v : 0;
+    } catch (e) { return 0; }
+  }
+
   // ---------- 画布尺寸 ----------
   function fit() {
     // P84：方向可以手选（设置里「画面方向：自动 / 竖屏 / 横屏」）。
@@ -160,7 +177,9 @@
     let lh = window.innerHeight;
     if (force === "landscape" && lw < lh) { const t = lw; lw = lh; lh = t; }
     else if (force === "portrait" && lw > lh) { const t = lw; lw = lh; lh = t; }
-    L = LAYOUT.layoutFor(lw, lh);
+    // P130：把底部安全区交给布局 —— 原来面板贴底不留位，全面屏手势条正好压住最后一行选项。
+    // 强制横屏时手势条在侧边，底部那一条仍按竖持算，所以只有竖屏才让位。
+    L = LAYOUT.layoutFor(lw, lh, {safeBottom: lh >= lw ? safeBottomCss() : 0});
     applyTextScale();
     // 渲染分辨率：高 DPR 手机（2~3x）按原样画会烧 GPU，弱机直接掉帧。
     // 画质档位乘在 DPR 上，画布逻辑尺寸不变，只是重采样少一点。
@@ -3107,7 +3126,9 @@
       const note = UI.storeErr === 2 ? "这局还没在跑，没有可存的进度"
                  : UI.storeErr === 1 ? "这台机器写不进存档（隐私模式或空间不足）"
                  : (saving ? "存在本机 · 换文件前先导出" : "点格子读档");
-      ctx.fillStyle = UI.storeErr ? "rgba(255,150,120,.80)" : "rgba(240,244,255,.30)";
+      // P130：这里原来是 rgba(255,150,120) 的橙红 —— 整屏只有主色是蓝、其余全是灰白，
+      // 一个橙红点冒出来像"另一个产品"。错误色统一成别处已经在用的那个红。
+      ctx.fillStyle = UI.storeErr ? "rgba(255,120,120,.88)" : "rgba(240,244,255,.30)";
       ctx.font = "400 " + Math.round(L.fs * 0.42) + "px " + FACE;
       ctx.fillText(note, nx, fy);
     }

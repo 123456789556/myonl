@@ -964,10 +964,20 @@
         const warn = document.createElement("div");
         warn.className = "modal-hint";
         warn.style.color = "#ff9d9d";
-        warn.textContent = "⚠ 有 " + resp.missing.length + " 个素材找不到，游戏里会是空白："
+        warn.textContent = "有 " + resp.missing.length + " 个素材找不到，游戏里会是空白："
           + resp.missing.slice(0, 5).join("、")
           + (resp.missing.length > 5 ? " …" : "");
         msg.parentNode.appendChild(warn);
+      }
+      // P130：体积告警以前只打在控制台里，作者点完"导出成功"就散场，
+      // 到了手机上打开卡半天，也不知道是自己把图塞多了。
+      if (resp.file_warning) {
+        const big = document.createElement("div");
+        big.className = "modal-hint";
+        big.style.color = "#ff9d9d";
+        big.textContent = "这一份 " + (resp.file_mb || "?") + " MB：" + resp.file_warning
+          + "（想瘦下来，把进游戏的图先缩到 1280 长边）";
+        msg.parentNode.appendChild(big);
       }
       toast("已导出单文件游戏");
     } catch (e) {

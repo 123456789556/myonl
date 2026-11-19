@@ -14,8 +14,9 @@
 
   function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
 
-  /* cssW/cssH = 窗口 CSS 像素；返回逻辑画布与所有排布尺寸。 */
-  function layoutFor(cssW, cssH) {
+  /* cssW/cssH = 窗口 CSS 像素；c = 可选的 {safeBottom}（底部安全区，CSS 像素）。
+     返回逻辑画布与所有排布尺寸。 */
+  function layoutFor(cssW, cssH, c) {
     const w = Math.max(1, Math.round(cssW || 1));
     const h = Math.max(1, Math.round(cssH || 1));
     const aspect = clamp(w / h, ASPECT_MIN, ASPECT_MAX);
@@ -43,7 +44,12 @@
     const marginX = Math.round(viewW * (landscape ? 0.045 : 0.035));
     const panelH = Math.round(clamp(viewH * (landscape ? 0.34 : 0.33),
                                     lineH * 3 + 60, viewH * 0.5));
-    const bottom = Math.round(clamp(unit / 26, 20, 56));
+    // 底部安全区：全面屏手机上系统手势条会压住贴底那一行。
+    // 传进来的是 CSS 像素，这里按"逻辑短边恒 1080"换算成逻辑值，和字号同一套换算。
+    const safeCss = Math.max(0, Number((c && c.safeBottom) || 0));
+    const shortCss = Math.min(w, h);
+    const safeLogical = Math.round(safeCss * (1080 / Math.max(1, shortCss)));
+    const bottom = Math.round(clamp(unit / 26, 20, 56)) + safeLogical;
     const padX = Math.round(fs * 1.1);
     const padY = Math.round(fs * 0.85);
 

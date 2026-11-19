@@ -584,10 +584,12 @@ def _post_save_enrich(slot, rt: Runtime, ren: Renderer, script_path: str) -> Non
         chapter_name = state.get("label")
 
     # 3. 补全三个字段回写存档 JSON
+    # P130：这里原来是一句裸 write_text —— 前面 P119 把存档都改成了"临时文件 + fsync + replace"
+    # 的原子写，唯独这条补写卡片字段的路径漏了。写到一半断电，玩家看到的是一份被截断的档。
     data["thumbnail_path"] = thumb_name
     data["chapter_name"] = chapter_name
     data["last_text"] = last_text
-    save_path.write_text(_json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+    save_api._atomic_write_text(save_path, _json.dumps(data, ensure_ascii=False, indent=2))
 
 
 def _find_splash_script(script_path: str, settings_path: str):

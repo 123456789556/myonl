@@ -65,4 +65,15 @@ assert.ok(square.panelH > 0 && tablet.panelH > 0 && tabletSmall.panelH > 0);
 assert.ok(portrait.viewH > portrait.viewW * 1.8, "手机竖屏画布是竖长的（" + portrait.viewW + "×" + portrait.viewH + "）");
 assert.ok(landscape.viewW > landscape.viewH * 1.8, "手机横屏画布是横宽的（" + landscape.viewW + "×" + landscape.viewH + "）");
 
+// P130 底部安全区：全面屏手势条会压住贴底那一行，面板必须真的往上让。
+// 探针读的是 CSS env()，量到多少就是多少；这里直接喂一个典型值（iPhone 34 / 安卓 24~48）验换算。
+const safe34 = layoutFor(390, 844, {safeBottom: 34});
+const safe0 = layoutFor(390, 844, {safeBottom: 0});
+assert.ok(safe34.bottom > safe0.bottom, "传了 safeBottom，bottom 没让位");
+assert.strictEqual(safe34.bottom - safe0.bottom,
+                   Math.round(34 * 1080 / 390),
+                   "安全区换算要按短边恒 1080，实际差 " + (safe34.bottom - safe0.bottom));
+// 面板跟着抬，且仍不出底
+assert.ok(safe34.panelY >= 0, "让位后面板不出顶");
+
 console.log("layout-smoke: 全部通过（竖屏字 " + portrait.fs + "px / 横屏字 " + landscape.fs + "px）");

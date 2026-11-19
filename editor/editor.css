@@ -14,8 +14,10 @@
   --subtext0: #9399b2;  /* 徽标兜底 */
   --subtext1: #a6adc8;  /* 次级文字 */
   --text: #cdd6f4;      /* 正文 */
-  --blue: #89b4fa;      /* 主强调 */
-  --lavender: #b4befe;  /* 悬停强调 */
+  /* P130：主强调从 Catppuccin 的 #89b4fa 换成项目主色 #4f8cff（用户定的深色底+蓝主色，
+     编辑器以前一直跟播放器的 #4f8cff 不是同一个蓝，同一台机器上两个界面像两个产品）。 */
+  --blue: #4f8cff;      /* 主强调 */
+  --lavender: #6f9dff;  /* 悬停强调（原 #b4befe 偏紫，跟着主色收一档） */
   --green: #a6e3a1;     /* 成功 */
   --red: #f38ba8;       /* 错误/危险 */
   --yellow: #f9e2af;    /* 警告/脏标记 */

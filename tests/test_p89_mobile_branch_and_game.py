@@ -21,10 +21,11 @@ import pytest
 ROOT = Path(__file__).resolve().parents[1]
 CORE_JS = ROOT / "web" / "myonl-core.js"
 
-# 仓库外的可选作品（故意不写进仓库）：只用来做"能解析、两张图不缺"的加练
-OPT_GAME = ROOT / "games" / "研修日志"
+# 仓库外的可选工程：只做"能解析、素材不缺"的加练。名字用通用占位，
+# 不写具体作品名——测试文件也是公开的，没必要把本地工程叫什么告诉陌生人。
+OPT_GAME = ROOT / "games" / "示例工程"
 HAS_OPT = (OPT_GAME / "script.gal").is_file()
-needs_opt = pytest.mark.skipif(not HAS_OPT, reason="这部作品不在仓库里（版权问题，放 myonl-publish）")
+needs_opt = pytest.mark.skipif(not HAS_OPT, reason="这个可选工程不在仓库里")
 
 pytestmark = [pytest.mark.unit]
 
