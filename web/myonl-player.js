@@ -1147,6 +1147,9 @@
       if (state.exitRect && inRect(p, state.exitRect)) return exitDemo();
       tryFullscreen();
       if (state.continueRect && inRect(p, state.continueRect)) return startGame(true);
+      // 有档的人点偏了不能重开：startGame(false) 会 restart + 清掉自动档，
+      // 等于把进度抹了。没档时整屏可点是有意留的 —— 标题页只有一个动作，不怕点错。
+      if (state.hasSave) return;
       return startGame(false);
     }
     if (state.scene === "ending") { state.scene = "title"; return; }
@@ -2450,6 +2453,8 @@
     const btnW = land ? innerW : Math.min(innerW, W * 0.60);
     const subW = hasSave ? Math.min(innerW * 0.36, 128 * k) : 0;
     state.startRect = {x: innerX, y: btnY, w: btnW - (hasSave ? subW + gap : 0), h: bh};
+    // 标题页"点哪都开始"要用它：有档的人点偏一点，不该被当成"重新开始"
+    state.hasSave = hasSave;
     state.continueRect = hasSave
       ? {x: innerX + btnW - subW, y: btnY, w: subW, h: bh}
       : null;
@@ -2965,11 +2970,26 @@
   /* 直接开某一页（右侧竖列用），跳过"先进菜单再点一层" */
   function openPanel(view) { UI.open = true; UI.view = view; UI.t0 = performance.now(); }
 
-  /* 安卓壳的返回键先问这里：面板开着就关掉，游戏里就开菜单，都不是才让系统退出。
-     返回 false 时壳会 finish()，所以这里只在自己真的处理了的时候说 true。 */
+  /* 安卓壳的返回键先问这里。返回 false 时壳会 finish()，所以这里只在自己真的处理了的时候说 true。
+
+     老的写法在游戏里永远 return true（scene 一直是 "game"，走不到最后一行），
+     玩家在游戏里按返回只能在"菜单开/关"之间来回，永远退不出去 —— 只能杀掉应用。
+     现在按层级逐层消费：
+       内嵌试玩 → 通知外层关层（外层关掉之后就是编辑器了）
+       面板开着 → 子页先回菜单，菜单页才关面板
+       游戏里   → 开菜单
+       标题/结局 → 真的让壳退出（这里就是应用入口，返回=退出是标准行为）
+  */
   window.myonlBack = function () {
-    if (UI.open) { UI.open = false; return true; }
+    if (isEmbedded()) { exitDemo(); return true; }
+    if (UI.open) {
+      // 在存档/设置/回顾子页按返回，应该先回菜单，而不是一下把整个面板关掉
+      if (UI.view && UI.view !== "menu") { UI.view = "menu"; return true; }
+      UI.open = false;
+      return true;
+    }
     if (state.scene === "game" && !state.error) { openPanel("menu"); return true; }
+    if (state.scene === "ending") { state.scene = "title"; return true; }
     return false;
   };
 
@@ -3098,8 +3118,10 @@
       bodyH = Math.round(L.fs * 0.35)
               + mrows * (menuRowH() + menuGap());
     } else if (UI.view === "settings") {
-      // 横屏两列（3 行）—— 单列 6 组在横屏里会把面板撑到顶边，一点留白都没有
-      bodyH = Math.round(L.fs * 0.3) + (L.landscape ? 3 : 6) * (setRowH() + gap);
+      // 行数与列数从 SETTINGS_GROUPS 现算，不再写死。
+      // 写死 6 行 / 横屏 3 行的时候，列表已经长到 7 组，最后那组「对话框」被挤出面板底边。
+      bodyH = Math.round(L.fs * 0.3)
+              + settingsRows() * (setRowH() + settingsGap());
     } else if (UI.view === "log") {
       // 按「这一页实际有几条」留高：最后一页常常只剩三四条，
       // 照 7 行的固定高度留位，底下就是一整块空 —— 之前就是这样。
@@ -3135,9 +3157,11 @@
     const h = Math.min(headH + bodyH + footUsed + pad2, L.viewH * (land ? 0.96 : 0.88));
     // 竖屏做成"底部抽屉"：贴屏底、左右留 3% 边。原来垂直居中浮在半空，
     // 上下各一整块黑，看着像一张贴在墙上的纸。
+    // 底部间距必须用 L.bottom（含全面屏手势条的安全区）：写死 3% 的话，
+    // 手势条会压住最后一行 —— 菜单页是「回到标题」，存档页是「清空存档」。
     const y = land
       ? (L.viewH - h) / 2
-      : L.viewH - h - Math.round(Math.min(L.viewW, L.viewH) * 0.03);
+      : L.viewH - h - L.bottom;
     return {x: (L.viewW - w2) / 2, y: y, w: w2, h: h, pad: pad2, headH: headH};
   }
 
@@ -3779,27 +3803,34 @@
     startGame(false);
   }
 
+  // 设置项统一在这里出。面板高度和绘制都必须数同一个列表：
+  // 以前面板按 6 行预留、实际画 7 组，最后那组「对话框」被挤出面板底边。
+  const SETTINGS_GROUPS = [
+    ["文字速度", "speed", ["慢", "中", "快"], [0.6, 1, 1.6], PREF.speed],
+    ["字号", "text", ["小", "中", "大"], [0.9, 1, 1.15], PREF.text],
+    ["音量", "vol", ["小", "中", "大"], [0.4, 0.7, 1], PREF.vol],
+    ["自动翻页", "auto", ["关", "3 秒", "6 秒"], [0, 3, 6], PREF.auto],
+    // 弱机自救：降渲染分辨率，字和图会软一点，但帧率能上来
+    ["画面质量", "quality", ["流畅", "标准", "清晰"], [0.62, 0.82, 1], PREF.quality],
+    // 手选方向：横屏作品在竖持手机上也能玩（画布变成上下留黑的一段横屏），
+    // 反过来竖屏作品横持手机也能强制竖排 —— 不用真的转手机
+    ["画面方向", "orient", ["自动", "竖屏", "横屏"],
+     ["auto", "portrait", "landscape"], PREF.orient || "auto"],
+    // P101：对话框占多大画面。三档都保证"读得清"，区别在于挡住多少画面：
+    // 经典 = 不透明底板（传统 galgame 手感）；幕 = 全宽暗幕、无框（默认，画面留得住）；
+    // 字幕 = 同样无框但更轻，几乎像影院字幕。
+    ["对话框", "dlg", ["经典", "幕", "字幕"], [0, 1, 2], PREF.dlg],
+  ];
+
+  function settingsCols() { return L.landscape ? 2 : 1; }
+  function settingsRows() { return Math.ceil(SETTINGS_GROUPS.length / settingsCols()); }
+  function settingsGap() { return Math.round(L.fs * 0.5); }
+
   function drawSettings(x, y, w, p) {
-    const groups = [
-      ["文字速度", "speed", ["慢", "中", "快"], [0.6, 1, 1.6], PREF.speed],
-      ["字号", "text", ["小", "中", "大"], [0.9, 1, 1.15], PREF.text],
-      ["音量", "vol", ["小", "中", "大"], [0.4, 0.7, 1], PREF.vol],
-      ["自动翻页", "auto", ["关", "3 秒", "6 秒"], [0, 3, 6], PREF.auto],
-      // 弱机自救：降渲染分辨率，字和图会软一点，但帧率能上来
-      ["画面质量", "quality", ["流畅", "标准", "清晰"], [0.62, 0.82, 1], PREF.quality],
-      // 手选方向：横屏作品在竖持手机上也能玩（画布变成上下留黑的一段横屏），
-      // 反过来竖屏作品横持手机也能强制竖排 —— 不用真的转手机
-      ["画面方向", "orient", ["自动", "竖屏", "横屏"],
-       ["auto", "portrait", "landscape"], PREF.orient || "auto"],
-      // P101：对话框占多大画面。三档都保证"读得清"，区别在于挡住多少画面：
-      // 经典 = 不透明底板（传统 galgame 手感）；幕 = 全宽暗幕、无框（默认，画面留得住）；
-      // 字幕 = 同样无框但更轻，几乎像影院字幕。
-      ["对话框", "dlg", ["经典", "幕", "字幕"], [0, 1, 2], PREF.dlg],
-    ];
+    const groups = SETTINGS_GROUPS;
     const rowH = setRowH();
-    const gap = Math.round(L.fs * 0.5);
-    // P84：横屏改两列（3 组一列）。单列 6 组在 390 高的横屏里顶到上下边，没有留白。
-    const cols = L.landscape ? 2 : 1;
+    const gap = settingsGap();
+    const cols = settingsCols();
     const colGap = Math.round(L.fs * 1.1);
     const colW = (w - colGap * (cols - 1)) / cols;
     const perCol = Math.ceil(groups.length / cols);

@@ -17,6 +17,29 @@
     try { sessionStorage.removeItem(EDIT_KEY); } catch (e) {}
     location.reload();
   };
+
+  // 安卓返回键协议：壳（MainActivity.onBackPressed）会问 window.myonlBack()，
+  // 只有拿到 true 才不 finish()。实测编辑器页以前根本没有这个函数 ——
+  // 按一下返回，整个应用直接退出，没保存的编辑全丢。
+  // 必须挂在下面两条早退之前：第二条「已经在编辑器里」一 return，
+  // 这个函数就永远没被挂上，正好是最需要它的那个页面。
+  window.myonlBack = function () {
+    // 1. 试玩层开着 → 先关层。用户按返回的本意是"退出试玩"，不是"退出应用"
+    if ($("mDemoLayer")) {
+      try { closeDemo(); } catch (e) { }
+      return true;
+    }
+    // 2. 正在编辑某个作品 → 回工作台，而不是把应用退掉
+    try {
+      if (sessionStorage.getItem(EDIT_KEY) === "1") {
+        window.__myonlShowHome();
+        return true;
+      }
+    } catch (e) { /* 隐私模式下 sessionStorage 会抛，按工作台处理 */ }
+    // 3. 工作台本身就是最外层，返回就是退出应用 —— 交给壳
+    return false;
+  };
+
   try { if (sessionStorage.getItem(EDIT_KEY) === "1") return; } catch (e) {}
 
   // 编辑器自己的层先别渲染，等用户从工作台点进去
