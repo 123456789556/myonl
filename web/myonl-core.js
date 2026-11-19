@@ -236,11 +236,20 @@
             return {type: "camera", kind: kind, args: args};
           }
           case "video": {
-            // 帧序列背景（images/videos/名字_001.png 起连续编号），fps 缺省 24
+            // 帧序列背景（images/videos/名字_001.png 起连续编号），fps 缺省 24。
+            // P131：真视频文件那条路。`file` 为真 = 这段不是帧序列，播放器走 <video> 解码。
+            // 两套解析器键名不一样：js 侧叫 file，py 侧叫 movie_file —— py 的 `file` 已经被
+            // 「源文件定位」这个公共字段占了，只能让位。这里统一收口，别让播放器和存档去猜。
             const fpsRaw = Number(ins.fps);
+            const isFile = ins.file === true || ins.movie_file === true;
             state.video = {name: ins.name || "",
-                           fps: fpsRaw > 0 ? fpsRaw : 24, t0: nowMs()};
-            return {type: "video", name: state.video.name, fps: state.video.fps};
+                           fps: fpsRaw > 0 ? fpsRaw : 24,
+                           file: isFile,
+                           loop: ins.loop !== false,
+                           mute: ins.mute === true,
+                           t0: nowMs()};
+            return {type: "video", name: state.video.name, fps: state.video.fps,
+                    file: isFile, loop: state.video.loop, mute: state.video.mute};
           }
           case "fg": {
             // 前景贴图：@fg 无 / reset 清掉；否则整条替换（和桌面端 runtime 一致）
@@ -313,7 +322,12 @@
                              cg: state.cg, music: state.music,
                              cameraZoom: state.cameraZoom, fg: state.fg,
                              video: state.video ? {name: state.video.name,
-                                                   fps: state.video.fps} : null,
+                                                   fps: state.video.fps,
+                                                   // P131：真视频的开关也要进存档，否则读档会把
+                                                   // 一段 mp4 当成帧序列去找连号 PNG，画面直接黑
+                                                   file: state.video.file === true,
+                                                   loop: state.video.loop !== false,
+                                                   mute: state.video.mute === true} : null,
                              animFinal: finals,
                              sprites: state.sprites, ended: state.ended,
                              framePc: frame.pc, frameRoot: frame.root});
@@ -328,8 +342,13 @@
         state.music = s.music || "";
         state.cameraZoom = Number(s.cameraZoom) || 1;
         state.fg = s.fg || null;
+        // 老存档没有这三个字段：file 缺省 false 就是帧序列，loop 缺省 true，和改之前的行为一致
         state.video = s.video ? {name: s.video.name || "",
-                                 fps: Number(s.video.fps) || 24, t0: nowMs()} : null;
+                                 fps: Number(s.video.fps) || 24,
+                                 file: s.video.file === true,
+                                 loop: s.video.loop !== false,
+                                 mute: s.video.mute === true,
+                                 t0: nowMs()} : null;
         state.anim = {};
         const finals = s.animFinal || {};
         for (const c in finals) {

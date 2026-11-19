@@ -208,7 +208,10 @@
   function kindWrite(o) {
     try { localStorage.setItem(KIND_KEY, JSON.stringify(o || {})); } catch (e) {}
   }
-  function kindOf(name) { return kindRead()[name] === "audio" ? "audio" : "image"; }
+  function kindOf(name) {
+    var k = kindRead()[name];
+    return k === "audio" || k === "video" ? k : "image";
+  }
 
   function dbOpen() {
     return new Promise(function (res, rej) {
@@ -290,6 +293,30 @@
     });
   }
 
+  // 视频同样不压、不转码、不抽帧：mp4 / webm / mov 已经是专门编码压过的，
+  // 再走一道 canvas 或重编码只会掉质量；原样转 dataURL 存着，成品里直接喂给 <video>。
+  function videoDataUrl(file) {
+    return new Promise(function (res, rej) {
+      var fr = new FileReader();
+      fr.onload = function () { res(String(fr.result || "")); };
+      fr.onerror = function () { rej(new Error("这段视频读不出来")); };
+      fr.readAsDataURL(file);
+    });
+  }
+
+  // 落库一条素材：起不重名的名字、写名字索引 / 类型索引、存进 IndexedDB。
+  // add()（选文件、拖进来）和 importShared()（别的 App 分享进来）共用这一套，
+  // 避免两条链路对重名、类型、落库的处理出现分叉。
+  function persistAsset(wantName, kind, dataUrl, taken, kinds) {
+    var name = uniqueName(wantName, taken);
+    taken.push(name);
+    kinds[name] = kind;
+    idxWrite(taken); kindWrite(kinds);
+    return dbRun("readwrite", function (st) {
+      return st.put({ dataUrl: dataUrl, kind: kind }, name);
+    }).then(function () { return name; });
+  }
+
   function dataUrlToResponse(dataUrl) {
     var comma = dataUrl.indexOf(",");
     var meta = dataUrl.slice(5, comma);          // image/png;base64
@@ -312,7 +339,7 @@
     list: function () { return idxRead(); },
     kindOf: kindOf,
     // 加一组文件，返回真的加进去的名字（重名会自动加 _2）
-    // 图片：压到最长边 1280；音频：原样存；其它类型一律不收（成品里用不上，收了只是白占空间）
+    // 图片：压到最长边 1280；音频 / 视频：原样存；其它类型一律不收（成品里用不上，收了只是白占空间）
     add: function (files, onEach) {
       var list = Array.prototype.slice.call(files || []);
       var taken = idxRead();
@@ -323,23 +350,25 @@
           var t = String(f.type || "");
           var isImg = /^image\//i.test(t);
           var isAud = /^audio\//i.test(t);
-          if (!isImg && !isAud) {
-            // 跳过也要回一次，否则多选里混进一个视频，进度条就永远卡在"导入中"
-            if (onEach) onEach(null, added.length, list.length, new Error("只收图片和音频"));
+          var isVid = /^video\//i.test(t);
+          if (!isImg && !isAud && !isVid) {
+            // 跳过也要回一次，否则多选里混进一个不收的类型，进度条就永远卡在"导入中"
+            if (onEach) onEach(null, added.length, list.length, new Error("只收图片、音频和视频"));
+            return null;
+          }
+          if (isVid && (f.size || 0) > MAX_BYTES) {
+            var bigErr = new Error("这段视频超过 24 MB，先在手机里剪短或压一下再导");
+            if (onEach) onEach(null, added.length, list.length, bigErr);
             return null;
           }
           var step = isImg
             ? shrinkImage(f).then(function (r) { return { dataUrl: r.dataUrl, kind: "image" }; })
-            : audioDataUrl(f).then(function (u) { return { dataUrl: u, kind: "audio" }; });
+            : isVid
+              ? videoDataUrl(f).then(function (u) { return { dataUrl: u, kind: "video" }; })
+              : audioDataUrl(f).then(function (u) { return { dataUrl: u, kind: "audio" }; });
           return step.then(function (r) {
-            var name = uniqueName(baseName(f), taken);
-            taken.push(name);
-            kinds[name] = r.kind;
-            added.push(name);
-            idxWrite(taken); kindWrite(kinds);
-            return dbRun("readwrite", function (st) {
-              return st.put({ dataUrl: r.dataUrl, kind: r.kind }, name);
-            }).then(function () {
+            return persistAsset(baseName(f), r.kind, r.dataUrl, taken, kinds).then(function (name) {
+              added.push(name);
               if (onEach) onEach(name, added.length, list.length);
             });
           });
@@ -369,20 +398,58 @@
         });
       }, Promise.resolve()).then(function () { return map; });
     },
-    // 导出时直接能用的两份：画面素材 / 声音素材
+    // 导出时直接能用的三份：画面素材 / 声音素材 / 真视频文件
+    // 视频同时留在 assets（播放器只认名字，分桶靠 kind），movies 单独给打包器直接用。
     allSplit: function () {
       var names = idxRead();
       var kinds = kindRead();
-      var out = { assets: {}, audio: {} };
+      var out = { assets: {}, audio: {}, movies: {} };
       return names.reduce(function (chain, n) {
         return chain.then(function () {
           return dbRun("readonly", function (st) { return st.get(n); }).then(function (v) {
             if (!v || !v.dataUrl) return;
             if (kinds[n] === "audio") out.audio[n] = v.dataUrl;
+            else if (kinds[n] === "video") {
+              out.assets[n] = v.dataUrl;
+              out.movies[n] = v.dataUrl;
+            }
             else out.assets[n] = v.dataUrl;
           });
         });
       }, Promise.resolve()).then(function () { return out; });
+    },
+    // 别的 App 分享进来：SW 把 multipart 里的文件暂存在 inbox:<时间戳>:<序号> 键下，
+    // 值形状 { name, type, blob, ts }。这里把它们搬进正式素材，走 add() 同一套落库逻辑，
+    // 成功后删掉 inbox 键；没有 inbox 记录就 resolve 空数组；任何异常都吞掉返回 []，
+    // 不许抛到页面顶层（index.html 只 .then/.catch 收名字数组）。
+    importShared: function () {
+      var self = this;
+      return new Promise(function (resolve) {
+        var names = [];
+        try {
+          if (!window.indexedDB) { resolve([]); return; }
+          dbRun("readonly", function (st) { return st.getAllKeys(); }).then(function (keys) {
+            var inbox = (keys || []).filter(function (k) { return String(k).indexOf("inbox:") === 0; });
+            if (!inbox.length) { resolve([]); return; }
+            return inbox.reduce(function (chain, key) {
+              return chain.then(function () {
+                return dbRun("readonly", function (st) { return st.get(key); }).then(function (rec) {
+                  if (!rec || !rec.blob) return null;
+                  var file;
+                  try {
+                    file = new File([rec.blob], String(rec.name || ("分享_" + Date.now())),
+                      { type: rec.type || "application/octet-stream" });
+                  } catch (e) { return null; }
+                  return self.add([file]).then(function (added) {
+                    if (added && added.length) names.push(added[0]);
+                    return dbRun("readwrite", function (st) { return st.delete(key); });
+                  }).catch(function () { /* 这条没存上，inbox 键留着，下次进来再试 */ });
+                });
+              });
+            }, Promise.resolve()).then(function () { resolve(names); });
+          }).catch(function () { resolve([]); });
+        } catch (e) { resolve([]); }
+      });
     },
     // 恢复备份用：**按原名写回，不再压缩、不改名**。
     // 名字就是剧本里 @bg / @音乐 后面那个词，改名等于把整部作品的图全变成缺图——
@@ -441,7 +508,7 @@
       var bar = document.querySelector(".off-assets");
       if (bar && bar.__refresh) bar.__refresh();
       if (names.length) toast("已收到分享的 " + names.length + " 个：" + names.join("、"));
-      else toast("分享的内容收不了：只收图片和音频", true);
+      else toast("分享的内容收不了：只收图片、音频和视频", true);
     }).catch(function () { toast("分享的文件没存进去，重试一次", true); });
   };
 
@@ -587,12 +654,12 @@
     // 手机上现在真的有素材了（从相册/文件选进来、压在 IndexedDB 里），
     // 名字从 localStorage 索引同步读，所以这个同步接口照样答得上来。
     // 图片和音频分开报：图片列表里不能混进 mp3 的名字，否则前端会拿它当立绘。
-    var kinds = kindRead();
-    var names = idxRead();
-    var imgs = names.filter(function (n) { return kinds[n] !== "audio"; });
-    var auds = names.filter(function (n) { return kinds[n] === "audio"; });
+    var kinds = kindRead(), imgs = [], auds = [], vids = [];
+    idxRead().forEach(function (n) {
+      (kinds[n] === "audio" ? auds : kinds[n] === "video" ? vids : imgs).push(n);
+    });
     return jsonRes({ ok: true, assets: {
-      images: imgs, videos: [], anims: [], audio: auds, fonts: []
+      images: imgs, videos: vids, anims: [], audio: auds, fonts: []
     } });
   };
 
@@ -677,9 +744,9 @@
     // 素材真图：路径里带名字，精确键匹配不上，这里单独接一段。
     // 编辑器里所有缩略图都是 <img src="/api/asset/images/名字">，
     // 离线时从 IndexedDB 取出来直接回二进制，缩略图才有东西显示。
-    var am = path.match(/^\/api\/asset\/images\/(.*)$/);
+    var am = path.match(/^\/api\/asset\/(images|videos)\/(.*)$/);
     if (am) {
-      var nm = decodeURIComponent(am[1]);
+      var nm = decodeURIComponent(am[2]);
       return window.MYONLAssets.get(nm).then(function (v) {
         if (v && v.dataUrl) return dataUrlToResponse(v.dataUrl);
         return new Response("", { status: 404 });
@@ -787,30 +854,45 @@
       });
     }));
   }
+  // allSplit 把视频同时留在 assets；进 pack 前摘出去走 movies，
+  // 转成 {src, mime} 给打包器，避免同一段视频体积在两边算两遍。
+  function moviesOf(sp, assets) {
+    var pack = {};
+    Object.keys((sp && sp.movies) || {}).forEach(function (k) {
+      var u = sp.movies[k], comma = u.indexOf(","), mime = "video/mp4";
+      if (comma > 5) mime = (u.slice(5, comma).split(";")[0] || mime).trim();
+      pack[k] = { src: u, mime: mime };
+      delete assets[k];
+    });
+    return pack;
+  }
   window.__myonlExportPack = function () {
     var p = curProject();
     if (!window.MYONLPack || !window.MYONLParser) { toast("打包器没加载，刷新一下", true); return; }
     toast("正在把剧本编成成品…");
     // 素材以前一律传空 —— 于是手机上出的成品永远是纯文字配渐变底。
-    // 现在从 IndexedDB 把素材全取出来，图和音频分开塞进 pack：画面归 assets，声音归 audio。
+    // 现在从 IndexedDB 把素材全取出来：画面归 assets，声音归 audio，真视频归 movies。
     var assetsP = (window.MYONLAssets ? window.MYONLAssets.allSplit() : Promise.resolve({ assets: {}, audio: {} }));
     Promise.all([playerSources(), assetsP]).then(function (both) {
       var src = both[0], sp = both[1] || {};
       var assets = sp.assets || {}, audio = sp.audio || {};
+      var moviesPack = moviesOf(sp, assets);
       var names = Object.keys(assets);
       var mb = 0;
       names.forEach(function (k) { mb += assets[k].length; });
       Object.keys(audio).forEach(function (k) { mb += audio[k].length; });
+      Object.keys(moviesPack).forEach(function (k) { mb += moviesPack[k].src.length; });
       mb = Math.round(mb / 1024 / 1024 * 10) / 10;
       var r = window.MYONLPack.buildPack({
         title: p.name, scriptText: p.text,
-        assets: assets, audio: audio, videos: {}, config: {}, orientation: "any",
+        assets: assets, audio: audio, videos: {}, movies: moviesPack, config: {}, orientation: "any",
       });
       if (!r.ok) { toast("剧本第 " + r.error.line + " 行：" + r.error.message, true); return; }
       var html = window.MYONLPack.renderSingle(r.pack, src);
       download(html, p.name + ".html", "text/html;charset=utf-8");
       var parts = [];
       if (names.length) parts.push(names.length + " 张图");
+      if (Object.keys(moviesPack).length) parts.push(Object.keys(moviesPack).length + " 段视频");
       if (Object.keys(audio).length) parts.push(Object.keys(audio).length + " 段音频");
       toast(parts.length
         ? ("成品好了：带了 " + parts.join(" + ") + "，约 " + mb + " MB")
@@ -931,8 +1013,8 @@
     var t2 = document.createElement("div");
     t2.style.cssText = "font-size:12px;line-height:1.75;color:#8fa3c0;margin-top:6px";
     t2.innerHTML = "点这里选，桌面上也可以直接拖进来<br>" +
-      "图片压到最长边 1280 · 音频原样存 · 视频暂不收<br>" +
-      "一次最多 " + MAX_FILES + " 个，单个不超过 24 MB";
+      "图片压到最长边 1280 · 音频原样存 · 视频原样存，单个不超过 24 MB<br>" +
+      "一次最多 " + MAX_FILES + " 个";
 
     drop.appendChild(t1);
     drop.appendChild(t2);
@@ -941,6 +1023,7 @@
     var input = document.createElement("input");
     input.type = "file";
     input.accept = "image/*,audio/*";
+    input.accept += ",video/*";
     input.multiple = true;
     input.style.display = "none";
     bar.appendChild(input);
@@ -952,12 +1035,20 @@
     function refreshUsage() {
       if (!window.MYONLAssets) return;
       var names = window.MYONLAssets.list();
-      var img = 0;
-      names.forEach(function (n) { if (window.MYONLAssets.kindOf(n) !== "audio") img++; });
-      var aud = names.length - img;
+      var img = 0, aud = 0, vid = 0;
+      names.forEach(function (n) {
+        var k = window.MYONLAssets.kindOf(n);
+        if (k === "audio") aud++;
+        else if (k === "video") vid++;
+        else img++;
+      });
+      var parts = [];
+      if (img) parts.push(img + " 张图");
+      if (vid) parts.push(vid + " 段视频");
+      if (aud) parts.push(aud + " 段音频");
       window.MYONLAssets.totalBytes().then(function (n) {
         usage.textContent = names.length
-          ? ("已存 " + img + " 张图" + (aud ? " / " + aud + " 段音频" : "") + "，共 " + mbText(n))
+          ? ("已存 " + parts.join(" / ") + "，共 " + mbText(n))
           : "这个作品还没有素材，成品会用蓝渐变当背景";
       }).catch(function () {});
     }
@@ -974,8 +1065,13 @@
       }
       var big = arr.filter(function (f) { return (f.size || 0) > MAX_BYTES; });
       if (big.length) {
-        toast(big.length + " 个超过 24 MB 没放进来：" +
-          big.slice(0, 2).map(function (f) { return f.name; }).join("、"), true);
+        var bigVid = big.filter(function (f) { return /^video\//i.test(f.type || ""); });
+        var bigOther = big.filter(function (f) { return !/^video\//i.test(f.type || ""); });
+        if (bigVid.length) toast("这段视频超过 24 MB，先在手机里剪短或压一下再导", true);
+        if (bigOther.length) {
+          toast(bigOther.length + " 个超过 24 MB 没放进来：" +
+            bigOther.slice(0, 2).map(function (f) { return f.name; }).join("、"), true);
+        }
         arr = arr.filter(function (f) { return (f.size || 0) <= MAX_BYTES; });
       }
       if (!arr.length) return;
@@ -1083,6 +1179,52 @@
   setInterval(fixAssetImages, 700);
   document.addEventListener("DOMContentLoaded", fixAssetImages);
 
+  // 视频缩略补丁：视频卡片原本也按 <img> 渲染，<img> 解不了 mp4。
+  // 这里按名字查出 kind=video 的卡片，把 <img> 换成 <video>（静音、内联、只取元数据），
+  // src 直接用 dataURL；点一下播一次，播完停在最后一帧，不循环。
+  function fixAssetVideos() {
+    if (!window.MYONLAssets) return;
+    var vids = window.MYONLAssets.list().filter(function (n) {
+      return window.MYONLAssets.kindOf(n) === "video";
+    });
+    if (!vids.length) return;
+    var cards = document.querySelectorAll("div.asset-card");
+    for (var i = 0; i < cards.length; i++) {
+      var card = cards[i];
+      if (card.querySelector("video[data-off-video]")) continue;
+      var nm = card.querySelector(".nm");
+      var name = nm ? nm.textContent : "";
+      if (vids.indexOf(name) < 0) continue;
+      (function (c, n) {
+        window.MYONLAssets.get(n).then(function (v) {
+          if (!v || !v.dataUrl || c.querySelector("video[data-off-video]")) return;
+          var video = document.createElement("video");
+          video.muted = true;
+          video.playsInline = true;
+          video.setAttribute("playsinline", "");
+          video.setAttribute("preload", "metadata");
+          video.setAttribute("data-off-video", "1");
+          video.src = v.dataUrl;
+          video.style.cssText = "width:100%;height:110px;object-fit:contain;display:block;background:#0d1420";
+          var oldImg = c.querySelector("img");
+          if (oldImg) c.replaceChild(video, oldImg);
+          else c.insertBefore(video, c.firstChild);
+          video.addEventListener("click", function (e) {
+            e.stopPropagation();
+            if (video.paused) {
+              var pr = video.play();
+              if (pr && pr.catch) pr.catch(function () {});
+            } else {
+              video.pause();
+            }
+          });
+        }).catch(function () {});
+      })(card, name);
+    }
+  }
+  setInterval(fixAssetVideos, 700);
+  document.addEventListener("DOMContentLoaded", fixAssetVideos);
+
   // ---------- 7. 封面与缩略图 ----------
   // 手机上没有任何素材，工作台卡片原本是一块纯黑（这就是"劣质感"的来源）。
   // 离线时按作品名算一个稳定的蓝系渐变铺上去，小卡再压一个首字，
@@ -1181,6 +1323,32 @@
         toast(narrow ? "手机本地模式：作品存在这台设备里"
                      : "本地模式：作品和素材都存在这台电脑上，不联网也能用");
       }, 500);
+    }
+  } catch (e) { /* ignore */ }
+
+  // ---------- 9. P131：PWA 分享进来 ----------
+  // 相册里长按「分享到 MYONL」→ 系统 POST 到 /share-target → sw.js 把文件存进素材库 inbox →
+  // 跳回带 ?shared= 的首页 → 这里把 inbox 搬进正式素材。
+  // 为什么放在这个文件而不是 index.html：入口页有 <600 行的硬上限（tests 会查），
+  // 而分享链路本来就和素材落库是同一件事，搁一起才不用跨文件传状态。
+  // file:// 与 WebView 里没有 serviceWorker，整段静默跳过，不影响别的功能。
+  try {
+    if (window.navigator && "serviceWorker" in window.navigator
+        && /^https?:$/.test(window.location.protocol)) {
+      window.navigator.serviceWorker.register("/sw.js").catch(function () {
+        /* 装不上就算了：没分享入口也不能连累编辑器 */
+      });
+    }
+    if (/[?&]shared=/.test(window.location.search)
+        && window.MYONLAssets && typeof window.MYONLAssets.importShared === "function") {
+      window.addEventListener("load", function () {
+        window.MYONLAssets.importShared().then(function (names) {
+          if (names && names.length) toast("从分享收下 " + names.length + " 个素材：" + names.join("、"));
+          else toast("这次分享里没拿到能用的素材", true);
+        }).catch(function () {
+          toast("分享进来的素材没存上，重新分享一次试试", true);
+        });
+      });
     }
   } catch (e) { /* ignore */ }
 })();

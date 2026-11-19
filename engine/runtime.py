@@ -96,7 +96,7 @@ class Runtime:
             "stack": [[0, 0]],          # 栈帧：[列表ID, 当前下标]
             "bg": None,
             "music": None,
-            "video": None,              # 帧序列视频背景：{"name":..., "fps":...}；@bg 时清除
+            "video": None,              # 帧序列/真视频背景：{"name", "fps", "movie_file", "loop", "mute"}；@bg 时清除
             "sprites": [],              # [{"char":..., "expr":..., "anim":...}]，顺序即绘制顺序
             "vars": {},
             "characters": {},           # 角色名 -> {"color": ...}
@@ -217,9 +217,23 @@ class Runtime:
                     ev["fadein"] = ins["fadein"]
                 return self._emit(ev)
             if op == "video":
-                st["video"] = {"name": ins["name"], "fps": ins["fps"]}
+                vstate = {"name": ins["name"], "fps": ins["fps"]}
+                if ins.get("movie_file"):
+                    vstate["movie_file"] = True
+                if ins.get("loop") is False:
+                    vstate["loop"] = False
+                if ins.get("mute"):
+                    vstate["mute"] = True
+                st["video"] = vstate
                 frame[1] += 1
-                return self._emit({"type": "video", "name": ins["name"], "fps": ins["fps"], "line": line})
+                ev = {"type": "video", "name": ins["name"], "fps": ins["fps"], "line": line}
+                if ins.get("movie_file"):
+                    ev["movie_file"] = True
+                if ins.get("loop") is False:
+                    ev["loop"] = False
+                if ins.get("mute"):
+                    ev["mute"] = True
+                return self._emit(ev)
             if op == "music":
                 st["music"] = ins["track"]
                 frame[1] += 1

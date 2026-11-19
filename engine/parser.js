@@ -10,12 +10,47 @@
 
    已覆盖（5 个真实工程用到的全部）：
      character / set / bg / music / sfx / chapter / label / say /
-     show / hide / choice / jump / if / end / wait
+     show / hide / choice / jump / if / end / wait / video
    未覆盖（遇到就抛清楚的中文错误，不静默走偏）：
-     voice / video / anim / fg / cg / camera / transition / plug / @include
+     voice / anim / fg / cg / camera / transition / plug / @include
    ============================================================ */
 (function (global) {
   "use strict";
+
+  // 解析 @video 的扩展参数：file（真视频文件）/ fps=N / loop=0|1 / mute（静音）
+  // 与 parser.py 同一套规则；fps 只对帧序列有意义，file 形式接受但忽略。
+  function parseVideoArgs(n, argstr) {
+    var parts = argstr.split(/\s+/).filter(Boolean);
+    if (!parts[0]) {
+      throw synErr(n, "@video 需要 1 个参数（视频名），可追加 file / fps=帧率 / loop=0|1 / mute");
+    }
+    var name = parts[0];
+    var fps = 30, file = false, loop = true, mute = false;
+    for (var k = 1; k < parts.length; k++) {
+      var part = parts[k];
+      if (part === "file") { file = true; continue; }
+      if (part === "mute") { mute = true; continue; }
+      if (part.indexOf("=") < 0) {
+        throw synErr(n, '@video 的扩展参数应为 file / fps=帧率 / loop=0|1 / mute，实际为 "' + part + '"');
+      }
+      var kv = part.split("=");
+      var pname = kv[0], pvalue = part.slice(pname.length + 1);
+      if (pname === "fps") {
+        if (!INT_ARG.test(pvalue) || parseInt(pvalue, 10) <= 0) {
+          throw synErr(n, '@video 的 fps= 应为正整数（如 fps=24），实际为 "' + pvalue + '"');
+        }
+        fps = parseInt(pvalue, 10);
+      } else if (pname === "loop") {
+        if (pvalue !== "0" && pvalue !== "1") {
+          throw synErr(n, '@video 的 loop= 只能是 0（播完停在最后一帧）或 1（循环），实际为 "' + pvalue + '"');
+        }
+        loop = pvalue === "1";
+      } else {
+        throw synErr(n, '@video 不支持参数 "' + pname + '="：可用 file / fps=帧率 / loop=0|1 / mute');
+      }
+    }
+    return { op: "video", name: name, fps: fps, file: file, loop: loop, mute: mute, line: n };
+  }
 
   // Python 的 \w 在 re.UNICODE 下包含中文（"标签_结局"、"变量 信任"都靠它），
   // JS 的 \w 只有 [A-Za-z0-9_]，所以这里显式把 CJK 区间加进去。
@@ -200,6 +235,10 @@
       return ins;
     }
 
+    if (head === "video") {
+      return parseVideoArgs(n, argstr);
+    }
+
     if (head === "show") {
       var ps3 = argstr.split(/\s+/);
       if (ps3.length < 2 || ps3.length > 10) {
@@ -343,7 +382,7 @@
     if (head === "choice") throw synErr(n, '@choice 后面需要冒号，写法是单独一行 "@choice:"，后接缩进的选项列表');
 
     throw synErr(n, '未知指令 "@' + head + '"（手机端解析器支持：@character @bg @music @sfx @show @hide @wait @chapter @label '
-      + '@jump @end @set @if @choice: "@[角色] 文本" "@ 文本"；@voice/@video/@anim/@fg/@cg/@camera/@transition/@plug 请到电脑端打包）');
+      + '@jump @end @set @if @video @choice: "@[角色] 文本" "@ 文本"；@voice/@anim/@fg/@cg/@camera/@transition/@plug 请到电脑端打包）');
   };
 
   Parser.prototype.sayNext = function (line) {

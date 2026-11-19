@@ -317,15 +317,50 @@ class _Parser:
 
         if head == "video":
             parts = argstr.split()
-            if len(parts) not in (1, 2):
-                raise self.error(n, f"@video 需要 1 个参数（视频名），可追加 fps=帧率，实际给了 {len(parts)} 个")
+            if not parts:
+                raise self.error(
+                    n,
+                    "@video 需要 1 个参数（视频名），可追加 file / fps=帧率 / loop=0|1 / mute")
+            name = parts[0]
             fps = 30
-            if len(parts) == 2:
-                m = _FPS_ARG.fullmatch(parts[1])
-                if not m or int(m.group(1)) <= 0:
-                    raise self.error(n, f'@video 的第二个参数应为 fps=正整数（如 fps=24），实际为 "{parts[1]}"')
-                fps = int(m.group(1))
-            return {"op": "video", "name": parts[0], "fps": fps, "line": n}
+            # 注意：`file` 是全部指令的公共字段（源文件定位，见 _block），
+            # 所以「真视频文件」这个开关不能再叫 file，IR 里用 movie_file 落位。
+            movie_file = False
+            loop = True
+            mute = False
+            for part in parts[1:]:
+                if part == "file":
+                    movie_file = True
+                    continue
+                if part == "mute":
+                    mute = True
+                    continue
+                if "=" not in part:
+                    raise self.error(
+                        n,
+                        f'@video 需要 1 个参数（视频名），可追加 file / fps=帧率 / loop=0|1 / mute，'
+                        f'实际多出了 "{part}"')
+                pname, pvalue = part.split("=", 1)
+                if pname == "fps":
+                    m = _FPS_ARG.fullmatch(part)
+                    if not m or int(m.group(1)) <= 0:
+                        raise self.error(
+                            n,
+                            f'@video 的第二个参数应为 fps=正整数（如 fps=24），实际为 "{pvalue}"')
+                    fps = int(m.group(1))
+                elif pname == "loop":
+                    if pvalue not in ("0", "1"):
+                        raise self.error(
+                            n,
+                            f'@video 的 loop= 只能是 0（播完停在最后一帧）或 1（循环），'
+                            f'实际为 "{pvalue}"')
+                    loop = pvalue == "1"
+                else:
+                    raise self.error(
+                        n,
+                        f'@video 不支持参数 "{pname}="：可用 file / fps=帧率 / loop=0|1 / mute')
+            return {"op": "video", "name": name, "fps": fps, "movie_file": movie_file,
+                    "loop": loop, "mute": mute, "line": n}
 
         if head == "show":
             parts = argstr.split()
@@ -918,8 +953,14 @@ def _dump(instrs: list[dict], out: list[str], level: int) -> None:
             out.append(f'{pad}@voice {ins["sound"]}')
         elif op == "video":
             s = f'{pad}@video {ins["name"]}'
+            if ins.get("movie_file"):
+                s += " file"
             if ins.get("fps") not in (None, 30):
                 s += f' fps={ins["fps"]}'
+            if ins.get("loop") is False:
+                s += " loop=0"
+            if ins.get("mute"):
+                s += " mute"
             out.append(s)
         elif op == "show":
             s = f'{pad}@show {ins["char"]} {ins["expr"]}'

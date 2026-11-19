@@ -741,6 +741,8 @@
   function _clAssetCards() {
     const all = [];
     (assets.images || []).forEach((n) => all.push({ cat: "images", name: n, ins: "@bg " + n }));
+    // P131：视频走 file 形式，和素材页拖拽出来的指令保持一致
+    (assets.videos || []).forEach((n) => all.push({ cat: "videos", name: n, ins: "@video " + n + " file" }));
     (assets.audio || []).forEach((n) => all.push({ cat: "audio", name: n, ins: "@music " + n }));
     (assets.anims || []).forEach((n) => all.push({ cat: "anims", name: n, ins: "@anim " + n }));
     const pinned = [];
@@ -2617,7 +2619,14 @@
       return [{ label: "@show 角色ID 表情 anim=" + name, text: "@show 角色ID 表情 anim=" + name }];
     }
     if (category === "videos") {
-      return [{ label: "@video " + name + "（帧序列视频背景）", text: "@video " + name }];
+      // P131：视频有两种来源，别让作者猜。
+      // 手机相册进来的是一段真视频文件（mp4/webm），必须带 file 才是「解视频」，
+      // 不带 file 那是老的帧序列写法（images/videos/名_001.png 连号）。
+      return [
+        { label: "@video " + name + " file（真视频，循环播）", text: "@video " + name + " file" },
+        { label: "@video " + name + " file loop=0（播完停在最后一帧）", text: "@video " + name + " file loop=0" },
+        { label: "@video " + name + "（帧序列，需 images/videos/" + name + "_001.png 起连号）", text: "@video " + name },
+      ];
     }
     if (category === "audio") {
       return [

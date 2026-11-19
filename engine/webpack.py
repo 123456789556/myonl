@@ -228,12 +228,15 @@ def _collect_audio_names(ins: list) -> list[str]:
 
 
 def _collect_video_names(ins: list) -> list[str]:
-    """从 IR 里收集帧序列视频名（`@video 名 fps=`）—— 帧在 images/videos/名_001.png 起。"""
+    """从 IR 里收集帧序列视频名（`@video 名 fps=`）—— 帧在 images/videos/名_001.png 起。
+
+    P131：`file` 真视频走 movies 通道，不再往帧序列名单里放。
+    """
     names: list[str] = []
 
     def walk(node):
         if isinstance(node, dict):
-            if node.get("op") == "video":
+            if node.get("op") == "video" and not node.get("movie_file"):
                 n = str(node.get("name") or "").strip()
                 if n and n not in names:
                     names.append(n)
@@ -250,6 +253,42 @@ def _collect_video_names(ins: list) -> list[str]:
 
 
 FRAME_EXTS = (".png", ".webp")
+
+# P131：真视频文件（@video 名 file）。项目根 videos/ 下按名找候选后缀。
+MOVIE_EXTS = (".mp4", ".webm", ".mov")
+
+
+def _collect_movie_names(ins: list) -> list[str]:
+    """从 IR 里收集真视频名（@video 名 file，IR 字段 movie_file=True）。"""
+    names: list[str] = []
+
+    def walk(node):
+        if isinstance(node, dict):
+            if node.get("op") == "video" and node.get("movie_file"):
+                n = str(node.get("name") or "").strip()
+                if n and n not in names:
+                    names.append(n)
+            for key in ("body", "else", "options", "ins"):
+                val = node.get(key)
+                if isinstance(val, (list, dict)):
+                    walk(val)
+        elif isinstance(node, list):
+            for child in node:
+                walk(child)
+
+    walk(ins)
+    return names
+
+
+def _resolve_movie(root: str, name: str) -> str:
+    """root/videos/<名>.mp4|.webm|.mov，找到返回路径，都没有抛 DataError。"""
+    vdir = os.path.join(root, "videos")
+    for ext in MOVIE_EXTS:
+        p = os.path.join(vdir, name + ext)
+        if os.path.isfile(p):
+            return p
+    tried = "、".join(name + e for e in MOVIE_EXTS)
+    raise DataError(f"找不到视频文件：{os.path.join(vdir, name)}（尝试过：{tried}）")
 
 
 def _copy_video_frames(root: str, assets_dir: str, names: list[str]):
@@ -360,6 +399,20 @@ def build_web(project_root: str, out_dir: str, *, title: str = "") -> dict:
         root, assets_dir, _collect_video_names(ins))
     missing.extend(video_missing)
 
+    # P131：@video 名 file 真视频文件，拷进 assets/movies/。缺文件进 missing，不崩。
+    movie_manifest: dict[str, str] = {}
+    for name in _collect_movie_names(ins):
+        try:
+            src = _resolve_movie(root, name)
+        except DataError:
+            missing.append(name)
+            continue
+        ext = os.path.splitext(src)[1].lower()
+        dst_name = name + ext
+        os.makedirs(os.path.join(assets_dir, "movies"), exist_ok=True)
+        shutil.copyfile(src, os.path.join(assets_dir, "movies", dst_name))
+        movie_manifest[name] = "assets/movies/" + dst_name
+
     log = []
     # P62：music / sfx；P63：cg；P64：camera（zoom/pan/shake/reset）；
     # P73：fg 前景贴图、anim 立绘补间、video 帧序列 都已在播放器实现，不再列缺
@@ -373,6 +426,7 @@ def build_web(project_root: str, out_dir: str, *, title: str = "") -> dict:
         "assets": manifest,
         "audio": audio_manifest,
         "videos": video_manifest,
+        "movies": movie_manifest,
         "ins": ins,
         # P67：作者选定的画面方向（any / portrait / landscape），播放器据此提示转屏
         "orientation": str(cfg.get("orientation") or "any"),
@@ -409,6 +463,7 @@ def build_web(project_root: str, out_dir: str, *, title: str = "") -> dict:
         "instructions": len(ins),
         "images": len(manifest),
         "audio": len(audio_manifest),
+        "movies": len(movie_manifest),
         "missing": missing,
         "unsupported": log,
         "pwa": pwa_files,
@@ -421,6 +476,7 @@ MIME_BY_EXT = {
     ".bmp": "image/bmp",
     ".ogg": "audio/ogg", ".mp3": "audio/mpeg", ".wav": "audio/wav",
     ".m4a": "audio/mp4", ".aac": "audio/aac",
+    ".mp4": "video/mp4", ".webm": "video/webm", ".mov": "video/quicktime",
 }
 
 # P62：单文件里图片多大就够用。超过阈值的图缩到 SHRINK_MAX_EDGE 内重编码。
@@ -617,6 +673,23 @@ def build_single(project_root: str, out_file: str, *, title: str = "") -> dict:
                 arr.append(f"data:{mime};base64," + base64.b64encode(blob).decode("ascii"))
             videos[name] = arr
         pack["videos"] = videos
+
+        # P131：真视频原样内联（不转码、不压帧），data URI 带 mime。
+        movies: dict[str, dict] = {}
+        for name, rel in (pack.get("movies") or {}).items():
+            path = os.path.join(tmp, rel.replace("/", os.sep))
+            mime = MIME_BY_EXT.get(os.path.splitext(path)[1].lower(),
+                                   "video/mp4")
+            try:
+                with open(path, "rb") as f:
+                    blob = f.read()
+            except OSError:
+                continue
+            movies[name] = {
+                "src": f"data:{mime};base64," + base64.b64encode(blob).decode("ascii"),
+                "mime": mime,
+            }
+        pack["movies"] = movies
         pack["single"] = True
 
         scripts = []
@@ -640,15 +713,17 @@ def build_single(project_root: str, out_file: str, *, title: str = "") -> dict:
 
     size = os.path.getsize(out)
     file_mb = size / (1024 * 1024)
+    # P131：movies 已内联进 pack_json，总体积自然计入；视频内联成 base64 比原文件再胖约 37%。
     if size > FILE_HARD_WARN:
         file_warning = (
             f"单文件 {file_mb:.0f} MB，超过 {FILE_HARD_WARN // (1024 * 1024)} MB 硬线。"
             f"手机要先把整个文件读进内存才显示第一句，这个体积大概率白屏或闪退。"
-            f"删素材，或者拆成多个章节包分开出。"
+            f"视频内联成 base64 会再胖约 37%，建议删素材，或者拆成多个章节包分开出。"
         )
     elif size > FILE_SOFT_WARN:
         file_warning = (
-            f"单文件 {file_mb:.0f} MB。低端机打开会明显慢一拍，还能用，但别再加素材了。"
+            f"单文件 {file_mb:.0f} MB。低端机打开会明显慢一拍，还能用，但别再加素材了"
+            f"（视频内联成 base64 会再胖约 37%）。"
         )
     else:
         file_warning = ""
@@ -658,6 +733,7 @@ def build_single(project_root: str, out_file: str, *, title: str = "") -> dict:
         "instructions": stat["instructions"],
         "images": len(assets),
         "audio": len(audio),
+        "movies": len(movies),
         "saved": saved,
         "missing": stat["missing"],
         "unsupported": stat["unsupported"],
@@ -778,6 +854,7 @@ def main(argv: list[str] | None = None) -> int:
         print(f"已生成单文件游戏：{s['out']}")
         print(f"  标题：{s['title']}　指令 {s['instructions']} 条　素材 {s['images']} 张"
               + (f"　音频 {s['audio']} 条" if s.get("audio") else "")
+              + (f"　视频 {s['movies']} 段" if s.get("movies") else "")
               + f"　{s['bytes'] / 1024:.0f} KB")
         if s.get("saved"):
             print(f"  大图压缩省下 {s['saved'] / 1024:.0f} KB（原图每张超 "
@@ -803,7 +880,8 @@ def main(argv: list[str] | None = None) -> int:
         return 1
     print(f"已生成竖屏网页包：{stat['out']}")
     print(f"  标题：{stat['title']}　指令 {stat['instructions']} 条　素材 {stat['images']} 张"
-          + (f"　音频 {stat['audio']} 条" if stat.get("audio") else ""))
+          + (f"　音频 {stat['audio']} 条" if stat.get("audio") else "")
+          + (f"　视频 {stat['movies']} 段" if stat.get("movies") else ""))
     if stat["missing"]:
         print(f"  [缺素材 {len(stat['missing'])}]：" + "、".join(stat["missing"]))
     if stat["unsupported"]:

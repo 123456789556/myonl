@@ -72,10 +72,46 @@
        assets       {名: dataURI}   图片/立绘
        audio        {名: dataURI}   音乐/音效
        videos       {名: [dataURI]} @video 帧序列
+       movies       {名: {src, mime}} @video file 真视频文件
        config       播放器配置（可空，播放器有默认值）
        orientation  "any" | "portrait" | "landscape"
        cover        封面素材名（空则播放器走渐变）
-     返回 {ok, pack, error}。 */
+     返回 {ok, pack, error, bytes, fileMb, fileWarning}。 */
+
+  // 单文件体积口径与电脑端 webpack.py 一致：40 MB 起提醒，80 MB 硬线。
+  var FILE_SOFT_WARN = 40 * 1024 * 1024;
+  var FILE_HARD_WARN = 80 * 1024 * 1024;
+
+  function dataUriByteLen(uri) {
+    // data URI 的 base64 部分比原文件胖 37%；算体积按成品里真正落盘的字节估。
+    var comma = String(uri || "").indexOf(",");
+    var b64 = comma >= 0 ? uri.slice(comma + 1) : uri;
+    return Math.ceil(b64.replace(/\s/g, "").length * 3 / 4);
+  }
+
+  function sizeReport(pack) {
+    var bytes = 0;
+    Object.keys(pack.assets || {}).forEach(function (k) { bytes += dataUriByteLen(pack.assets[k]); });
+    Object.keys(pack.audio || {}).forEach(function (k) { bytes += dataUriByteLen(pack.audio[k]); });
+    Object.keys(pack.videos || {}).forEach(function (k) {
+      (pack.videos[k] || []).forEach(function (u) { bytes += dataUriByteLen(u); });
+    });
+    Object.keys(pack.movies || {}).forEach(function (k) {
+      var mv = pack.movies[k];
+      if (mv && mv.src) bytes += dataUriByteLen(mv.src);
+    });
+    var fileMb = Math.round(bytes / (1024 * 1024) * 10) / 10;
+    var fileWarning = "";
+    if (bytes > FILE_HARD_WARN) {
+      fileWarning = "单文件约 " + fileMb + " MB，超过 80 MB 硬线。手机要先把整个文件读进内存才显示第一句，"
+        + "这个体积大概率白屏或闪退；视频内联成 base64 还会再胖约 37%，建议删素材或拆章。";
+    } else if (bytes > FILE_SOFT_WARN) {
+      fileWarning = "单文件约 " + fileMb + " MB。低端机打开会明显慢一拍，还能用，但别再加素材了"
+        + "（视频内联成 base64 会再胖约 37%）。";
+    }
+    return { bytes: bytes, fileMb: fileMb, fileWarning: fileWarning };
+  }
+
   function buildPack(opts) {
     opts = opts || {};
     if (!global.MYONLParser) {
@@ -94,6 +130,7 @@
       assets: assets,
       audio: opts.audio || {},
       videos: opts.videos || {},
+      movies: opts.movies || {},
       ins: r.instructions,
       orientation: ["portrait", "landscape"].indexOf(opts.orientation) >= 0 ? opts.orientation : "any",
       cover: opts.cover || "",
@@ -106,7 +143,9 @@
         if (/bg/i.test(names[i])) { pack.cover = names[i]; break; }
       }
     }
-    return { ok: true, pack: pack, error: null };
+    var rep = sizeReport(pack);
+    return { ok: true, pack: pack, error: null, bytes: rep.bytes,
+             fileMb: rep.fileMb, fileWarning: rep.fileWarning };
   }
 
   /* 渲染成单文件 HTML。playerSrc = [core.js 文本, layout.js 文本, player.js 文本] */

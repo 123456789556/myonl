@@ -447,6 +447,18 @@ class MediaMixin:
     def _video_frame(self, video: dict):
         """视频背景当前帧 Surface；无帧序列返回 None（调用方画占位）。"""
         name = str(video.get("name") or "")
+        # P131：真视频文件（movie_file=True）桌面 SDL 端不解码。按静态背景兜底：
+        # 有同名首帧就用它当封面，没有就返回 None 保持当前背景；不抛异常、不卡推进。
+        if video.get("movie_file"):
+            if name not in self._video_warned:
+                self._video_warned.add(name)
+                print(f"[提示] 真视频 “{name}” 在电脑端预览不解码，导出成品能播",
+                      file=sys.stderr)
+            frames = self._sequence_index("videos", name)
+            if frames:
+                self._load_window(frames, 0)
+                return self._load_image_path(frames[0])
+            return None
         try:
             fps = int(video.get("fps") or 30)
         except (TypeError, ValueError):

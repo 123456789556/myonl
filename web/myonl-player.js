@@ -292,6 +292,21 @@
   let audioOn = true;      // 右上角小喇叭
   let bgmVolume = 1;
 
+  // ---------- 真视频背景（P131）----------
+  // 和帧序列是两条通路：@video 带 file= 才走这里，纯名字仍走上面的帧池。
+  // 整段成品只允许活一个 <video>：手机上同时解两段 1080p 会直接被系统杀掉，
+  // 所以元素懒建一次后复用，切幕/读档/退出一律 releaseMovie() 释放解码句柄。
+  let movieElRef = null;   // 复用的同一个 <video>，绝不 new 第二个
+  let movieFallback = "";   // 兜底原因（"notfound" / "error" / "reject"）；空 = 没出问题
+  let userInteracted = false;   // 玩家点过「开始」之类的手势；浏览器只允许手势后出声
+
+  // 低端机判据：内存 ≤2 GB 或 CPU ≤4 核，强制静音并把绘制边长压到短边 ≤720。
+  // 只压绘制尺寸，不碰视频本身分辨率；阈值写死在这里，验收脚本照这两个数断言。
+  const LOW_MEM = (navigator.deviceMemory && navigator.deviceMemory <= 2);
+  const LOW_CPU = (navigator.hardwareConcurrency && navigator.hardwareConcurrency <= 4);
+  const MOVIE_LOW_END = LOW_MEM || LOW_CPU;
+  const MOVIE_DRAW_SHORT = 720;   // 低端机绘制时短边上限（仅缩放，不改源分辨率）
+
   function audioSrc(name) {
     return (pack.audio && pack.audio[name]) || "";
   }
@@ -590,9 +605,11 @@
         state.cg = "";          // 切回背景：CG 退场
         state.video = null;     // 视频背景也停（和桌面端 @bg 清 video 一致）
         dropVideoCache();       // 帧图不跟着留：一段 10 秒 24fps 的序列能吃掉上百 MB
+        releaseMovie();         // 真视频解码句柄一并释放，不挂在后台白解
         break;
       case "cg":
         state.cg = ev.name || "";
+        releaseMovie();         // CG 盖住整屏：背景视频先停，别在 CG 底下空耗解码
         break;
       case "fg":
         state.fg = ev.fg || null;
@@ -601,9 +618,12 @@
         state.anim = Object.assign({}, vm.state.anim);
         break;
       case "video":
+        // file= 出现 = 真视频文件，走 <video> 解码；缺省仍是帧序列，旧行为一行不动。
         state.video = {name: ev.name || "", fps: ev.fps || 24,
+                       file: !!ev.file, loop: ev.loop !== false, mute: !!ev.mute,
                        t0: performance.now()};
-        warmVideo();
+        if (state.video.file) warmMovie();
+        else warmVideo();
         break;
       case "camera":
         applyCamera(ev.kind || "", ev.args || []);
@@ -660,6 +680,7 @@
       case "end":
         state.ended = true;
         state.scene = "ending";
+        releaseMovie();         // 跑到结局：背景视频停掉，别在「完」字底下继续解
         autoSave();
         break;
       case "music":
@@ -1006,7 +1027,11 @@
     state.fg = vm.state.fg || null;
     state.anim = vm.state.anim || {};
     state.video = vm.state.video ? Object.assign({}, vm.state.video) : null;
-    if (state.video) { state.video.t0 = performance.now(); warmVideo(); }
+    releaseMovie();          // 读档先清旧片，再按档里的视频类型重新接
+    if (state.video) {
+      state.video.t0 = performance.now();
+      if (state.video.file) warmMovie(); else warmVideo();
+    }
     const zoom = Number(vm.state.cameraZoom) || 1;
     if (zoom !== cam.zoom && zoom !== 1) {
       cam.zoomFrom = cam.zoom; cam.zoomTo = zoom;
@@ -1132,6 +1157,7 @@
   let tapStart = null;
   canvas.addEventListener("pointerdown", (e) => {
     tapStart = {x: e.clientX, y: e.clientY, t: performance.now(), id: e.pointerId};
+    userInteracted = true;   // 之后 @video 才被允许出声（自动播放策略）
   });
   canvas.addEventListener("pointerup", (e) => {
     if (!tapStart || tapStart.id !== e.pointerId) return;
@@ -1202,6 +1228,16 @@
     } else {
       ctx.drawImage(img, (L.viewW - dw) / 2, (L.viewH - dh) / 2, dw, dh);
     }
+  }
+
+  // cover 裁切的纯几何：给宽高和目标视口，返回居中铺满后的 dw/dh/dx/dy。
+  // 视频帧走和 blitCover 同一套比例，不另发明一种裁法。
+  function coverBox(iw, ih, vw, vh) {
+    const m = sceneMargin();
+    const scale = Math.max(vw / iw, vh / ih) * m;
+    const dw = iw * scale;
+    const dh = ih * scale;
+    return {dw: dw, dh: dh, dx: (vw - dw) / 2, dy: (vh - dh) / 2};
   }
 
   // ---------- 帧序列背景（P73）----------
@@ -1276,6 +1312,104 @@
     for (let i = 0; i < n; i++) videoLoad(state.video.name, i);
   }
 
+  // ---------- 真视频（P131）----------
+  // 取复用的那个 <video>：懒建一次，后续换片只换 src，绝不 new 第二个。
+  function movieEl() {
+    if (movieElRef) return movieElRef;
+    const el = document.createElement("video");
+    el.setAttribute("playsinline", "");
+    el.setAttribute("preload", "metadata");
+    el.muted = true;                 // 默认静音：自动播放策略下有声会被拦，出声见 warmMovie
+    el.loop = false;
+    el.playsInline = true;
+    el.style.display = "none";        // 不进文档流：画面由 canvas drawImage 贴上去
+    // 解码报错只兜底一次：error 事件后不再重试，避免反复 reload 卡帧。
+    el.addEventListener("error", () => {
+      if (!movieFallback) { movieFallback = "error"; releaseMovie(); }
+    });
+    document.body.appendChild(el);
+    movieElRef = el;
+    return el;
+  }
+
+  // 取 pack.movies 里这段视频的 dataURI；没打进成品就回 null（走兜底，不崩）。
+  function movieSrc(name) {
+    const mv = pack && pack.movies && pack.movies[name];
+    return (mv && mv.src) || "";
+  }
+
+  // 进 @video（file=）：绑素材、按参数设属性，尝试起播。失败/缺失都落兜底，不抛异常。
+  function warmMovie() {
+    const v = state.video;
+    if (!v || !v.file) return;
+    releaseMovie();                  // 先清掉上一段：单实例，不允许两段同时在解
+    const src = movieSrc(v.name);
+    if (!src) { movieFallback = "notfound"; return; }
+    movieFallback = "";
+    const el = movieEl();
+    el.src = src;
+    el.loop = v.loop !== false;
+    // 声音：写了 mute 强制静音；低端机也强制静音；否则要等玩家手势过才允许出声。
+    const wantSound = !v.mute && !MOVIE_LOW_END && userInteracted && audioOn;
+    el.muted = !wantSound;
+    el.currentTime = 0;
+    el.load();
+    const p = el.play();
+    if (p && p.catch) {
+      p.catch(() => {
+        // 被自动播放策略拦下或解码起不来：不重试，静音兜底继续走剧情。
+        if (!movieFallback) { movieFallback = "reject"; releaseMovie(); }
+      });
+    }
+  }
+
+  // 释放解码句柄：pause → 去 src → load → 引用/状态置空。切幕、读档、退出都走这里。
+  function releaseMovie() {
+    if (movieElRef) {
+      try { movieElRef.pause(); } catch (e) { /* 元素已坏也别拦着切幕 */ }
+      movieElRef.removeAttribute("src");
+      try { movieElRef.load(); } catch (e) { /* 同上 */ }
+    }
+    movieElRef = null;
+    if (!movieFallback) movieFallback = "";
+  }
+
+  // 兜底：当前背景先画出来，再压一行中性灰蓝小字。深色底，不用橙黄/黄、不用 emoji。
+  function drawMovieFallback(reason) {
+    drawBackgroundStatic();
+    ctx.save();
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillStyle = "#8fa3c0";
+    ctx.font = `400 ${Math.round(Math.min(L.viewW, L.viewH) * 0.034)}px ${FACE}`;
+    ctx.fillText("本机解不了这段视频", L.viewW / 2, L.viewH / 2);
+    ctx.restore();
+  }
+
+  // 真视频帧上屏：cover 裁切（同 blitCover 比例）。readyState < 2 先画现有背景，不许黑屏；
+  // 低端机把绘制边长压到短边 ≤720（只缩放，不改源分辨率）。
+  function drawMovie() {
+    const v = state.video;
+    if (!v || !v.file) return false;
+    if (movieFallback) { drawMovieFallback(movieFallback); return true; }
+    const el = movieElRef;
+    if (!el || !el.videoWidth || !el.videoHeight) { drawBackgroundStatic(); return true; }
+    if (el.readyState < 2) { drawBackgroundStatic(); return true; }
+    let iw = el.videoWidth;
+    let ih = el.videoHeight;
+    if (MOVIE_LOW_END) {
+      const short = Math.min(iw, ih);
+      if (short > MOVIE_DRAW_SHORT) {
+        const k = MOVIE_DRAW_SHORT / short;
+        iw = Math.round(iw * k);
+        ih = Math.round(ih * k);
+      }
+    }
+    const box = coverBox(iw, ih, L.viewW, L.viewH);
+    ctx.drawImage(el, box.dx, box.dy, box.dw, box.dh);
+    return true;
+  }
+
   function videoFrameImg() {
     const seq = videoSeq();
     if (!seq) return null;
@@ -1297,11 +1431,20 @@
   }
 
   function drawBackground() {
-    // @video 帧序列在的话，它先顶上背景位置（静态 bg 被它盖住，和桌面端一致）
+    // @video 在的话，它先顶上背景位置（静态 bg 被它盖住，和桌面端一致）
+    if (state.video && state.video.file) {
+      drawMovie();
+      return;
+    }
     if (state.video) {
       const frameImg = videoFrameImg();
       if (frameImg) { blitCover(frameImg, 1); return; }
     }
+    drawBackgroundStatic();
+  }
+
+  // 静态背景那条路（不含视频）：真视频还没解出来 / 兜底时由 drawMovie 调它，先把底铺上。
+  function drawBackgroundStatic() {
     // 交叉淡入：旧背景先铺满，新背景按进度盖上去 —— 硬切太生硬
     let t = 1;
     if (state.fadeDur > 0) {
@@ -2452,6 +2595,9 @@
   fit();
   requestAnimationFrame(frame);
 
+  // 页面卸载前放走视频：句柄留在内存里，关标签页后浏览器仍可能挂着解码缓冲。
+  window.addEventListener("beforeunload", releaseMovie);
+
   // 调试口：给 tools/web_shot.py 之类的验收脚本读状态（只读，不改剧情）
   window.MYONL_DEBUG = {
     get layout() { return L; },
@@ -2483,7 +2629,14 @@
       return {name: state.video ? state.video.name : "", fps: state.video ? state.video.fps : 0,
               cached: videoKeys.length, keep: VIDEO_KEEP,
               ready: Object.keys(videoCache).filter(k => videoCache[k].complete
-                                                      && videoCache[k].naturalWidth).length};
+                                                      && videoCache[k].naturalWidth).length,
+              // 真视频单实例读数：count = 活着的 <video> 个数（切走后必须回到 0）
+              movie: {
+                name: (state.video && state.video.file) ? state.video.name : "",
+                count: movieElRef ? 1 : 0,
+                readyState: movieElRef ? movieElRef.readyState : 0,
+                paused: movieElRef ? movieElRef.paused : true,
+              }};
     },
     // P125：内存回收的实测读数 —— 验收脚本要知道"多少张在图里、共多少 MB"
     get assets() {
@@ -2674,7 +2827,11 @@
     state.fg = vm.state.fg || null;
     state.anim = vm.state.anim || {};
     state.video = vm.state.video ? Object.assign({}, vm.state.video) : null;
-    if (state.video) { state.video.t0 = performance.now(); warmVideo(); }
+    releaseMovie();          // 读档先清旧片，再按档里的视频类型重新接
+    if (state.video) {
+      state.video.t0 = performance.now();
+      if (state.video.file) warmMovie(); else warmVideo();
+    }
     if (vm.state.music) playMusic(vm.state.music, 0, 0);
     next();
     settleAfterLoad();
@@ -3685,6 +3842,7 @@
       autoSave();
       UI.open = false;
       state.scene = "title";
+      releaseMovie();         // 回标题：把背景视频一并放走，标题页底下不再空解
       return;
     }
     if (/^s[0-9]$/.test(id)) {
