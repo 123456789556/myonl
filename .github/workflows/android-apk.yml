@@ -105,17 +105,39 @@ jobs:
       - name: 还原签名私钥（从 repository secret）
         env:
           MYONL_KEYSTORE_B64: ${{ secrets.MYONL_KEYSTORE_B64 }}
+          MYONL_STORE_PASS: ${{ secrets.MYONL_STORE_PASS }}
         run: |
           mkdir -p android/keystore
           printf '%s' "$MYONL_KEYSTORE_B64" | base64 -d > android/keystore/myonl-test.p12
-          echo "私钥已还原（$(stat -c%s android/keystore/myonl-test.p12) 字节）"
+          SIZE=$(stat -c%s android/keystore/myonl-test.p12)
+          echo "私钥已还原（${SIZE} 字节）"
+          # 日志接口要管理员权限才读得到，所以把关键事实写成注解：
+          # 注解是公开可读的，出问题时不用求人也能看到真相。
+          echo "::notice::p12 还原 ${SIZE} 字节（本地备份是 2574 字节）"
+          KEYTOOL="${JAVA_HOME}/bin/keytool"
+          [ -x "$KEYTOOL" ] || KEYTOOL="$(command -v keytool || true)"
+          if [ -n "$KEYTOOL" ]; then
+            "$KEYTOOL" -list -keystore android/keystore/myonl-test.p12 \
+              -storetype PKCS12 -storepass "$MYONL_STORE_PASS" 2>&1 | head -12 | \
+              while IFS= read -r line; do echo "::notice::keytool: ${line}"; done
+          else
+            echo "::warning::找不到 keytool，跳过硬证书自检"
+          fi
 
       - name: 打 release APK
         working-directory: android
         env:
           MYONL_STORE_PASS: ${{ secrets.MYONL_STORE_PASS }}
           MYONL_KEY_PASS: ${{ secrets.MYONL_KEY_PASS }}
-        run: gradle assembleRelease --no-daemon --stacktrace
+        run: |
+          set -o pipefail
+          if ! gradle assembleRelease --no-daemon --stacktrace 2>&1 | tee /tmp/gradle.log; then
+            echo "::error::gradle 失败，最后 25 行进注解（完整日志在 job 日志里）"
+            tail -25 /tmp/gradle.log | while IFS= read -r line; do
+              echo "::error::${line//%/%%}"
+            done
+            exit 1
+          fi
 
       - name: 收产物
         run: |
