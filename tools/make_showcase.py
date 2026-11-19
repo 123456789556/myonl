@@ -35,16 +35,17 @@ def row(files, labels, out, gap=20, pad=36, bg=(16, 17, 22), maxh=760):
     print(out, canvas.size, out.stat().st_size, "bytes")
 
 
+# 标签只写尺寸，不写手机品牌：这个项目对屏幕负责，不对某个牌子负责。
 row(
     ["multi-360x800.png", "multi-390x844.png", "multi-412x915.png", "multi-360x640.png"],
-    ["安卓 360×800", "苹果 390×844", "安卓 412×915", "老机 360×640"],
+    ["360×800", "390×844", "412×915", "360×640"],
     DOCS / "showcase-portrait.png",
     maxh=700,
 )
 
 row(
     ["multi-800x360.png", "multi-1024x768.png"],
-    ["手机横屏 800×360", "平板横屏 1024×768"],
+    ["横屏 800×360", "横屏 1024×768"],
     DOCS / "showcase-landscape.png",
     gap=28,
 )

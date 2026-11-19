@@ -2420,6 +2420,36 @@
     assetFile.value = "";
   });
 
+  // 从网址导入：贴一条图片/音频直链，由后端下载下来存成本地素材。
+  // 不做"运行时就加载远程图"——那样导出的单文件一出网就花，发给别人等于发个空壳。
+  (function setupUrlImport() {
+    const btn = $("assetUrlBtn");
+    if (!btn) return;
+    btn.addEventListener("click", async () => {
+      const url = prompt("粘贴图片或音频的直链（http:// 或 https:// 开头）：", "https://");
+      if (!url) return;
+      const u = url.trim();
+      if (!/^https?:\/\//i.test(u)) { toast("要 http:// 或 https:// 开头的直链"); return; }
+      btn.disabled = true;
+      const old = btn.textContent;
+      btn.textContent = "…";
+      try {
+        const r = await postJSON("/api/import_url", { url: u });
+        if (r && r.ok) {
+          toast("已从网址导入" + (r.bytes ? ("（" + Math.round(r.bytes / 1024) + " KB）") : ""));
+          await refreshAssets();
+        } else {
+          toast((r && r.message) || "导入失败");
+        }
+      } catch (e) {
+        toast("导入失败：" + (e && e.message ? e.message : e));
+      } finally {
+        btn.disabled = false;
+        btn.textContent = old;
+      }
+    });
+  })();
+
   // P64：手机素材导入。手机上「点 ＋ 选文件」和电脑不是一个手感：
   // 相册里全是图、还常常想现场拍一张。所以窄屏多给一个「拍照」入口，
   // 走 capture=environment 直接开相机，拍完当素材导入。

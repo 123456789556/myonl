@@ -27,7 +27,8 @@ import threading
 import uuid
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, quote, unquote, urlparse
-
+import urllib.error
+import urllib.request
 from . import packaging
 from .newgame import create_game
 from . import characters as characters_api
@@ -810,6 +811,7 @@ class _EditorHandler(BaseHTTPRequestHandler):
         ("POST", "/api/render"): "_render",
         ("POST", "/api/script"): "_save_script",
         ("POST", "/api/import"): "_import_asset",
+        ("POST", "/api/import_url"): "_import_url",
         ("POST", "/api/config"): "_set_config",
         ("POST", "/api/new"): "_new_game",
         ("POST", "/api/browse"): "_browse",
@@ -1888,6 +1890,77 @@ class _EditorHandler(BaseHTTPRequestHandler):
         if result.get("ok"):
             # 素材变化会影响预览画面，清空内容哈希缓存
             _preview_cache_clear()
+        self._send_json(200 if result.get("ok") else 400, result)
+
+    def _import_url(self, parsed=None) -> None:
+        """从网址把素材抓下来存进素材库：POST JSON {category?, url, filename?, overwrite?}。
+
+        为什么不让前端自己 fetch：多数图床不带 CORS 头，浏览器读不到二进制；
+        手机上更会被直接拦掉。后端没有这个限制。
+        抓下来就是本地文件，导出时照样内嵌成单文件——不依赖对方服务器还活着。
+        """
+        data = self._read_json()
+        url = (data.get("url") or "").strip()
+        if not url.lower().startswith(("http://", "https://")):
+            self._send_json(400, {"ok": False, "message": "只收 http:// 或 https:// 开头的网址"})
+            return
+        try:
+            req = urllib.request.Request(url, headers={
+                "User-Agent": "Mozilla/5.0 (compatible; MYONL/1.2)",
+            })
+            with urllib.request.urlopen(req, timeout=20) as resp:
+                raw = resp.read()
+                ctype = (resp.headers.get("Content-Type") or "").split(";")[0].strip().lower()
+        except urllib.error.HTTPError as e:
+            self._send_json(400, {"ok": False, "message": f"下载失败：服务器返回 {e.code}"})
+            return
+        except Exception as e:
+            self._send_json(400, {"ok": False, "message": f"下载失败：{e}"})
+            return
+        if not raw:
+            self._send_json(400, {"ok": False, "message": "下载到的是空文件"})
+            return
+        if len(raw) > 64 * 1024 * 1024:
+            self._send_json(400, {"ok": False, "message": "文件超过 64 MB，先压小再来"})
+            return
+        # 类型：先看服务器给的 Content-Type，认不出再退回网址后缀
+        ext = ""
+        if ctype.startswith("image/"):
+            sub = ctype.split("/", 1)[1]
+            ext = {"jpeg": "jpg", "svg+xml": ""}.get(sub, sub if sub.isalnum() else "")
+        elif ctype.startswith("audio/"):
+            sub = ctype.split("/", 1)[1]
+            ext = sub if sub.isalnum() else ""
+        path_ext = os.path.splitext(urlparse(url).path)[1].lower().lstrip(".")
+        if path_ext in ("png", "jpg", "jpeg", "webp", "wav", "ogg", "mp3", "ttf", "otf"):
+            ext = "jpg" if path_ext == "jpeg" else path_ext
+        if ext in ("png", "jpg", "webp", "wav", "ogg", "mp3", "ttf", "otf"):
+            category = "audio" if ext in ("wav", "ogg", "mp3") else (
+                "fonts" if ext in ("ttf", "otf") else "images")
+        else:
+            self._send_json(400, {
+                "ok": False,
+                "message": f"认不出这个网址是什么文件（Content-Type: {ctype or '未知'}）。"
+                           "请直接给图片或音频的直链。",
+            })
+            return
+        name = (data.get("filename") or "").strip()
+        if not name:
+            base = os.path.basename(unquote(urlparse(url).path)) or "从网址导入"
+            stem = os.path.splitext(base)[0][:60] or "从网址导入"
+            # 素材名只允许中文/字母/数字/下划线（剧本里 @bg 名字 按空格切分），
+            # 网址里的减号、点、括号一律换成下划线
+            stem = re.sub(r"[^\w\u4e00-\u9fff]+", "_", stem).strip("_") or "从网址导入"
+            name = f"{stem}.{ext}"
+        elif "." not in name:
+            name = f"{name}.{ext}"
+        result = _save_import(
+            self.app.data_root, category, name,
+            base64.b64encode(raw).decode("ascii"), bool(data.get("overwrite", False)),
+        )
+        if result.get("ok"):
+            _preview_cache_clear()
+            result["bytes"] = len(raw)
         self._send_json(200 if result.get("ok") else 400, result)
 
     # ---- P35 打包发布 ----

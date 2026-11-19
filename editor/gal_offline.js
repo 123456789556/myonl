@@ -653,6 +653,17 @@
     return jsonRes({ path: "script.gal", text: curProject().text });
   };
 
+  // 从网址导入：电脑端由后端下载（Python 没有跨站限制）。
+  // 手机端做不到——浏览器按同源策略读不到别的站点的二进制，硬做只会静默失败。
+  // 所以这里直接给一句能照做的指引，而不是假装成功。
+  ROUTES["POST /api/import_url"] = function () {
+    return jsonRes({
+      ok: false,
+      message: "手机端不能直接从网址抓图（浏览器跨站限制读不到文件）。"
+        + "请先把图存到相册，再用「＋」从相册导入。"
+    });
+  };
+
   // 保存是核心：btnSave → /api/file/save {path, content}
   ROUTES["POST /api/file/save"] = function (input, init) {
     var b = bodyOf(init);
