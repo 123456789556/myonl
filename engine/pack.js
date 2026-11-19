@@ -181,5 +181,46 @@
       scripts + "\n</body>\n</html>\n";
   }
 
-  global.MYONLPack = { buildPack: buildPack, renderSingle: renderSingle };
+  /* 外链模式：把 pack 里的 dataURI 全部换成相对路径，并交出该写盘的文件表。
+
+     为什么要有这一条：单文件内联在 30 MB 上就开始崩（浏览器得先把整个
+     HTML 读进内存才显示第一句）。外链模式下剧本里只留 "img/bg.png" 这种
+     路径，素材以独立文件躺在旁边——播放器的 img.src 本来就认相对路径，
+     所以播放器一行都不用改，改的只是"素材怎么过去"。
+
+     返回 {pack, files}：pack 是替换后的新对象（原对象不动），
+     files 是 {"img/bg.png": dataURI}，调用方负责把它真的写到磁盘/塞进 APK。
+     prefix 给空串即可——APK 里 assets/ 本身就是根，game.html 和 img/ 同级。 */
+  function externalize(pack, prefix) {
+    prefix = prefix || "";
+    var files = {};
+    var out = {};
+    Object.keys(pack || {}).forEach(function (k) { out[k] = pack[k]; });
+    function take(kind, name, uri) {
+      var rel = prefix + kind + "/" + name;
+      files[rel] = uri;
+      return rel;
+    }
+    out.assets = {};
+    Object.keys(pack.assets || {}).forEach(function (n) {
+      out.assets[n] = take("img", n, pack.assets[n]);
+    });
+    out.audio = {};
+    Object.keys(pack.audio || {}).forEach(function (n) {
+      out.audio[n] = take("audio", n, pack.audio[n]);
+    });
+    // 视频同一条规则；movies 的值是 {src,mime}，只换 src 不丢 mime
+    out.movies = {};
+    Object.keys(pack.movies || {}).forEach(function (n) {
+      var mv = pack.movies[n] || {};
+      out.movies[n] = { src: take("movie", n, mv.src), mime: mv.mime || "video/mp4" };
+    });
+    return { pack: out, files: files };
+  }
+
+  global.MYONLPack = {
+    buildPack: buildPack,
+    renderSingle: renderSingle,
+    externalize: externalize,
+  };
 })(typeof window !== "undefined" ? window : globalThis);
