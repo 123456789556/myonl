@@ -64,21 +64,28 @@ jobs:
         with:
           gradle-version: "8.7"
 
-      - name: 从 tag 推出版本号
+      - name: 推出版本号（tag 走语义码；手动/分支构建走运行号）
         run: |
           # v1.1.0 -> 名称 1.1.0、代码 10100；不是 v 开头的 tag（apk-xx 之类）退回 1
           RAW="$GITHUB_REF_NAME"
           VER="${RAW#v}"
-          if [[ "$VER" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+          if [[ "$GITHUB_REF" == refs/tags/* && "$VER" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
             MAJ=$(echo "$VER" | cut -d. -f1)
             MIN=$(echo "$VER" | cut -d. -f2)
             PAT=$(echo "$VER" | cut -d. -f3)
             CODE=$((MAJ * 10000 + MIN * 100 + PAT))
             echo "MYONL_VERSION_NAME=$VER" >> "$GITHUB_ENV"
             echo "MYONL_VERSION_CODE=$CODE" >> "$GITHUB_ENV"
-            echo "版本名 $VER / 版本代码 $CODE"
+            echo "版本名 $VER / 版本代码 $CODE（tag 发版路径）"
           else
-            echo "tag 不是 vX.Y.Z，跳过版本注入"
+            # P136：workflow_dispatch / 分支构建以前不注入 versionCode，gradle 兜底恒为 1，
+            # 每个手动包系统都当同一版，覆盖安装行为不可控、也分不出新旧。
+            # 用 GITHUB_RUN_NUMBER（同一仓库单调递增、不回退）当 versionCode；
+            # 与 tag 语义码不冲突：tag 码在 10000 量级起，运行号从 1 往上，发版路径优先走上面分支。
+            CODE="${GITHUB_RUN_NUMBER:-1}"
+            echo "MYONL_VERSION_NAME=0.0.0-dev.$CODE" >> "$GITHUB_ENV"
+            echo "MYONL_VERSION_CODE=$CODE" >> "$GITHUB_ENV"
+            echo "非 tag 构建：版本代码 $CODE（运行号）"
           fi
 
       # 先查 secret 齐不齐，缺就当场停。
