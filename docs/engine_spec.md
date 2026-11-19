@@ -1,17 +1,32 @@
 # MYONL 引擎规格书（engine_spec.md）
 
+> ## ⚠️ 本文档已过时（v1.1 桌面内核时期）
+>
+> 这份写的是 2026-10 那版**只在 Windows 上跑、已砍掉 Android/Web** 的桌面内核。
+> 现在引擎的主力平台是**手机**（APK 里装的是手机端自编自玩），
+> 打包走 GitHub Actions 出 APK + 单文件 HTML，桌面端退为辅助。
+>
+> **现行文档看这两份**：[架构说明](架构说明.md)、[打包使用指南](打包使用指南.md)。
+>
+> 本文档保留的原因只有一个：第 1 节之后的 IR（指令集）定义、配置项、存档结构
+> 这些**格式层面**的东西仍然是事实 —— 手机内核读的是同一套脚本。
+> 凡是涉及「平台」「打包产物」「运行环境」的段落，一律以下面两份现行为准。
+>
+> （P127 清理：原先这里的示例路径写的是 `games/月光漫步`，
+> 那部作品早已移出仓库，现在仓库里的示例是 `games/newbie_demo`。）
+
 > 本文档是引擎的架构定稿 + AI 操作手册。任何人/AI 控制引擎前，先读本文档。
 > **版本**：v1.1（2026-10-29；P33 增补：`@bg fadein=`、config `title_music` 标题 BGM、画廊 `require` 解锁门控）
 > **技术栈**：Python 3.9+（发行包用 3.13 冻结）+ pygame-ce 2.5+ / PyInstaller，零第三方依赖除 pygame-ce。
-> **平台**：Windows 10/11 唯一目标平台（跨平台支持已砍）。
+> **平台**：~~Windows 10/11 唯一目标平台（跨平台支持已砍）~~ → 见上方过时说明
 
 ---
 
-## 0. Windows-only 边界声明
+## 0. ~~Windows-only 边界声明~~（已作废，见上方说明）
 
 本引擎自 v1.0 起**只支持 Windows 打包与运行**：
-- 打包产物：PyInstaller 单 `.exe`（`python -m pack.py games/月光漫步` → 32MB）
-- 放弃 Android / iOS / Web / Linux / macOS 打包
+- 打包产物：PyInstaller 单 `.exe`（`python -m pack.py games/newbie_demo` → 32MB）
+- ~~放弃 Android / iOS / Web / Linux / macOS 打包~~
 - 放弃 SDL_IME 多输入法（Windows IME 通过 SDL_TEXTINPUT 够用）
 - 保留游戏手柄映射（SDL 原生支持）和触摸板（SDL_MOUSE）
 
@@ -413,9 +428,9 @@ load_pack_profile(game_dir) -> PackProfile
 
 ## 7. 测试与验证
 
-- **全量 pytest**：`py -m pytest -q` —— 必须全绿（快速套件当前 988 passed + 1 skipped）
-- **无头通关**：`python -m engine.demo games/月光漫步/script.gal --assets games/月光漫步 --auto --max-frames 60000` —— 0 异常、stderr 空
-- **打包验证**：`py pack.py games/月光漫步` → `dist/月光漫步/月光漫步.exe` 无头启动 22s 不崩
+- **全量 pytest**：`py -m pytest -q` —— 必须全绿（P127 实测 1278 passed + 3 skipped）
+- **无头通关**：`python -m engine.demo games/newbie_demo/script.gal --assets games/newbie_demo --auto --max-frames 60000` —— 0 异常、stderr 空
+- **打包验证**：`py pack.py games/newbie_demo` → `dist/newbie_demo/newbie_demo.exe` 无头启动不崩
 - **每一步新功能**：每个新 action / 指令 / 持久状态均带独立 pytest
 
 ---
@@ -427,10 +442,10 @@ load_pack_profile(game_dir) -> PackProfile
 python -m engine.cli --check script.gal
 
 # 无头自动通关
-python -m engine.demo games/月光漫步/script.gal --assets games/月光漫步 --auto
+python -m engine.demo games/newbie_demo/script.gal --assets games/newbie_demo --auto
 
 # 打包
-python pack.py games/月光漫步
+python pack.py games/newbie_demo
 
 # 运行测试
 pytest -q

@@ -3,13 +3,15 @@
 
 验收项：
   1. default 模板生成 4 份配置（config/settings/gallery_config + script.gal）+ 占位素材
-  2. moonlight 模板复刻月光漫步全量资源（剧本 + 开场 + 章节 + 配置 + 图片 + 音频）
-  3. moonlight 模板排除 saves/（存档）和 src/（Ren'Py 源码参考）
+  2. （历史）moonlight 模板已从仓库移除 —— 它是整套复制一部别人的作品，
+     拿它当「新建游戏」的底子等于替别人分发素材。现在只剩 hello / default / standard 三种，
+     传 moonlight 会明确报错。相关用例见下方 REMOVED_TEMPLATES 一组。
+  3. template 生成时排除 saves/（存档）和 src/（源码参考）
   4. 未知模板中文拒绝
-  5. `python -m engine.new` 入口（engine.new.main）default + moonlight 都能跑
-  6. `engine.cli new --template moonlight` 入口工作
-  7. moonlight 生成的剧本可被 parser 解析（@include 章节全展开无报错）
-  8. 重名不覆盖（moonlight 模板同样遵守）
+  5. `python -m engine.new` 入口（engine.new.main）能跑
+  6. `engine.cli new` 入口工作
+  7. 生成的剧本可被 parser 解析（@include 章节全展开无报错）
+  8. 重名不覆盖
 """
 from __future__ import annotations
 

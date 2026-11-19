@@ -34,7 +34,7 @@ _EXCLUDE_NAMES = {
     ".git", "__pycache__", ".pytest_cache", "build", "dist", "tests", "engine",
     "editor", "screenshots", ".screenshots", "pack.py", "conftest.py",
     ".gitignore", "requirements.txt", "requirements-dev.txt",
-    "src",  # P26 T5：原始素材/原作参考不进产物（月光漫步省约 15MB）
+    "src",  # P26 T5：原始素材 / 原作参考不进产物（历史上有作品因此省过约 15MB）
     "saves",  # 开发者本地存档不进产物（玩家首次运行在 exe 旁自建）
     "pack_config.json",  # P35：打包档案含运营号等内部信息，不进玩家产物
     "game_info.json",    # 构建成功后自动生成，避免复制到源目录后被旧值覆盖
