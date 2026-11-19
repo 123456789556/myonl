@@ -212,8 +212,11 @@ def test_手机端文档写清真视频边界():
     assert "降级" in DOC_MOBILE
 
 
-def test_CHANGELOG有_P131记录():
-    assert "P131" in DOC_CHANGELOG
+def test_CHANGELOG有真视频记录():
+    # 这条守的是「这次视频改动在公开 CHANGELOG 有记录」，不是「必须写内部编号」。
+    # 版本规则规定 P 号不进公开 CHANGELOG，所以断言改为认内容标题；写成 P131 反而会被规则判违规。
+    assert "真视频进「幕」" in DOC_CHANGELOG
+    assert "@video" in DOC_CHANGELOG
 
 
 def test_素材指南补手机端真视频写法():
