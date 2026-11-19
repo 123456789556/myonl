@@ -44,7 +44,7 @@
   layer.innerHTML =
     '<div class="m-home-head">' +
       '<div><div class="m-home-title">我的作品</div>' +
-      '<div class="m-home-sub" id="mHomeSub">本地保存 · 不上云</div></div>' +
+      '<div class="m-home-sub" id="mHomeSub"></div></div>' +
       '<button type="button" class="m-home-set" id="mHomeSet">设置</button>' +
     '</div>' +
     '<div class="m-home-list" id="mHomeList"></div>' +
@@ -129,7 +129,9 @@
     var list = $("mHomeList");
     if (!list) return;
     var sub = $("mHomeSub");
-    if (sub) sub.textContent = projects.length + " 个作品 · 本地保存 · 不上云";
+    // 只留数量。原来写"N 个作品 · 本地保存 · 不上云"，
+    // 「不上云」在 README 和设置「软件详情」里都已经说过，副标题重复第三遍没有信息量。
+    if (sub) sub.textContent = projects.length + " 个作品";
     if (!projects.length) {
       list.innerHTML = '<div class="m-home-empty">还没有作品。点下面「新建作品」，' +
         '它自带一句示例台词，你能立刻看到画面。</div>';
