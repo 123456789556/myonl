@@ -68,13 +68,31 @@
     '</div>' +
     // 底部导航：手机/平板的拇指够得到的位置，四个都是真动作，不留哑按钮。
     // 横屏矮屏时 CSS 把它转成左侧竖条，不跟正文抢高度。
+    // 图标走 VSCode 那套：单色线条、1.4 线宽、跟着主题色，不是 emoji。
+    // emoji 会带自己的颜色和字号，放在工具栏里像贴纸，跟界面永远不是一套。
     '<div class="m-home-nav" id="mHomeNav">' +
-      '<button type="button" class="m-nav-item on" data-nav="home">作品</button>' +
-      '<button type="button" class="m-nav-item" data-nav="new">新建</button>' +
-      '<button type="button" class="m-nav-item" data-nav="import">导入</button>' +
-      '<button type="button" class="m-nav-item" data-nav="set">设置</button>' +
+      '<button type="button" class="m-nav-item on" data-nav="home">' +
+        ico('M2.6 4.2h10.8v8.2a.8.8 0 0 1-.8.8H3.4a.8.8 0 0 1-.8-.8V4.2zM2.6 6.6h10.8') +
+        '<span>作品</span></button>' +
+      '<button type="button" class="m-nav-item" data-nav="new">' +
+        ico('M8 2.6v10.8M2.6 8h10.8') +
+        '<span>新建</span></button>' +
+      '<button type="button" class="m-nav-item" data-nav="import">' +
+        ico('M8 2.2v7.4M4.9 6.6l3.1 3.1 3.1-3.1M2.6 12.6h10.8') +
+        '<span>导入</span></button>' +
+      '<button type="button" class="m-nav-item" data-nav="set">' +
+        ico('M2.4 5.1h3.4M9.2 5.1h4.4M2.4 10.9h3.4M9.2 10.9h4.4M7.6 5.1a1.6 1.6 0 1 0 .01 0M5.6 10.9a1.6 1.6 0 1 0 .01 0') +
+        '<span>设置</span></button>' +
     '</div>';
   document.body.appendChild(layer);
+
+  // 一个图标：单色线条、16 网格、跟着父级颜色（currentColor），
+  // 这样深色浅色两套主题都不用为图标写第二份样式。
+  function ico(d) {
+    return '<svg viewBox="0 0 16 16" width="17" height="17" fill="none" ' +
+      'stroke="currentColor" stroke-width="1.4" stroke-linecap="round" ' +
+      'stroke-linejoin="round" aria-hidden="true"><path d="' + d + '"/></svg>';
+  }
 
   function ago(ts) {
     var d = (Date.now() / 1000) - ts;
@@ -84,21 +102,13 @@
     return new Date(ts * 1000).toLocaleDateString();
   }
 
-  function card(p, idx) {
+  function card(p) {
     var folder = p.folder.replace(/"/g, "&quot;");
     var name = p.name.replace(/</g, "&lt;");
-    if (idx === 0) {
-      // 第一张做成整宽大卡（借 Kazumi 的「今日开播」）：封面铺满 + 底部渐深 + 直接继续编辑
-      return '<button type="button" class="m-home-hero" data-folder="' + folder + '">' +
-        '<span class="m-hero-cover" data-folder="' + folder + '"></span>' +
-        '<span class="m-hero-veil"></span>' +
-        '<span class="m-hero-text">' +
-          '<span class="m-hero-tag">最近编辑</span>' +
-          '<span class="m-hero-name">' + name + '</span>' +
-          '<span class="m-hero-meta">' + ago(p.mtime) + '改过 · ' + p.ins + ' 条指令</span>' +
-        '</span>' +
-        '<span class="m-hero-go">继续编辑</span></button>';
-    }
+    // 以前第一张做成整宽大卡（封面铺满、底部渐深）。一张卡吃满一屏，
+    // 作品一多就变成"上面一大块、下面挤成一条"，而且没封面时那块空的
+    // 蓝色渐变比什么都重。现在统一成横向小卡：一屏能看到五六个，
+    // 「新建 / 导入」也不会被压到底。
     return '<button type="button" class="m-home-card" data-folder="' + folder + '">' +
       '<span class="m-card-thumb" data-folder="' + folder + '"></span>' +
       '<span class="m-card-body">' +
@@ -122,6 +132,10 @@
     // 三步上手只在书架空着时出现：已经有作品的用户早就知道怎么写第一句，
     // 那三块一直挂着等于天天给人上第一课。要重看走「帮助 → 新手引导」。
     document.body.classList.toggle("m-has-projects", projects.length > 0);
+    // 作品少的时候列表不该把整屏撑满：撑满的结果就是一张小卡孤零零挂在
+    // 顶上、底下空出大半屏，「新建 / 导入」被顶到屏幕尽头。少的时候
+    // 让列表收到内容高度，「开始新的」自然跟上来。
+    document.body.classList.toggle("m-few-projects", projects.length > 0 && projects.length <= 2);
     if (!projects.length) {
       list.innerHTML = '<div class="m-home-empty">还没有作品。点下面「新建作品」，' +
         '它自带一句示例台词，你能立刻看到画面。</div>';

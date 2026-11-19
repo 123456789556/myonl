@@ -2006,8 +2006,8 @@ input[type="color"] {
 }
 .m-nav-item {
   flex: 1; border: 0; background: transparent; color: var(--subtext0);
-  font-family: inherit; font-size: 13px; font-weight: 500; letter-spacing: .5px;
-  display: flex; align-items: center; justify-content: center;
+  font-family: inherit; font-size: 11px; font-weight: 500; letter-spacing: .3px;
+  display: flex; flex-direction: column; gap: 2px; align-items: center; justify-content: center;
   position: relative; cursor: pointer;
 }
 .m-nav-item.on { color: var(--blue); font-weight: 600; }
@@ -3110,6 +3110,12 @@ body.m-home-open .m-tabbar { display: none !important; }
   flex-direction: column; gap: 10px; overflow-y: auto;
 }
 .m-home-list .m-home-card { flex: 0 0 auto; }
+/* 作品少时不撑满：P179 之前是唯一作品长高吃掉空白，现在统一成横向小卡，
+   长高的前提没了，撑满反而空出大半屏。0 0 auto 让列表收到内容高度。 */
+body.m-few-projects .m-home-list { flex: 0 0 auto !important; }
+/* 作品少时「开始新的」不要被 margin-top:auto 顶到屏幕尽头，
+   一张小卡下面隔着一整屏空白才看到它，中间那块是纯浪费。 */
+body.m-few-projects .m-home-side { margin-top: 0 !important; }
 
 /* 封面这件事得分开算：
    有真封面（工程里有背景图）时，大卡铺满 = 好看的启动页；
