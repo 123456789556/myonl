@@ -1932,36 +1932,39 @@ input[type="color"] {
 /* ==================== P65：手机端第一层「工作台」 ====================
    打开就是工程卡片，点一张才进编辑器。豆包手机版那套逻辑：
    大标题 + 卡片列表 + 底部小字，一屏能看到自己有什么，不用先学 IDE。 */
+/* 首页排版：间距收进 8px 刻度（4 / 8 / 12 / 16 / 24 / 32）。
+   原来是 18 / 16 / 14 / 10 / 6 混着写，看起来"说不上哪儿乱"，就是这个原因。
+   Material 3 的 8dp 网格、Apple HIG 的 8pt 取值都指向同一套数字。 */
 .m-home {
   position: fixed; inset: 0; z-index: 500; background: var(--base); color: var(--text);
-  padding: calc(18px + env(safe-area-inset-top)) 16px 16px; overflow-y: auto;
+  padding: calc(16px + env(safe-area-inset-top)) 16px 16px; overflow-y: auto;
   display: flex; flex-direction: column;
 }
-.m-home-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
-.m-home-title { font-size: 22px; font-weight: 600; letter-spacing: .3px; }
+.m-home-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+.m-home-title { font-size: 24px; font-weight: 600; letter-spacing: .3px; }
 .m-home-gear {
-  width: 38px; height: 38px; border-radius: 50%; border: 1px solid var(--surface0);
+  width: 40px; height: 40px; border-radius: 50%; border: 1px solid var(--surface0);
   background: var(--mantle); color: var(--subtext1); display: flex; align-items: center;
   justify-content: center; padding: 0; cursor: pointer;
 }
 .m-home-gear:active { background: var(--surface0); color: var(--text); }
 .m-home-list { flex: 1; }
 .m-home-card {
-  display: flex; flex-direction: column; gap: 6px; line-height: 1.45; width: 100%; text-align: left;
-  background: var(--mantle); border: 1px solid var(--surface0); border-radius: 14px;
-  padding: 14px 16px; margin-bottom: 10px; color: var(--text); position: relative;
+  display: flex; flex-direction: column; gap: 8px; line-height: 1.45; width: 100%; text-align: left;
+  background: var(--mantle); border: 1px solid var(--surface0); border-radius: 16px;
+  padding: 16px; margin-bottom: 12px; color: var(--text); position: relative;
   font-family: inherit; cursor: pointer;
 }
 .m-home-card:active { background: var(--surface0); transform: scale(.995); }
 .m-card-name { display: block; font-size: 16px; font-weight: 600; line-height: 1.4; }
 .m-card-meta { display: block; font-size: 12px; color: var(--subtext0); line-height: 1.5; }
-.m-card-go { position: absolute; right: 14px; top: 50%; transform: translateY(-50%); color: var(--overlay0); font-size: 18px; }
+.m-card-go { position: absolute; right: 16px; top: 50%; transform: translateY(-50%); color: var(--overlay0); font-size: 18px; }
 .m-home-new { border-style: dashed; border-color: var(--blue); }
 .m-home-new .m-card-name { color: var(--blue); }
 .m-home-new .m-card-meta { color: var(--subtext0); }
 .m-home-card.busy { opacity: .55; }
-.m-home-foot { text-align: center; font-size: 11px; color: var(--overlay0); padding: 10px 0 4px; }
-.m-home-err { padding: 10px 2px; color: var(--red); font-size: 13px; }
+.m-home-foot { text-align: center; font-size: 11px; color: var(--overlay0); padding: 12px 0 8px; }
+.m-home-err { padding: 8px 0; color: var(--red); font-size: 13px; }
 .m-home-toast {
   position: fixed; left: 50%; bottom: 90px; transform: translateX(-50%);
   background: rgba(0,0,0,.82); color: #fff; font-size: 13px; padding: 8px 14px;
@@ -2005,14 +2008,14 @@ input[type="color"] {
 .m-sheet-body {
   position: absolute; left: 0; right: 0; bottom: 0;
   background: var(--mantle); border-radius: 18px 18px 0 0;
-  padding: 10px 18px calc(20px + env(safe-area-inset-bottom));
+  padding: 8px 16px calc(16px + env(safe-area-inset-bottom));
   border-top: 1px solid var(--surface0);
   box-shadow: 0 -10px 30px rgba(0,0,0,.35);
   max-height: 70dvh; overflow-y: auto;
 }
 .m-sheet-grab { width: 36px; height: 4px; border-radius: 2px; background: var(--surface1); margin: 0 auto 12px; }
 .m-sheet-title {
-  font-size: 17px; font-weight: 600; margin-bottom: 6px;
+  font-size: 17px; font-weight: 600; margin-bottom: 8px;
   display: flex; align-items: center; justify-content: space-between;
 }
 /* 抽屉只有这一个出口：右上「完成」。原来底部那行「作品列表 / 返回」语义不清，删了。 */
@@ -2024,24 +2027,26 @@ input[type="color"] {
 }
 .m-set-row {
   display: flex; align-items: center; justify-content: space-between;
-  padding: 14px 0; border-bottom: 1px solid var(--surface0); font-size: 14px;
+  padding: 16px 0; border-bottom: 1px solid var(--surface0); font-size: 14px;
+  min-height: 48px;
 }
 .m-seg { display: inline-flex; border: 1px solid var(--surface0); border-radius: 999px; overflow: hidden; }
+/* 触摸目标至少 40 高：原来 6px 上下留白只有 30，手指按不准 */
 .m-seg button {
   border: none; background: none; color: var(--subtext1); font-size: 13px;
-  padding: 6px 14px; font-family: inherit; cursor: pointer;
+  padding: 10px 16px; font-family: inherit; cursor: pointer;
 }
 .m-seg button.on { background: var(--blue); color: #fff; }
 .m-set-btn {
   border: 1px solid var(--surface0); background: var(--base); color: var(--text);
-  border-radius: 8px; padding: 6px 14px; font-size: 13px; font-family: inherit; cursor: pointer;
+  border-radius: 8px; padding: 10px 16px; font-size: 13px; font-family: inherit; cursor: pointer;
 }
-.m-set-note { font-size: 11px; color: var(--overlay0); line-height: 1.7; padding: 14px 0 0; }
+.m-set-note { font-size: 11px; color: var(--overlay0); line-height: 1.7; padding: 12px 0 0; }
 
 /* 编辑器的全局 button 规则把高度钉成 28px / 蓝底（给工具条用的），
    工作台的卡片是 button，必须把高度和配色抢回来，否则被压扁成一坨。 */
-.m-home-card { height: auto; min-height: 62px; background: var(--mantle) !important; color: var(--text); }
-.m-home-gear { height: 38px; background: var(--mantle); color: var(--subtext1); }
+.m-home-card { height: auto; min-height: 64px; background: var(--mantle) !important; color: var(--text); }
+.m-home-gear { height: 40px; background: var(--mantle); color: var(--subtext1); }
 .m-seg button { height: auto; border-radius: 0; }
 .m-set-btn { height: auto; background: var(--base); color: var(--text); }
 
@@ -2350,12 +2355,12 @@ input[type="color"] {
    ① 顶部一张整宽大卡承载「最近在做的那个」，封面铺满 + 底部渐深 + 继续编辑；
    ② 其余作品是「左封面 + 右标题 + 一排小胶囊」的信息卡，而不是等大的列表行。
    卡片图也换成作品自己的画面（后端 /api/thumb 已优先取 images 里带 bg 的那张）。 */
-.m-home-sub { font-size: 12px; color: var(--subtext0); margin-top: 3px; }
+.m-home-sub { font-size: 12px; color: var(--subtext0); margin-top: 4px; }
 
 .m-home-hero {
-  display: block; width: 100%; height: 178px; padding: 0; margin-bottom: 12px;
+  display: block; width: 100%; height: 176px; padding: 0; margin-bottom: 16px;
   position: relative; overflow: hidden; border: none; cursor: pointer;
-  border-radius: 18px; background: var(--surface0);
+  border-radius: 16px; background: var(--surface0);
 }
 .m-home-hero:active { transform: scale(.994); }
 .m-hero-cover {
@@ -2366,9 +2371,9 @@ input[type="color"] {
   position: absolute; inset: 0; pointer-events: none;
   background: linear-gradient(to bottom, rgba(4,6,12,0) 32%, rgba(4,6,12,.58) 74%, rgba(4,6,12,.9) 100%);
 }
-.m-hero-text { position: absolute; left: 15px; right: 108px; bottom: 13px; text-align: left; }
+.m-hero-text { position: absolute; left: 16px; right: 112px; bottom: 16px; text-align: left; }
 .m-hero-tag {
-  display: inline-block; font-size: 11px; line-height: 1; padding: 4px 8px; margin-bottom: 7px;
+  display: inline-block; font-size: 11px; line-height: 1; padding: 4px 8px; margin-bottom: 8px;
   border-radius: 999px; background: rgba(79,140,255,.9); color: #fff; font-weight: 600;
 }
 .m-hero-name {
