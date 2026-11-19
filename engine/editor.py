@@ -737,6 +737,7 @@ class _EditorHandler(BaseHTTPRequestHandler):
     """
 
     app = None  # EditorApp 实例（make_handler 绑定）
+    _body_cache: bytes | None = None  # 本次请求已读正文，避免流被读两次
 
     # 路由注册表：(方法, 路径) → 方法名；/api/asset/ 前缀走 do_GET 里的前缀分发
     _ROUTES = {
@@ -861,15 +862,23 @@ class _EditorHandler(BaseHTTPRequestHandler):
         self.send_header("Content-Length", "0")
         self.end_headers()
 
-    def _read_json(self) -> dict:
-        length = int(self.headers.get("Content-Length", 0) or 0)
-        raw = self.rfile.read(length) if length else b""
+    def _read_json(self) -> dict | None:
+        """读 POST JSON。空 body 返 {}；解码失败返 None（调用方回 400）。
+
+        A3：以前坏 body（截断/非 JSON/编码错）和空 body 一样静默回 {}，
+        保存/角色库等路由拿到空 dict 后蒙过校验落盘，把剧本/角色清空，
+        前端还收到 200 ok:true。现在坏 body 明确返失败信号，不再静默。
+        """
+        if self._body_cache is None:
+            length = int(self.headers.get("Content-Length", 0) or 0)
+            self._body_cache = self.rfile.read(length) if length else b""
+        raw = self._body_cache
         if not raw:
             return {}
         try:
             return json.loads(raw.decode("utf-8"))
-        except json.JSONDecodeError:
-            return {}
+        except (json.JSONDecodeError, UnicodeDecodeError):
+            return None
 
     # ---- 分发（只做路由，不含业务） ----
 
@@ -890,7 +899,18 @@ class _EditorHandler(BaseHTTPRequestHandler):
         self._dispatch("GET", parsed)
 
     def do_POST(self) -> None:
-        self._dispatch("POST", urlparse(self.path))
+        parsed = urlparse(self.path)
+        name = self._ROUTES.get(("POST", parsed.path))
+        if name is None:
+            self._send_json(404, {"error": "不存在的路由"})
+            return
+        handler = getattr(self, name)
+        # A3：先读 body；坏 JSON 在进业务路由前就回 400，避免空 dict 蒙过校验落盘
+        data = self._read_json()
+        if data is None:
+            self._send_json(400, {"ok": False, "message": "请求体不是合法 JSON"})
+            return
+        handler(parsed)
 
     def _dispatch(self, method: str, parsed) -> None:
         name = self._ROUTES.get((method, parsed.path))
