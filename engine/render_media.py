@@ -39,6 +39,59 @@ class MediaMixin:
         _video_warned: Any
         _load_fonts: Any
 
+    # ---- 设备档位 / 效果降级 / 演出节奏 / UI 取值（配置驱动的通用查询）----
+
+    def _detect_tier(self) -> str:
+        """设备档位：settings.quality_tier 显式覆盖 > 自动探测（失败回落 mid）。"""
+        override = str(self.settings.get("quality_tier") or "auto").strip().lower()
+        if override in ("low", "mid", "high"):
+            return override
+        try:
+            from . import capability
+            return capability.detect_spec()["tier"]
+        except Exception:  # noqa: BLE001 — 探测失败不影响启动，按 mid 处理
+            return "mid"
+
+    def _reduce_effects(self) -> bool:
+        """低配或玩家/开发者显式要求时，跳过震动/粒子等重效果。"""
+        if getattr(self, "_capability_tier", "mid") == "low":
+            return True
+        return bool(self.settings.get("reduce_effects", False))
+
+    def _pacing(self, name: str, default: float) -> float:
+        """取演出节奏默认值（config.json 的 pacing 段）；非法值回落 default。"""
+        return self.config.pacing_value(name, default)
+
+    def _ui_int(self, section: str, key: str, default: int, lo: int | None = None,
+               hi: int | None = None, scale: bool = True) -> int:
+        """读取 UI 布局整数，非法值回落默认并夹到合理区间（配置写错不崩）。
+
+        scale=True（默认）时按 T10 视觉比例换算成画布像素：配置值仍按 720p 基准书写，
+        1080p 下自动 ×1.5；纯计数值 / alpha 等不是长度的参数传 scale=False。
+        """
+        raw = self.config.ui_value(section, key, default) if section else \
+            (self.config.data.get("ui") or {}).get(key, default)
+        try:
+            val = int(raw)
+        except (TypeError, ValueError):
+            val = int(default)
+        if lo is not None:
+            val = max(lo, val)
+        if hi is not None:
+            val = min(hi, val)
+        if scale and self._ui_scale != 1.0:
+            val = int(round(val * self._ui_scale))
+        return val
+
+    def _ui_str(self, section: str, key: str, default: str) -> str:
+        raw = self.config.ui_value(section, key, default)
+        return str(raw).strip().lower() if raw is not None else default
+
+    def _hovered(self, rect: pygame.Rect) -> bool:
+        """鼠标是否悬停在指定逻辑矩形上（用于「仅 hover 显示边框」的统一交互态）。"""
+        pos = getattr(self, "_mouse_pos", None)
+        return bool(pos) and rect.collidepoint(pos)
+
     # ---- M1.5：音量与静音（玩家设置层）----
 
     def _muted(self) -> bool:

@@ -21,9 +21,6 @@ import pygame
 
 from . import config as cfgapi
 from . import data
-from . import i18n
-from . import richtext
-from . import save as save_api
 from . import timeline as tlapi
 # renderer.py 拆分第 1 步：模块级工具函数与 UI 键位表迁至 render_utils.py
 # （import 到本模块命名空间，engine.renderer._ui_key 等旧引用保持不变）
@@ -222,50 +219,6 @@ class Renderer(TextMixin, SceneMixin, SpriteMixin, MediaMixin, DialogMixin,
         self._voice_length = 0.0
 
     # ==================== 对外接口 ====================
-
-    def _font_scale_factor(self) -> float:
-        """玩家字号档位倍率（small 0.85 / medium 1.0 / large 1.2）；非法值回落 1.0。"""
-        scale = str(self.settings.get("font_scale") or "medium")
-        return {"small": 0.85, "medium": 1.0, "large": 1.2}.get(scale, 1.0)
-
-    def _font_size(self, name: str) -> int:
-        """config.font 基准（含 ui_scale）再乘玩家档位；行距由同一字号比例自然跟随。"""
-        return max(8, int(round(self.config.font(name) * self._font_scale_factor())))
-
-    def _load_fonts(self) -> None:
-        """（重）建全部字体对象：启动与 P51 配置热重载改字号 / 换字体时复用。"""
-        font_path = None
-        custom = self.config.font_file()
-        if custom:
-            base = self.assets_root or data.game_root()
-            cand = custom if os.path.isabs(custom) else os.path.join(base, custom)
-            if os.path.isfile(cand):
-                font_path = cand
-            else:
-                print(f"[字体警告] config.font_file 指向的字体不存在：{custom}，回退自动查找",
-                      file=sys.stderr)
-        if font_path is None:
-            try:
-                font_path = data.find_cjk_font()
-            except data.DataError as e:
-                print(f"[字体警告] {e}，回退到默认字体", file=sys.stderr)
-                font_path = None
-        self._font_path = font_path
-        self._font = pygame.font.Font(font_path, self._font_size("body"))
-        # UI 层字号：标题大字 / 页面小标题 / 回看与存档行
-        self._title_font = pygame.font.Font(font_path, self._font_size("title"))
-        self._mid_font = pygame.font.Font(font_path, self._font_size("mid"))
-        self._small_font = pygame.font.Font(font_path, self._font_size("small"))
-        # P37-T6 字体层级：章节标题 / 选项
-        self._heading_font = pygame.font.Font(font_path, self._font_size("heading"))
-        self._option_font = pygame.font.Font(font_path, self._font_size("option"))
-        # P46 台词富文本：字体簿按 (字号,粗,斜) 缓存，pygame 合成样式无需额外字体文件
-        self._font_book = richtext.FontBook(font_path, self._font_size("body"))
-        # T8 缓存键含 id(font)：字体对象换了必须清空，否则会命中旧字形的 Surface
-        for name in ("_text_cache", "_text_width_cache"):
-            cache = getattr(self, name, None)
-            if cache is not None:
-                cache.clear()
 
     def apply_config(self, config) -> bool:
         """P51 配置热重载：换配置视图，重算玩家覆盖 / 键位 / 标题 / 字体。
@@ -618,12 +571,6 @@ class Renderer(TextMixin, SceneMixin, SpriteMixin, MediaMixin, DialogMixin,
             self._pending_music = None
 
 
-    def _t(self, text: str) -> str:
-        """P37-M1：翻译 UI 文案到当前语言（settings.json 的 lang，默认 zh-CN）。"""
-        lang = str(self.settings.get("lang", i18n.DEFAULT_LANG))
-        return i18n.t(text, lang)
-
-
     def close(self) -> None:
         """退出时释放 pygame 资源；未落盘的窗口尺寸在这里补写一次。"""
         if self._window_dirty:
@@ -642,58 +589,6 @@ class Renderer(TextMixin, SceneMixin, SpriteMixin, MediaMixin, DialogMixin,
     def _now_ms(self) -> int:
         """当前时刻（毫秒）。独立成方法便于测试替换时间源。"""
         return int(self._now_source())
-
-    def _detect_tier(self) -> str:
-        """设备档位：settings.quality_tier 显式覆盖 > 自动探测（失败回落 mid）。"""
-        override = str(self.settings.get("quality_tier") or "auto").strip().lower()
-        if override in ("low", "mid", "high"):
-            return override
-        try:
-            from . import capability
-            return capability.detect_spec()["tier"]
-        except Exception:  # noqa: BLE001 — 探测失败不影响启动，按 mid 处理
-            return "mid"
-
-    def _reduce_effects(self) -> bool:
-        """低配或玩家/开发者显式要求时，跳过震动/粒子等重效果。"""
-        if getattr(self, "_capability_tier", "mid") == "low":
-            return True
-        return bool(self.settings.get("reduce_effects", False))
-
-    def _pacing(self, name: str, default: float) -> float:
-        """取演出节奏默认值（config.json 的 pacing 段）；非法值回落 default。"""
-        return self.config.pacing_value(name, default)
-
-    def _ui_int(self, section: str, key: str, default: int, lo: int | None = None,
-               hi: int | None = None, scale: bool = True) -> int:
-        """读取 UI 布局整数，非法值回落默认并夹到合理区间（配置写错不崩）。
-
-        scale=True（默认）时按 T10 视觉比例换算成画布像素：配置值仍按 720p 基准书写，
-        1080p 下自动 ×1.5；纯计数值 / alpha 等不是长度的参数传 scale=False。
-        """
-        raw = self.config.ui_value(section, key, default) if section else \
-            (self.config.data.get("ui") or {}).get(key, default)
-        try:
-            val = int(raw)
-        except (TypeError, ValueError):
-            val = int(default)
-        if lo is not None:
-            val = max(lo, val)
-        if hi is not None:
-            val = min(hi, val)
-        if scale and self._ui_scale != 1.0:
-            val = int(round(val * self._ui_scale))
-        return val
-
-    def _ui_str(self, section: str, key: str, default: str) -> str:
-        raw = self.config.ui_value(section, key, default)
-        return str(raw).strip().lower() if raw is not None else default
-
-
-    def _hovered(self, rect: pygame.Rect) -> bool:
-        """鼠标是否悬停在指定逻辑矩形上（用于「仅 hover 显示边框」的统一交互态）。"""
-        pos = getattr(self, "_mouse_pos", None)
-        return bool(pos) and rect.collidepoint(pos)
 
 
 # ---- UI 绘制用的小工具 ----

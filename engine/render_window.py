@@ -12,6 +12,7 @@ import sys
 import time
 from typing import TYPE_CHECKING, Any
 from . import data
+from . import i18n
 
 
 class WindowMixin:
@@ -31,6 +32,11 @@ class WindowMixin:
         _now_ms: Any
 
     _DISPLAY_MODES = ("window", "borderless", "fullscreen")
+
+    def _t(self, text: str) -> str:
+        """P37-M1：翻译 UI 文案到当前语言（settings.json 的 lang，默认 zh-CN）。"""
+        lang = str(self.settings.get("lang", i18n.DEFAULT_LANG))
+        return i18n.t(text, lang)
 
     def toggle_fullscreen(self) -> None:
         """⑮ 切换全屏/窗口化（无头环境失败则静默回退）。逻辑画布尺寸不变（T10 可配）。"""

@@ -6,12 +6,14 @@ TextMixin 的方法原样迁自 engine/renderer.py：方法体与签名不变，
 """
 from __future__ import annotations
 
+import os
+import sys
 from collections import OrderedDict
 from typing import TYPE_CHECKING
 
 import pygame
 
-from . import richtext
+from . import data, richtext
 
 if TYPE_CHECKING:  # pragma: no cover - 仅供类型检查
     from .config import Config
@@ -44,6 +46,50 @@ class TextMixin:
 
     if TYPE_CHECKING:  # pragma: no cover - 仅供 pyright：实现在 WindowMixin（render_window.py）
         def _now_ms(self) -> int: ...
+
+    def _font_scale_factor(self) -> float:
+        """玩家字号档位倍率（small 0.85 / medium 1.0 / large 1.2）；非法值回落 1.0。"""
+        scale = str(self.settings.get("font_scale") or "medium")
+        return {"small": 0.85, "medium": 1.0, "large": 1.2}.get(scale, 1.0)
+
+    def _font_size(self, name: str) -> int:
+        """config.font 基准（含 ui_scale）再乘玩家档位；行距由同一字号比例自然跟随。"""
+        return max(8, int(round(self.config.font(name) * self._font_scale_factor())))
+
+    def _load_fonts(self) -> None:
+        """（重）建全部字体对象：启动与 P51 配置热重载改字号 / 换字体时复用。"""
+        font_path = None
+        custom = self.config.font_file()
+        if custom:
+            base = self.assets_root or data.game_root()
+            cand = custom if os.path.isabs(custom) else os.path.join(base, custom)
+            if os.path.isfile(cand):
+                font_path = cand
+            else:
+                print(f"[字体警告] config.font_file 指向的字体不存在：{custom}，回退自动查找",
+                      file=sys.stderr)
+        if font_path is None:
+            try:
+                font_path = data.find_cjk_font()
+            except data.DataError as e:
+                print(f"[字体警告] {e}，回退到默认字体", file=sys.stderr)
+                font_path = None
+        self._font_path = font_path
+        self._font = pygame.font.Font(font_path, self._font_size("body"))
+        # UI 层字号：标题大字 / 页面小标题 / 回看与存档行
+        self._title_font = pygame.font.Font(font_path, self._font_size("title"))
+        self._mid_font = pygame.font.Font(font_path, self._font_size("mid"))
+        self._small_font = pygame.font.Font(font_path, self._font_size("small"))
+        # P37-T6 字体层级：章节标题 / 选项
+        self._heading_font = pygame.font.Font(font_path, self._font_size("heading"))
+        self._option_font = pygame.font.Font(font_path, self._font_size("option"))
+        # P46 台词富文本：字体簿按 (字号,粗,斜) 缓存，pygame 合成样式无需额外字体文件
+        self._font_book = richtext.FontBook(font_path, self._font_size("body"))
+        # T8 缓存键含 id(font)：字体对象换了必须清空，否则会命中旧字形的 Surface
+        for name in ("_text_cache", "_text_width_cache"):
+            cache = getattr(self, name, None)
+            if cache is not None:
+                cache.clear()
 
     def _cached_font_surface(self, font, text: str, antialias: bool,
                              color) -> pygame.Surface:
