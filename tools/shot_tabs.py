@@ -9,34 +9,34 @@ OUT = pathlib.Path(r"D:\娱乐工作区\myonl\MYONL引擎\docs\images\preview")
 OUT.mkdir(exist_ok=True)
 
 # 一个带两幕、有选项的作品，光靠"拼素材"做不出来，正好用来测编排
-PROJECT = """@name 测试两幕
-@bg 走廊
-@show 林晚 calm center
+PROJECT = """@bg 走廊
+@show 林晚 calm
 @music 放学
 
-放学后的教室只剩两个人。
-[@林晚] 你还不走？
+@ 放学后的教室只剩两个人。
+@[林晚] 你还不走？
 
-@choice
-* 留下 | 一起留下来
-* 走 | 先回家
+@choice:
+    > 一起留下来 -> 留下
+    > 先回家 -> 走
 
-=== 留下 ===
+@label 留下
 @bg 教室
-[@林晚] 那我们写作业吧。
+@[林晚] 那我们写作业吧。
 @jump 结尾
 
-=== 走 ===
+@label 走
 @bg 街道
-你去了一趟便利店。
+@ 你去了一趟便利店。
 @jump 结尾
 
-=== 结尾 ===
-[@林晚] 明天见。
+@label 结尾
+@[林晚] 明天见。
 @end
 """
 
-TABS = ["剧本", "素材", "外观", "预览", "导出"]
+TABS = [("script", "剧本"), ("assets", "素材"), ("look", "外观"),
+        ("preview", "预览"), ("export", "导出")]
 
 with sync_playwright() as p:
     b = p.chromium.launch(channel="msedge", headless=True)
@@ -54,13 +54,15 @@ with sync_playwright() as p:
                 el.click()
                 break
         pg.wait_for_timeout(1200)
-        for t in TABS:
+        # 按 data-tab 点，不用 text=：页面正文里到处都有「素材」「外观」这些词，
+        # text= 会先撞上正文那一处，然后因为不可点而超时，看起来像页签坏了。
+        for key, label in TABS:
             try:
-                pg.click(f"text={t}", timeout=4000)
+                pg.click(f'.m-tab[data-tab="{key}"]', timeout=4000)
                 pg.wait_for_timeout(900)
-                pg.screenshot(path=str(OUT / f"tab-{t}-{w}x{h}.png"))
-                print("ok", t, f"{w}x{h}")
+                pg.screenshot(path=str(OUT / f"tab-{label}-{w}x{h}.png"))
+                print("ok", label, f"{w}x{h}")
             except Exception as e:
-                print("skip", t, f"{w}x{h}", str(e)[:80])
+                print("skip", label, f"{w}x{h}", str(e)[:80])
         pg.close()
     b.close()

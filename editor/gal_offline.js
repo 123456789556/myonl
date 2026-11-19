@@ -197,7 +197,8 @@
     catch (e) { return false; }
   }
 
-  // 素材分两类，处置方式不一样：图压过再存、进成品当画面；音频原样存、进成品当 BGM / 音效。
+  // 素材分两类，处置方式不一样：图压过再存、进成品当画面；
+  // 音频里 WAV 转 webm（未压缩 PCM，一分钟 10 MB），mp3/ogg/m4a 原样存。
   // 类型另存一份（名字索引里只有名字），这样同步的 /api/assets 也能把两类分开答。
   var KIND_KEY = "myonl:assets:kind:v1";
   function kindRead() {
@@ -1331,8 +1332,8 @@
     var t2 = document.createElement("div");
     t2.style.cssText = "font-size:12px;line-height:1.75;color:#8fa3c0;margin-top:6px";
     t2.innerHTML = "点这里选，桌面上也可以直接拖进来<br>" +
-      "图片压到最长边 1280 · 音频原样存 · 视频原样存，单个不超过 24 MB<br>" +
-      "一次最多 " + MAX_FILES + " 个";
+      "图片压到最长边 1280 · WAV 转成 webm · 其余音频原样存 · 视频原样存<br>" +
+      "单个不超过 24 MB，一次最多 " + MAX_FILES + " 个";
 
     drop.appendChild(t1);
     drop.appendChild(t2);

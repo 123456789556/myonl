@@ -107,12 +107,12 @@
       <!-- 隐藏按钮：保留 DOM 供菜单 action 引用（P42） -->
       <button class="top-btn hidden" id="btnNew" title="新建游戏：生成示例剧本与占位素材">＋ 新建游戏</button>
         <button class="top-btn hidden" id="btnAssets" title="打开素材库（拖入文件即可导入）">素材库</button>
-        <button class="top-btn hidden" id="btnPack" title="打包发布：游戏名/图标/运营号/版本迭代">📦 打包发布</button>
-        <button class="top-btn hidden" id="btnGuide" title="重新打开新手引导">❓ 新手引导</button>
+        <button class="top-btn hidden" id="btnPack" title="打包发布：游戏名/图标/运营号/版本迭代">打包发布</button>
+        <button class="top-btn hidden" id="btnGuide" title="重新打开新手引导">新手引导</button>
         <button class="top-btn hidden" id="btnSettings" title="工程目录 / 数据目录设置">设置</button>
-        <button class="top-btn hidden" id="btnUIDesign" title="游戏内 UI 设计：对话框/名字框/选项/快捷栏/菜单/设置页（写回项目 config.json）">🎨 UI 设计</button>
-        <button class="top-btn hidden" id="btnSave" title="保存当前文件（Ctrl+S）">💾 保存</button>
-        <button id="btnRun" class="hidden" title="运行游戏预览（Ctrl+R）">▶ 运行</button>
+        <button class="top-btn hidden" id="btnUIDesign" title="游戏内 UI 设计：对话框/名字框/选项/快捷栏/菜单/设置页（写回项目 config.json）">UI 设计</button>
+        <button class="top-btn hidden" id="btnSave" title="保存当前文件（Ctrl+S）">保存</button>
+        <button id="btnRun" class="hidden" title="运行游戏预览（Ctrl+R）">运行</button>
       <div class="tabs hidden">
         <div class="tab active" data-tab="source">源码</div>
         <div class="tab" data-tab="json">JSON</div>
@@ -159,7 +159,7 @@
         </div>
         <div class="cl-items" id="clItems"></div>
       </div>
-      <div class="cl-trigger" id="clTrigger" title="素材晾衣绳（鼠标靠近滑下，点卡片插入指令）">🧵</div>
+      <div class="cl-trigger" id="clTrigger" title="素材晾衣绳（鼠标靠近滑下，点卡片插入指令）"><svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M2.6 5.4h10.8M4.4 5.4v7.2M11.6 5.4v7.2M2.6 3.2h10.8"/></svg></div>
       <div class="preview-wrap">
         <div class="preview-img-wrap" id="previewWrap">
           <div class="preview-placeholder">输入剧本后自动预览</div>
@@ -196,9 +196,9 @@
       <div class="asset-head">
         <span class="asset-title">素材库</span>
         <div class="spacer"></div>
-        <button class="icon-btn" id="assetImportBtn" title="导入素材文件">＋</button><button class="icon-btn" id="assetUrlBtn" title="从网址导入（贴直链，会下载成本地素材）">网</button>
-        <button class="icon-btn" id="assetRefresh" title="刷新素材列表">⟳</button>
-        <button class="icon-btn" id="assetCollapse" title="折叠素材栏">⟩</button>
+        <button class="icon-btn" id="assetImportBtn" title="导入素材文件"><svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2.6v10.8M2.6 8h10.8"/></svg></button><button class="icon-btn" id="assetUrlBtn" title="从网址导入（贴直链，会下载成本地素材）"><svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6.4 9.6a2.6 2.6 0 0 0 3.7 0l2-2a2.6 2.6 0 0 0-3.7-3.7l-.6.6M9.6 6.4a2.6 2.6 0 0 0-3.7 0l-2 2a2.6 2.6 0 0 0 3.7 3.7l.6-.6"/></svg></button>
+        <button class="icon-btn" id="assetRefresh" title="刷新素材列表"><svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M13.2 8a5.2 5.2 0 1 1-1.6-3.7M13.4 2.4v3h-3"/></svg></button>
+        <button class="icon-btn" id="assetCollapse" title="折叠素材栏"><svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6.4 3.6 10.8 8l-4.4 4.4"/></svg></button>
       </div>
       <div class="asset-tabs" id="assetTabs">
         <div class="asset-tab active" data-cat="images">图片</div>
