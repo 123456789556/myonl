@@ -1341,20 +1341,25 @@
     t1.style.cssText = "font-size:15px;line-height:1.4;color:#dce8ff;font-weight:600";
     t1.textContent = "把文件放进来";
 
+    var btns = document.createElement("div"); btns.style.cssText = "display:flex;gap:8px;justify-content:center;margin-top:10px;flex-wrap:wrap";
+    [["从相册选图", "album"], ["导入本地文件", "local"]].forEach(function (b) {
+      var el = document.createElement("button");
+      el.type = "button"; el.dataset.pick = b[1]; el.textContent = b[0];
+      el.style.cssText = "padding:7px 14px;border-radius:9px;border:1px solid rgba(79,140,255,.55);background:rgba(79,140,255,.16);color:#dce8ff;font-size:13px"; btns.appendChild(el);
+    });
     var t2 = document.createElement("div");
-    t2.style.cssText = "font-size:12px;line-height:1.75;color:#8fa3c0;margin-top:6px";
-    t2.innerHTML = "点这里选，桌面上也可以直接拖进来<br>" +
-      "图片压到最长边 1280 · WAV 转成 webm · 其余音频原样存 · 视频原样存<br>" +
+    t2.style.cssText = "font-size:12px;line-height:1.75;color:#8fa3c0;margin-top:8px";
+    t2.innerHTML = "图片压到最长边 1280 · WAV 转成 webm · 其余音频原样存<br>" +
       "单个不超过 24 MB，一次最多 " + MAX_FILES + " 个";
 
     drop.appendChild(t1);
+    drop.appendChild(btns);
     drop.appendChild(t2);
     bar.appendChild(drop);
 
     var input = document.createElement("input");
     input.type = "file";
-    input.accept = "image/*,audio/*";
-    input.accept += ",video/*";
+    input.accept = "image/*,audio/*,video/*,.ttf,.otf,.ttc";
     input.multiple = true;
     input.style.display = "none";
     bar.appendChild(input);
@@ -1432,7 +1437,12 @@
       });
     }
 
-    drop.addEventListener("click", function () { input.click(); });
+    // 整框可点（大目标），两个按钮各自指定要选哪类；相册里没有音频，混进去只会让人以为自己选错了
+    drop.addEventListener("click", function (e) {
+      var pick = (e.target && e.target.dataset) ? e.target.dataset.pick : "";
+      input.accept = pick === "album" ? "image/*,video/*" : "image/*,audio/*,video/*,.ttf,.otf,.ttc";
+      input.click();
+    });
     input.addEventListener("change", function () { take(input.files); });
 
     // 桌面上拖拽：进来时框亮起来，松手就收

@@ -63,7 +63,9 @@ def test_投递区能拖也能点():
     assert 'drop.addEventListener("drop"' in OFF
     assert "MAX_FILES = 20" in OFF
     assert "MAX_BYTES = 24 * 1024 * 1024" in OFF
-    assert 'input.accept = "image/*,audio/*"' in OFF
+    assert "image/*,audio/*" in OFF          # 图片和音频都要能选（后面还接了 video / 字体）
+    # 两个入口得各有名字：只写一句"点这里"没人知道能选相册
+    assert "从相册选图" in OFF and "导入本地文件" in OFF
     # 多选里混进不能收的类型，进度不能卡在「导入中」
     assert "done + failed" in OFF
 
