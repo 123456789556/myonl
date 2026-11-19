@@ -1938,6 +1938,8 @@
     "</div>" +
     '<div class="cp-body" id="cpBody"></div>';
   pane.appendChild(page);
+  // 手机上没地方"并排"：屏宽放不下左右两栏，这按钮只会把人绕进去；"随时可关掉"也是废话
+  if (window.innerWidth < 720) { var _sp = $("cpSplit"); if (_sp) _sp.remove(); var _h = page.querySelector(".cp-hint"); if (_h) _h.remove(); }
   var host = $("cpBody"), titleEl = $("cpTitle");
   var HOSTS = {};   // maskId → {mask, placeholder}
   var current = null;
