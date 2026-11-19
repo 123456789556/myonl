@@ -82,5 +82,11 @@ key.properties
 .env.*
 !.env.example
 secrets.json
+
+# 性能探针：脚本入库（可复用），跑出来的产物不入库
+# 实测 4.16 MB 里约 4 MB 是 work_*/pack.html 与 results/*.json，每次跑都会重新生成
+tools/perf_probe/work_*/
+tools/perf_probe/results/
+tools/perf_probe/*.pack.html
 credentials.json
 
