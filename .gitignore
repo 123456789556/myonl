@@ -90,3 +90,6 @@ tools/perf_probe/results/
 tools/perf_probe/*.pack.html
 credentials.json
 
+
+# 截图产物（每次改完重跑生成，不入库）
+docs/images/preview/
