@@ -97,18 +97,27 @@
   }
 
   // ---------- 重建 zip（换掉一个条目，其余原样搬）----------
-  function rebuildZip(bytes, replaceName, newData) {
+  function rebuildZip(bytes, replacements) {
+    // replacements 是 {名字: Uint8Array}：
+    //   模板里已有的条目 → 换掉内容
+    //   模板里没有的    → 追加进去（外链素材走这条）
+    // 以前只支持"换一个 game.html"，所以只能打单文件包。
+    // 现在素材能作为独立条目躺在 assets/assets/ 下，APK 体积就不再被
+    // 「一个 HTML 要塞下全部素材」这个前提卡死。
     const { entries } = listEntries(bytes);
     const parts = [];
     const newCds = [];
     let offset = 0;
+    const pending = {};
+    for (const k in replacements) pending[k] = replacements[k];
 
     for (const e of entries) {
-      const isTarget = e.name === replaceName;
+      const repl = pending[e.name];
+      delete pending[e.name];
       let body, method, csize, usize, crc;
 
-      if (isTarget) {
-        body = newData;
+      if (repl) {
+        body = repl;
         method = 0;                       // 存着不压，省掉一个 deflate 实现
         csize = usize = body.length;
         crc = crc32(body);
@@ -118,18 +127,17 @@
         method = e.method; csize = e.csize; usize = e.usize; crc = e.crc;
       }
 
-      // local header：30 字节固定 + 名字，不带 extra（原来的对齐 padding 不要了）
       const nameBytes = new Uint8Array(e.name.length);
       for (let i = 0; i < e.name.length; i++) nameBytes[i] = e.name.charCodeAt(i);
 
       const lh = new Uint8Array(30);
       const lhView = new DataView(lh.buffer);
       lhView.setUint32(0, 0x04034B50, true);
-      lhView.setUint16(4, 20, true);          // version needed
-      lhView.setUint16(6, 0, true);           // flags：不用 data descriptor
+      lhView.setUint16(4, 20, true);
+      lhView.setUint16(6, 0, true);
       lhView.setUint16(8, method, true);
-      lhView.setUint16(10, 0, true);          // mod time
-      lhView.setUint16(12, 0x21, true);       // mod date（1980-01-01，固定值便于复现）
+      lhView.setUint16(10, 0, true);
+      lhView.setUint16(12, 0x21, true);
       lhView.setUint32(14, crc, true);
       lhView.setUint32(18, csize, true);
       lhView.setUint32(22, usize, true);
@@ -140,7 +148,6 @@
       parts.push(lh, nameBytes, body);
       offset += 30 + nameBytes.length + body.length;
 
-      // 中央目录条目：46 字节固定 + 名字
       const cd = new Uint8Array(46);
       const cdView = new DataView(cd.buffer);
       cdView.setUint32(0, 0x02014B50, true);
@@ -163,17 +170,68 @@
       newCds.push(cd, nameBytes);
     }
 
+    // 模板里没有的条目：追加。素材走的是这条。
+    let added = 0;
+    for (const name in pending) {
+      const body = pending[name];
+      if (!body) continue;
+      const nameBytes = new Uint8Array(name.length);
+      for (let i = 0; i < name.length; i++) nameBytes[i] = name.charCodeAt(i);
+      const crc = crc32(body);
+      const csize = usize = body.length;
+
+      const lh = new Uint8Array(30);
+      const lhView = new DataView(lh.buffer);
+      lhView.setUint32(0, 0x04034B50, true);
+      lhView.setUint16(4, 20, true);
+      lhView.setUint16(6, 0, true);
+      lhView.setUint16(8, 0, true);
+      lhView.setUint16(10, 0, true);
+      lhView.setUint16(12, 0x21, true);
+      lhView.setUint32(14, crc, true);
+      lhView.setUint32(18, csize, true);
+      lhView.setUint32(22, usize, true);
+      lhView.setUint16(26, nameBytes.length, true);
+      lhView.setUint16(28, 0, true);
+
+      const localOffset = offset;
+      parts.push(lh, nameBytes, body);
+      offset += 30 + nameBytes.length + body.length;
+
+      const cd = new Uint8Array(46);
+      const cdView = new DataView(cd.buffer);
+      cdView.setUint32(0, 0x02014B50, true);
+      cdView.setUint16(4, 20, true);
+      cdView.setUint16(6, 20, true);
+      cdView.setUint16(8, 0, true);
+      cdView.setUint16(10, 0, true);
+      cdView.setUint16(12, 0, true);
+      cdView.setUint16(14, 0x21, true);
+      cdView.setUint32(16, crc, true);
+      cdView.setUint32(20, csize, true);
+      cdView.setUint32(24, usize, true);
+      cdView.setUint16(28, nameBytes.length, true);
+      cdView.setUint16(30, 0, true);
+      cdView.setUint16(32, 0, true);
+      cdView.setUint16(34, 0, true);
+      cdView.setUint16(36, 0, true);
+      cdView.setUint32(38, 0, true);
+      cdView.setUint32(42, localOffset, true);
+      newCds.push(cd, nameBytes);
+      added++;
+    }
+
     const cdBytes = concat(newCds);
     const cdOffset = offset;
+    const total = entries.length + added;
 
-    // EOCD
     const eocd = new Uint8Array(22);
     const ev = new DataView(eocd.buffer);
     ev.setUint32(0, 0x06054B50, true);
     ev.setUint16(4, 0, true);
     ev.setUint16(6, 0, true);
-    ev.setUint16(8, entries.length, true);
-    ev.setUint16(10, entries.length, true);
+    ev.setUint16(8, total, true);
+    ev.setUint16(10, total, true);
     ev.setUint32(12, cdBytes.length, true);
     ev.setUint32(16, cdOffset, true);
     ev.setUint16(20, 0, true);
@@ -247,14 +305,21 @@
    * @param {object} keyMaterial       {privateKey, cert, publicKey} 三个 base64
    * @returns {Promise<Uint8Array>}    签好的 APK 字节
    */
-  async function signApk(templateBytes, payload, keyMaterial) {
+  async function signApk(templateBytes, replacements, keyMaterial) {
     const b64 = (s) => Uint8Array.from(atob(s), (c) => c.charCodeAt(0));
     const pkcs8 = b64(keyMaterial.privateKey);
     const certDer = b64(keyMaterial.cert);
     const spki = b64(keyMaterial.publicKey);
 
-    // 1. 换壳
-    const zip = rebuildZip(templateBytes, GAME_ENTRY, payload);
+    // 兼容老调用：传一个 Uint8Array 就当成"只换 game.html"
+    let map = replacements;
+    if (replacements instanceof Uint8Array) {
+      map = {};
+      map[GAME_ENTRY] = replacements;
+    }
+
+    // 1. 换壳 / 补素材
+    const zip = rebuildZip(templateBytes, map);
 
     // 2. 三段。此时签名块还没插，签名块的起点就是中央目录的起点
     const blockStart = zip.cdOffset;

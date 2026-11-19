@@ -40,7 +40,7 @@ FILE_BUDGET: dict[str, int] = {
     "editor/editor_main.js": 3400,
     "editor/editor_pro.js": 2160,
     "editor/editor_uidesign.js": 1520,
-    "editor/gal_offline.js": 1600,   # P178 导出条先显示体积 +10（新能力，非放宽）
+    "editor/gal_offline.js": 1625,   # P179 手机端外链打 APK +15（新能力，非放宽）
     "editor/editor_scene.js": 1215,  # P175 背景缺失占位 +5 行（修复用户提过的空白预览）
     "editor/editor_shell.js": 870,
     "editor/editor.css": 3330,   # 回滚 P177 模式改动，从 3340 降回 3330

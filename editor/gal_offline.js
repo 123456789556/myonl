@@ -1003,6 +1003,16 @@
    * 剧本 -> 单文件 html（复用做成成品那条路）-> 换进模板壳 -> 用 WebCrypto 签 v2。
    * 全程不联网、不需要电脑、不需要 Java。
    */
+  /** dataURL → 字节。打外链包时每个素材都要落成独立条目，不能留成字符串。 */
+  function dataUrlToBytes(uri) {
+    var comma = String(uri || "").indexOf(",");
+    var b64 = comma >= 0 ? uri.slice(comma + 1) : uri;
+    var bin = atob(b64.replace(/\s/g, ""));
+    var out = new Uint8Array(bin.length);
+    for (var i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+    return out;
+  }
+
   window.__myonlExportApk = function () {
     if (!(window.crypto && window.crypto.subtle)) {
       toast("这个环境没有 WebCrypto，签不了名", true);
@@ -1027,8 +1037,23 @@
       });
       if (!r.ok) { toast("剧本第 " + r.error.line + " 行：" + r.error.message, true); return; }
 
-      var html = window.MYONLPack.renderSingle(r.pack, src);
+      // 30 MB 是个分水岭：以下照旧全内联（一个文件最省事），
+      // 以上改走外链——素材作为独立条目进包，HTML 只剩剧本。
+      // 不这么做，素材一多，浏览器要先把整个 HTML 读进内存才显示第一句。
+      var ext = r.bytes > 30 * 1048576 ? window.MYONLPack.externalize(r.pack) : null;
+      if (ext && r.bytes > 300 * 1048576) {
+        toast("素材超过 300 MB，手机内存可能顶不住，建议先分成几章", true);
+      }
+      var html = window.MYONLPack.renderSingle(ext ? ext.pack : r.pack, src);
       var payload = new TextEncoder().encode(html);
+      var repl = {};
+      repl["assets/game.html"] = payload;
+      if (ext) {
+        Object.keys(ext.files).forEach(function (rel) {
+          repl["assets/" + rel] = dataUrlToBytes(ext.files[rel]);
+        });
+        toast("素材单独进包（" + Object.keys(ext.files).length + " 个），HTML 只剩剧本");
+      }
 
       return Promise.all([
         fetch("/template.apk").then(function (res) {
@@ -1041,7 +1066,7 @@
         }),
       ]).then(function (pair) {
         return window.MYONLApkSign.signApk(
-          new Uint8Array(pair[0]), payload, pair[1]
+          new Uint8Array(pair[0]), repl, pair[1]
         );
       }).then(function (apk) {
         downloadBinary(apk, p.name + ".apk", "application/vnd.android.package-archive");
