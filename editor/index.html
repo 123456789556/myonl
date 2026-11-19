@@ -66,9 +66,9 @@
   <div class="main">
     <!-- 活动栏（VSCode 式最左窄栏，切换侧边栏视图） -->
     <div class="activity-bar" id="activityBar">
-      <div class="act-btn active" data-view="files" title="工程文件 / 大纲">📁<span class="act-badge hidden" id="actProblemBadge">0</span><span class="act-dot hidden" id="actDirtyDot" title="有未保存的修改"></span></div>
-      <div class="act-btn" data-view="assets" title="素材库">🗂️<span class="act-spin hidden" id="actImportSpin" title="素材导入中…"></span></div>
-      <div class="act-btn" data-view="settings" title="设置">⚙️</div>
+      <div class="act-btn active" data-view="files" title="工程文件 / 大纲"><span class="act-ic">文</span><span class="act-badge hidden" id="actProblemBadge">0</span><span class="act-dot hidden" id="actDirtyDot" title="有未保存的修改"></span></div>
+      <div class="act-btn" data-view="assets" title="素材库"><span class="act-ic">素</span><span class="act-spin hidden" id="actImportSpin" title="素材导入中…"></span></div>
+      <div class="act-btn" data-view="settings" title="设置"><span class="act-ic">设</span></div>
       <div class="act-btn" id="actHelp" title="教程 / 说明书（F1）">?</div>
     </div>
     <aside class="file-pane" id="filePane">
@@ -106,10 +106,10 @@
       <span class="hidden" id="filePath">script.gal</span>
       <!-- 隐藏按钮：保留 DOM 供菜单 action 引用（P42） -->
       <button class="top-btn hidden" id="btnNew" title="新建游戏：生成示例剧本与占位素材">＋ 新建游戏</button>
-        <button class="top-btn hidden" id="btnAssets" title="打开素材库（拖入文件即可导入）">🗂 素材库</button>
+        <button class="top-btn hidden" id="btnAssets" title="打开素材库（拖入文件即可导入）">素材库</button>
         <button class="top-btn hidden" id="btnPack" title="打包发布：游戏名/图标/运营号/版本迭代">📦 打包发布</button>
         <button class="top-btn hidden" id="btnGuide" title="重新打开新手引导">❓ 新手引导</button>
-        <button class="top-btn hidden" id="btnSettings" title="工程目录 / 数据目录设置">⚙ 设置</button>
+        <button class="top-btn hidden" id="btnSettings" title="工程目录 / 数据目录设置">设置</button>
         <button class="top-btn hidden" id="btnUIDesign" title="游戏内 UI 设计：对话框/名字框/选项/快捷栏/菜单/设置页（写回项目 config.json）">🎨 UI 设计</button>
         <button class="top-btn hidden" id="btnSave" title="保存当前文件（Ctrl+S）">💾 保存</button>
         <button id="btnRun" class="hidden" title="运行游戏预览（Ctrl+R）">▶ 运行</button>
@@ -274,7 +274,7 @@
       <input id="newGameName" maxlength="20" placeholder="游戏名：中文/字母/数字/下划线，≤20 字符">
       <div class="field" style="margin-top:10px;gap:6px">
         <input id="newGameDir" placeholder="保存位置（留空则默认在 games/ 下）" readonly style="flex:1;cursor:default">
-        <button class="icon-btn" id="newGameBrowse" type="button" style="flex-shrink:0" title="Browse · 选择游戏项目目录">📁 选择</button>
+        <button class="icon-btn" id="newGameBrowse" type="button" style="flex-shrink:0" title="Browse · 选择游戏项目目录">选择</button>
       </div>
       <!-- P46：UI 主题 + 正文对齐（写入 config.json，建后也可手改换肤） -->
       <div class="field" style="margin-top:10px;gap:8px;align-items:center">

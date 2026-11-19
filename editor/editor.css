@@ -660,6 +660,12 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 }
 .act-btn:hover { background: var(--base); color: var(--text); }
 .act-btn.active { color: var(--blue); border-left-color: var(--blue); }
+/* P172：活动栏用单字，不用 emoji —— emoji 各系统字形差太多，还自带彩色，
+   在深色侧栏里像个贴纸。单字跟主题色走，安静。 */
+.act-ic {
+  font-size: 15px; line-height: 1; font-weight: 500;
+  letter-spacing: 1px; user-select: none;
+}
 
 /* D2：活动栏徽标——问题数（红） / 未保存（黄点） / 素材导入中（转圈） */
 .act-btn { position: relative; }
