@@ -53,9 +53,58 @@ assert.ok(tabletLand.textW / tabletLand.fs > landscape.textW / landscape.fs,
           + " vs 手机 " + Math.round(landscape.textW / landscape.fs) + "）");
 assert.ok(Math.abs(tabletLand.fs * 1 - landscape.fs * 1) > 0, "平板与手机字号本就该不同");
 
+// P136 可读性探针：每个尺寸给出 每行字数 / 对话区面积占比 / 按钮最小点击尺寸（CSS px）。
+// 探针只读数，不断言；数值进审计报告，改前/改后对比同一份 layoutFor。
+function readability(name, w, h) {
+  const L = layoutFor(w, h);
+  const scale = Math.min(w / L.viewW, h / L.viewH);
+  const perLine = Math.round(L.textW / L.fs);
+  const panelAreaPct = +((L.panelW * L.panelH) / (L.viewW * L.viewH) * 100).toFixed(1);
+  // 常驻浮岛按钮（菜单/喇叭/竖列）最小点击尺寸，逻辑值换算回 CSS px
+  const btnCss = Math.round(Math.min(96, Math.max(44, Math.round(Math.min(L.viewW, L.viewH) * 0.072))) * scale);
+  return {name, css: `${w}×${h}`, perLine, panelAreaPct, btnCss,
+          fsCss: +(L.fs * scale).toFixed(1)};
+}
+
+const readabilityRows = [
+  readability("手机竖屏", 390, 844),
+  readability("手机横屏", 844, 390),
+  readability("平板竖屏", 800, 1280),
+  readability("平板横屏", 1280, 800),
+  readability("小平板横屏", 1024, 600),
+];
+// 记录不做硬断言：手机窄屏按钮 CSS 尺寸偏小是既有设计（逻辑 44 下限，折回 CSS 约 28），
+// 这里只把数值摊开给报告对比，不为迁就新代码放宽既有行为。
+void readabilityRows;
+
 // 横屏面板更矮更宽（视觉上不挡住立绘）
 assert.ok(landscape.panelH < portrait.panelH || landscape.viewH < portrait.viewH,
           "横屏面板高度按自己的画布比例算");
+
+// P136 平板宽屏双栏：只有"平板 + 横屏"才拆对话栏 / 立绘栏；竖屏与手机仍整幅堆叠。
+// 分区必须互不重叠、都落在画布内，且对话栏不压进立绘栏。
+function checkWide(L, name, shouldBeWide) {
+  assert.strictEqual(!!L.wide, shouldBeWide, name + "：wide 结构开关判定");
+  if (!shouldBeWide) {
+    assert.strictEqual(L.spriteColX, 0, name + "：窄屏立绘占整幅底景起点 0");
+    assert.strictEqual(L.spriteColW, L.viewW, name + "：窄屏立绘占整幅宽度");
+    return;
+  }
+  assert.ok(L.dialogColX >= 0, name + "：对话栏不出左边界");
+  assert.ok(L.dialogColX + L.dialogColW <= L.viewW, name + "：对话栏不出右边界");
+  assert.ok(L.spriteColX >= 0 && L.spriteColX + L.spriteColW <= L.viewW,
+            name + "：立绘栏不出右边界");
+  assert.ok(L.dialogColX + L.dialogColW <= L.spriteColX,
+            name + "：对话栏与立绘栏不重叠（对话右缘 " +
+            (L.dialogColX + L.dialogColW) + " ≤ 立绘左缘 " + L.spriteColX + "）");
+  assert.ok(L.spriteColW > 0 && L.dialogColW > 0, name + "：两栏都有宽度");
+  assert.ok(L.choiceColX === L.dialogColX, name + "：选项跟对话同栏贴左");
+}
+checkWide(tabletLand, "平板横屏 1280×800", true);
+checkWide(tabletSmall, "平板横屏 1024×600", true);
+checkWide(tablet, "平板竖屏 800×1280", false);
+checkWide(portrait, "手机竖屏 390×844", false);
+checkWide(landscape, "手机横屏 844×390", false);
 
 // 极端窗口也不爆
 assert.ok(ultraWide.viewW / ultraWide.viewH <= 2.2);
@@ -77,3 +126,4 @@ assert.strictEqual(safe34.bottom - safe0.bottom,
 assert.ok(safe34.panelY >= 0, "让位后面板不出顶");
 
 console.log("layout-smoke: 全部通过（竖屏字 " + portrait.fs + "px / 横屏字 " + landscape.fs + "px）");
+console.table(readabilityRows);

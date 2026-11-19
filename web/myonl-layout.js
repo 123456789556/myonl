@@ -42,6 +42,11 @@
     const nameSize = Math.round(fs * 1.18);
 
     const marginX = Math.round(viewW * (landscape ? 0.045 : 0.035));
+    // ---- 平板宽屏分区（P136）：先算结构，后面面板/选项都能引用 ----
+    // 以前 tablet 标志只被用来放大几个尺寸，没有"结构"：宽屏上对话区/立绘区/操作区
+    // 仍是手机那套上下堆叠，宽出来的地方全空着。这里把宽屏的三块区域拆成显式区间，
+    // 交给播放器按区间排布（双栏）；手机尺寸下这些区间退回手机默认的上下堆叠。
+    // 只在逻辑画布上给比例与边界，不碰具体绘制（绘制在 player.js 独占）。
     const panelH = Math.round(clamp(viewH * (landscape ? 0.34 : 0.33),
                                     lineH * 3 + 60, viewH * 0.5));
     // 底部安全区：全面屏手机上系统手势条会压住贴底那一行。
@@ -63,6 +68,20 @@
     const panelW = Math.round(Math.min(
       landscape ? viewW * 0.80 : viewW - marginX * 2,
       maxPanelW));
+    // ---- 平板宽屏分区（P136）：面板几何算完后再算双栏边界 ----
+    // 以前 tablet 标志只被用来放大几个尺寸，没有"结构"：宽屏上对话区/立绘区/操作区
+    // 仍是手机那套上下堆叠，宽出来的地方全空着。这里把宽屏的三块区域拆成显式区间，
+    // 交给播放器按区间排布（双栏）；手机尺寸下这些区间退回手机默认的上下堆叠。
+    // 只在逻辑画布上给比例与边界，不碰具体绘制（绘制在 player.js 独占）。
+    const wide = tablet && landscape;
+    // 立绘槽位：宽屏给右侧一栏，左侧留给对话/选项；窄屏（手机/平板竖屏）立绘占整幅底景。
+    const spriteColW = wide ? Math.round(viewW * 0.42) : viewW;
+    const spriteColX = wide ? viewW - spriteColW : 0;
+    // 对话区：宽屏左侧一栏，宽度按"一行不超过 40 字"另给上限，不铺满整栏。
+    const dialogColW = wide ? Math.min(Math.round(viewW * 0.52), maxPanelW) : panelW;
+    const dialogColX = wide ? Math.round(viewW * 0.04) : Math.round((viewW - panelW) / 2);
+    // 操作区（选项）：宽屏跟对话区同栏、贴左；手机沿用浮岛/底部板的既有几何。
+    const choiceColW = wide ? Math.min(Math.round(viewW * 0.46), 640) : 0;
 
     return {
       landscape: landscape,
@@ -111,6 +130,14 @@
       // P58：选项按钮按手指来算——最小 120 逻辑 px（1080 短边下约 43 CSS px，接近 44pt 触摸推荐值）
       choiceH: Math.round(clamp(fs * 2.8, 120, 170)),
       choiceGap: Math.round(fs * (landscape ? 1.0 : 0.7)),
+      // 宽屏双栏结构开关与三块区域的逻辑画布边界（仅 wide 时生效；否则退回整幅）。
+      wide: wide,
+      spriteColX: spriteColX,
+      spriteColW: spriteColW,
+      dialogColX: dialogColX,
+      dialogColW: dialogColW,
+      choiceColX: dialogColX,
+      choiceColW: choiceColW,
     };
   }
 
