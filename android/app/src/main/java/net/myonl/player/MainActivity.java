@@ -8,6 +8,7 @@ import android.webkit.WebResourceResponse;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 
+import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowCompat;
 import androidx.core.view.WindowInsetsCompat;
 import androidx.core.view.WindowInsetsControllerCompat;
@@ -172,6 +173,20 @@ public class MainActivity extends Activity {
 
         web = new WebView(this);
         web.setBackgroundColor(0xFF04060C);
+
+        // 关键：状态栏和导航栏是被 hideBars() 主动藏掉的，所以 systemBars 的 inset 常常是 0；
+        // 而底部那根手势条**不会跟着藏**，它一直浮在页面最下面吃掉点击 —— 表现的正是
+        // "按钮看得见、按不到"。systemGestures 报的才是这条手势区域，即使栏藏了也有效。
+        // 顶部同理：无刘海的机器全靠 systemBars（藏了就是 0，顶到边正好），有刘海的靠 cutout。
+        ViewCompat.setOnApplyWindowInsetsListener(web, (v, wi) -> {
+            androidx.core.graphics.Insets bars = wi.getInsets(WindowInsetsCompat.Type.systemBars());
+            androidx.core.graphics.Insets cut = wi.getInsets(WindowInsetsCompat.Type.displayCutout());
+            androidx.core.graphics.Insets ges = wi.getInsets(WindowInsetsCompat.Type.systemGestures());
+            int t = Math.max(bars.top, cut.top);
+            int b = Math.max(bars.bottom, Math.max(ges.bottom, cut.bottom));
+            v.setPadding(0, t, 0, b);
+            return wi;
+        });
 
         WebSettings s = web.getSettings();
         s.setJavaScriptEnabled(true);
