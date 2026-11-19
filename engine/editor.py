@@ -903,6 +903,13 @@ class _EditorHandler(BaseHTTPRequestHandler):
         if parsed.path.startswith("/apk-file/"):
             self._serve_apk_file(parsed.path)
             return
+        # P171：前端要自己算 v2 签名，得先拿到模板和签名材料
+        if parsed.path == "/template.apk":
+            self._serve_template_apk()
+            return
+        if parsed.path == "/signkey.json":
+            self._serve_signkey()
+            return
         self._dispatch("GET", parsed)
 
     def do_POST(self) -> None:
@@ -1961,6 +1968,44 @@ class _EditorHandler(BaseHTTPRequestHandler):
         self.send_header("Content-Length", str(len(body)))
         self.send_header("Content-Disposition",
                          f'attachment; filename="{quote(rel)}"')
+        self.send_header("Cache-Control", "no-store")
+        self.end_headers()
+        self.wfile.write(body)
+
+    def _serve_template_apk(self) -> None:
+        """把模板 APK 递给前端，让它在浏览器里自己换壳 + 签 v2。"""
+        pack_root_fn = getattr(self.app, "pack_root", None)
+        base = str(pack_root_fn()) if callable(pack_root_fn) else ""
+        target = os.path.join(base, "android", "template.apk")
+        if not os.path.isfile(target):
+            self._send_json(404, {"error": "缺模板 APK：android/template.apk"})
+            return
+        body = open(target, "rb").read()
+        self.send_response(200)
+        self.send_header("Content-Type", "application/vnd.android.package-archive")
+        self.send_header("Content-Length", str(len(body)))
+        self.send_header("Cache-Control", "no-store")
+        self.end_headers()
+        self.wfile.write(body)
+
+    def _serve_signkey(self) -> None:
+        """签名材料（私钥 + 证书 + 公钥）。
+
+        这是公开的测试证书，本来就在仓库里当开发用；真发行得换成自己的。
+        """
+        pack_root_fn = getattr(self.app, "pack_root", None)
+        base = str(pack_root_fn()) if callable(pack_root_fn) else ""
+        target = os.path.join(base, "editor", "signkey.json")
+        if not os.path.isfile(target):
+            self._send_json(404, {
+                "error": "缺签名材料：editor/signkey.json",
+                "hint": "跑一次 python tools/export_signkey.py 生成",
+            })
+            return
+        body = open(target, "rb").read()
+        self.send_response(200)
+        self.send_header("Content-Type", "application/json; charset=utf-8")
+        self.send_header("Content-Length", str(len(body)))
         self.send_header("Cache-Control", "no-store")
         self.end_headers()
         self.wfile.write(body)

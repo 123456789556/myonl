@@ -43,28 +43,51 @@
       .catch((e) => say("导出失败：" + e));
   }
 
-  // P170：打 APK —— 作品本体换进模板壳再重签，出来就是能直接装的应用。
-  // 电脑端才有这条路（要 Java 签名）；手机上导出的仍是单个 html。
-  function exportApk() {
-    say("正在打 APK，要十几秒…");
-    fetch("/api/export-apk", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: "{}",
-    })
-      .then((r) => r.json())
-      .then((d) => {
-        if (!d.ok) {
-          say(d.message || "打包失败");
-          return;
-        }
-        var a = document.createElement("a");
-        a.href = new URL(d.url, window.location.href).href;
-        a.download = "";
-        a.click();
-        say("打好了 " + d.mb + " MB —— 传到手机上点开就能装");
-      })
-      .catch((e) => say("打包失败：" + e));
+  // P171：打 APK —— 换壳 + 在浏览器里自己算 v2 签名，不需要 Java。
+  // 规则见 editor/apk_sign.js 顶部注释（1 MB 分块，三段连成一条链）。
+  function ensureSigner() {
+    if (window.MYONLApkSign) return Promise.resolve();
+    return new Promise((resolve, reject) => {
+      const s = document.createElement("script");
+      s.src = "apk_sign.js";
+      s.onload = resolve;
+      s.onerror = () => reject(new Error("apk_sign.js 没加载上"));
+      document.head.appendChild(s);
+    });
+  }
+
+  async function exportApk() {
+    say("正在打 APK…");
+    try {
+      const single = await fetch("/api/export-single", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: "{}",
+      }).then((r) => r.json());
+      if (!single.ok) { say(single.message || "先导不出单文件"); return; }
+
+      const [tplBuf, key, payload] = await Promise.all([
+        fetch("/template.apk").then((r) => r.arrayBuffer()),
+        fetch("/signkey.json").then((r) => r.json()),
+        fetch(single.url).then((r) => r.arrayBuffer()),
+      ]);
+
+      await ensureSigner();
+      const out = await window.MYONLApkSign.signApk(
+        new Uint8Array(tplBuf), new Uint8Array(payload), key
+      );
+
+      const blob = new Blob([out], { type: "application/vnd.android.package-archive" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "game.apk";
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(url), 3000);
+      say("打好了 " + (out.length / 1048576).toFixed(2) + " MB —— 传到手机上点开就能装");
+    } catch (e) {
+      say("打包失败：" + e.message);
+    }
   }
 
   // ---- M1.5：内嵌教程（帮助 → 教程 / 说明书；F1）----
