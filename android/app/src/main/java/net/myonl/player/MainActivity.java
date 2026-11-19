@@ -161,8 +161,11 @@ public class MainActivity extends Activity {
 
             @Override
             public void onReceivedError(WebView view, WebResourceRequest req,
-                                        android.webkit.WebResourceError err) {
+                                        androidx.webkit.WebResourceErrorCompat err) {
                 // 主页没加载出来不能只留一片黑屏：玩家只会以为 App 坏了
+                // 注意：第三个参数必须是 WebResourceErrorCompat。
+                // WebViewClientCompat 里 (WebView, WebResourceRequest, WebResourceError)
+                // 那个重载是 final（它只负责转调本方法），照着写会直接编译失败。
                 if (req != null && req.isForMainFrame()) {
                     say("界面没加载出来，重开一次试试");
                 }
