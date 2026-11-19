@@ -3321,7 +3321,10 @@
     await loadConfig();
     await loadScript();
     refreshAssets();
-    try { if (!localStorage.getItem(OB_KEY) && !localStorage.getItem("gal_welcome_done")) obStart(); } catch (e) {}
+    // 2026-11-19：不再首次自动弹新手卡。实测它在手机竖屏压住预览框、横屏压住表单，
+    // 新手看到的是"满屏都是框"而不是引导。首页已有「三步上手」，
+    // 真要看引导走「帮助 → 新手引导」，随时能开。
+    // try { if (!localStorage.getItem(OB_KEY) && !localStorage.getItem("gal_welcome_done")) obStart(); } catch (e) {}
   })();
   // E-2：壳层 IIFE（菜单/命令面板）需要的撤销/重做接口
   window.undo = undo;

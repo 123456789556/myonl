@@ -80,6 +80,14 @@
           '<span class="m-step-t">做成成品发给朋友</span>' +
           '<span class="m-step-s">一个 .html，对方手机直接打开</span></button>' +
       '</div>' +
+    '</div>' +
+    // 底部导航：手机/平板的拇指够得到的位置，四个都是真动作，不留哑按钮。
+    // 横屏矮屏时 CSS 把它转成左侧竖条，不跟正文抢高度。
+    '<div class="m-home-nav" id="mHomeNav">' +
+      '<button type="button" class="m-nav-item on" data-nav="home">作品</button>' +
+      '<button type="button" class="m-nav-item" data-nav="new">新建</button>' +
+      '<button type="button" class="m-nav-item" data-nav="import">导入</button>' +
+      '<button type="button" class="m-nav-item" data-nav="set">设置</button>' +
     '</div>';
   document.body.appendChild(layer);
 
@@ -336,6 +344,19 @@
   if (nb) nb.addEventListener("click", newProject);
   var ib = $("mHomeImport");
   if (ib) ib.addEventListener("click", importProject);
+  // 底部导航复用上面三个真动作，不另写一套逻辑，省得两处行为跑偏
+  var navEl = $("mHomeNav");
+  if (navEl) {
+    navEl.addEventListener("click", function (e) {
+      var item = e.target.closest(".m-nav-item");
+      if (!item) return;
+      var kind = item.getAttribute("data-nav");
+      if (kind === "new") newProject();
+      else if (kind === "import") importProject();
+      else if (kind === "set") openSettings();
+      else layer.scrollTo({ top: 0, behavior: "smooth" });
+    });
+  }
   // P126：探一下 game.html 在不在。用 GET + no-store 而不是 HEAD：部分 WebView
   // 对 HEAD 直接不返回，探不出来就永远不显示这个入口。
   (function () {

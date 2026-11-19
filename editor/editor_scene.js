@@ -557,12 +557,12 @@
     var url = "";
     try { if (bgName && E.assetURL) url = E.assetURL("images", bgName); } catch (e) {}
     stage.innerHTML = url
-      ? '<img class="sf-stage-bg" src="' + esc(url) + '" alt="">' +
+      ? '<img class="sf-stage-bg" src="' + esc(url) + '" alt="" onerror="this.remove()">' +
         (inherited ? '<div class="sf-stage-inherit">沿用上一场景背景：' + esc(bgName) + "</div>" : "")
       : '<div class="sf-stage-empty">选背景后这里显示画面预览</div>';
     var realBtn = document.createElement("button");
     realBtn.type = "button"; realBtn.className = "sf-real-btn";
-    realBtn.textContent = realPreviewUrl ? "✓ 真实渲染（点此还原）" : "🖼 真实渲染预览";
+    realBtn.textContent = realPreviewUrl ? "✓ 真实渲染（点此还原）" : "真实渲染预览";
     realBtn.title = "用引擎真实渲染这一帧当底图（不是 HTML 模拟）";
     realBtn.addEventListener("click", function () {
       if (realPreviewUrl) { realPreviewUrl = ""; var o = document.getElementById("sfRealShot"); if (o) o.remove(); renderStage(); return; }

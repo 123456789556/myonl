@@ -1965,6 +1965,47 @@ input[type="color"] {
   border-radius: 999px; z-index: 600;
 }
 
+/* 底部导航：四个都是真动作（作品/新建/导入/设置），不留点了没反应的哑按钮。
+   放在拇指够得到的高度，正文给它让出 64px，否则最后一行永远被压住。 */
+.m-home-nav {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 505;
+  display: flex; align-items: stretch;
+  height: calc(56px + env(safe-area-inset-bottom));
+  padding-bottom: env(safe-area-inset-bottom);
+  background: var(--mantle);
+  border-top: 1px solid var(--surface0);
+  backdrop-filter: blur(12px);
+}
+.m-nav-item {
+  flex: 1; border: 0; background: transparent; color: var(--subtext0);
+  font-family: inherit; font-size: 13px; font-weight: 500; letter-spacing: .5px;
+  display: flex; align-items: center; justify-content: center;
+  position: relative; cursor: pointer;
+}
+.m-nav-item.on { color: var(--blue); font-weight: 600; }
+.m-nav-item.on::after {
+  content: ""; position: absolute; left: 50%; bottom: 7px; transform: translateX(-50%);
+  width: 18px; height: 2px; border-radius: 1px; background: var(--blue);
+}
+.m-nav-item:active { background: var(--surface0); }
+.m-home { padding-bottom: calc(64px + env(safe-area-inset-bottom)); }
+
+/* 手机横过来（矮屏）：导航转成左侧竖条，不跟正文抢高度，拇指也够得到 */
+@media (orientation: landscape) and (max-height: 520px) {
+  .m-home-nav {
+    left: 0; right: auto; top: 0; bottom: 0;
+    width: calc(54px + env(safe-area-inset-left));
+    height: auto; flex-direction: column;
+    padding: env(safe-area-inset-top) 0 env(safe-area-inset-bottom) env(safe-area-inset-left);
+    border-top: 0; border-right: 1px solid var(--surface0);
+  }
+  .m-nav-item.on::after {
+    left: auto; right: 6px; top: 50%; bottom: auto;
+    transform: translateY(-50%); width: 2px; height: 18px;
+  }
+  .m-home { padding-left: calc(66px + env(safe-area-inset-left)); padding-bottom: 16px; }
+}
+
 /* 设置：底部弹层（手机习惯），不做全屏弹窗 */
 .m-sheet { position: fixed; inset: 0; z-index: 520; }
 .m-sheet-mask { position: absolute; inset: 0; background: rgba(0,0,0,.45); }
@@ -2864,7 +2905,7 @@ input[type="color"] {
   .scene-page .scn-pop button:active { background: var(--surface0); }
 
   /* 表单：标签单独一行、控件满宽满高 —— 手指点得到 */
-  .scene-page .scene-form { padding: 12px 13px 28px; font-size: 14px; }
+  .scene-page .scene-form { padding: 12px 13px calc(76px + env(safe-area-inset-bottom)); font-size: 14px; }
   .scene-page .sf-scene { font-size: 15px; padding-bottom: 8px; }
   .scene-page .sf-row { display: block; }
   .scene-page .sf-label { display: block; width: auto; margin-bottom: 6px; font-size: 12.5px; opacity: .7; }
@@ -2874,10 +2915,14 @@ input[type="color"] {
   .scene-page .sf-stage-wrap { margin: 10px 0 4px; }
   .scene-page .sf-stage { height: 0; padding-bottom: 56%; position: relative; border-radius: 12px; overflow: hidden; }
   .scene-page .sf-stage-hint { font-size: 11.5px; }
-  .scene-page .sf-cast, .scene-page .sf-say, .scene-page .sf-opt { flex-wrap: wrap; gap: 6px; padding: 8px; border-radius: 10px; }
+  .scene-page .sf-cast, .scene-page .sf-say, .scene-page .sf-opt { flex-wrap: wrap; gap: 6px; padding: 8px; border-radius: 10px; align-items: flex-start; }
   .scene-page .sf-cast select, .scene-page .sf-say select, .scene-page .sf-say textarea,
-  .scene-page .sf-cast input, .scene-page .sf-opt input { min-height: 42px; font-size: 14px; }
-  .scene-page .sf-say textarea { width: 100%; }
+  .scene-page .sf-cast input, .scene-page .sf-opt input { min-height: 42px; font-size: 14px; min-width: 0; }
+  /* 台词行横排（下拉 + 台词框 + ✕）在 360 宽下必然溢出 —— 真机上 ✕ 会被挤出屏幕右边。
+     改成分两行：下拉吃掉第一行剩余宽度，台词框强制独占第二行，删除键固定在右上。 */
+  .scene-page .sf-say select { flex: 1 1 auto !important; width: auto !important; max-width: none !important; order: 1; }
+  .scene-page .sf-say .sf-del { flex: 0 0 auto; order: 2; }
+  .scene-page .sf-say textarea { flex: 1 1 100% !important; width: 100% !important; order: 3; }
   .scene-page .sf-actions { padding: 14px 0 8px; }
   .scene-page #sfSaveBtn { width: 100% !important; height: 48px !important; font-size: 15px; font-weight: 600;
     background: rgba(79, 140, 255, .14) !important; border: 1px solid rgba(79, 140, 255, .5) !important; color: #cfe0ff !important; border-radius: 12px !important; }
@@ -3174,4 +3219,40 @@ body.m-home-open .ob-card { display: none !important; }
      标题也在这个容器里，所以整组一起收掉，不会留一个孤零零的「三步上手」。 */
   .m-home-steps { display: none; }
   .m-home-set { background: var(--mantle) !important; color: var(--subtext1) !important; }
+}
+
+/* ===== 横屏矮屏（手机横过来，800×360 这类）=====
+   实测：新手引导卡占到 55% 高度，场景预览框撑满整屏高，两者叠在一起
+   就成了"满眼都是框"。这里压成可滚动的小卡，并把预览框限高。 */
+@media (max-height: 520px) {
+  .ob-card {
+    width: min(340px, 40vw);
+    max-height: 44vh;
+    overflow-y: auto;
+    /* 横屏别居中压住表单：靠右停，左边留给正在写的内容 */
+    left: auto; right: 10px; transform: none;
+    bottom: 8px;
+    padding: 10px 14px;
+  }
+  .scene-page .sf-stage {
+    height: 168px;
+    padding-bottom: 0;
+    aspect-ratio: auto;
+  }
+  .scene-page .sf-stage-empty {
+    position: absolute; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+  }
+}
+
+/* 竖屏：引导卡改成底部抽屉。原来居中浮在页面中间，正好压住预览框，
+   每次新装都挡一次"刚写的东西长什么样"。 */
+@media (pointer: coarse) and (hover: none) and (max-width: 1400px) {
+  .ob-card {
+    left: 0; right: 0; bottom: 0;
+    transform: none; width: auto;
+    border-radius: 16px 16px 0 0;
+    max-height: 38vh; overflow-y: auto;
+    padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
+  }
 }
