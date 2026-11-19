@@ -43,7 +43,7 @@ FILE_BUDGET: dict[str, int] = {
     "editor/gal_offline.js": 1580,
     "editor/editor_scene.js": 1215,  # P175 背景缺失占位 +5 行（修复用户提过的空白预览）
     "editor/editor_shell.js": 870,
-    "editor/editor.css": 3345,   # P174 版面修复 +6；P175 缺失背景提示 +5
+    "editor/editor.css": 3340,   # P177 简单模式收起高级项 +6（新功能，非放宽）
     "engine/editor.py": 3000,
     "engine/parser.py": 1080,
 }

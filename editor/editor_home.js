@@ -8,6 +8,30 @@
   var $ = function (id) { return document.getElementById(id); };
 
   var EDIT_KEY = "myonl:editing";
+
+  // P177：操作模式（简单 / 完整）。
+  // 简单模式默认 —— 第一次打开不该一上来就被分支、图层、跳转、真实渲染淹掉，
+  // 想只写两句台词看看效果的人，看到那些会直接关掉。
+  // 这段必须写在下面的 isMobile 判断之前：电脑端也要这个 class，
+  // 只是那边屏幕大，收起几块不觉得空。
+  var MODE_KEY = "myonl:mode";
+  var curMode = "simple";
+  try { curMode = localStorage.getItem(MODE_KEY) || "simple"; } catch (e) {}
+  function applyMode(m) {
+    try {
+      document.body.classList.toggle("mode-simple", m === "simple");
+      // 给导出/预览留个查询口，别的模块判断当前模式用
+      document.body.dataset.mode = m;
+    } catch (e) {}
+  }
+  applyMode(curMode);
+  window.__myonlMode = function () { return curMode; };
+  window.__myonlSetMode = function (m) {
+    curMode = m === "full" ? "full" : "simple";
+    try { localStorage.setItem(MODE_KEY, curMode); } catch (e) {}
+    applyMode(curMode);
+  };
+
   var isMobile = function () { return window.matchMedia && window.matchMedia("(max-width:860px), (max-height:520px)").matches; };
   if (!isMobile()) return;
 
@@ -60,23 +84,9 @@
         '<button type="button" class="m-quick-item" id="mHomeDemo" style="display:none">' +
           '<b>&#9654;</b><span>试玩示例</span></button>' +
       '</div>' +
-      // 原来这里有一张「都在你手上」说明卡，讲的是存储在哪、怎么发给别人。
-      // 这两件事首页已经在别处说过（列表副标题「本地保存 · 不上云」、导出页也有），
-      // 再摆一块同义文字只是占高度，删掉。
-      '<div class="m-home-steps">' +
-        '<div class="m-home-sec">三步上手</div>' +
-        '<button type="button" class="m-step" data-step="script">' +
-          '<span class="m-step-n">1</span>' +
-          '<span class="m-step-t">写第一句台词</span>' +
-          '<span class="m-step-s">场景页里直接改，不用记语法</span></button>' +
-        '<button type="button" class="m-step" data-step="asset">' +
-          '<span class="m-step-n">2</span>' +
-          '<span class="m-step-t">挑一张背景</span>' +
-          '<span class="m-step-s">没有图也能先跑起来</span></button>' +
-        '<button type="button" class="m-step" data-step="export">' +
-          '<span class="m-step-n">3</span>' +
-          '<span class="m-step-t">做成成品发给朋友</span>' +
-          '<span class="m-step-s">一个 .html，对方手机直接打开</span></button>' +
+      // P176：这里原本还有一块「三步上手」。删了 —— 编辑器菜单里已经有
+      // 「帮助 → 新手引导」，同一套教程摆两处，首页就多占五六行高度，
+      // 而且它只在空列表时出现，等于新用户第一次进来看到的是两套重复的说明。
       '</div>' +
     '</div>' +
     // 底部导航：手机/平板的拇指够得到的位置，四个都是真动作，不留哑按钮。
@@ -272,6 +282,12 @@
             '<button type="button" data-v="dark" class="' + (theme === "dark" ? "on" : "") + '">深色</button>' +
             '<button type="button" data-v="light" class="' + (theme === "light" ? "on" : "") + '">浅色</button>' +
           '</span></div>' +
+        '<div class="m-set-row"><span>操作模式</span>' +
+          '<span class="m-seg" id="mSetMode">' +
+            '<button type="button" data-v="simple" class="' + (curMode === "simple" ? "on" : "") + '">简单</button>' +
+            '<button type="button" data-v="full" class="' + (curMode === "full" ? "on" : "") + '">完整</button>' +
+          '</span></div>' +
+        '<div class="m-set-note">简单只留写台词、选背景、导出。分支、跳转、图层、渲染预览先收起来，切到完整随时都在。</div>' +
         '<div class="m-set-row"><span>游戏画面</span>' +
           '<span class="m-seg" id="mSetOrient">' +
             '<button type="button" data-v="any" class="' + (orient === "any" ? "on" : "") + '">跟随</button>' +
@@ -317,6 +333,16 @@
       try { localStorage.setItem("gal_editor_theme", v); } catch (err) {}
       document.documentElement.setAttribute("data-theme", v);
       seg.querySelectorAll("button").forEach(function (x) { x.classList.toggle("on", x === b); });
+    });
+
+    // 操作模式：切了就存，下次打开还是这个。不重载页面 —— 场景表单是重渲染的，
+    // 但门禁和首页这类已经画好的 DOM 靠 class 即时收放，当场就能看到变化。
+    var md = sheet.querySelector("#mSetMode");
+    if (md) md.addEventListener("click", function (e) {
+      var b = e.target.closest ? e.target.closest("button[data-v]") : null;
+      if (!b) return;
+      window.__myonlSetMode(b.dataset.v);
+      md.querySelectorAll("button").forEach(function (x) { x.classList.toggle("on", x === b); });
     });
 
     // 「返回」那一行删了：抽屉点遮罩本来就能关，多一行「作品列表 / 返回」反而像在问"要回哪去"。
@@ -402,19 +428,6 @@
     if (sk) sk.addEventListener("click", enterEditor);
   });
 
-  // 点「三步上手」直接落到那一步：省掉「先找菜单再找图标」这一步，
-  // 这是手机端最容易劝退的地方（不知道从哪下手，就关掉了）。
-  function goStep(step) {
-    var label = step === "asset" ? "素材" : (step === "export" ? "导出" : "剧本");
-    enterEditor();
-    setTimeout(function () {
-      var tabs = document.querySelectorAll(".m-tab");
-      for (var i = 0; i < tabs.length; i++) {
-        if ((tabs[i].textContent || "").trim() === label) { tabs[i].click(); return; }
-      }
-    }, 380);
-  }
-
   // 设置只剩页头右上角一个入口（三格里的那个删了，同一功能摆两处会让人以为是两件事）
   var sb = $("mHomeSet");
   if (sb) sb.addEventListener("click", openSettings);
@@ -450,7 +463,4 @@
       }).catch(function () {});
     } catch (e) { /* 老 WebView 没有 fetch 就算了，不显示 */ }
   })();
-  Array.prototype.forEach.call(layer.querySelectorAll(".m-step"), function (b) {
-    b.addEventListener("click", function () { goStep(b.dataset.step); });
-  });
 })();

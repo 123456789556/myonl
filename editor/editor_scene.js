@@ -408,8 +408,8 @@
     });
     rows.push('<div class="sf-layer fixed bg"><span class="sf-layer-tag">最下</span>' +
       '<span class="sf-layer-name">背景' + (model.bg ? " · " + esc(model.bg.name) : "") + "</span></div>");
-    return '<div class="sf-sec sf-sec-layer">图层顺序 <span class="sf-hint">拖动立绘行改 z，越上越靠前</span></div>' +
-      '<div class="sf-layers" id="sfLayers">' + rows.join("") + "</div>";
+    return '<div class="sf-sec sf-sec-layer sf-adv">图层顺序 <span class="sf-hint">拖动立绘行改 z，越上越靠前</span></div>' +
+      '<div class="sf-layers sf-adv" id="sfLayers">' + rows.join("") + "</div>";
   }
 
   function reorderLayers(fromI, toI) {
@@ -540,8 +540,9 @@
         '<button type="button" class="icon-btn sf-del" data-kind="say" data-i="' + i + '">✕</button></div>');
     });
     h.push("</div>");
-    h.push('<div class="sf-sec sf-sec-opt">选项（@choice） <button type="button" class="icon-btn" id="sfAddOpt">＋ 加选项</button></div>');
-    h.push('<div id="sfOpts">');
+    // 简单模式把这些收起来（.sf-adv），不是删掉：切到完整模式原样还在。
+    h.push('<div class="sf-sec sf-sec-opt sf-adv">选项（@choice） <button type="button" class="icon-btn" id="sfAddOpt">＋ 加选项</button></div>');
+    h.push('<div id="sfOpts" class="sf-adv">');
     model.options.forEach(function (o, i) {
       if (o.del) return;
       h.push('<div class="sf-opt" data-i="' + i + '"><input class="sf-opt-text" placeholder="选项文字" value="' + esc(o.text) + '">' +
@@ -549,7 +550,7 @@
         '<button type="button" class="icon-btn sf-del" data-kind="opt" data-i="' + i + '">✕</button></div>');
     });
     h.push("</div>");
-    h.push('<div class="sf-row"><span class="sf-label">结束跳转</span><input id="sfJump" placeholder="@jump 目标（留空=不跳）" value="' + esc(model.jump ? model.jump.target : "") + '"></div>');
+    h.push('<div class="sf-row sf-adv"><span class="sf-label">结束跳转</span><input id="sfJump" placeholder="@jump 目标（留空=不跳）" value="' + esc(model.jump ? model.jump.target : "") + '"></div>');
     h.push('<div class="sf-actions"><button type="button" class="icon-btn" id="sfSaveBtn">保存这个场景</button></div>');
     formEl.innerHTML = h.join("");
     wire();
@@ -598,7 +599,7 @@
           '<span>名字对不上，或者这张图还没导入素材库</span></div>'
         : '<div class="sf-stage-empty">选背景后这里显示画面预览</div>');
     var realBtn = document.createElement("button");
-    realBtn.type = "button"; realBtn.className = "sf-real-btn";
+    realBtn.type = "button"; realBtn.className = "sf-real-btn sf-adv";
     realBtn.textContent = realPreviewUrl ? "✓ 真实渲染（点此还原）" : "真实渲染预览";
     realBtn.title = "用引擎真实渲染这一帧当底图（不是 HTML 模拟）";
     realBtn.addEventListener("click", function () {

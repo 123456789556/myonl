@@ -1657,6 +1657,11 @@ input[type="text"], input[type="search"], select { background: var(--input-bg); 
   color: var(--subtext0); font-size: 11.5px;
 }
 .sf-stage-missing b { font-size: 12.5px; font-weight: 600; color: var(--text); }
+
+/* P177：简单模式收起高级项。不是删，是 display:none —— 切到完整模式原样回来。
+   收的是：图层顺序、@choice 选项、@jump 结束跳转、真实渲染预览。
+   留的是：背景、音乐、角色、台词、导出。 */
+body.mode-simple .sf-adv { display: none !important; }
 .sf-sprite {
   position: absolute; transform: translateX(-50%); cursor: grab;
   display: flex; flex-direction: column; align-items: center; gap: 2px;
@@ -3103,8 +3108,10 @@ body.m-home-open .m-tabbar { display: none !important; }
 .m-home-set:active { background: var(--surface0); color: var(--text); }
 
 /* 列表段：作品卡按内容排，不留空白带 */
+/* P176：原来是 flex:0 0 auto —— 列表按内容高度，剩下的空间全留在它和动作区之间。
+   改成 1 1 auto，唯一的作品卡才有地方长高（多作品时照旧滚动）。 */
 .m-home-list {
-  flex: 0 0 auto !important; min-height: 0; display: flex;
+  flex: 1 1 auto !important; min-height: 0; display: flex;
   flex-direction: column; gap: 10px; overflow-y: auto;
 }
 .m-home-list .m-home-card { flex: 0 0 auto; }
@@ -3120,6 +3127,10 @@ body.m-home-open .m-tabbar { display: none !important; }
 .m-home-list .m-home-hero.cover-on {
   flex: 1 1 auto !important; height: auto !important; min-height: 208px !important;
 }
+/* P176：只有一个作品时，卡片下方到动作区之间是纯黑的一大片。
+   让唯一的卡片自己长高去吃这块空间 —— 比往空里塞说明文字干净。
+   （卡片底色是渐变，拉高不变形；多作品时不生效。） */
+.m-home-list > .m-home-hero:only-child { flex: 1 1 auto !important; height: auto !important; min-height: 260px !important; }
 .m-home-empty {
   flex: 1 1 auto; display: flex; align-items: center; justify-content: center;
   padding: 28px 22px; border-radius: 14px; text-align: left;
@@ -3212,10 +3223,6 @@ body.m-home-open .ob-card { display: none !important; }
 .m-home-set:focus { background: var(--mantle); color: var(--subtext1); outline: none; }
 .m-home-set:focus-visible { outline: 1px solid var(--blue); }
 
-/* 空态最怕「一屏东西 + 下半屏空」。下面这三步是真有用的内容：
-   点了直接落到对应的 tab，省掉「先找菜单再找图标」。
-   结构上刻意用 block + 绝对定位编号：flex 版被整行压成 28px 过一次，block 不会。 */
-.m-home-steps { display: block; flex: 0 0 auto; }
 /* 正文总字数：贴在场景页工具条上，不占按钮位 */
 .cp-chars { font-size: 12px; color: var(--subtext0); white-space: nowrap; padding-left: 8px; }
 /* P174：横屏矮屏（800×360 这类）高度本来就不够，再让动作区沉底就整块被导航吃掉。
@@ -3223,29 +3230,16 @@ body.m-home-open .ob-card { display: none !important; }
 @media (max-height: 480px) {
   .m-home-side { margin-top: 0; }
   .m-home { padding-bottom: calc(66px + env(safe-area-inset-bottom)) !important; }
+  /* P176：矮屏不让卡片长高 —— 800×360 上会穿到导航底下 */
+  .m-home-list { flex: 0 0 auto !important; }
+  .m-home-list > .m-home-hero:only-child {
+    flex: 0 0 auto !important; height: 118px !important; min-height: 0 !important;
+  }
 }
 
-/* 已经有作品就不再摆「三步上手」：那三步讲的是"先建个作品、写第一句"，
-   对已经建过的人来说是每天重复的第一课。要重看走「帮助 → 新手引导」。
-   P174 试过留最后一条，但动作区沉底之后它整块掉到导航底下，
-   只露出一个「三步上手」标题 —— 那比空着更像坏掉，所以还是整块不显示。 */
-body.m-has-projects .m-home-steps { display: none !important; }
-.m-step {
-  display: block; position: relative; width: 100%; box-sizing: border-box;
-  padding: 12px 13px 12px 45px; margin-bottom: 8px; min-height: 52px;
-  border-radius: 12px; border: 1px solid var(--surface0); background: var(--mantle);
-  color: var(--text); font-family: inherit; text-align: left; cursor: pointer;
-  -webkit-tap-highlight-color: transparent;
-}
-.m-step:last-child { margin-bottom: 0; }
-.m-step-n {
-  position: absolute; left: 13px; top: 14px; width: 22px; height: 22px;
-  border-radius: 50%; background: var(--surface0); color: var(--blue);
-  font-size: 12px; font-weight: 600; line-height: 22px; text-align: center;
-}
-.m-step-t { display: block; font-size: 13px; line-height: 1.4; }
-.m-step-s { display: block; font-size: 11.5px; line-height: 1.5; color: var(--subtext0); margin-top: 3px; }
-.m-step:active { background: var(--surface0); }
+/* P176：「三步上手」整块删了（DOM 在 editor_home.js，规则原先在这）。
+   编辑器菜单里已经有「帮助 → 新手引导」，同一套教程摆两处只是多占高度。
+   连带 .m-step* 那几条一起删干净，不留没人用的样式。 */
 
 /* 横屏只有三四百像素高：设置行按桌面间距排会让抽屉吃掉 7 成屏，
    行距收到一半，一屏内刚好放完，手也不用滚。
