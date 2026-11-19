@@ -550,7 +550,14 @@
       if (!btn) return;
       var which = btn.dataset.tab;
       setTab(which);
-      if (which === "script") { closeDrawers(); return; }
+      if (which === "script") {
+        closeDrawers();
+        // 场景页是盖在主编辑器上的中心页，closeDrawers 管不到它 ——
+        // 不关的话按「剧本」画面一动不动，人会以为 tab 坏了（导出那边早就补了这一步）
+        var scn0 = document.querySelector("#scenePage.open");
+        if (scn0) { var sc0 = $("sceneClose"); if (sc0) sc0.click(); }
+        return;
+      }
       if (which === "assets") { toggleDrawer("mobile-asset-open"); return; }
       if (which === "preview") { toggleDrawer("mobile-preview-open"); return; }
       if (which === "look") {
