@@ -168,7 +168,7 @@
     } catch (e) { /* ignore */ }
     var el = document.createElement("div");
     el.textContent = msg;
-    el.style.cssText = "position:fixed;left:50%;bottom:96px;transform:translateX(-50%);z-index:99999;" +
+    el.style.cssText = "position:fixed;left:50%;bottom:calc(56px + env(safe-area-inset-bottom) + 12px);transform:translateX(-50%);z-index:99999;" +
       "padding:10px 16px;border-radius:12px;font-size:14px;color:#fff;" +
       "background:" + (isErr ? "#c0392b" : "rgba(20,24,36,.92)") + ";box-shadow:0 6px 24px rgba(0,0,0,.35)";
     document.body.appendChild(el);

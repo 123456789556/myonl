@@ -2394,6 +2394,22 @@ input[type="color"] {
   backdrop-filter: blur(8px);
 }
 
+/* 浅色主题：整宽作品卡原本铺一张深色封面 + 深色渐层，在白底上像贴了块黑洞。
+   压到 14% 又变成一层灰雾，同样不好看 —— 浅色下直接不铺大图，
+   用淡蓝品牌渐变 + 深色文字，干净。想看封面就切回深色。 */
+:root[data-theme="light"] .m-home-hero {
+  background: linear-gradient(135deg, #f4f8ff 0%, #e9f1ff 58%, #e3edff 100%);
+  border: 1px solid rgba(79,140,255,.16);
+}
+:root[data-theme="light"] .m-hero-cover { display: none; }
+:root[data-theme="light"] .m-hero-veil { background: none; }
+:root[data-theme="light"] .m-hero-name { color: #12151c; text-shadow: none; }
+:root[data-theme="light"] .m-hero-meta { color: rgba(18,21,28,.62); }
+:root[data-theme="light"] .m-hero-go {
+  background: rgba(79,140,255,.1); border-color: rgba(79,140,255,.28); color: #2b5fd9;
+  backdrop-filter: none;
+}
+
 .m-card-chips { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 7px; }
 .m-chip {
   font-size: 11px; line-height: 1; padding: 5px 8px; border-radius: 999px;
@@ -3263,4 +3279,7 @@ body.m-home-open .ob-card { display: none !important; }
     max-height: 38vh; overflow-y: auto;
     padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
   }
+  /* 底部导航占了 56px，右下角的 toast 挪到它上面，别横着压住「新建/导入/设置」。
+     实测 360×800 上一条开机提示正好盖住后面三项。 */
+  .toast-wrap { bottom: calc(56px + env(safe-area-inset-bottom) + 12px); left: 12px; right: 12px; align-items: stretch; }
 }
