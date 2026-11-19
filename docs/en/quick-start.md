@@ -36,6 +36,9 @@ by position so you can follow it without reading Chinese.
 
 The exported `.html` inlines the player, script and assets into one file. Send it over chat or
 copy it to a computer; it opens in a browser — no engine install, no network, no server.
+On Android you can also **share** the exported bundle straight from the shell, or **open** a
+received file in the app. These two shell entries have not been verified on a real device
+(no local SDK); treat them as pending a CI build check.
 
 ## 3. Your first script line
 
@@ -66,7 +69,7 @@ APK builds and tests all go through the desktop route. The full boundary is in t
 | Symptom | Cause / fix |
 |---|---|
 | Red text or placeholder blocks in the preview | The script references a missing asset: check the asset name and letter case |
-| Exported file is very large | Assets inline as base64 (~+37%); warnings start at 40 MB, and past 80 MB a low-end device will likely white-screen. Shrink images or split chapters first |
+| Exported file is very large | Assets inline as base64 (~+37%); a soft warning starts at 40 MB and a strong warning at 80 MB (export is not blocked either way), but past 80 MB a low-end device will likely white-screen. Shrink images or split chapters first |
 | You want to keep editing on desktop / build an APK | See the [packaging guide](../打包使用指南.md) (Chinese) |
 
 ## 6. Where to go next
