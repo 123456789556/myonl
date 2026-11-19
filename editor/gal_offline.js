@@ -193,7 +193,8 @@
     } catch (e) { return []; }
   }
   function idxWrite(a) {
-    try { localStorage.setItem(IDX_KEY, JSON.stringify(a)); } catch (e) {}
+    try { localStorage.setItem(IDX_KEY, JSON.stringify(a)); return true; }
+    catch (e) { return false; }
   }
 
   // 素材分两类，处置方式不一样：图压过再存、进成品当画面；音频原样存、进成品当 BGM / 音效。
@@ -206,7 +207,8 @@
     } catch (e) { return {}; }
   }
   function kindWrite(o) {
-    try { localStorage.setItem(KIND_KEY, JSON.stringify(o || {})); } catch (e) {}
+    try { localStorage.setItem(KIND_KEY, JSON.stringify(o || {})); return true; }
+    catch (e) { return false; }
   }
   function kindOf(name) {
     var k = kindRead()[name];
@@ -314,12 +316,28 @@
   // 避免两条链路对重名、类型、落库的处理出现分叉。
   function persistAsset(wantName, kind, dataUrl, taken, kinds) {
     var name = uniqueName(wantName, taken);
-    taken.push(name);
-    kinds[name] = kind;
-    idxWrite(taken); kindWrite(kinds);
+    // 先把素材体写进 IndexedDB，成功后才写名字 / 类型索引；顺序反过来，
+    // put 失败就会在索引里留下幽灵名字——列表看得见、素材体取不到。
     return dbRun("readwrite", function (st) {
       return st.put({ dataUrl: dataUrl, kind: kind }, name);
-    }).then(function () { return name; });
+    }).then(function () {
+      taken.push(name);
+      kinds[name] = kind;
+      var iok = idxWrite(taken), kok = kindWrite(kinds);
+      if (!iok || !kok) {
+        // 索引没写进去：把刚存的素材体撤掉，不留「库里有、索引里没有」的半截状态
+        delete kinds[name];
+        return dbRun("readwrite", function (st) { return st.delete(name); })
+          .then(function () { throw new Error("素材索引写不进本机存储"); });
+      }
+      return name;
+    }).catch(function (e) {
+      // DB 写失败（或上面回滚路径）：把内存里刚推的名字撤掉，别让脏名字卡住下次重选
+      var ti = taken.indexOf(name);
+      if (ti >= 0) taken.splice(ti, 1);
+      delete kinds[name];
+      throw e;
+    });
   }
 
   function dataUrlToResponse(dataUrl) {
