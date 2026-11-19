@@ -5,7 +5,7 @@
 > route; the desktop is only needed for video/camera effects, APK builds, and tests.
 
 **Note on language:** the directive keywords and the editor UI are Chinese by design (see the
-"Language" section of the [English README](../README.en.md)). This guide refers to UI elements
+[English README](../../README.en.md)). This guide refers to UI elements
 by position so you can follow it without reading Chinese.
 
 ## 1. Install and open
@@ -20,7 +20,7 @@ by position so you can follow it without reading Chinese.
 **Desktop browser (nothing installed)**
 
 - A single-file `.html` someone exported opens in any browser. To author on a computer, see the
-  [developer guide](../docs/开发者使用指南.md) (Chinese).
+  [developer guide](../开发者使用指南.md) (Chinese).
 
 > There is no iOS build. On the player side, any modern browser can open the single-file bundle.
 
@@ -50,8 +50,8 @@ One directive per line, starting with `@`. A plain line without `@` is dialogue.
 | Branching choice | `@choice:` then an indented `> option text -> label` |
 | Variable / condition | `@set 好感 += 1` / `@if 好感 >= 3:` with indented lines below |
 
-The full directive list is in [engine_spec.md](../docs/engine_spec.md) (Chinese); importing assets
-is covered by the [asset import guide](../docs/素材导入指南.md) (Chinese).
+The full directive list is in [engine_spec.md](../engine_spec.md) (Chinese); importing assets
+is covered by the [asset import guide](../素材导入指南.md) (Chinese).
 
 ## 4. What the phone cannot do
 
@@ -59,7 +59,7 @@ The phone parser does not implement `@voice`, `@anim`, `@fg`, `@cg`, `@camera`, 
 `@plug`, or `@include`. Using one raises a clear error with the line number — it is not silently
 dropped. Voice / animation / foreground / CG / camera / transition / plugins, multi-file scripts,
 APK builds and tests all go through the desktop route. The full boundary is in the
-[phone authoring guide](../docs/手机端编游戏.md) (Chinese).
+[phone authoring guide](../手机端编游戏.md) (Chinese).
 
 ## 5. Troubleshooting
 
@@ -67,10 +67,10 @@ APK builds and tests all go through the desktop route. The full boundary is in t
 |---|---|
 | Red text or placeholder blocks in the preview | The script references a missing asset: check the asset name and letter case |
 | Exported file is very large | Assets inline as base64 (~+37%); warnings start at 40 MB, and past 80 MB a low-end device will likely white-screen. Shrink images or split chapters first |
-| You want to keep editing on desktop / build an APK | See the [packaging guide](../docs/打包使用指南.md) (Chinese) |
+| You want to keep editing on desktop / build an APK | See the [packaging guide](../打包使用指南.md) (Chinese) |
 
 ## 6. Where to go next
 
-- [Phone authoring guide](../docs/手机端编游戏.md) — exactly what the phone route can and cannot do
-- [engine_spec.md](../docs/engine_spec.md) — full directive set and syntax details (Chinese)
-- [Packaging guide](../docs/打包使用指南.md) — the three exits: single-file HTML, APK, Windows folder build
+- [Phone authoring guide](../手机端编游戏.md) — exactly what the phone route can and cannot do
+- [engine_spec.md](../engine_spec.md) — full directive set and syntax details (Chinese)
+- [Packaging guide](../打包使用指南.md) — the three exits: single-file HTML, APK, Windows folder build
