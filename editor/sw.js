@@ -40,8 +40,31 @@ function putInbox(ts, seq, file) {
       }, key);
       tx.oncomplete = function () { res(key); };
       tx.onerror = function () { rej(tx.error || new Error("写入收件箱失败")); };
+      tx.onabort = function () { rej(tx.error || new Error("写入收件箱事务中止")); };
     });
   });
+}
+
+// 失败也留一条可区分的记录：stage 标明是 multipart 解析失败还是写库失败。
+// 导入侧读到 inbox:error: 键才能把「真没给文件」和「写库失败」分开提示。
+// 注意：这条链路没在真机 / 真 Chromium PWA 环境跑过（见审计 O2），这里只做到
+// 「失败可区分」，不宣称真机上已复现两种失败分支。
+function putError(ts, stage, err) {
+  return dbOpen().then(function (db) {
+    return new Promise(function (res) {
+      var tx = db.transaction(STORE, "readwrite");
+      var st = tx.objectStore(STORE);
+      st.put({
+        stage: stage,
+        message: String((err && err.message) || err || "未知错误"),
+        ts: ts,
+      }, "inbox:error:" + ts);
+      tx.oncomplete = function () { res(); };
+      // 错误记录本身写不进就放弃，不能把分享入口卡死
+      tx.onerror = function () { res(); };
+      tx.onabort = function () { res(); };
+    });
+  }).catch(function () { /* 收件箱都打不开，只能放弃 */ });
 }
 
 function handleShare(request) {
@@ -54,9 +77,13 @@ function handleShare(request) {
     files.forEach(function (file, i) {
       chain = chain.then(function () { return putInbox(ts, i + 1, file); });
     });
-    return chain;
-  }).catch(function () {
-    // 解析 / 写库失败都不报错，照样回编辑器，不把分享入口卡死
+    // 写库失败单独标 stage=write，与解析失败分开
+    return chain.catch(function (err) {
+      return putError(ts, "write", err);
+    });
+  }).catch(function (err) {
+    // multipart 解析失败 / 请求体拿不到：标 stage=parse
+    return putError(ts, "parse", err);
   }).then(function () {
     var dest = new URL("/index.html?shared=1", self.location.href).toString();
     return Response.redirect(dest, 303);

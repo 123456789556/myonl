@@ -443,35 +443,51 @@
     },
     // 别的 App 分享进来：SW 把 multipart 里的文件暂存在 inbox:<时间戳>:<序号> 键下，
     // 值形状 { name, type, blob, ts }。这里把它们搬进正式素材，走 add() 同一套落库逻辑，
-    // 成功后删掉 inbox 键；没有 inbox 记录就 resolve 空数组；任何异常都吞掉返回 []，
-    // 不许抛到页面顶层（index.html 只 .then/.catch 收名字数组）。
+    // 成功后删掉 inbox 键；SW 失败会留 inbox:error:<ts> 记录 {stage, message}，
+    // 导入侧据此区分「真没给文件」和「解析 / 写库失败」。任何异常都吞掉返回，
+    // 不许抛到页面顶层（index.html 只 .then/.catch 收结果）。
     importShared: function () {
       var self = this;
       return new Promise(function (resolve) {
         var names = [];
+        var error = null;
+        function done() { resolve({ names: names, error: error }); }
         try {
-          if (!window.indexedDB) { resolve([]); return; }
+          if (!window.indexedDB) { done(); return; }
           dbRun("readonly", function (st) { return st.getAllKeys(); }).then(function (keys) {
-            var inbox = (keys || []).filter(function (k) { return String(k).indexOf("inbox:") === 0; });
-            if (!inbox.length) { resolve([]); return; }
-            return inbox.reduce(function (chain, key) {
+            var allKeys = (keys || []).filter(function (k) { return String(k).indexOf("inbox:") === 0; });
+            var errKeys = allKeys.filter(function (k) { return String(k).indexOf("inbox:error:") === 0; });
+            var inbox = allKeys.filter(function (k) { return String(k).indexOf("inbox:error:") !== 0; });
+            // 先读失败标记，读完删掉，避免下次进来重复报同一条失败
+            var errChain = errKeys.reduce(function (chain, key) {
               return chain.then(function () {
                 return dbRun("readonly", function (st) { return st.get(key); }).then(function (rec) {
-                  if (!rec || !rec.blob) return null;
-                  var file;
-                  try {
-                    file = new File([rec.blob], String(rec.name || ("分享_" + Date.now())),
-                      { type: rec.type || "application/octet-stream" });
-                  } catch (e) { return null; }
-                  return self.add([file]).then(function (added) {
-                    if (added && added.length) names.push(added[0]);
-                    return dbRun("readwrite", function (st) { return st.delete(key); });
-                  }).catch(function () { /* 这条没存上，inbox 键留着，下次进来再试 */ });
+                  if (rec && !error) error = { stage: rec.stage || "unknown", message: rec.message || "" };
+                  return dbRun("readwrite", function (st) { return st.delete(key); });
                 });
               });
-            }, Promise.resolve()).then(function () { resolve(names); });
-          }).catch(function () { resolve([]); });
-        } catch (e) { resolve([]); }
+            }, Promise.resolve());
+            return errChain.then(function () {
+              if (!inbox.length) { done(); return; }
+              return inbox.reduce(function (chain, key) {
+                return chain.then(function () {
+                  return dbRun("readonly", function (st) { return st.get(key); }).then(function (rec) {
+                    if (!rec || !rec.blob) return null;
+                    var file;
+                    try {
+                      file = new File([rec.blob], String(rec.name || ("分享_" + Date.now())),
+                        { type: rec.type || "application/octet-stream" });
+                    } catch (e) { return null; }
+                    return self.add([file]).then(function (added) {
+                      if (added && added.length) names.push(added[0]);
+                      return dbRun("readwrite", function (st) { return st.delete(key); });
+                    }).catch(function () { /* 这条没存上，inbox 键留着，下次进来再试 */ });
+                  });
+                });
+              }, Promise.resolve()).then(done);
+            });
+          }).catch(function () { done(); });
+        } catch (e) { done(); }
       });
     },
     // 恢复备份用：**按原名写回，不再压缩、不改名**。
@@ -1426,9 +1442,18 @@
     if (/[?&]shared=/.test(window.location.search)
         && window.MYONLAssets && typeof window.MYONLAssets.importShared === "function") {
       window.addEventListener("load", function () {
-        window.MYONLAssets.importShared().then(function (names) {
-          if (names && names.length) toast("从分享收下 " + names.length + " 个素材：" + names.join("、"));
-          else toast("这次分享里没拿到能用的素材", true);
+        window.MYONLAssets.importShared().then(function (res) {
+          // 兼容旧返回（纯名字数组）；新返回 {names, error}：error 区分解析失败 / 写库失败
+          var names = (res && res.names) || (Array.isArray(res) ? res : []);
+          var error = res && !Array.isArray(res) ? res.error : null;
+          if (error) {
+            var why = error.stage === "parse" ? "解析分享文件失败" : "写入素材库失败";
+            toast("分享" + why + "，重新分享一次试试", true);
+          } else if (names && names.length) {
+            toast("从分享收下 " + names.length + " 个素材：" + names.join("、"));
+          } else {
+            toast("这次分享里没拿到能用的素材", true);
+          }
         }).catch(function () {
           toast("分享进来的素材没存上，重新分享一次试试", true);
         });
