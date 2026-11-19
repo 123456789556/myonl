@@ -3084,7 +3084,9 @@ input[type="color"] {
    ============================================================ */
 body.m-home-open .m-tabbar { display: none !important; }
 
-.m-home { padding: calc(14px + env(safe-area-inset-top)) 16px calc(12px + env(safe-area-inset-bottom)) !important; }
+/* P174：动作区沉底（.m-home-side 的 margin-top:auto）之后，它正好落在底部导航下面一截，
+   所以这里的内边距必须留够导航的高度 + 呼吸位。原来是 12px，改成 72px。 */
+.m-home { padding: calc(14px + env(safe-area-inset-top)) 16px calc(76px + env(safe-area-inset-bottom)) !important; }
 .m-home-head { align-items: flex-start !important; margin-bottom: 12px !important; }
 .m-home-set {
   height: 32px; padding: 0 13px; border-radius: 16px; cursor: pointer;
@@ -3119,7 +3121,10 @@ body.m-home-open .m-tabbar { display: none !important; }
   font-size: 13px; line-height: 1.7;
 }
 
-.m-home-side { display: flex; flex-direction: column; flex: 0 0 auto; }
+/* P174：只有一个作品时，动作区紧贴作品卡，剩下的全堆在底部，整片黑。
+   让动作区沉到导航上方（margin-top:auto），中间那块空就从"内容没写完"
+   变成"内容与操作之间的呼吸"。这是照 iOS 贴底动作区的习惯来的。 */
+.m-home-side { display: flex; flex-direction: column; flex: 0 0 auto; margin-top: auto; }
 .m-home-sec {
   font-size: 12.5px; color: var(--subtext0); margin: 14px 2px 8px; letter-spacing: .4px;
 }
@@ -3207,8 +3212,17 @@ body.m-home-open .ob-card { display: none !important; }
 .m-home-steps { display: block; flex: 0 0 auto; }
 /* 正文总字数：贴在场景页工具条上，不占按钮位 */
 .cp-chars { font-size: 12px; color: var(--subtext0); white-space: nowrap; padding-left: 8px; }
+/* P174：横屏矮屏（800×360 这类）高度本来就不够，再让动作区沉底就整块被导航吃掉。
+   矮屏恢复从上往下排，宁可滚动也不要盖。 */
+@media (max-height: 480px) {
+  .m-home-side { margin-top: 0; }
+  .m-home { padding-bottom: calc(66px + env(safe-area-inset-bottom)) !important; }
+}
+
 /* 已经有作品就不再摆「三步上手」：那三步讲的是"先建个作品、写第一句"，
-   对已经建过的人来说是每天重复的第一课。要重看走「帮助 → 新手引导」。 */
+   对已经建过的人来说是每天重复的第一课。要重看走「帮助 → 新手引导」。
+   P174 试过留最后一条，但动作区沉底之后它整块掉到导航底下，
+   只露出一个「三步上手」标题 —— 那比空着更像坏掉，所以还是整块不显示。 */
 body.m-has-projects .m-home-steps { display: none !important; }
 .m-step {
   display: block; position: relative; width: 100%; box-sizing: border-box;
