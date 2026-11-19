@@ -214,6 +214,23 @@
   window.addEventListener("resize", fit);
   window.addEventListener("orientationchange", () => setTimeout(fit, 120));
 
+  // 转屏（resize / orientationchange）后重排画布。帧序列视频的进度基准是 t0，
+  // 转屏只改布局、不该让画面从头跳；这里把已播帧的进度折算成新的 t0，保持帧号连续。
+  // 真视频（file=）由 <video> 自己维护 currentTime，不依赖这个时钟，不动它。
+  function relayoutVideoClock() {
+    const v = state.video;
+    if (!v || v.file || !(v.fps > 0)) return;
+    const now = performance.now();
+    const len = (pack && pack.videos && pack.videos[v.name]) || [];
+    if (!len.length) { v.t0 = now; return; }
+    const raw = Math.floor(((now - (v.t0 || 0)) / 1000) * v.fps);
+    const idx = ((raw % len.length) + len.length) % len.length;
+    // 新 t0：让当前帧号 idx 在新时钟下仍是当前帧，进度不跳变。
+    v.t0 = now - (idx / v.fps) * 1000;
+  }
+  window.addEventListener("resize", relayoutVideoClock);
+  window.addEventListener("orientationchange", () => setTimeout(relayoutVideoClock, 120));
+
   // ---------- 视觉参数（读项目 config，缺省回落） ----------
   function cfg(path, dflt) {
     let node = (pack && pack.config) || {};
@@ -2651,6 +2668,7 @@
         scene: state.scene, say: state.say, choice: state.choice,
         choiceRects: state.choiceRects, sprites: state.sprites, bg: state.bg,
         cg: state.cg,
+        video: state.video ? Object.assign({}, state.video) : null,
         lines: state.lines, ended: state.ended, error: state.error,
         guide: !!state.guide,
         setup: state.setup ? {step: state.setup.step, picks: state.setup.picks} : null,
