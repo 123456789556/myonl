@@ -1163,9 +1163,24 @@
       "background:rgba(79,140,255,.07)";
     var tip = document.createElement("div");
     tip.style.cssText = "font-size:12px;line-height:1.6;color:#9fb2d0;margin-bottom:10px";
-    tip.textContent = "作品存在这台设备里，不上云。剧本能带走，成品也能在这台手机上直接出——" +
+    tip.textContent = "作品存在这台设备里。剧本能带走，成品也能在这台手机上直接出——" +
       "下面第一个按钮就是打包，出来的 .html 发给谁都能双击玩。";
     bar.appendChild(tip);
+    // 先让人看见有多大，再决定走哪条：单文件发人，还是打成 APK。
+    // 点完才发现"打不开"是最糟的体验。
+    var sizeLine = document.createElement("div");
+    sizeLine.style.cssText = "font-size:12px;line-height:1.6;color:#8fa3bf;margin:0 0 4px";
+    sizeLine.textContent = "正在算体积…";
+    bar.appendChild(sizeLine);
+    (window.MYONLAssets ? window.MYONLAssets.allSplit() : Promise.resolve({ assets: {}, audio: {} }))
+      .then(function (sp) {
+        var n = 0, o = Object.assign({}, sp.assets || {}, sp.audio || {});
+        Object.keys(o).forEach(function (k) { n += String(o[k] || "").length; });
+        var mb = n / 1048576;
+        sizeLine.textContent = "现在约 " + mb.toFixed(1) + " MB · " +
+          (mb > 30 ? "超过 30 MB，别发单文件了，走 APK" : "能单文件发");
+      })
+      .catch(function () { sizeLine.textContent = ""; });
 
     [["做成成品（.html，能发人）", function () { window.__myonlExportPack(); }],
      ["打成 APK（能直接装）", function () { window.__myonlExportApk(); }],
