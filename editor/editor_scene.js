@@ -17,10 +17,12 @@
   page.innerHTML = '<div class="cp-head">' +
     '<span class="cp-title">场景编辑</span>' +
     '<span class="cp-hint">不写代码也能改画面：左选场景，右边改背景/角色/台词</span>' +
+    '<span class="cp-chars" id="sceneChars" title="正文总字数（指令和注释不算）"></span>' +
     '<span class="cp-spacer"></span>' +
     '<select class="cp-btn" id="sceneFilter" title="筛选场景类型"><option value="all">全部</option><option value="talk">有台词</option><option value="pic">纯画面</option><option value="video">视频</option></select>' +
     '<button type="button" class="cp-btn" id="sceneAdd" title="在本文件末尾新建一幕">＋ 新场景</button>' +
     '<button type="button" class="cp-btn" id="sceneCopy" title="复制当前场景（新 label）">复制</button>' +
+    '<button type="button" class="cp-btn" id="sceneRename" title="改名（连带改所有跳转与选项指向）">改名</button>' +
     '<button type="button" class="cp-btn" id="sceneDel" title="删除当前场景（有跳转引用会先提示）">删除</button>' +
     '<button type="button" class="cp-btn" id="sceneRefresh" title="重新读取剧本">刷新</button>' +
     '<button type="button" class="cp-btn" id="sceneSave" title="把改动写回 .gal 文件（只改对应行）">保存修改</button>' +
@@ -191,9 +193,29 @@
     return html;
   }
 
+  // 写作 App 都会告诉你"写到多少字了"。这里只数正文：
+  // @ 开头的指令和 # 注释不算，选项行只算冒号后的文字部分。
+  function countChars(text) {
+    if (!text) return 0;
+    var n = 0;
+    text.split("\n").forEach(function (l) {
+      var s = l.trim();
+      if (!s || s.charAt(0) === "@" || s.charAt(0) === "#") return;
+      if (/^>/.test(s)) s = s.replace(/->\s*\S+\s*$/, "").replace(/^\s*>\s*/, "");
+      n += s.replace(/\s/g, "").length;
+    });
+    return n;
+  }
+  function updateChars(text) {
+    var el = $("sceneChars");
+    if (!el) return;
+    var n = countChars(text == null ? getText() : text);
+    el.textContent = n ? (n + " 字") : "";
+  }
   function refresh() {
     var text = getText();
     scenes = parseScenes(text);
+    updateChars(text);
     renderList();
     if (scenes.length) {
       if (curIdx < 0 || curIdx >= scenes.length) curIdx = 0;
@@ -923,6 +945,34 @@
     var name = prompt("复制「" + scenes[curIdx].name + "」为（新 label）：", scenes[curIdx].name + "_副本");
     if (name) insertScene(name.trim(), "copy");
   }
+  // 改名：不只是改 @label 那一行。所有 @jump 目标、选项箭头 `> 文本 -> 目标`
+  // 都指向这个名字，只改标签等于把整条线剪断——所以一起改，并回报改了几处。
+  function renameScene() {
+    if (curIdx < 0) return;
+    var sc = scenes[curIdx];
+    if (sc.head) { toast("「开场设置」是文件头，没有独立 label 可改", true); return; }
+    var raw = prompt("把「" + sc.name + "」改成（label，不能有空格）：", sc.name);
+    if (raw == null) return;
+    var name = raw.trim();
+    if (!name || name === sc.name) return;
+    if (!/^\S+$/.test(name)) { toast("场景名不能有空格", true); return; }
+    if (scenes.some(function (x) { return x.name === name; })) { toast("已经有同名场景「" + name + "」", true); return; }
+    var text = getText();
+    if (!text) { toast("没有打开的剧本"); return; }
+    var hits = 0;
+    var out = text.split("\n").map(function (l, i) {
+      if (i >= sc.start && i < sc.end) {
+        var ml = l.match(/^(@label\s+)(\S+)(.*)$/);
+        if (ml && ml[2] === sc.name) { hits++; return ml[1] + name + ml[3]; }
+      }
+      var mj = l.match(/^(@jump\s+)(\S+)(.*)$/);
+      if (mj && mj[2] === sc.name) { hits++; return mj[1] + name + mj[3]; }
+      var mo = l.match(/^(\s*>\s*.+?->\s*)(\S+)(\s*)$/);
+      if (mo && mo[2] === sc.name) { hits++; return mo[1] + name + mo[3]; }
+      return l;
+    }).join("\n");
+    applyText(out, "「" + sc.name + "」改成「" + name + "」，连带改了 " + hits + " 处引用");
+  }
   function delScene() {
     if (curIdx < 0) return;
     var sc = scenes[curIdx];
@@ -1118,6 +1168,7 @@
 
   $("sceneAdd").addEventListener("click", addScene);
   $("sceneCopy").addEventListener("click", copyScene);
+  $("sceneRename").addEventListener("click", renameScene);
   $("sceneDel").addEventListener("click", delScene);
   $("sceneFilter").addEventListener("change", function () { sceneFilter = this.value; renderList(); });
   sceneSearch.addEventListener("input", function () { renderList(); });

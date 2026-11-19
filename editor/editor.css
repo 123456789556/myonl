@@ -3189,6 +3189,8 @@ body.m-home-open .ob-card { display: none !important; }
    点了直接落到对应的 tab，省掉「先找菜单再找图标」。
    结构上刻意用 block + 绝对定位编号：flex 版被整行压成 28px 过一次，block 不会。 */
 .m-home-steps { display: block; flex: 0 0 auto; }
+/* 正文总字数：贴在场景页工具条上，不占按钮位 */
+.cp-chars { font-size: 12px; color: var(--subtext0); white-space: nowrap; padding-left: 8px; }
 /* 已经有作品就不再摆「三步上手」：那三步讲的是"先建个作品、写第一句"，
    对已经建过的人来说是每天重复的第一课。要重看走「帮助 → 新手引导」。 */
 body.m-has-projects .m-home-steps { display: none !important; }
