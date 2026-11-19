@@ -261,6 +261,16 @@
         }
       }
       if (chapters.length && collapsedChapters[ch || "(未分章)"]) return;   // 折叠：只留组头
+      // 卡片上除了"是不是视频"，还要能看出故事形状：
+      // 这一场是不是分支点（@choice）、结束跳到哪（@jump）。
+      // 否则整列卡片长得一模一样，看不出"留下→结尾""走→结尾"这种汇合关系。
+      var jumpTo = (seg.match(/^@jump\s+(\S+)/m) || [])[1];
+      var hasChoice = /^@choice/m.test(seg);
+      var badges = [];
+      if (isVideo) badges.push('<span class="sc-badge video">视频</span>');
+      else if (!hasSay && hasShow) badges.push('<span class="sc-badge">纯画面</span>');
+      if (hasChoice) badges.push('<span class="sc-badge branch">分支</span>');
+      if (jumpTo) badges.push('<span class="sc-badge edge">→ ' + jumpTo + '</span>');
       rows.push({
         type: "scene",
         i: i,
@@ -268,8 +278,7 @@
         name: sc.name,
         bg: (seg.match(/^@bg\s+(\S+)/m) || [])[1] || "—",
         kind: isVideo ? "视频" : (hasSay ? "有台词" : (hasShow ? "纯画面" : "空")),
-        badge: isVideo ? '<span class="sc-badge video">视频</span>'
-          : (!hasSay && hasShow ? '<span class="sc-badge">纯画面</span>' : ""),
+        badge: badges.join(""),
       });
     });
     flushGroup();
