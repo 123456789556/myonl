@@ -130,8 +130,15 @@ def test_README不再说成品只能电脑出():
 
 def test_开工须知指向的文件真实存在():
     """指向不存在的文档比不写更糟 —— 接手的人会以为自己在读一份没有的文件。"""
-    guide = ROOT.parent / "AI开工须知.md"
-    if not guide.is_file():
+    # 2026-11-19 仓库迁到 myonl\MYONL引擎，纲领仍留在 娱乐工作区\玩具项目\ 下：
+    # 只认上一级会变成"永远 skip"，本机这份校验就白丢了。按已知位置逐个试。
+    candidates = [
+        ROOT.parent / "AI开工须知.md",
+        ROOT.parent.parent / "AI开工须知.md",
+        ROOT.parent.parent / "玩具项目" / "AI开工须知.md",
+    ]
+    guide = next((c for c in candidates if c.is_file()), None)
+    if guide is None:
         pytest.skip("AI开工须知.md 在仓库外，别人机器上本来就没有")
     src = guide.read_text(encoding="utf-8")
     assert "MYONL引擎\\docs\\发布纪律.md" not in src
