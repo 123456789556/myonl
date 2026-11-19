@@ -55,13 +55,27 @@ def find_java() -> str:
     )
 
 
-def replace_game(template: Path, game_html: Path, out_unsigned: Path) -> None:
-    """复制模板、只换 assets/game.html 一个条目。其余字节原样保留。"""
+def replace_game(template: Path, game_html: Path, out_unsigned: Path,
+                 extra: dict | None = None) -> None:
+    """复制模板、换掉 assets/game.html，再补进额外素材。其余字节原样保留。
+
+    extra 是 {"assets/bg.png": 本地路径} 这样的表。键按"相对 APK 的 assets/ 根"
+    来理解，所以 assets/ 下的素材在包里的真实位置是 assets/assets/bg.png——
+    因为 game.html 也躺在 assets/ 里，它写 src="assets/bg.png" 时，
+    浏览器相对的就是自己那一层。这个双 assets 不是笔误。
+    """
     payload = game_html.read_bytes()
+    # extra 的键按"相对 APK 的 assets/ 根"来理解；模板里可能已经有同名条目
+    # （比如 myonl-player.js 编辑器自己就带一份），那就**换成新的**，
+    # 不能追加——ZIP 里同名条目重复，apksig 会直接拒签。
+    merged = {"assets/" + rel: Path(src) for rel, src in (extra or {}).items()}
+    merged[GAME_ENTRY] = None  # 占位，下面单独走 payload
     with zipfile.ZipFile(template) as zin, zipfile.ZipFile(out_unsigned, "w") as zout:
         for item in zin.infolist():
             if item.filename == GAME_ENTRY:
                 data = payload
+            elif item.filename in merged and merged[item.filename] is not None:
+                data = merged.pop(item.filename).read_bytes()
             else:
                 data = zin.read(item.filename)
             info = zipfile.ZipInfo(item.filename, date_time=item.date_time)
@@ -70,6 +84,13 @@ def replace_game(template: Path, game_html: Path, out_unsigned: Path) -> None:
             info.internal_attr = item.internal_attr
             info.create_system = item.create_system
             zout.writestr(info, data)
+        # 模板里没有的，补进去
+        for name, src in merged.items():
+            if src is None:
+                continue
+            info = zipfile.ZipInfo(name, date_time=(2026, 1, 1, 0, 0, 0))
+            info.compress_type = zipfile.ZIP_DEFLATED
+            zout.writestr(info, src.read_bytes())
 
 
 def sign(java: str, unsigned: Path, out_apk: Path) -> str:
@@ -113,14 +134,44 @@ def safe_name(text: str) -> str:
 
 def main() -> None:
     ap = argparse.ArgumentParser(description="把作品打成一个独立 APK")
-    ap.add_argument("--game", required=True, help="作品 html 路径（导出的那个 game.html）")
+    ap.add_argument("--game", default="", help="作品 html 路径（单文件内联那种）")
+    ap.add_argument("--web-dir", default="",
+                    help="build_web 出的目录（含 index.html + assets/）。素材走外链，"
+                         "作品体积不再受单文件内存限制——这是大作品那条路")
     ap.add_argument("--out", default="", help="输出的 .apk 路径，不给就按作品名放在 dist/")
     ap.add_argument("--name", default="", help="作品名，用于默认输出文件名")
     args = ap.parse_args()
 
-    game = Path(args.game)
-    if not game.exists():
-        raise SystemExit(f"找不到作品文件：{game}")
+    if not args.game and not args.web_dir:
+        raise SystemExit("要给 --game <单文件 html> 或者 --web-dir <目录>，二选一")
+
+    extra: dict = {}
+    if args.web_dir:
+        d = Path(args.web_dir)
+        idx = d / "index.html"
+        if not idx.is_file():
+            raise SystemExit(f"目录里没有 index.html：{d}")
+        game = idx
+        # web 包是「壳 + 清单 + 播放器 + 素材」四层：
+        #   index.html（2 KB 壳）→ 改成 assets/game.html
+        #   pack.json / myonl-*.js  → 放 assets/ 根下，跟 game.html 同级
+        #   assets/                 → 放 assets/assets/（相对 game.html 那一层）
+        # PWA 那几样（manifest / icons / apple-touch-icon）在 APK 里没有意义，跳过。
+        skip = {"index.html", "manifest.json", "apple-touch-icon.png"}
+        for f in sorted(d.rglob("*")):
+            if not f.is_file():
+                continue
+            rel = f.relative_to(d).as_posix()
+            if rel in skip or rel.startswith("icons/"):
+                continue
+            extra[rel] = f
+        if not extra:
+            print("  提示：这个 web 目录是空的，打出来会是白屏")
+    else:
+        game = Path(args.game)
+        if not game.exists():
+            raise SystemExit(f"找不到作品文件：{game}")
+
     if not TEMPLATE.exists():
         raise SystemExit(
             f"缺模板 APK：{TEMPLATE}\n"
@@ -130,7 +181,7 @@ def main() -> None:
         raise SystemExit(f"缺签名器：{SIGNER}")
 
     java = find_java()
-    name = safe_name(args.name or game.stem)
+    name = safe_name(args.name or (game.parent.name if args.web_dir else game.stem))
     if args.out:
         out_apk = Path(args.out)
     else:
@@ -138,6 +189,9 @@ def main() -> None:
     out_apk.parent.mkdir(parents=True, exist_ok=True)
 
     print(f"作品  : {game}  ({game.stat().st_size:,} B)")
+    if extra:
+        total = sum(p.stat().st_size for p in extra.values())
+        print(f"素材  : {len(extra)} 个文件，合计 {total:,} B（走外链，不进 HTML）")
     print(f"模板  : {TEMPLATE}  ({TEMPLATE.stat().st_size:,} B)")
     print(f"签名器: {SIGNER.name}")
 
@@ -145,7 +199,7 @@ def main() -> None:
     # 所以进出签名器这一段一律用 ASCII 名，签完再改回中文。
     unsigned = out_apk.parent / "wip-unsigned.apk"
     print("1/2  换掉 assets/game.html …")
-    replace_game(TEMPLATE, game, unsigned)
+    replace_game(TEMPLATE, game, unsigned, extra)
     print(f"      换完 {unsigned.stat().st_size:,} B")
 
     print("2/2  重签 v2 …")

@@ -9,6 +9,7 @@
 
 本机无浏览器，前端只做源码断言；打包逻辑用 node 直接跑（没装 node 就跳过 JS 侧）。
 """
+import os
 import shutil
 import subprocess
 import sys
@@ -114,8 +115,18 @@ def test_pack_js_levels_real_run():
       }));
     """
     probe = probe.replace("%PARSER%", repr(parser)).replace("%PACK%", repr(js))
-    r = subprocess.run(["node", "-e", probe], capture_output=True, text=True,
-                       encoding="utf-8", cwd=str(ROOT))
+    # 不能走 `node -e <probe>`：probe 里内联了整份 parser.js + pack.js，
+    # Windows 命令行上限 32767 字符，pack.js 一长就报「文件名或扩展名太长」。
+    # 写成临时文件再跑，跟体积无关。
+    import tempfile
+    fd, script = tempfile.mkstemp(suffix=".js")
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            f.write(probe)
+        r = subprocess.run(["node", script], capture_output=True, text=True,
+                           encoding="utf-8", cwd=str(ROOT))
+    finally:
+        os.unlink(script)
     assert r.returncode == 0, r.stderr
     import json
     out = json.loads(r.stdout.strip().splitlines()[-1])
