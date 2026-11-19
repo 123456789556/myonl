@@ -10,10 +10,12 @@ import os
 os.environ.setdefault("SDL_VIDEODRIVER", "dummy")
 
 import pygame  # noqa: E402
+import pytest  # noqa: E402
 
 from engine.renderer import Renderer  # noqa: E402
 
-pytestmark = [__import__("pytest").mark.ui]
+# 核对桌面渲染侧几何与布局口径自洽（无头 Renderer + 真素材快照），与 test_renderer 同属 ui 层
+pytestmark = [pytest.mark.ui]
 
 GAME_ROOT = os.path.join(os.path.dirname(__file__), "..", "games", "标准示例")
 
