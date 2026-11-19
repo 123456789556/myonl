@@ -165,7 +165,15 @@
             state.cg = ins.name || "";
             return {type: "cg", name: state.cg};
           case "show": {
-            const entry = {char: ins.char, expr: ins.expr || "", anim: ins.anim || ""};
+            // N-1：parser IR 里 pos/scale/z/x/y/layers 本来齐全，这里只存 char/expr/anim，
+            // 手机端把位置/缩放/层级全丢了，桌面端却按 _sprite_rect 正常落位 —— 两端不一致。
+            // 把这几个字段一并带进 entry；存档 save/load 整对象存取，天然随之带上。
+            // 本次没写的位置字段显式给缺省值，避免沿用上一条 @show 残留（桌面端 _show 口径）。
+            const entry = {char: ins.char, expr: ins.expr || "", anim: ins.anim || "",
+                            pos: ins.pos || null, scale: Number(ins.scale) || 0,
+                            z: Number.isFinite(ins.z) ? ins.z : 0,
+                            x: Number(ins.x) || 0, y: Number(ins.y) || 0,
+                            layers: ins.layers || null};
             const idx = state.sprites.findIndex((s) => s.char === entry.char);
             if (idx >= 0) state.sprites[idx] = entry; else state.sprites.push(entry);
             return {type: "show", sprite: entry, sprites: state.sprites.slice()};
