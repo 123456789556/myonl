@@ -11,22 +11,22 @@
 
 ## 装它
 
-**[⬇ 下载 MYONL-v1.2.0.apk](https://github.com/123456789556/myonl/releases/download/v1.2.0/MYONL-v1.2.0.apk)** · 2.1 MB · 安卓 7.0 以上 · 手机平板同一个包
+**[⬇ 下载 MYONL-v1.2.0.apk](https://github.com/123456789556/myonl/releases/download/v1.2.0/MYONL-v1.2.0.apk)** · 安卓 7.0 以上 · 手机平板同一个包
 
-装好打开就是书架，点「新建作品」开始。**点右上角「导出」存作品 —— 会弹系统的「保存到」，
-选个位置就真的进你手机里了。**（旧版本这里点了没反应还提示「已导出」，v1.1.1 修掉了。）
+装好打开就是书架，点「新建作品」开始。点底部「导出」得到一个自包含 `.html`，
+发微信、发 QQ、传电脑，对方浏览器打开就能玩。
 
 ## 三步出东西
 
-1. **写** —— 点作品进去，中间那栏写台词，一行一句。`@` 开头的是指令（`@bg 教室` 换背景、`@音乐 名字` 放歌）。
-2. **放素材** —— 底部「素材」，把图 / 音乐拖进那个虚线框；手机上点一下就能选，也能从相册「分享」进来。
-3. **导出** —— 底部「导出」，点一下得到一个 `.html`，发微信、发 QQ、传电脑，谁都能打开玩。
+1. **写** —— 点作品进去，中间那栏写台词，一行一句。`@` 开头的是指令（`@bg 教室` 换背景、`@music 名字` 放歌）。
+2. **放素材** —— 底部「素材」，把图 / 音乐选进素材库；手机上点一下就能选，也能从相册「分享」进来。
+3. **导出** —— 底部「导出」，得到一个 `.html`，发给谁都能打开玩。
 
 ## 不用担心的三件事
 
 - **不联网** —— 全程离线，作品和素材都不上传。
-- **存档不会丢** —— 换新版只换安装包，作品和素材留在原地（固定签名，不用卸载重装）。
-- **横屏竖屏都能玩** —— 横过来、竖着，画面都跟着重排，不会缩成黑边里的一小块。
+- **存档不会丢** —— 换新版只换安装包，作品和素材留在原地（固定签名，覆盖安装不清数据）。
+- **横屏竖屏都能玩** —— 横过来、竖着，画面都跟着重排。
 
 ## 版本怎么算
 
@@ -41,157 +41,52 @@
 每次发版都在 [docs/CHANGELOG.md](docs/CHANGELOG.md) 写清楚「你能感觉到什么变了」，
 不写内部流水账。细则见 [docs/版本规则.md](docs/版本规则.md)。
 
-**文档之间打架时，以最新的那份为准**（README > 最新 CHANGELOG > 版本规则 > 操作指南 >
-`engine_spec.md` / `产品说明书.md` 这类历史稿）。老文档会当场改或标"过时"，
-不会两份都留着让人自己猜。
-
 ---
 
 # 给想深究的人
 
 只想做游戏的话，上面那些就够了。下面是技术细节。
 
-> 全量测试：**1287 passed, 3 skipped**（2026-11-19 本机实测，Windows，退出码 0）。
-> 这个数是带日期的实测值，不是"大概多少"；下一版会变，届时一并更新。
+> 全量测试：**1313 passed, 3 skipped**（2026-11-19 本机亲手复跑，Windows，退出码 0，129.67s）。
+> 这个数是带日期的实测值；下一版会变，届时一并更新。
 
 ## 手机端能做什么、做不到什么
 
 **能编、能存、能放图放音乐、能自己出成品。**
 
 - 剧本由 `engine/parser.js` 解析，和电脑端 `engine/parser.py` **逐字段一致**（`tools/pack_diff.py`
-  拿 5 个真实工程对拍，452 条指令全部对上）；成品由 `engine/pack.js` 拼成单文件 HTML，手机上点一下就能导出。
-- **素材**：图片进来就压到最长边 1280（手机原图直接塞，成品会几十兆、发给谁打不开）；音频原样存；
-  存在设备本机（图片在 `IndexedDB`，剧本在 `localStorage`）。
-- **一个真实上限**：单文件 HTML 是把素材内联进去的（base64 还会涨三分之一），素材总量到几十 MB 就不好开了。
-  更大的素材要走「文件夹 / zip 发行」——那是 v1.1 的事，现在不硬撑。
-- 传输走数据线（手机连电脑就是个大 U 盘），不做局域网、不做扫码。
+  拿 `games/` 下工程对拍）；成品由 `engine/pack.js` 拼成单文件 HTML，手机上点一下就能导出。
+- **素材**：图片进来就压到最长边 1280；音频原样存；存在设备本机（图片在 `IndexedDB`，剧本在 `localStorage`）。
+- **一个真实上限**：单文件 HTML 把素材内联成 base64（体积再涨约三分之一），40 MB 起提醒风险，
+  80 MB 是硬线，低端机大概率白屏。更大的素材要走「文件夹 / zip 发行」，还没做。
 
 APK 的 `minSdk` 是 24（安卓 7.0），一个包同时装手机和安卓平板。
 **APK 里装的是编辑器**：打开就是「我的作品」，能新建、能写剧本、能放素材、能存本机、能把成品导出带走。
-升级只换安装包、不动数据；改了剧本也不会丢档（存档键里的作品指纹变了会自动把旧档搬过来，旧键保留可回滚）。
+
+手机端解析器未实现 `@voice` `@anim` `@fg` `@cg` `@camera` `@transition` `@plug` `@include`，
+写到这些行会明确报错并指出第几行；完整边界见 [docs/手机端编游戏.md](docs/手机端编游戏.md)。
 
 ## 其它拿法
 
-| 你要什么 | 拿哪个 | 多大 |
-| :--- | :--- | :--- |
-| 任何浏览器打开，不装东西 | 自己导出的单文件 HTML（编辑器底部「导出」一点就有） | 看你的素材量 |
-| 编辑器单文件（`file://` 双击就能编，带离线内核） | `py -3 tools\build_editor_single.py` → `dist/web/editor-single.html` | 0.72 MB |
-| Windows 双击即玩（编辑器 + 打包器） | 仓库内 `py -3 tools\build_release_zip.py --version v1.1.1` 自建（体积大，没挂 Release） | 67.9 MB |
+| 你要什么 | 拿哪个 |
+| :--- | :--- |
+| 任何浏览器打开，不装东西 | 自己导出的单文件 HTML（编辑器底部「导出」一点就有） |
+| 编辑器单文件（`file://` 双击就能编，带离线内核） | `py -3 tools/build_editor_single.py` → `dist/web/editor-single.html` |
+| Windows 双击即玩（编辑器 + 打包器） | 仓库内 `py -3 tools/build_release_zip.py` 自建 |
 
-要手动清旧包：`py -3 tools\gh_release_clean.py --list`（只读，不要 token）或 `--prune --yes`（真删，读 `GITHUB_TOKEN`），
-`--keep-rc 0` 表示 Windows 这一类全清。
+> 不做 iOS。网页包在 iOS 浏览器里能打开，但没有 iOS 安装包。
 
 ## 示例工程（都是自己造的，不是别人的作品）
 
-`games/` 里三个，打开就能改：
+`games/` 里四个，打开就能改：
 
 - **教程示例**（14 个文件）—— 指令怎么用，一句一句都标好了
 - **标准示例**（24 个文件）—— 一个完整工程长什么样：剧本、素材、配置齐全
 - **新游戏模板**（21 个文件）—— 从空的开始，删干净只剩骨架
+- **newbie_demo**（7 个文件）—— 内置进 APK 的试玩示例
 
 素材全是自己造的占位图，随便改、随便删，不用惦记版权。
-
-> **这里不放别人的作品。** 拿别人的游戏当「引擎能做到什么」的样板，最省事，
-> 也最容易吃官司——推上去就是再分发。想参考、想复刻，自己留在本机，别进这个仓库。
-
-## 手机 / 平板优先
-
-同一个工程，三条出口：**手机网页包**、**安卓 APK**（`android/` 自建 WebView 壳 + 固定签名，
-`.github/workflows/android-apk.yml` 出 release 包）、**桌面目录**（双击即玩，目标机不装 Python）。
-
-适配一台手机不难，"同一份代码同时喂手机和安卓平板"才是要钉的地方。三档设备下钉的是**物理尺寸**
-而不是逻辑像素 —— 逻辑画布恒 1080 短边，但 1080 在 390 CSS 宽的手机上是 17 CSS px，在 800 CSS 宽的
-平板上一放大就成了 35 CSS px，字翻倍、一屏只塞得下十几个字，那才是"平板像个放大版手机"的真身：
-
-- **字号按物理反推**：目标 18.5 CSS px → 手机 51 / 平板 25 逻辑 px，落到眼睛里一样大；
-- **正文一行 ≤39 字**：正文宽度上限 720 CSS px，管住平板横屏 1280×800、1024×600 那种宽画布；
-- **立绘跟面板联动**：竖屏人取 `min(86% 屏高, 面板顶 - 6)`，一句短台词时人站大（平板竖屏到 71%），
-  长句把面板顶高就连续收回去；横屏不夹（galgame 常态是人贴底、被对话框压住小腿）；
-- 转屏手机 1080×2337 ↔ 2337×1080、安卓平板 1080×1728 ↔ 1728×1080 各跑一轮，scene / 背景 / 立绘连续，
-  `panelH` 正确重算，`pageerror` 为空。
-
-APK 壳有三条不能省（细节在 `docs/存档与升级.md`）：assets 必须挂到 `https://appassets.androidplatform.net`
-（`file://` 下 localStorage 存不住档）、签名固定在一个 keystore 上（否则更新要求卸载、存档跟着删）、
-返回键先交给 `window.myonlBack` 再退出。工程和签名入库，单文件 HTML 是 CI 产物不入库。
-
-> 这段要说准：**手机单独用（不连电脑）能编游戏**——APK 或 `editor-single.html` 里带了一套离线内核
-> （`editor/gal_offline.js`），把原来打 `/api/*` 的请求全部接到 `localStorage`：
-> 作品库、剧本读写、角色表、素材列表、检查、导出，全在本机跑，不需要 Python、不需要联网、不上云。
-> 仍然是 Python 的地方：**只在电脑上跑的那条链路**（`engine/` 的 pytest、CLI 打包）。
-> 手机上编完就能就地出成品：`engine/pack.js` 会把剧本和素材拼成一个单文件 HTML，
-> 点「导出」下载带走，别人双击就能玩。**不需要先回电脑跑 `build_single`** ——
-> 那条命令只是桌面侧等价入口，两边产物同一种格式。
-> 想换个手机玩，数据线把单文件 HTML 或 APK 拷进去就行，不需要任何联网配对。
-
-**手机上的编辑器是一个"应用"，不是一张塞进 390px 的 IDE**：
-
-1. 打开先进「我的作品」——工程卡片（名字 / `49 条指令 · 21 个素材 · 11 天前`）+ 虚线「＋ 新建作品」，
-   点开卡片才进编辑器，顶栏「‹ 作品」随时退回；
-2. 编辑器只有 **一行顶栏**（作品 / 文件 / 全屏 / 更多）+ 正文 + 底部 **五个纯文字页签**
-   （剧本 · 素材 · 外观 · 预览 · 导出）。菜单栏、活动栏、搜索框、面包屑、文件标签条、富文本工具条都不在手机上出现；
-3. 正文按读书而不是按代码排：15px / 行高 28px / 行号槽 34px；状态栏只留「已保存」和「第 N 行」；
-4. 设置是底部弹层（不是全屏弹窗）：深色 / 浅色、游戏画面方向（跟随 / 竖屏 / 横屏）、返回作品列表；
-5. 横过来就换一套排法：顶栏同样一行，页签收窄到 46px，工作台卡片排两列，引导卡贴右边不被正文压住。
-
-**不被锁死**：编辑器把同一个工程还能导成 **Ren'Py 工程**（`game/script.rpy` + 图片，解压丢进 Ren'Py SDK 即可跑）
-或**通用 JSON**（`game.json` + `assets/`，任何引擎照表实现 op 即可读）。
-
-> 编辑器 / 打包器：Windows 10 21H2+ / Windows 11 · Python 3.9+ · pygame-ce　·　玩家侧：安卓 7.0+ 或任何现代浏览器 · MIT · 完全离线
-
-### 视频背景（`@video`）在手机上是省着放的
-
-帧序列放在 `images/videos/名_001.png` 起连续编号（`@video 名 fps=24`）。桌面端随便缓存，
-手机上不能：**一帧 1080×1920 解码后是 8 MB 出头，10 秒 24fps 就是 240 帧**，循环走完第一轮能吃 2 GB，
-表现是"玩两分钟白屏"。所以播放器只保留**最近用过的 14 帧**（够覆盖半秒、够回头兜底），超出的丢掉引用交给 GC；
-进 `@video` 先把头三帧叫醒（不然第一帧还在读，画面黑一下），`@bg` 切走立刻整片释放。
-
-实测（24 帧序列循环）：手机 390×844 / 平板 800×1280 / 横屏两档，缓存恒定停在 14，切走后归 0，`pageerror` 为空。
-
-### 最近四期
-
-| 版本 | 做了什么 |
-|---|---|
-| P97 | 菜单、设置、存档、回顾从"卡片摞卡片"改成整幕：不再每页一层深色圆角大块，行只留分隔线 + 一条选中蓝条 |
-| P98 | 说话的人亮、别人压到 0.72 亮度（只有说话人自己在场上才压别人，旁白不压）；存档格铺当时的背景缩略图；存档写不进去会明说，不再静默返回 |
-| P99 | 安卓平板：字号按物理尺寸反推、正文限 720 CSS、立绘高度跟"当前"面板联动；测试契约从"逻辑字号"改成"物理字号 + 一行字数" |
-| P100 | `@video` 帧池：只留最近 14 帧、进入预热、切走释放；存档格的台词按真实内宽收边（横屏三列原来会压到隔壁格子） |
-
-## 界面
-
-| 手机竖屏：标题 / 对话 | 手机竖屏：存档 / 菜单 |
-|---|---|
-| ![标题](docs/images/m-title.jpg) | ![存档](docs/images/m-save.jpg) |
-| ![对话](docs/images/m-game.jpg) | ![菜单](docs/images/m-menu.jpg) |
-
-| 手机横屏：存档 | 安卓平板：横屏 / 竖屏 |
-|---|---|
-| ![横屏存档](docs/images/l-save.jpg) | ![平板横屏](docs/images/t-game-l.jpg) ![平板竖屏](docs/images/t-game.jpg) |
-
-![视频背景](docs/images/m-video.jpg)
-
-## 三句话
-
-- **写**：`script.gal` 是纯文本，24 条中文指令，任何编辑器都能改
-- **看**：Web 编辑器左边写剧本、右边实时预览，改一行半秒内出画面
-- **发**：一键出网页包或 APK，玩家装上就能玩，横竖屏都满屏
-
-## 能做什么
-
-**玩家侧**
-
-- 标题 / 继续 / 读档 / 设置 / 画廊菜单，6 个档位 + 自动存档（带背景缩略图、台词、时间）
-- 打字机对话、长段落自动分页、选项分支、历史回看
-- 自动播放、快进（仅跳已读）、隐藏 UI 截图模式、全屏
-- 存档导出 / 导入（`MYONL1:` 文本码），换设备不丢
-- CG 与立绘画廊，按解锁进度展示
-
-**创作侧**
-
-- 24 条指令：`@bg` `@music` `@show` `@anim` `@fg` `@cg` `@camera` `@transition` `@chapter` `@choice` `@set` `@if` `@jump` `@voice` `@video` `@include` …
-- 打字机、22 条缓动曲线、镜头 pan/zoom/shake、三种转场、帧序列视频背景、配音
-- 语法检查、指令补全、素材拖拽导入、章节文件树、场景时间线、UI 设计面板
-- 热重载：改 `.gal` 从当前场景重播，改 `config.json` 字号/颜色即时生效
-- 逻辑画布可配（1280×720 / 1920×1080 等比缩放），素材按需加载 + LRU 缓存
+拿别人的游戏当样板属于再分发，不进这个仓库。
 
 ## 剧本长什么样
 
@@ -213,6 +108,7 @@ APK 壳有三条不能省（细节在 `docs/存档与升级.md`）：assets 必�
 ```
 
 存档记的是「离哪个标签往后数几句」，不是行号，所以剧本小改、加新章节，旧存档依然能读。
+指令全集与参数见 [docs/engine_spec.md](docs/engine_spec.md)。
 
 ## 它是怎么跑起来的
 
@@ -223,7 +119,7 @@ flowchart LR
   C --> D["engine/renderer<br/>scene / sprites / dialog / ui_pages"]
   D --> E["pygame-ce 窗口<br/>逻辑画布 1280×720 等比缩放"]
   C --> F["engine/save<br/>标签 + 偏移 存档"]
-  B --> G["engine/webpack<br/>单文件网页包 / 帧序列内联"]
+  B --> G["engine/webpack<br/>单文件网页包 / 素材内联"]
   G --> H["web/myonl-player.js<br/>手机 / 平板播放器"]
   G --> I["android/<br/>WebView 壳 → APK"]
   B -.-> J["editor/<br/>Web 编辑器 · 实时预览"]
@@ -236,10 +132,10 @@ flowchart LR
 ```powershell
 pip install -r requirements.txt
 
-# 1) 跑自带示例（三幕小故事：走廊 → 天台 → 教室）
+# 1) 跑自带示例
 py -3 -m engine.demo games/标准示例/script.gal --assets games/标准示例
 
-# 2) 新建一个自己的游戏（默认教学骨架；编辑器里新建则是极简 hello world）
+# 2) 新建一个自己的游戏
 py -3 -m engine.cli new 我的第一个游戏
 
 # 3) 打开 Web 编辑器（浏览器 http://127.0.0.1:8000）
@@ -252,83 +148,63 @@ py -3 pack.py games/我的第一个游戏
 py -3 -c "from engine.webpack import build_single; build_single(r'games\我的第一个游戏', r'dist\web\游戏.html', title='游戏')"
 ```
 
-写剧本时建议开热重载：
-
-```powershell
-py -3 -m engine.demo games/我的第一个游戏/script.gal --assets games/我的第一个游戏 --hot-reload
-```
-
-改 `.gal` → 500ms 内从当前场景重播；改 `config.json` → 字号/颜色/对话框即时生效。
-
 ### 测试与门禁
 
 ```powershell
-py -3 -m pytest -q -m "not slow"      # 日常快跑（约 70s）
-py -3 -m pytest -q                    # 全量（含 slow，本机约 2 分钟；通过数以最新 CHANGELOG 为准）
+py -3 -m pytest -q -m "not slow"      # 日常快跑
+py -3 -m pytest -q                    # 全量（含 slow；通过数以最新 CHANGELOG 为准）
 py -3 -m pytest -q -m slow            # 真实打包 / 全渲染 / 性能用例
 ```
 
 - 测试分层：`unit` / `ui` / `integration` / `slow`；覆盖率门禁 80%（`tools/check_coverage.ps1`）
 - 类型检查棘轮：`tools/check_types.ps1`（只拦新增，不偿还存量）
-- 交互走查：`py -3 tools/ui_walkthrough.py --game games/标准示例`（真实键鼠事件驱动，逐屏截图并断言）
-- 布局契约：`web/test/layout-smoke.js` 盯「物理字号 17.5~19.5 CSS」「一行 ≤41 字」，覆盖手机竖横、
-  安卓平板竖横、1024×600 五档 —— 改字号或面板宽度会先在这里红
-
-> 免安装发行包（`editor.exe` + 内置运行库）不放进 Git，用 `build_editor.bat` 与 `tools/build_release_zip.py` 可复现构建。
+- 改代码的环境、门禁与提交约定见 [docs/贡献指南.md](docs/贡献指南.md)；模块结构见 [docs/架构说明.md](docs/架构说明.md)
 
 ## 目录
 
 | 目录 | 内容 |
 |---|---|
-| `engine/` | 引擎核心：解析、运行时、渲染（10 个 render 模块）、存档、编辑器后端、网页包/打包 |
-| `web/` | 手机 / 平板播放器（`myonl-player.js`、`myonl-layout.js`）与布局契约测试 |
+| `engine/` | 引擎核心：解析、运行时、渲染、存档、编辑器后端、网页包/打包 |
+| `web/` | 手机 / 平板播放器与布局契约测试 |
 | `android/` | APK 工程（WebView 壳 + 固定签名 + Gradle 配置） |
 | `editor/` | Web 编辑器前端（HTML/CSS/JS，无构建） |
-| `games/` | 示例工程（标准示例 / 教程示例 / 新游戏模板，全是自造素材） |
+| `games/` | 示例工程（全是自造素材） |
 | `tests/` | pytest 无头测试套件（unit / ui / integration / slow） |
 | `tools/` | 门禁与工具脚本（coverage / pyright / 打包验证 / 素材导入等） |
 | `docs/` | 上手 / 产品说明 / 引擎规格 / 存档与升级 / 开发者与打包指南 |
 
 ## 文档
 
-- 快速上手：[docs/快速上手.md](docs/快速上手.md)
-- 产品说明：[docs/产品说明书.md](docs/产品说明书.md)
-- 引擎规格（指令全集）：[docs/engine_spec.md](docs/engine_spec.md)
-- 存档与升级（为什么升级不毁档）：[docs/存档与升级.md](docs/存档与升级.md)
-- 开发者指南：[docs/开发者使用指南.md](docs/开发者使用指南.md)
-- 打包指南：[docs/打包使用指南.md](docs/打包使用指南.md)
-- 素材导入指南：[docs/素材导入指南.md](docs/素材导入指南.md)
-- 变更记录：[docs/CHANGELOG.md](docs/CHANGELOG.md)
+- [快速上手](docs/快速上手.md) · [手机端编游戏](docs/手机端编游戏.md)
+- [引擎规格（指令全集）](docs/engine_spec.md) · [素材导入指南](docs/素材导入指南.md)
+- [打包使用指南](docs/打包使用指南.md) · [存档与升级](docs/存档与升级.md)
+- [架构说明](docs/架构说明.md) · [贡献指南](docs/贡献指南.md) · [插件开发指南](docs/插件开发指南.md)
+- [产品说明书](docs/产品说明书.md) · [版本规则](docs/版本规则.md) · [变更记录](docs/CHANGELOG.md)
 
 ## 常见问题
 
-- **要会编程吗？** 不用。剧本就是 24 条中文指令；只有当你想改引擎本身时才需要读 Python。
+- **要会编程吗？** 不用。剧本是有限几条中文指令；只有当你想改引擎本身时才需要读 Python。
 - **要联网吗？** 不用。写、预览、打包、游玩全程离线，APK 也不联网。
-- **支持 Mac / Linux 吗？** 编辑器与打包器这版只在 Windows 跑（pygame / PyInstaller）；**玩家侧不限** ——
-  网页包任何现代浏览器都能开，APK 是安卓 7.0 以上。拿 Mac 写剧本、用手机出包这条路没做。
+- **支持 Mac / Linux 吗？** 编辑器与打包器这版只在 Windows 跑；**玩家侧不限** —— 网页包任何现代浏览器都能开，APK 是安卓 7.0 以上。
 - **平板要单独打包吗？** 不用。一个 APK 同时装手机和安卓平板，横竖屏按屏幕重排；素材也只有一份。
-- **能做 3D / 联机吗？** 不做。这版只做视觉小说，并明确拒绝通用引擎方向。
+- **能做 3D / 联机吗？** 不做。这版只做视觉小说。
 - **改剧本会让旧存档失效吗？** 不会。存档锚点是「标签 + 偏移」，不是行号。
 - **升级会不会冲掉存档？** 不会。APK 用固定签名，覆盖安装；存档在应用自己的存储里，导出/导入也留了后路。
-- **打包出来多大？** 桌面版运行库约 46 MB；APK **2.1 MB**（壳 + 播放器，游戏本体塞在里面的 assets 里）；
-  单文件网页包**看素材**——空壳约 0.55 MB，素材全内联进去后 base64 还要再涨三分之一。素材越多越大，这是这条路线的真实上限，不是 bug。
+- **打包出来多大？** APK 是壳 + 播放器；单文件网页包**看素材**——素材全内联进 base64 会再涨约三分之一，素材越多越大，这是这条路线的真实上限，不是 bug。
 - **内置 AI 吗？** 没有。引擎对外提供 JSON 控制原语，可被外部脚本 / AI 调用，但产品本身不含模型。
 - **示例素材能商用吗？** 先读 `NOTICE`；第三方素材各自有条款，不要直接搬。
 
 ## English
 
 MYONL is an **offline, MIT-licensed visual-novel (galgame) engine and authoring tool**. You write a
-plain-text `.gal` script using 24 Chinese commands; the engine handles parsing, presentation
-(typewriter, camera, transitions, animated sprites, frame-sequence video backgrounds, voice),
-branching, save/load, a CG gallery, and packaging.
+plain-text `.gal` script; the engine handles parsing, presentation (typewriter, camera, transitions,
+animated sprites, video backgrounds, voice), branching, save/load, a CG gallery, and packaging.
 
 **Player side targets phones and Android tablets**: one project exports to a single-file HTML bundle
 that fills the screen in both orientations, or to an Android APK (minSdk 24) built by GitHub Actions.
 A Windows desktop build (double-click, no Python on the player's machine) ships in parallel.
-Typography is pinned to physical CSS size, not logical pixels, so text stays the same size on a
-390 px phone and an 800 px tablet; body text is capped at 720 CSS px (~39 chars per line).
 
-- Editor / packager from source: Python 3.9+ + `pygame-ce>=2.5` (Windows only).
+- Editor / packager from source: Python 3.9+ + `pygame-ce` (Windows only).
 - Tests: `pytest -q` → full suite headless, all green (exact count in the latest CHANGELOG).
 - Documentation is written in Chinese: [快速上手](docs/快速上手.md) · [engine spec](docs/engine_spec.md).
 
@@ -337,7 +213,3 @@ Typography is pinned to physical CSS size, not logical pixels, so text stays the
 MIT（见 [LICENSE](LICENSE)）。第三方组件与素材许可见 [NOTICE](NOTICE)。
 
 > 本产品完全离线运行，不依赖任何在线服务。
-
-
-
-
