@@ -715,17 +715,20 @@ def build_single(project_root: str, out_file: str, *, title: str = "") -> dict:
     file_mb = size / (1024 * 1024)
     # P131：movies 已内联进 pack_json，总体积自然计入；视频内联成 base64 比原文件再胖约 37%。
     if size > FILE_HARD_WARN:
+        file_warning_level = "hard"
         file_warning = (
             f"单文件 {file_mb:.0f} MB，超过 {FILE_HARD_WARN // (1024 * 1024)} MB 硬线。"
             f"手机要先把整个文件读进内存才显示第一句，这个体积大概率白屏或闪退。"
             f"视频内联成 base64 会再胖约 37%，建议删素材，或者拆成多个章节包分开出。"
         )
     elif size > FILE_SOFT_WARN:
+        file_warning_level = "soft"
         file_warning = (
             f"单文件 {file_mb:.0f} MB。低端机打开会明显慢一拍，还能用，但别再加素材了"
             f"（视频内联成 base64 会再胖约 37%）。"
         )
     else:
+        file_warning_level = ""
         file_warning = ""
     return {
         "out": out,
@@ -745,6 +748,7 @@ def build_single(project_root: str, out_file: str, *, title: str = "") -> dict:
         # P119：单文件自身体积（跟解码内存预算是两回事）
         "file_mb": round(file_mb, 1),
         "file_warning": file_warning,
+        "file_warning_level": file_warning_level,
     }
 
 

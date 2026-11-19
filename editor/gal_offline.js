@@ -893,22 +893,24 @@
       var assets = sp.assets || {}, audio = sp.audio || {};
       var moviesPack = moviesOf(sp, assets);
       var names = Object.keys(assets);
-      var mb = 0;
-      names.forEach(function (k) { mb += assets[k].length; });
-      Object.keys(audio).forEach(function (k) { mb += audio[k].length; });
-      Object.keys(moviesPack).forEach(function (k) { mb += moviesPack[k].src.length; });
-      mb = Math.round(mb / 1024 / 1024 * 10) / 10;
       var r = window.MYONLPack.buildPack({
         title: p.name, scriptText: p.text,
         assets: assets, audio: audio, videos: {}, movies: moviesPack, config: {}, orientation: "any",
       });
       if (!r.ok) { toast("剧本第 " + r.error.line + " 行：" + r.error.message, true); return; }
+      // 体积口径跟打包器走（data URI 按 base64 还原成字节估），不再自己拿字符串长度瞎算。
+      var mb = r.fileMb || 0;
       var html = window.MYONLPack.renderSingle(r.pack, src);
+      // P136：硬线（>80MB）在手机上大概率白屏/闪退，不能跟软线一样只喊一句"成品好了"。
+      if (r.fileWarningLevel === "hard") {
+        toast("⚠ 硬线告警：" + r.fileWarning, true);
+      }
       download(html, p.name + ".html", "text/html;charset=utf-8");
       var parts = [];
       if (names.length) parts.push(names.length + " 张图");
       if (Object.keys(moviesPack).length) parts.push(Object.keys(moviesPack).length + " 段视频");
       if (Object.keys(audio).length) parts.push(Object.keys(audio).length + " 段音频");
+      if (r.fileWarningLevel === "soft") toast("体积提醒：" + r.fileWarning, true);
       toast(parts.length
         ? ("成品好了：带了 " + parts.join(" + ") + "，约 " + mb + " MB")
         : "成品好了（还没有素材，画面是渐变色）");

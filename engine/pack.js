@@ -102,14 +102,19 @@
     });
     var fileMb = Math.round(bytes / (1024 * 1024) * 10) / 10;
     var fileWarning = "";
+    // 告警等级与电脑端 webpack.py 同一口径：soft=超 40MB 提醒，hard=超 80MB 硬线。
+    var fileWarningLevel = "";
     if (bytes > FILE_HARD_WARN) {
+      fileWarningLevel = "hard";
       fileWarning = "单文件约 " + fileMb + " MB，超过 80 MB 硬线。手机要先把整个文件读进内存才显示第一句，"
         + "这个体积大概率白屏或闪退；视频内联成 base64 还会再胖约 37%，建议删素材或拆章。";
     } else if (bytes > FILE_SOFT_WARN) {
+      fileWarningLevel = "soft";
       fileWarning = "单文件约 " + fileMb + " MB。低端机打开会明显慢一拍，还能用，但别再加素材了"
         + "（视频内联成 base64 会再胖约 37%）。";
     }
-    return { bytes: bytes, fileMb: fileMb, fileWarning: fileWarning };
+    return { bytes: bytes, fileMb: fileMb, fileWarning: fileWarning,
+             fileWarningLevel: fileWarningLevel };
   }
 
   function buildPack(opts) {
@@ -145,7 +150,8 @@
     }
     var rep = sizeReport(pack);
     return { ok: true, pack: pack, error: null, bytes: rep.bytes,
-             fileMb: rep.fileMb, fileWarning: rep.fileWarning };
+             fileMb: rep.fileMb, fileWarning: rep.fileWarning,
+             fileWarningLevel: rep.fileWarningLevel };
   }
 
   /* 渲染成单文件 HTML。playerSrc = [core.js 文本, layout.js 文本, player.js 文本] */

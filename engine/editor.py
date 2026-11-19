@@ -1763,6 +1763,7 @@ class _EditorHandler(BaseHTTPRequestHandler):
             # 手机上打开卡半天根本不知道为什么。现在原样透传，前端负责显示。
             "file_mb": stat.get("file_mb", 0),
             "file_warning": stat.get("file_warning", ""),
+            "file_warning_level": stat.get("file_warning_level", ""),
         })
 
     def _serve_single_file(self, path: str) -> None:

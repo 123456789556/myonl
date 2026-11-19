@@ -35,6 +35,10 @@
           say("注意：有 " + d.missing.length + " 个素材找不到（" + d.missing.slice(0, 3).join("、")
             + "），游戏里会是空白");
         }
+        // P136：这条菜单路径以前只喊"已导出"，体积告警（含硬线）被丢在响应里没人看。
+        if (d.file_warning) {
+          say((d.file_warning_level === "hard" ? "⚠ 硬线：" : "体积提醒：") + d.file_warning);
+        }
       })
       .catch((e) => say("导出失败：" + e));
   }

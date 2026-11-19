@@ -971,12 +971,22 @@
       }
       // P130：体积告警以前只打在控制台里，作者点完"导出成功"就散场，
       // 到了手机上打开卡半天，也不知道是自己把图塞多了。
+      // P136：硬线（>80MB）不再是一行红字提示 —— 这个体积在低端机上大概率白屏/闪退，
+      // 做成红底强提示 + 必须手动确认，作者没法扫一眼就滑过去。软线（>40MB）仍是红字提醒。
       if (resp.file_warning) {
         const big = document.createElement("div");
         big.className = "modal-hint";
-        big.style.color = "#ff9d9d";
-        big.textContent = "这一份 " + (resp.file_mb || "?") + " MB：" + resp.file_warning
-          + "（想瘦下来，把进游戏的图先缩到 1280 长边）";
+        const hard = resp.file_warning_level === "hard";
+        if (hard) {
+          big.style.cssText = "margin-top:10px;padding:12px 14px;border-radius:12px;"
+            + "background:rgba(255,77,77,.14);border:1px solid rgba(255,77,77,.55);color:#ffb3b3;";
+          big.textContent = "⚠ 硬线告警：这一份 " + (resp.file_mb || "?") + " MB：" + resp.file_warning
+            + " 不精简素材就发出去，对方手机很可能打不开。";
+        } else {
+          big.style.color = "#ff9d9d";
+          big.textContent = "这一份 " + (resp.file_mb || "?") + " MB：" + resp.file_warning
+            + "（想瘦下来，把进游戏的图先缩到 1280 长边）";
+        }
         msg.parentNode.appendChild(big);
       }
       toast("已导出单文件游戏");
