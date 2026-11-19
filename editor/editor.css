@@ -2913,7 +2913,9 @@ input[type="color"] {
   /* 桌面规定下拉最长 440px（一行太宽不好读）；窄屏要满宽，否则平板右半边一片空 */
   .scene-page .scene-form select, .scene-page .scene-form input { max-width: none !important; }
   .scene-page .sf-stage-wrap { margin: 10px 0 4px; }
-  .scene-page .sf-stage { height: 0; padding-bottom: 56%; position: relative; border-radius: 12px; overflow: hidden; }
+  /* 预览比例可在设置里切（16:9 / 20:9 全面屏 / 4:3 老手机），
+     用同一段剧本看它在不同屏上什么处境，而不是只能看固定 16:9。 */
+  .scene-page .sf-stage { height: 0; padding-bottom: var(--sf-pad, 56.25%); position: relative; border-radius: 12px; overflow: hidden; }
   .scene-page .sf-stage-hint { font-size: 11.5px; }
   .scene-page .sf-cast, .scene-page .sf-say, .scene-page .sf-opt { flex-wrap: wrap; gap: 6px; padding: 8px; border-radius: 10px; align-items: flex-start; }
   .scene-page .sf-cast select, .scene-page .sf-say select, .scene-page .sf-say textarea,
@@ -3144,7 +3146,10 @@ body.m-home-open .ob-card { display: none !important; }
 }
 /* 抽屉只占下半屏：上面那截要留着看见首页 —— 全屏盖死会让人以为"进了另一个页面"，
    不知道自己在哪、也不知道怎么回去。 */
-.m-set-sheet .m-sheet-body { max-height: 76vh !important; overflow-y: auto; }
+.m-set-sheet .m-sheet-body { max-height: 76vh !important; overflow-y: auto; z-index: 2; }
+/* 遮罩和抽屉都 auto 层级时谁在上面靠 DOM 顺序，实测按钮点到的是遮罩 ——
+   设置里每个选项都点不动，只有"点外面关闭"能用。这里明确分层。 */
+.m-set-sheet .m-sheet-mask { z-index: 1; }
 /* 遮罩别压成一片死黑：抽屉只占下半屏，上面要能看见首页，才像"盖了一层"而不是"进了另一页" */
 .m-set-sheet .m-sheet-mask { display: block !important; background: rgba(0, 0, 0, .28); }
 .m-set-sheet .m-sheet-body { background: var(--mantle); }

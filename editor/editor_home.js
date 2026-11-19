@@ -235,6 +235,13 @@
   // ---- 设置：主题 / 游戏方向 / 返回作品列表。做成一页，别学桌面端散在五个地方 ----
   var sheet = null;
   var orient = "any";
+  // 预览框比例：设置里切，启动时按上次的选择恢复。
+  // 16:9 = 56.25% 高，20:9 全面屏 = 45%，4:3 老手机 = 75%。
+  var RATIO_PAD = { "16:9": "56.25%", "20:9": "45%", "4:3": "75%" };
+  try {
+    var _rp = RATIO_PAD[localStorage.getItem("myonl_preview_ratio")];
+    if (_rp) document.documentElement.style.setProperty("--sf-pad", _rp);
+  } catch (e) {}
   function openSettings() {
     if (sheet) { sheet.remove(); sheet = null; return; }
     var theme = "dark";
@@ -261,6 +268,13 @@
             '<button type="button" data-v="landscape" class="' + (orient === "landscape" ? "on" : "") + '">横屏</button>' +
           '</span></div>' +
         '<div class="m-set-note">拿不准就选「跟随」—— 横过来竖着都能玩，导出时不用再选。</div>' +
+        '<div class="m-set-row"><span>预览比例</span>' +
+          '<span class="m-seg" id="mSetRatio">' +
+            '<button type="button" data-v="16:9" class="on">16:9</button>' +
+            '<button type="button" data-v="20:9">20:9</button>' +
+            '<button type="button" data-v="4:3">4:3</button>' +
+          '</span></div>' +
+        '<div class="m-set-note">只改上面那块预览框的形状，不动导出结果。做的时候拿它对照自己手机的屏幕。</div>' +
       '</div>';
     // 抽屉挂 <html> 而不是 <body>：body 上挂了编辑器各种档位类，fixed 定位在里面被算成流的位置
   // （实测顶边跑到 1007，正好是内容底部）。挂 html 之后 fixed 的包含块就是视口本身。
@@ -310,6 +324,25 @@
         setTimeout(function () { t.remove(); }, 2000);
       });
     });
+
+    // 预览比例：只改上面那块预览框的形状，不改导出结果。
+    var rg = sheet.querySelector("#mSetRatio");
+    if (rg) {
+      var curRatio = "16:9";
+      try { curRatio = localStorage.getItem("myonl_preview_ratio") || "16:9"; } catch (e) {}
+      if (!RATIO_PAD[curRatio]) curRatio = "16:9";
+      rg.querySelectorAll("button").forEach(function (x) {
+        x.classList.toggle("on", x.dataset.v === curRatio);
+      });
+      rg.addEventListener("click", function (e) {
+        var b = e.target.closest ? e.target.closest("button[data-v]") : null;
+        if (!b) return;
+        var v = b.dataset.v;
+        try { localStorage.setItem("myonl_preview_ratio", v); } catch (err) {}
+        document.documentElement.style.setProperty("--sf-pad", RATIO_PAD[v] || "56.25%");
+        rg.querySelectorAll("button").forEach(function (x) { x.classList.toggle("on", x === b); });
+      });
+    }
   }
 
   fetch("/api/home").then(function (r) { return r.json(); }).then(function (res) {
