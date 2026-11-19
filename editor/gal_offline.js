@@ -482,19 +482,31 @@
       var kd = kindRead();
       var list = Object.keys(map || {});
       var changed = false;
+      var failed = [];
       return list.reduce(function (chain, n) {
         return chain.then(function () {
           var k = (kinds && kinds[n]) || "image";
-          if (names.indexOf(n) < 0) { names.push(n); changed = true; }
-          kd[n] = k;
           return dbRun("readwrite", function (st) {
             return st.put({ dataUrl: map[n], kind: k }, n);
+          }).then(function () {
+            // 落库成功才进索引：失败的名字不进，避免索引项指向缺素材体
+            if (names.indexOf(n) < 0) { names.push(n); changed = true; }
+            kd[n] = k;
+          }).catch(function () {
+            failed.push(n);
           });
         });
       }, Promise.resolve()).then(function () {
-        if (changed) idxWrite(names);
-        kindWrite(kd);
-        return list.length;
+        if (!failed.length) {
+          if (changed) idxWrite(names);
+          kindWrite(kd);
+        } else {
+          // 有失败条目就不整体提交索引；索引写本身失败也记进清单，交上层如实上报
+          var iok = changed ? idxWrite(names) : true;
+          var kok = kindWrite(kd);
+          if (!iok || !kok) failed.push("__index__");
+        }
+        return { ok: list.length - failed.length, fail: failed };
       });
     },
     totalBytes: function () {
@@ -973,7 +985,7 @@
     }
     if (!window.MYONLAssets || !window.MYONLAssets.restore) {
       toast("已导入 " + n + " 个作品；素材这条链路没加载，图和声音要重新放", true);
-      return Promise.resolve(true);
+      return Promise.resolve(false);
     }
     var all = {};
     var kinds = {};
@@ -988,14 +1000,25 @@
       var kind = kindsIn && (kindsIn[k] === "audio" || kindsIn[k] === "video") ? kindsIn[k] : "image";
       put(k, assets[k], kind);
     });
-    return window.MYONLAssets.restore(all, kinds).then(function (cnt) {
-      var parts = [n + " 个作品", cnt + " 个素材（原名放回）"];
+    return window.MYONLAssets.restore(all, kinds).then(function (r) {
+      var failed = (r && r.fail) || [];
+      var okCount = (r && typeof r.ok === "number") ? r.ok : Object.keys(all).length;
+      if (failed.length) {
+        // 部分失败必须如实上报：返回 false，调用方不 reload —— 一刷新就把
+        // 「哪几项没写进去」的现场刷没了，用户还以为备份恢复成功。
+        var shown = failed.filter(function (x) { return x !== "__index__"; }).slice(0, 3).join("、");
+        var tail = failed.length > 3 ? " 等" : "";
+        toast("部分素材没恢复：" + failed.length + " 个没写进去" + (shown ? "（" + shown + tail + "）" : "") + "，请重新导入", true);
+        return false;
+      }
+      var parts = [n + " 个作品", okCount + " 个素材（原名放回）"];
       if (legacy) parts.push("旧格式备份：视频类型没带走，若有视频会按图片还原");
       toast("已导入 " + parts.join("、"), legacy);
       return true;
     }).catch(function (e) {
+      // 整条链路抛错也算失败：不能再 return true 让调用方照常刷新
       toast("作品导入了，素材没铺完：" + (e.message || e), true);
-      return true;
+      return false;
     });
   };
 
