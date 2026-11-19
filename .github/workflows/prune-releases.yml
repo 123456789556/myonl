@@ -1,0 +1,37 @@
+name: 清理旧 Release
+
+# 一次性清掉过期的整包 Release（v*）。
+# 日常的 apk-* 清理由 android-apk.yml 自己管，这里不重复。
+# 之所以放进 CI：本机没有 PAT，删 Release 需要 API 写权限，而 CI 里有 GITHUB_TOKEN。
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - ".github/workflows/prune-releases.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  prune:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 删除名单里的旧 Release（连带 tag）
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -uo pipefail
+          # v1.1.1 / v1.2.0 / v1.2.1 / v1.2.2 是"手机上出不了包"或功能不全的早期包。
+          # v1.2.3 留着当回退点：能出包、有版本快照，只是试玩退不出来。
+          DROP="v1.1.1 v1.2.0 v1.2.1 v1.2.2"
+          for t in $DROP; do
+            if gh release view "$t" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+              echo "删除 $t"
+              gh release delete "$t" --repo "$GITHUB_REPOSITORY" --yes --cleanup-tag \
+                || echo "删 $t 失败，跳过（不影响其它）"
+            else
+              echo "$t 不存在，跳过"
+            fi
+          done
+          echo "---- 剩余 Release ----"
+          gh release list --repo "$GITHUB_REPOSITORY" --limit 20
