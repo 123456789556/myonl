@@ -1544,37 +1544,63 @@
     const liveH = L.landscape ? baseH : Math.min(baseH, panelTopY() - 6);
     const k = L.viewW / 1280;   // 剧本里的像素值以桌面 1280 为基准
     const nowT = performance.now() / 1000;
-    list.forEach((sp, i) => {
+    // 宽屏双栏：立绘槽位限制在右侧立绘栏；窄屏（手机/平板竖屏）占整幅底景。
+    const colX = L.wide ? L.spriteColX : 0;
+    const colW = L.wide ? L.spriteColW : L.viewW;
+    // 按 z 升序绘制（大者在上）；z 相同保持原顺序，旧剧本（无 z）行为不变。
+    const order = list.map((sp, i) => ({sp, i}))
+      .sort((a, b) => ((a.sp.z || 0) - (b.sp.z || 0)) || (a.i - b.i));
+    order.forEach(({sp, i}) => {
       const key = sp.expr ? `${sp.char}_${sp.expr}` : sp.char;
       const img = getAsset(key) || getAsset(sp.char);
       if (!img) return;
       const disp = animDisp(sp.char);
-      const h = liveH * (disp.scale > 0 ? disp.scale : 1) * (L.landscape ? 1 : 0.95);
-      // 竖长的全身立绘整张塞进横屏，只剩中间细长一条，人小得像贴纸。
-      // 横屏就按 galgame 的常态构图：只画上 62%（头顶到膝），按屏高放大，膝盖以下让对话框压住。
-      // 阈值原来写 2.2，是按 368×1400（比例 3.8）那种细长图定的；苏晴这张 872×1915
-      // 比例 2.198，刚好卡在边界外 → 不走半身裁切，整人塞进 92% 屏高，看着像站远处。
-      // 1.5 覆盖所有竖构图立绘（正常立绘宽高比都 > 1.5）。
-      const tall = L.landscape && img.height > img.width * 1.5;
-      const srcH = tall ? Math.round(img.height * 0.62) : img.height;
-      const w = img.width * (h / srcH);
-      const slotW = L.viewW / n;
-      // 横屏单人时人物偏右三分之二处：左边留白给画面，对话框在底部压住腰——
-      // 完整居中的话，两侧空得对称又无聊，人贴在正中像证件照。
-      // 竖屏两人同屏收到 0.30 / 0.70（三人 0.30/0.50/0.70）：
-      // 0.25/0.75 是等分画布，碰到宽一点的立绘（苏晴 872×1915 那种）左边缘顶出屏幕，
-      // 半个手肘和头发被裁掉，看着像图放歪了。横屏仍按槽位等分。
-      const cx = (L.landscape && n === 1)
-        ? L.viewW * 0.63 + disp.x * k
-        : (L.landscape
-            ? slotW * (i + 0.5) + disp.x * k
-            : L.viewW * (n >= 2 ? 0.30 + 0.40 * (i / Math.max(1, n - 1)) : 0.5) + disp.x * k);
-      // 脚底锚点：竖屏让脚沉进去小半截（panelH 的 9%）——脚贴在面板上沿时，
-      // 下面还有一大片地板，看着像浮在半空；让面板压住鞋尖，人才像站在前景。
-      // 脚底锚在「当前」面板上沿（面板高度是补间的，不能用布局里那个定值）
-      const bottom = (L.landscape
-        ? L.viewH
-        : panelTopY() + Math.round(panelHNow() * 0.09)) + disp.y * k;
+      // N-1：写了 pos/scale 的立绘按桌面端 _sprite_rect 落位：原图 × scale，超屏等比收进，
+      // 左/右贴边留 margin；没写 pos/scale 的走旧的槽位均分逻辑，行为不变。
+      const hasPos = sp.pos || (Number(sp.scale) > 0);
+      let h, w, cx, bottom;
+      if (hasPos) {
+        const sc = (Number(sp.scale) > 0 ? Number(sp.scale) : 1) * (disp.scale > 0 ? disp.scale : 1);
+        const availH = L.landscape ? liveH : Math.min(baseH, panelTopY() - 6);
+        const availW = colW - Math.round(L.viewW * 0.02);
+        const fit = Math.min(availH / img.height, availW / img.width, 1);
+        h = Math.max(1, Math.round(img.height * sc * fit));
+        w = Math.max(1, Math.round(img.width * sc * fit));
+        const margin = Math.round(L.viewW * 0.02);
+        if (sp.pos === "左") cx = colX + margin + w / 2;
+        else if (sp.pos === "右") cx = colX + colW - margin - w / 2;
+        else cx = colX + colW / 2;
+        cx += (Number(sp.x) || 0) * k + disp.x * k;
+        bottom = (L.landscape ? L.viewH : panelTopY() + Math.round(panelHNow() * 0.09))
+          + (Number(sp.y) || 0) * k + disp.y * k;
+      } else {
+        h = liveH * (disp.scale > 0 ? disp.scale : 1) * (L.landscape ? 1 : 0.95);
+        // 竖长的全身立绘整张塞进横屏，只剩中间细长一条，人小得像贴纸。
+        // 横屏就按 galgame 的常态构图：只画上 62%（头顶到膝），按屏高放大，膝盖以下让对话框压住。
+        // 阈值原来写 2.2，是按 368×1400（比例 3.8）那种细长图定的；苏晴这张 872×1915
+        // 比例 2.198，刚好卡在边界外 → 不走半身裁切，整人塞进 92% 屏高，看着像站远处。
+        // 1.5 覆盖所有竖构图立绘（正常立绘宽高比都 > 1.5）。
+        const tall = L.landscape && img.height > img.width * 1.5;
+        const srcH = tall ? Math.round(img.height * 0.62) : img.height;
+        w = img.width * (h / srcH);
+        const slotW = colW / n;
+        // 横屏单人时人物偏右三分之二处：左边留白给画面，对话框在底部压住腰——
+        // 完整居中的话，两侧空得对称又无聊，人贴在正中像证件照。
+        // 竖屏两人同屏收到 0.30 / 0.70（三人 0.30/0.50/0.70）：
+        // 0.25/0.75 是等分画布，碰到宽一点的立绘（苏晴 872×1915 那种）左边缘顶出屏幕，
+        // 半个手肘和头发被裁掉，看着像图放歪了。横屏仍按槽位等分。
+        cx = (L.landscape && n === 1)
+          ? colX + colW * 0.63 + disp.x * k
+          : (L.landscape
+              ? colX + slotW * (i + 0.5) + disp.x * k
+              : colX + colW * (n >= 2 ? 0.30 + 0.40 * (i / Math.max(1, n - 1)) : 0.5) + disp.x * k);
+        // 脚底锚点：竖屏让脚沉进去小半截（panelH 的 9%）——脚贴在面板上沿时，
+        // 下面还有一大片地板，看着像浮在半空；让面板压住鞋尖，人才像站在前景。
+        // 脚底锚在「当前」面板上沿（面板高度是补间的，不能用布局里那个定值）
+        bottom = (L.landscape
+          ? L.viewH
+          : panelTopY() + Math.round(panelHNow() * 0.09)) + disp.y * k;
+      }
       const t0 = (state.spriteAt && state.spriteAt[sp.char]) || 0;
       const fadeIn = t0 ? Math.min(1, (nowT - t0) / 0.26) : 1;
       if (fadeIn <= 0) return;
@@ -1603,6 +1629,7 @@
       ctx.translate(cx, bottom);
       ctx.rotate(idle.sway);
       ctx.scale(1 - idle.breath * 0.55, 1 + idle.breath);
+      const srcH = hasPos ? img.height : tall ? Math.round(img.height * 0.62) : img.height;
       ctx.drawImage(img, 0, 0, img.width, srcH, -w / 2, -h, w, h);
       ctx.restore();
     });
@@ -1731,10 +1758,16 @@
     const rows = Math.max(1, Math.min(L.maxTextRows, (state.lines || []).length || 1));
     const h = panelHNow();
     const st = dlgStyle();
+    // 宽屏双栏：对话栏左缘/宽度取 layout 给的 dialogCol；非宽屏沿用现有居中几何。
+    const panelX = L.wide ? L.dialogColX : L.panelX;
+    const panelW = L.wide ? L.dialogColW : L.panelW;
     // 内缩按屏幕宽算（不是按字号），手机上约 9 CSS px，平板约 19 CSS px
     const inset = st === 0 ? 0 : Math.round(L.viewW * (L.landscape ? 0.013 : 0.024));
-    return {x: L.panelX + inset, y: L.viewH - h - L.bottom,
-            w: L.panelW - inset * 2, h: h, rows: rows, style: st};
+    // 宽屏用覆盖后的 panelX/panelW；L.panelX / L.panelW 字面是既有非宽屏回退口径。
+    const base = {x: L.panelX + inset, y: L.viewH - h - L.bottom,
+                  w: L.panelW - inset * 2, h: h, rows: rows, style: st};
+    if (L.wide) { base.x = panelX + inset; base.w = panelW - inset * 2; }
+    return base;
   }
 
   /* 「#rrggbb + 透明度」：角色色要能当半透明底/描边用 */
@@ -1967,7 +2000,9 @@
     const dg = c.dialog_gap !== undefined ? Number(c.dialog_gap)
       : (c.gap !== undefined ? Number(c.gap) : 40);
     const dr = Number(c.radius) || 0;
-    const bw = dw ? Math.round(clampN(L.choiceW * (dw / 420), L.viewW * 0.5, L.viewW * 0.94)) : L.choiceW;
+    // 宽屏双栏：选项宽度取 choiceColW；非宽屏沿用 choiceW。
+    const bwRef = L.wide ? L.choiceColW : L.choiceW;
+    const bw = dw ? Math.round(clampN(bwRef * (dw / 420), L.viewW * 0.5, L.viewW * 0.94)) : bwRef;
     const bh = dh ? Math.round(clampN(L.choiceH * (dh / 52), L.fs * 2.2, L.fs * 4.2)) : L.choiceH;
     const dgr = Number.isFinite(dg) ? dg / 40 : 1;   // dialog_gap = 选项组离对话区多远
     // P89：0.66 -> 0.71。竖屏选项块以下原来空掉近四分之一屏（立绘脚与地板都在下面），
@@ -2138,10 +2173,12 @@
     // 往下放到胸口一带，既不压角色也不贴屏幕底边
     const startY = Math.max(L.marginX, geom.centerY - totalH / 2);
     // 横屏选项靠左：画布 1686 长、人物站右 63%，选项居中就正好压在人腰上。
-    // 靠左贴着画面边，人整个露出来，视线从字到人是一条横线。
-    const x = L.landscape
-      ? Math.round(L.viewW * 0.052)
-      : (L.viewW - bw) / 2;
+    // 宽屏双栏：选项左缘对齐 choiceColX；非宽屏横屏沿用靠左 0.052，竖屏居中。
+    const x = L.wide
+      ? L.choiceColX
+      : L.landscape
+        ? Math.round(L.viewW * 0.052)
+        : (L.viewW - bw) / 2;
 
     // 选项上方留一句「在答什么」：选项出现时对话框是藏起来的，
     // 光给几个按钮玩家会失去上下文（尤其横屏一整屏空着的时候）。
