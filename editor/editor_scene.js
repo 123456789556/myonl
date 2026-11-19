@@ -408,8 +408,9 @@
     });
     rows.push('<div class="sf-layer fixed bg"><span class="sf-layer-tag">最下</span>' +
       '<span class="sf-layer-name">背景' + (model.bg ? " · " + esc(model.bg.name) : "") + "</span></div>");
-    return '<div class="sf-sec sf-sec-layer">图层顺序 <span class="sf-hint">拖动立绘行改 z，越上越靠前</span></div>' +
-      '<div class="sf-layers" id="sfLayers">' + rows.join("") + "</div>";
+    // 图层 z 序是"要做精细调整时才需要"的东西，默认折起来：新手先把台词写通顺更重要
+    return '<details class="sf-fold"><summary class="sf-sec sf-sec-layer">图层顺序 <span class="sf-hint">谁压在上面</span></summary>' +
+      '<div class="sf-layers" id="sfLayers">' + rows.join("") + "</div></details>";
   }
 
   function reorderLayers(fromI, toI) {

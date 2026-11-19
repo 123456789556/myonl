@@ -3333,3 +3333,4 @@ body.m-home-open .ob-card { display: none !important; }
 @media (orientation: landscape) and (max-height: 520px) {
   .toast-wrap { left: auto; right: 16px; bottom: calc(56px + 16px); align-items: flex-end; }
 }
+.sf-fold>summary{list-style:none;cursor:pointer} .sf-fold>summary::-webkit-details-marker{display:none}
