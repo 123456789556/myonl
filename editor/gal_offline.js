@@ -822,18 +822,33 @@
   window.__myonlExportLib = function () {
     var bag = readLib();
     var sp = window.MYONLAssets ? window.MYONLAssets.allSplit()
-      : Promise.resolve({ assets: {}, audio: {} });
+      : Promise.resolve({ assets: {}, audio: {}, movies: {} });
     toast("正在打包作品和素材…");
     return sp.then(function (s) {
-      var n = Object.keys((s && s.assets) || {}).length;
-      var m = Object.keys((s && s.audio) || {}).length;
+      var assets = (s && s.assets) || {};
+      var audio = (s && s.audio) || {};
+      var movies = (s && s.movies) || {};
+      // 视频在 allSplit 里同时留在 assets（播放器只认名字）；备份不存两遍，摘到 movies 桶，
+      // 类型单独记进 kinds。以前导出只带 assets+audio，导入又把 assets 一律标成图 ——
+      // 带 mp4 的作品换机恢复后视频全变回图片，播放器按图处理，等于假备份。
+      var kinds = {};
+      Object.keys(movies).forEach(function (k) { delete assets[k]; kinds[k] = "video"; });
+      Object.keys(audio).forEach(function (k) { kinds[k] = "audio"; });
+      Object.keys(assets).forEach(function (k) { kinds[k] = "image"; });
+      var ni = Object.keys(assets).length;
+      var nu = Object.keys(audio).length;
+      var nv = Object.keys(movies).length;
       var out = {
-        myonl: "lib", v: 2,
+        myonl: "lib", v: 3,
         projects: bag.projects || [], current: bag.current || "",
-        assets: (s && s.assets) || {}, audio: (s && s.audio) || {}
+        assets: assets, audio: audio, movies: movies, kinds: kinds
       };
       download(JSON.stringify(out, null, 1), "myonl-作品库.json");
-      toast("已导出 " + (out.projects.length) + " 个作品、" + n + " 张图、" + m + " 段音频");
+      var parts = [out.projects.length + " 个作品"];
+      if (ni) parts.push(ni + " 张图");
+      if (nv) parts.push(nv + " 段视频");
+      if (nu) parts.push(nu + " 段音频");
+      toast("已导出 " + parts.join("、"));
     }).catch(function () {
       // 素材读不出来也至少把剧本带走，别让整件事白跑
       download(JSON.stringify({ myonl: "lib", v: 1, projects: bag.projects || [], current: bag.current || "" }, null, 1),
@@ -916,8 +931,13 @@
     var n = lib.projects.length;
     var assets = (lib.assets && typeof lib.assets === "object") ? lib.assets : {};
     var audio = (lib.audio && typeof lib.audio === "object") ? lib.audio : {};
-    var na = Object.keys(assets).length, nu = Object.keys(audio).length;
-    if (!na && !nu) {
+    var movies = (lib.movies && typeof lib.movies === "object") ? lib.movies : {};
+    var kindsIn = (lib.kinds && typeof lib.kinds === "object") ? lib.kinds : null;
+    // 旧格式（v1/v2）只有 assets+audio，没有类型索引：assets 按图、audio 按音频还原。
+    // 旧文件里混进去的视频当时就被标成了图，救不回来；提示必须说实话，不能假装视频回来了。
+    var legacy = !kindsIn && !Object.keys(movies).length;
+    var na = Object.keys(assets).length, nu = Object.keys(audio).length, nv = Object.keys(movies).length;
+    if (!na && !nu && !nv) {
       toast("已导入 " + n + " 个作品（这份备份里没有素材）");
       return Promise.resolve(true);
     }
@@ -927,10 +947,21 @@
     }
     var all = {};
     var kinds = {};
-    Object.keys(assets).forEach(function (k) { all[k] = assets[k]; kinds[k] = "image"; });
-    Object.keys(audio).forEach(function (k) { all[k] = audio[k]; kinds[k] = "audio"; });
+    // 同一名字在多个桶里出现时 movies 优先：既是真视频就不能被 assets 覆盖回图片。
+    function put(k, v, kind) {
+      if (all[k] !== undefined) return;
+      all[k] = v; kinds[k] = kind;
+    }
+    Object.keys(audio).forEach(function (k) { put(k, audio[k], "audio"); });
+    Object.keys(movies).forEach(function (k) { put(k, movies[k], "video"); });
+    Object.keys(assets).forEach(function (k) {
+      var kind = kindsIn && (kindsIn[k] === "audio" || kindsIn[k] === "video") ? kindsIn[k] : "image";
+      put(k, assets[k], kind);
+    });
     return window.MYONLAssets.restore(all, kinds).then(function (cnt) {
-      toast("已导入 " + n + " 个作品、" + cnt + " 个素材（原名放回）");
+      var parts = [n + " 个作品", cnt + " 个素材（原名放回）"];
+      if (legacy) parts.push("旧格式备份：视频类型没带走，若有视频会按图片还原");
+      toast("已导入 " + parts.join("、"), legacy);
       return true;
     }).catch(function (e) {
       toast("作品导入了，素材没铺完：" + (e.message || e), true);
