@@ -43,6 +43,30 @@
       .catch((e) => say("导出失败：" + e));
   }
 
+  // P170：打 APK —— 作品本体换进模板壳再重签，出来就是能直接装的应用。
+  // 电脑端才有这条路（要 Java 签名）；手机上导出的仍是单个 html。
+  function exportApk() {
+    say("正在打 APK，要十几秒…");
+    fetch("/api/export-apk", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: "{}",
+    })
+      .then((r) => r.json())
+      .then((d) => {
+        if (!d.ok) {
+          say(d.message || "打包失败");
+          return;
+        }
+        var a = document.createElement("a");
+        a.href = new URL(d.url, window.location.href).href;
+        a.download = "";
+        a.click();
+        say("打好了 " + d.mb + " MB —— 传到手机上点开就能装");
+      })
+      .catch((e) => say("打包失败：" + e));
+  }
+
   // ---- M1.5：内嵌教程（帮助 → 教程 / 说明书；F1）----
   const helpPanel = $("helpPanel");
   const helpListEl = $("helpList");
@@ -193,6 +217,7 @@
       { label: "新建章节", action: () => $("btnNewChapter").click() },
       { label: "打包发布", shortcut: "Ctrl+P", action: () => $("btnPack").click() },
       { label: "导出一个 HTML（手机能直接打开）", action: exportSingleHtml },
+      { label: "打成 APK（能直接装到手机上）", action: exportApk },
     ],
     edit: [
       { label: "撤销", shortcut: "Ctrl+Z", action: undo },

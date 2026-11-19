@@ -20,6 +20,7 @@ import errno
 import json
 import os
 import re
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -792,6 +793,7 @@ class _EditorHandler(BaseHTTPRequestHandler):
         ("POST", "/api/export-web"): "_export_web",
         ("POST", "/api/export-single"): "_export_single",
         ("POST", "/api/export-portable"): "_export_portable",
+        ("POST", "/api/export-apk"): "_export_apk",
         # P88：手机「连接」（扫码 / 局域网发现）砍了 —— 只剩插线推成品。
         # 素材互传交给数据线（手机当 U 盘 / 文件管理器），不再自己做一套同步。
         ("GET", "/api/adb"): "_adb_get",
@@ -897,6 +899,9 @@ class _EditorHandler(BaseHTTPRequestHandler):
             return
         if parsed.path.startswith("/portable-file/"):
             self._serve_portable_file(parsed.path)
+            return
+        if parsed.path.startswith("/apk-file/"):
+            self._serve_apk_file(parsed.path)
             return
         self._dispatch("GET", parsed)
 
@@ -1788,6 +1793,124 @@ class _EditorHandler(BaseHTTPRequestHandler):
             "file_warning_level": stat.get("file_warning_level", ""),
         })
 
+    def _export_apk(self, parsed=None) -> None:
+        """把当前工程打成一个能直接装的 APK。
+
+        原理一句话：模板 APK 里 `assets/game.html` 就是作品本体，换掉它、再按
+        同一张证书重签 v2，装到手机上就是新作品。这也是 Yop2D 那种「手机端一键出包」
+        的真实机制——不需要在手机上跑 Android 构建链。
+
+        需要 Java 来做 RSA 签名（沿 apksig 官方库，手写 v2 字节流试过，容易错）。
+        """
+        import subprocess
+        import zipfile
+
+        from . import webpack as webpack_mod
+
+        data = self._read_json()
+        root = str(getattr(self.app, "project_root", "") or "")
+        if not root or not os.path.isdir(root):
+            self._send_json(400, {"ok": False, "message": "还没打开工程，无法导出"})
+            return
+        pack_root_fn = getattr(self.app, "pack_root", None)
+        if not callable(pack_root_fn):
+            self._send_json(500, {"ok": False, "message": "编辑器没有发行根，无法导出"})
+            return
+        base = str(pack_root_fn())
+        folder = os.path.basename(os.path.normpath(root))
+        single = os.path.join(base, "dist", "single", folder + ".html")
+        title = str(data.get("title") or "").strip() or folder
+        try:
+            webpack_mod.build_single(root, single, title=title)
+        except Exception as e:   # noqa: BLE001 — 统一回一句人话
+            self._send_json(500, {"ok": False, "message": f"导不出单文件，APK 也就打不了：{e}"})
+            return
+
+        template = os.path.join(base, "android", "template.apk")
+        signer = os.path.join(base, "tools", "vendor", "uber-apk-signer.jar")
+        keystore = os.path.join(base, "android", "keystore", "myonl-test.p12")
+        for path, what in ((template, "模板 APK"), (signer, "签名器"), (keystore, "签名证书")):
+            if not os.path.isfile(path):
+                self._send_json(400, {
+                    "ok": False,
+                    "message": f"缺{what}：{os.path.relpath(path, base)}",
+                })
+                return
+
+        java = shutil.which("java") or ""
+        if not java:
+            jh = os.environ.get("JAVA_HOME", "")
+            cand = os.path.join(jh, "bin", "java.exe" if os.name == "nt" else "java")
+            java = cand if jh and os.path.isfile(cand) else ""
+        if not java:
+            self._send_json(400, {
+                "ok": False,
+                "need_java": True,
+                "message": "这台电脑没有 Java，打不了 APK。装一个 JRE 17+ 就行"
+                           "（zip 版解压后把 bin 加进 PATH）：https://adoptium.net",
+            })
+            return
+
+        out_dir = os.path.join(base, "dist", "apk")
+        os.makedirs(out_dir, exist_ok=True)
+        unsigned = os.path.join(out_dir, "wip-unsigned.apk")
+        final = os.path.join(out_dir, folder + ".apk")
+        try:
+            payload = open(single, "rb").read()
+            with zipfile.ZipFile(template) as zin, zipfile.ZipFile(unsigned, "w") as zout:
+                for item in zin.infolist():
+                    blob = (payload if item.filename == "assets/game.html"
+                            else zin.read(item.filename))
+                    info = zipfile.ZipInfo(item.filename, date_time=item.date_time)
+                    info.compress_type = item.compress_type
+                    info.external_attr = item.external_attr
+                    info.internal_attr = item.internal_attr
+                    info.create_system = item.create_system
+                    zout.writestr(info, blob)
+
+            # 密码从环境变量读；没设就用这张公开测试证书的默认口令
+            ks_pass = os.environ.get("MYONL_STORE_PASS", "").strip() or "myonl-apk-2026"
+            proc = subprocess.run(
+                [java, "-jar", signer, "--apks", unsigned,
+                 "--ks", keystore, "--ksAlias", "myonl",
+                 "--ksPass", ks_pass, "--ksKeyPass", ks_pass,
+                 "--allowResign", "--skipZipAlign", "--out", out_dir],
+                capture_output=True, text=True, encoding="utf-8", errors="replace",
+                timeout=180,
+            )
+            log = (proc.stdout or "") + (proc.stderr or "")
+            if "signature verified" not in log:
+                self._send_json(500, {
+                    "ok": False,
+                    "message": "重签没过（Java 那边报错）：" + log[-600:],
+                })
+                return
+            produced = [p for p in os.listdir(out_dir) if p.endswith("-signed.apk")]
+            if not produced:
+                self._send_json(500, {"ok": False, "message": "重签跑完了，但没找到产物"})
+                return
+            if os.path.exists(final):
+                os.remove(final)
+            os.replace(os.path.join(out_dir, produced[0]), final)
+        except subprocess.TimeoutExpired:
+            self._send_json(500, {"ok": False, "message": "签名超时（180 秒没跑完）"})
+            return
+        finally:
+            if os.path.exists(unsigned):
+                try:
+                    os.remove(unsigned)
+                except OSError:
+                    pass
+
+        size = os.path.getsize(final)
+        self._send_json(200, {
+            "ok": True,
+            "out": final,
+            "url": "/apk-file/" + folder + ".apk",
+            "mb": round(size / 1048576, 2),
+            "message": "打好了。传到手机上点开就能装，第一次会问一次「未知来源」。",
+        })
+
     def _serve_single_file(self, path: str) -> None:
         """下载/预览单文件游戏：/single-file/<名字>.html"""
         rel = path[len("/single-file/"):]
@@ -1810,6 +1933,34 @@ class _EditorHandler(BaseHTTPRequestHandler):
         self.send_response(200)
         self.send_header("Content-Type", "text/html; charset=utf-8")
         self.send_header("Content-Length", str(len(body)))
+        self.send_header("Cache-Control", "no-store")
+        self.end_headers()
+        self.wfile.write(body)
+
+    def _serve_apk_file(self, path: str) -> None:
+        """下载 APK：/apk-file/<名字>.apk"""
+        rel = path[len("/apk-file/"):]
+        pack_root_fn = getattr(self.app, "pack_root", None)
+        base = os.path.join(str(pack_root_fn()) if callable(pack_root_fn) else "", "dist", "apk")
+        try:
+            target = _safe_within(base, unquote(rel))
+        except ValueError:
+            self._send_json(400, {"error": "路径不合法"})
+            return
+        if not os.path.isfile(target):
+            self._send_json(404, {"error": "还没有这个 APK，先点一次「打成 APK」"})
+            return
+        try:
+            with open(target, "rb") as f:
+                body = f.read()
+        except OSError as e:
+            self._send_json(500, {"error": f"读文件失败：{e}"})
+            return
+        self.send_response(200)
+        self.send_header("Content-Type", "application/vnd.android.package-archive")
+        self.send_header("Content-Length", str(len(body)))
+        self.send_header("Content-Disposition",
+                         f'attachment; filename="{quote(rel)}"')
         self.send_header("Cache-Control", "no-store")
         self.end_headers()
         self.wfile.write(body)
