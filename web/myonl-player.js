@@ -1787,7 +1787,9 @@
     if (!state.choice) return;
     ctx.save();
     ctx.globalAlpha = 1;
-    ctx.fillStyle = "rgba(6,8,12,.56)";
+    // P129：竖屏有底部整块板兜着，压暗可以轻一档 —— 0.56 是给"选项浮在画面中间"
+    // 那套用的，板上之后再压这么重，人物的脸就沉进黑里了。
+    ctx.fillStyle = L.landscape ? "rgba(6,8,12,.56)" : "rgba(6,8,12,.42)";
     ctx.fillRect(0, 0, L.viewW, L.viewH);
     ctx.restore();
   }
@@ -1820,9 +1822,149 @@
     };
   }
 
+  /* 竖屏选项板（P129）。
+
+     原来竖屏是「名字牌一块 + 问句一团暗晕 + 两张卡片」三样东西各自浮在角色身上：
+     名字牌压在裙子上、问句横在地板上、卡片又压在腿上，视线被切成三段，
+     而且卡片本身没有和「刚才那句问话」连在一起 —— 玩家看到的是两个孤立的条。
+
+     现在合成一块：底部起一张板和对话框同宽同质感，板上沿依次是
+     名字牌 → 问句（一行）→ 分隔线 → 选项列表行。
+     一句话就能读完「谁问的 · 问什么 · 能选什么」，重心落在底部一个整块上。 */
+  function drawChoicesBoard(vis) {
+    const say = state.say || {};
+    const opts = state.choice || [];
+    const n = opts.length;
+    if (!n) return;
+
+    const qfs = Math.round(L.fs * 0.95);
+    const padX = Math.round(L.fs * 1.1);
+    const padTop = Math.round(L.fs * 1.05);
+    const padBot = Math.round(L.fs * 0.85);
+    // 注意：这个文件里的范围收口叫 clampN（不是 clamp，那个是 layout 里的）
+    const rowH = Math.round(clampN(L.fs * 3.1, 118, 200));
+
+    // 问句只取最后一行：板上要交代的是"你在回答哪句话"，不需要整段复述。
+    // 注意折行结果挂在 state.lines 上（不是 state.say.lines）。
+    let qLine = "";
+    if (state.lines && state.lines.length) qLine = String(state.lines[state.lines.length - 1] || "");
+    const innerW = L.panelW - padX * 2;
+    ctx.save();
+    ctx.font = `${qfs}px ${FACE}`;
+    const qWrap = qLine ? wrap(qLine, innerW).slice(-1) : [];
+    ctx.restore();
+    const qH = qWrap.length ? Math.round(qfs * 1.30) : 0;
+
+    const nameH = say.char ? Math.round(L.nameSize * 0.95) : 0;
+    const nameGap = say.char ? Math.round(L.fs * 0.50) : 0;
+    const qGap = qWrap.length ? Math.round(L.fs * 0.70) : 0;
+    const rowsH = n * rowH;
+
+    const h = padTop + nameH + nameGap + qH + qGap + rowsH + padBot;
+    const w = L.panelW;
+    const x = L.panelX;
+    const y = L.viewH - Math.min(h, Math.round(L.viewH * 0.62)) - L.bottom;
+    const radius = Math.max(vis.radius, 18);
+
+    // 板：和对话框同一套底（panelFill 渐变），上缘一条收口的亮线
+    roundRect(x, y, w, h, radius, panelFill(x, y, w, h));
+    panelHairline(x, y, w, radius);
+
+    let cy = y + padTop;
+
+    // 名字牌（沿用对话框里那块：角色色竖条 + 白字 + 左上角斜胶带）
+    if (say.char) {
+      const nameFs = Math.round(L.nameSize * 0.86);
+      const tint = say.color || vis.accent;
+      ctx.save();
+      ctx.font = `600 ${nameFs}px ${FACE}`;
+      const tw = ctx.measureText(say.char).width;
+      const plateH = nameH;
+      const plateX = x + padX;
+      const plateY = cy;
+      const pw = tw + Math.round(plateH * 0.66) * 2 + Math.round(plateH * 0.34);
+      const tapeW = Math.round(plateH * 1.05);
+      const tapeH = Math.round(plateH * 0.30);
+      ctx.translate(plateX + Math.round(pw * 0.22), plateY - Math.round(tapeH * 0.40));
+      ctx.rotate(-0.13);
+      ctx.globalAlpha = 0.85;
+      roundRect(-tapeW / 2, 0, tapeW, tapeH, Math.round(tapeH * 0.22), hexA(tint, 0.55));
+      ctx.restore();
+
+      roundRect(plateX, plateY, pw, plateH, Math.round(plateH * 0.30),
+                "rgba(255,255,255,.075)");
+      roundRect(plateX + Math.round(plateH * 0.28), plateY + Math.round(plateH * 0.20),
+                Math.max(2, Math.round(plateH * 0.105)), plateH - Math.round(plateH * 0.40),
+                2, hexA(tint, 0.92));
+      ctx.save();
+      ctx.font = `600 ${nameFs}px ${FACE}`;
+      ctx.fillStyle = "rgba(242,246,255,.96)";
+      ctx.textAlign = "left";
+      ctx.textBaseline = "middle";
+      ctx.fillText(say.char, plateX + Math.round(plateH * 0.62), plateY + plateH / 2 + 1);
+      ctx.restore();
+      cy += plateH + nameGap;
+    }
+
+    // 问句：左对齐贴着板的正文左缘
+    if (qWrap.length) {
+      ctx.save();
+      ctx.font = `${qfs}px ${FACE}`;
+      ctx.fillStyle = "rgba(226,233,246,.86)";
+      ctx.textAlign = "left";
+      ctx.textBaseline = "top";
+      ctx.fillText(qWrap[0], x + padX, cy);
+      ctx.restore();
+      cy += qH + qGap;
+    }
+
+    // 选项列表：通栏一行一条，行间一条发丝线；不是「按钮」而是「可以选的那几行」
+    const rowsTop = cy;
+    for (let i = 0; i < n; i++) {
+      const ry = rowsTop + i * rowH;
+      const rr = L.landscape ? 12 : 10;
+      // 行底：极淡的一层，只用来区分"这一行可点"
+      roundRect(x + padX * 0.5, ry + 4, w - padX, rowH - 8, rr,
+                i === 0 ? "rgba(255,255,255,.055)" : "rgba(255,255,255,.038)");
+      // 行间发丝线（手账里"一行一行"的感觉，比给每行描边框安静）
+      if (i > 0) {
+        ctx.save();
+        ctx.strokeStyle = "rgba(255,255,255,.09)";
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(x + padX, ry);
+        ctx.lineTo(x + w - padX, ry);
+        ctx.stroke();
+        ctx.restore();
+      }
+      // 左侧 accent 竖条（和对话框名牌同一个色，眼睛知道"这两块是一家的"）
+      ctx.fillStyle = vis.accent;
+      ctx.fillRect(x + padX, ry + Math.round(rowH * 0.26),
+                   Math.round(L.fs * 0.11), Math.round(rowH * 0.48));
+
+      // 文字：左对齐，超宽自动缩字号，不换行（一行一条才读得快）
+      const tx = x + padX + Math.round(L.fs * 0.42);
+      const twMax = w - padX * 2 - Math.round(L.fs * 0.42);
+      const tfs = fitFont(String(opts[i].text || ""), twMax, Math.round(L.fs * 1.02), "500");
+      ctx.save();
+      ctx.font = `500 ${tfs}px ${FACE}`;
+      ctx.fillStyle = vis.textColor;
+      ctx.textAlign = "left";
+      ctx.textBaseline = "middle";
+      ctx.fillText(String(opts[i].text || ""), tx, ry + rowH / 2);
+      ctx.restore();
+
+      state.choiceRects.push({x: x, y: ry, w: w, h: rowH, idx: i,
+                              text: opts[i].text, target: opts[i].target});
+    }
+  }
+
   function drawChoices(vis) {
     state.choiceRects = [];
     if (!state.choice) return;
+    // P129：竖屏走底部整块板（见 drawChoicesBoard）。横屏保持原样 ——
+    // 横屏人物在右、选项靠左占 0.42，浮着反而把两条视线分开，是标准构图。
+    if (!L.landscape) { drawChoicesBoard(vis); return; }
 
     const geom = choiceGeom();
     const bw = geom.bw;
@@ -1852,7 +1994,9 @@
       const nw = ntw + Math.round(nh * 1.5);
       // 名字牌要和下面那句问话同一条中轴：问话是 x + bw/2 居中，横竖都一样
       const nx = Math.round(x + bw / 2 - nw / 2);
-      const ny = startY - Math.round(bh * 0.55) - Math.round(nfs * 3.4) - nh;
+      // P129：3.4 行高预留 = 名字牌和问句之间空出两行多，实拍像两块不相干的东西。
+      // 收到 2.4：名字牌紧贴问句上方，读起来是「谁说的 + 说的什么」一整块。
+      const ny = startY - Math.round(bh * 0.55) - Math.round(nfs * 2.4) - nh;
       const tint0 = state.say.color || vis.accent;
       // 底要够实：0.075 是给对话框面板用的（面板下面还有一整片渐变兜着），
       // 这里浮在立绘/地板上，透上来就成一块糊斑。
@@ -1887,9 +2031,11 @@
       ctx.scale(1, Math.max(0.35, (qBandBot - qBandTop) / qBw));
       const rq = qBw * 0.62;
       const bandG = ctx.createRadialGradient(0, 0, qBw * 0.10, 0, 0, rq);
-      // P124：0.80 → 0.90。实拍里这句问话浮在立绘腿上，压亮背景时还是读不清。
-      bandG.addColorStop(0, "rgba(9,11,17,.90)");
-      bandG.addColorStop(0.62, "rgba(9,11,17,.66)");
+      // P124：0.80 → 0.90。P129：0.90 → 0.95。实拍里压木地板 / 白衬衫这种亮面，
+      // 字边还是糊；中心再实一点、62% 档从 0.66 提到 0.80，淡出的边收得更陡，
+      // 中间清楚、四周不显出一块黑补丁。
+      bandG.addColorStop(0, "rgba(9,11,17,.95)");
+      bandG.addColorStop(0.62, "rgba(9,11,17,.80)");
       bandG.addColorStop(1, "rgba(9,11,17,0)");
       ctx.fillStyle = bandG;
       ctx.beginPath();
