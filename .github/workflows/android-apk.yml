@@ -132,10 +132,10 @@ jobs:
         run: |
           set -o pipefail
           if ! gradle assembleRelease --no-daemon --stacktrace 2>&1 | tee /tmp/gradle.log; then
-            echo "::error::gradle 失败，最后 25 行进注解（完整日志在 job 日志里）"
-            tail -25 /tmp/gradle.log | while IFS= read -r line; do
-              echo "::error::${line//%/%%}"
-            done
+            echo "::error::gradle 失败，摘取关键段落进注解（完整日志在 job 日志里）"
+            grep -n -E "What went wrong|Caused by:|^> Task .*FAILED|error:|FAILURE: Build|Unsupported|Could not|not found" \
+              -A 3 /tmp/gradle.log 2>/dev/null | head -50 | \
+              while IFS= read -r line; do echo "::error::${line//%/%%}"; done
             exit 1
           fi
 
