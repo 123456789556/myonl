@@ -1651,6 +1651,12 @@ input[type="text"], input[type="search"], select { background: var(--input-bg); 
 }
 .sf-stage-bg { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; pointer-events: none; }
 .sf-stage-empty { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: var(--surface2); font-size: 12px; }
+/* P175：背景名在、文件不在 —— 跟"还没选背景"必须长得不一样 */
+.sf-stage-missing {
+  flex-direction: column; gap: 3px; text-align: center; padding: 0 20px;
+  color: var(--subtext0); font-size: 11.5px;
+}
+.sf-stage-missing b { font-size: 12.5px; font-weight: 600; color: var(--text); }
 .sf-sprite {
   position: absolute; transform: translateX(-50%); cursor: grab;
   display: flex; flex-direction: column; align-items: center; gap: 2px;

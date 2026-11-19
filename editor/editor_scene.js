@@ -587,10 +587,16 @@
     }
     var url = "";
     try { if (bgName && E.assetURL) url = E.assetURL("images", bgName); } catch (e) {}
+    // P175：背景名有、素材却不存在时，以前照样说"选背景后显示预览"，
+    // 等于告诉人"你还没选"。这种必须说清缺的是哪张，否则只会反复点下拉框。
     stage.innerHTML = url
       ? '<img class="sf-stage-bg" src="' + esc(url) + '" alt="" onerror="this.remove()">' +
         (inherited ? '<div class="sf-stage-inherit">沿用上一场景背景：' + esc(bgName) + "</div>" : "")
-      : '<div class="sf-stage-empty">选背景后这里显示画面预览</div>';
+      : (bgName
+        ? '<div class="sf-stage-empty sf-stage-missing">' +
+          '<b>背景「' + esc(bgName) + '」找不到文件</b>' +
+          '<span>名字对不上，或者这张图还没导入素材库</span></div>'
+        : '<div class="sf-stage-empty">选背景后这里显示画面预览</div>');
     var realBtn = document.createElement("button");
     realBtn.type = "button"; realBtn.className = "sf-real-btn";
     realBtn.textContent = realPreviewUrl ? "✓ 真实渲染（点此还原）" : "真实渲染预览";
