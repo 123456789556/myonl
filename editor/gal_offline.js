@@ -785,6 +785,11 @@
     if (bridge && typeof bridge.save === "function") {
       try {
         bridge.save(filename, type.split(";")[0], b64OfText(text));
+        // P136：落地后直接弹系统分享「发给朋友」。壳里有 share 桥才调；
+        // 旧壳/浏览器没有就静默跳过，保存已经成功，不影响落地。
+        if (typeof bridge.share === "function") {
+          try { bridge.share(filename, type.split(";")[0], b64OfText(text)); } catch (e2) {}
+        }
         return;
       } catch (e) { /* 桥坏了再往下退 */ }
     }

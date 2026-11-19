@@ -30,6 +30,9 @@ public class MainActivity extends Activity {
 
     private WebView web;
 
+    // FileProvider authority：必须与 Manifest 里 <provider authorities> 逐字一致。
+    private static final String AUTHORITY = "net.myonl.player.fileprovider";
+
     // ---------- 导出：让文件真的落到手机里 ----------
     // WebView 不处理 <a download> + blob：点了什么都不会发生，而网页那边还会提示「已导出」。
     // 所以开一条桥：JS 把内容转成 base64 递过来，这里走系统「保存到」（SAF），用户选位置，真落地。
@@ -74,6 +77,48 @@ public class MainActivity extends Activity {
         @android.webkit.JavascriptInterface
         public String platform() {
             return "android";
+        }
+
+        // P136：导出落地后直接「发给朋友」。WebView 没有系统分享面板，只能由 Java 走
+        // ACTION_SEND。文件先写进应用私有 cache/exports/，再用 FileProvider 转 content://
+        // —— file:// URI 在 Android 7+ 会被系统拒掉（FileUriExposedException）。
+        @android.webkit.JavascriptInterface
+        public void share(final String filename, final String mime, final String base64) {
+            if (base64 == null || base64.isEmpty()) {
+                say("没内容可发");
+                return;
+            }
+            if (base64.length() > MAX_SAVE_B64_CHARS) {
+                say("成品太大（" + (base64.length() / 1024 / 1024) + " MB），先精简素材再分享");
+                return;
+            }
+            runOnUiThread(() -> {
+                try {
+                    byte[] bytes = android.util.Base64.decode(base64, android.util.Base64.DEFAULT);
+                    java.io.File dir = new java.io.File(getCacheDir(), "exports");
+                    if (!dir.exists()) dir.mkdirs();
+                    String safe = (filename == null || filename.isEmpty()) ? "myonl.html" : filename;
+                    java.io.File file = new java.io.File(dir, safe);
+                    try (java.io.FileOutputStream out = new java.io.FileOutputStream(file)) {
+                        out.write(bytes);
+                        out.flush();
+                    }
+                    android.net.Uri uri = androidx.core.content.FileProvider.getUriForFile(
+                            MainActivity.this, AUTHORITY, file);
+                    android.content.Intent i = new android.content.Intent(
+                            android.content.Intent.ACTION_SEND);
+                    i.setType(mime == null || mime.isEmpty() ? "text/html" : mime);
+                    i.putExtra(android.content.Intent.EXTRA_STREAM, uri);
+                    i.addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                    i.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK);
+                    android.content.Intent chooser = android.content.Intent.createChooser(
+                            i, "把这份 MYONL 成品发给朋友");
+                    chooser.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK);
+                    startActivity(chooser);
+                } catch (Throwable t) {
+                    say("分享没打开：" + t.getMessage());
+                }
+            });
         }
     }
 
@@ -232,6 +277,12 @@ public class MainActivity extends Activity {
         if (it == null) return;
         String act = it.getAction();
         if (act == null) return;
+        // P136：别人用「用 MYONL 打开」发来的作品文件。以前壳只接 SEND 的图片音频，
+        // VIEW 进来直接被丢掉，文件打不开。
+        if (android.content.Intent.ACTION_VIEW.equals(act)) {
+            ingestView(it);
+            return;
+        }
         if (!android.content.Intent.ACTION_SEND.equals(act)
                 && !android.content.Intent.ACTION_SEND_MULTIPLE.equals(act)) return;
 
@@ -284,6 +335,83 @@ public class MainActivity extends Activity {
         }
     }
 
+    // P136：接住「用本应用打开」的作品文件，接已有导入链路：
+    //   .json 作品库备份 -> window.__myonlImportLib（恢复作品 + 素材）
+    //   .gal 单剧本      -> 封成作品库 JSON，走同一条 __myonlImportLib
+    //   .html 成品       -> 推给素材接收回调并提示（成品直玩链路不在本次范围）
+    private void ingestView(android.content.Intent it) {
+        android.net.Uri uri = it.getData();
+        if (uri == null) return;
+        byte[] raw;
+        try {
+            raw = readCapped(uri);
+        } catch (Throwable t) {
+            say("这个文件读不出来");
+            return;
+        }
+        if (raw == null) { say("文件太大或读不动，最多收 " + (MAX_SHARE_BYTES / 1024 / 1024) + " MB"); return; }
+
+        String name = guessName(it.getType(), uri);
+        String lower = name.toLowerCase(java.util.Locale.ROOT);
+        String mime = it.getType();
+        if (mime == null) mime = "application/octet-stream";
+
+        if (lower.endsWith(".json") || mime.contains("json")) {
+            String text;
+            try { text = new String(raw, "UTF-8"); }
+            catch (Throwable t) { say("备份文件不是文本，打不开"); return; }
+            shareQueue.add("(window.__myonlImportLib ? window.__myonlImportLib("
+                    + org.json.JSONObject.quote(text) + ") : Promise.resolve(false))"
+                    + ".then(function(ok){});");
+            flushShare();
+            return;
+        }
+        if (lower.endsWith(".gal") || "text/plain".equals(mime)) {
+            String text;
+            try { text = new String(raw, "UTF-8"); }
+            catch (Throwable t) { say("剧本不是文本，打不开"); return; }
+            String base = name.replaceAll("\\.[^.]+$", "");
+            org.json.JSONObject proj = new org.json.JSONObject();
+            try {
+                proj.put("name", base.isEmpty() ? "从文件打开的作品" : base);
+                proj.put("text", text);
+                long nowSec = System.currentTimeMillis() / 1000;
+                proj.put("ctime", nowSec);
+                proj.put("mtime", nowSec);
+                org.json.JSONArray arr = new org.json.JSONArray();
+                arr.put(proj);
+                org.json.JSONObject lib = new org.json.JSONObject();
+                lib.put("myonl", "lib");
+                lib.put("v", 1);
+                lib.put("projects", arr);
+                shareQueue.add("(window.__myonlImportLib ? window.__myonlImportLib("
+                        + org.json.JSONObject.quote(lib.toString()) + ") : Promise.resolve(false))"
+                        + ".then(function(ok){});");
+            } catch (Throwable t) {
+                say("剧本封装备份失败");
+                return;
+            }
+            flushShare();
+            return;
+        }
+        if (lower.endsWith(".html") || mime.contains("html")) {
+            String b64 = android.util.Base64.encodeToString(raw, android.util.Base64.NO_WRAP);
+            shareQueue.add("window.__MYONLShareReceive && window.__MYONLShareReceive("
+                    + "[{name:" + org.json.JSONObject.quote(name)
+                    + ",type:" + org.json.JSONObject.quote(mime)
+                    + ",dataUrl:\"data:" + mime + ";base64," + b64 + "\"}]);");
+            say("收到一份成品 HTML；在作品库里查看，试玩入口见内置示例");
+            flushShare();
+            return;
+        }
+        say("这种文件 MYONL 打不开（" + mime + "）");
+    }
+
+    private String guessName(String type, android.net.Uri uri) {
+        String fromUri = (uri != null) ? uri.getLastPathSegment() : null;
+        if (fromUri != null && !fromUri.isEmpty()) return fromUri;
+        return guessName(type);
+    }
     private String guessName(String type) {
         String ext = "dat";
         int slash = type.indexOf('/');

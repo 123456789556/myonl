@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  FileProvider 路径映射（Android 官方要求）：
+  分享成品 .html 给别的 App 时，Content URI 只能暴露这里登记过的目录。
+  成品落在应用私有 cache 目录（getCacheDir()），所以只配 cache-path。
+  authority 必须与 AndroidManifest 里 <provider> 的 authorities 完全一致：
+  net.myonl.player.fileprovider
+-->
+<paths>
+    <cache-path name="shared_exports" path="exports/" />
+</paths>

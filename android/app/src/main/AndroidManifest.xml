@@ -46,7 +46,32 @@
                 <category android:name="android.intent.category.DEFAULT" />
                 <data android:mimeType="audio/*" />
             </intent-filter>
+
+            <!-- P136：接住「用本应用打开」的作品文件。
+                 text/html = 别人发来的成品单文件；application/json = 作品库备份；
+                 text/plain = .gal 剧本（系统常把无扩展名/纯文本归到 text/plain）。
+                 注意：不带 file 扩展名过滤的 MIME 兜底，避免文件管理器给的是 */* 时接不住。 -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:mimeType="text/html" />
+                <data android:mimeType="application/json" />
+                <data android:mimeType="text/plain" />
+            </intent-filter>
         </activity>
+        <!-- P136：导出成品后「发给朋友」走 ACTION_SEND，私有目录文件必须经 FileProvider
+             转 content://。authority 与 MainActivity.AUTHORITY 逐字一致；paths 见 res/xml/file_paths.xml。
+             exported=false、grantUriPermissions=true 是 FileProvider 官方要求。 -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="net.myonl.player.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
     </application>
 
 </manifest>
