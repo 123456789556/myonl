@@ -3189,6 +3189,9 @@ body.m-home-open .ob-card { display: none !important; }
    点了直接落到对应的 tab，省掉「先找菜单再找图标」。
    结构上刻意用 block + 绝对定位编号：flex 版被整行压成 28px 过一次，block 不会。 */
 .m-home-steps { display: block; flex: 0 0 auto; }
+/* 已经有作品就不再摆「三步上手」：那三步讲的是"先建个作品、写第一句"，
+   对已经建过的人来说是每天重复的第一课。要重看走「帮助 → 新手引导」。 */
+body.m-has-projects .m-home-steps { display: none !important; }
 .m-step {
   display: block; position: relative; width: 100%; box-sizing: border-box;
   padding: 12px 13px 12px 45px; margin-bottom: 8px; min-height: 52px;

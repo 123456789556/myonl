@@ -132,6 +132,9 @@
     // 只留数量。原来写"N 个作品 · 本地保存 · 不上云"，
     // 「不上云」在 README 和设置「软件详情」里都已经说过，副标题重复第三遍没有信息量。
     if (sub) sub.textContent = projects.length + " 个作品";
+    // 三步上手只在书架空着时出现：已经有作品的用户早就知道怎么写第一句，
+    // 那三块一直挂着等于天天给人上第一课。要重看走「帮助 → 新手引导」。
+    document.body.classList.toggle("m-has-projects", projects.length > 0);
     if (!projects.length) {
       list.innerHTML = '<div class="m-home-empty">还没有作品。点下面「新建作品」，' +
         '它自带一句示例台词，你能立刻看到画面。</div>';
