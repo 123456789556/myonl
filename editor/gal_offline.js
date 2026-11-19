@@ -231,10 +231,15 @@
         var tx = db.transaction(ASTORE, mode);
         var st = tx.objectStore(ASTORE);
         var out;
+        var settled = false;
+        function settle(fn, v) { if (settled) return; settled = true; fn(v); }
         var r = fn(st);
         if (r) r.onsuccess = function () { out = r.result; };
-        tx.oncomplete = function () { res(out); };
-        tx.onerror = function () { rej(tx.error || new Error("素材库写入失败")); };
+        tx.oncomplete = function () { settle(res, out); };
+        tx.onerror = function () { settle(rej, tx.error || new Error("素材库写入失败")); };
+        // 事务中止（配额满 / 约束冲突 / 并发写冲突）只触发 abort 不一定走 onerror；
+        // 不挂 onabort，Promise 就永远 pending，调用方一直等，进度卡在「导入中」像卡死。
+        tx.onabort = function () { settle(rej, tx.error || new Error("素材库事务中止")); };
       });
     });
   }
