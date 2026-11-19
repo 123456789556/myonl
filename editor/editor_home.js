@@ -9,29 +9,6 @@
 
   var EDIT_KEY = "myonl:editing";
 
-  // P177：操作模式（简单 / 完整）。
-  // 简单模式默认 —— 第一次打开不该一上来就被分支、图层、跳转、真实渲染淹掉，
-  // 想只写两句台词看看效果的人，看到那些会直接关掉。
-  // 这段必须写在下面的 isMobile 判断之前：电脑端也要这个 class，
-  // 只是那边屏幕大，收起几块不觉得空。
-  var MODE_KEY = "myonl:mode";
-  var curMode = "simple";
-  try { curMode = localStorage.getItem(MODE_KEY) || "simple"; } catch (e) {}
-  function applyMode(m) {
-    try {
-      document.body.classList.toggle("mode-simple", m === "simple");
-      // 给导出/预览留个查询口，别的模块判断当前模式用
-      document.body.dataset.mode = m;
-    } catch (e) {}
-  }
-  applyMode(curMode);
-  window.__myonlMode = function () { return curMode; };
-  window.__myonlSetMode = function (m) {
-    curMode = m === "full" ? "full" : "simple";
-    try { localStorage.setItem(MODE_KEY, curMode); } catch (e) {}
-    applyMode(curMode);
-  };
-
   var isMobile = function () { return window.matchMedia && window.matchMedia("(max-width:860px), (max-height:520px)").matches; };
   if (!isMobile()) return;
 
@@ -282,12 +259,6 @@
             '<button type="button" data-v="dark" class="' + (theme === "dark" ? "on" : "") + '">深色</button>' +
             '<button type="button" data-v="light" class="' + (theme === "light" ? "on" : "") + '">浅色</button>' +
           '</span></div>' +
-        '<div class="m-set-row"><span>操作模式</span>' +
-          '<span class="m-seg" id="mSetMode">' +
-            '<button type="button" data-v="simple" class="' + (curMode === "simple" ? "on" : "") + '">简单</button>' +
-            '<button type="button" data-v="full" class="' + (curMode === "full" ? "on" : "") + '">完整</button>' +
-          '</span></div>' +
-        '<div class="m-set-note">简单只留写台词、选背景、导出。分支、跳转、图层、渲染预览先收起来，切到完整随时都在。</div>' +
         '<div class="m-set-row"><span>游戏画面</span>' +
           '<span class="m-seg" id="mSetOrient">' +
             '<button type="button" data-v="any" class="' + (orient === "any" ? "on" : "") + '">跟随</button>' +
@@ -333,16 +304,6 @@
       try { localStorage.setItem("gal_editor_theme", v); } catch (err) {}
       document.documentElement.setAttribute("data-theme", v);
       seg.querySelectorAll("button").forEach(function (x) { x.classList.toggle("on", x === b); });
-    });
-
-    // 操作模式：切了就存，下次打开还是这个。不重载页面 —— 场景表单是重渲染的，
-    // 但门禁和首页这类已经画好的 DOM 靠 class 即时收放，当场就能看到变化。
-    var md = sheet.querySelector("#mSetMode");
-    if (md) md.addEventListener("click", function (e) {
-      var b = e.target.closest ? e.target.closest("button[data-v]") : null;
-      if (!b) return;
-      window.__myonlSetMode(b.dataset.v);
-      md.querySelectorAll("button").forEach(function (x) { x.classList.toggle("on", x === b); });
     });
 
     // 「返回」那一行删了：抽屉点遮罩本来就能关，多一行「作品列表 / 返回」反而像在问"要回哪去"。

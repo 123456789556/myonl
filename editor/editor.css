@@ -1657,11 +1657,6 @@ input[type="text"], input[type="search"], select { background: var(--input-bg); 
   color: var(--subtext0); font-size: 11.5px;
 }
 .sf-stage-missing b { font-size: 12.5px; font-weight: 600; color: var(--text); }
-
-/* P177：简单模式收起高级项。不是删，是 display:none —— 切到完整模式原样回来。
-   收的是：图层顺序、@choice 选项、@jump 结束跳转、真实渲染预览。
-   留的是：背景、音乐、角色、台词、导出。 */
-body.mode-simple .sf-adv { display: none !important; }
 .sf-sprite {
   position: absolute; transform: translateX(-50%); cursor: grab;
   display: flex; flex-direction: column; align-items: center; gap: 2px;
@@ -3127,9 +3122,7 @@ body.m-home-open .m-tabbar { display: none !important; }
 .m-home-list .m-home-hero.cover-on {
   flex: 1 1 auto !important; height: auto !important; min-height: 208px !important;
 }
-/* P176：只有一个作品时，卡片下方到动作区之间是纯黑的一大片。
-   让唯一的卡片自己长高去吃这块空间 —— 比往空里塞说明文字干净。
-   （卡片底色是渐变，拉高不变形；多作品时不生效。） */
+/* P176：唯一作品时让卡片自己长高吃掉下方空白（渐变底，拉高不变形） */
 .m-home-list > .m-home-hero:only-child { flex: 1 1 auto !important; height: auto !important; min-height: 260px !important; }
 .m-home-empty {
   flex: 1 1 auto; display: flex; align-items: center; justify-content: center;
