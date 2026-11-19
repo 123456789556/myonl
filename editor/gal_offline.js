@@ -300,6 +300,58 @@
     });
   }
 
+  // WAV 是唯一一个「没压缩过」的音频格式：一分钟 CD 音质约 10 MB，
+  // 一段台词几百 KB，一部全语音作品光语音就能上百 MB。
+  // mp3/ogg/m4a 原样存是对的（再转一道只掉质量不掉体积），WAV 不是。
+  // 转成 webm/opus：同样的语音小一个数量级，安卓 WebView 都能放。
+  // 转不了的（不支持 MediaRecorder、解码失败、太长）一律回退原样，不拦导入。
+  var WAV_MAX_SECONDS = 90;        // 超过就算「该自己剪一下」，不在手机上硬转
+  function looksLikeWav(file) {
+    return /\.wav$/i.test(file.name || "") || /audio\/(x-)?wav/i.test(file.type || "");
+  }
+  function wavToOpus(file) {
+    return new Promise(function (res, rej) {
+      if (typeof MediaRecorder === "undefined") { rej(new Error("这个环境不支持转码")); return; }
+      var AC = window.AudioContext || window.webkitAudioContext;
+      if (!AC) { rej(new Error("这个环境没有 Web Audio")); return; }
+      var ac = new AC();
+      var fr = new FileReader();
+      fr.onerror = function () { rej(new Error("读文件失败")); };
+      fr.onload = function () {
+        ac.decodeAudioData(fr.result).then(function (buf) {
+          if (buf.duration > WAV_MAX_SECONDS) {
+            ac.close();
+            rej(new Error("超过 " + WAV_MAX_SECONDS + " 秒，先在手机里剪短"));
+            return;
+          }
+          var dest = ac.createMediaStreamDestination();
+          var src = ac.createBufferSource();
+          src.buffer = buf;
+          src.connect(dest);
+          var rec = new MediaRecorder(dest.stream, { mimeType: "audio/webm" });
+          var chunks = [];
+          rec.ondataavailable = function (e) { if (e.data && e.data.size) chunks.push(e.data); };
+          rec.onstop = function () {
+            var blob = new Blob(chunks, { type: "audio/webm" });
+            blob.arrayBuffer().then(function (ab) {
+              var u8 = new Uint8Array(ab);
+              var bin = "", CH = 4096;
+              for (var i = 0; i < u8.length; i += CH) {
+                bin += String.fromCharCode.apply(null, u8.subarray(i, i + CH));
+              }
+              ac.close();
+              res("data:audio/webm;base64," + btoa(bin));
+            });
+          };
+          src.onended = function () { try { rec.stop(); } catch (e) {} };
+          rec.start();
+          src.start();
+        }, function () { ac.close(); rej(new Error("这个 WAV 解不开")); });
+      };
+      fr.readAsArrayBuffer(file);
+    });
+  }
+
   // 视频同样不压、不转码、不抽帧：mp4 / webm / mov 已经是专门编码压过的，
   // 再走一道 canvas 或重编码只会掉质量；原样转 dataURL 存着，成品里直接喂给 <video>。
   function videoDataUrl(file) {
@@ -388,7 +440,17 @@
             ? shrinkImage(f).then(function (r) { return { dataUrl: r.dataUrl, kind: "image" }; })
             : isVid
               ? videoDataUrl(f).then(function (u) { return { dataUrl: u, kind: "video" }; })
-              : audioDataUrl(f).then(function (u) { return { dataUrl: u, kind: "audio" }; });
+              : (looksLikeWav(f)
+                // WAV 先转，转不了就算了——退回原样存，别让导入失败
+                ? wavToOpus(f)
+                    .then(function (u) { return { dataUrl: u, kind: "audio" }; })
+                    .catch(function () {
+                      return audioDataUrl(f).then(function (u) {
+                        if (onEach) onEach(null, added.length, list.length, new Error("这段 WAV 没能转小，原样存了（成品会很大）"));
+                        return { dataUrl: u, kind: "audio" };
+                      });
+                    })
+                : audioDataUrl(f).then(function (u) { return { dataUrl: u, kind: "audio" }; }));
           return step.then(function (r) {
             return persistAsset(baseName(f), r.kind, r.dataUrl, taken, kinds).then(function (name) {
               added.push(name);
