@@ -9,6 +9,10 @@
 **装在安卓手机上，就能自己做视觉小说。** 写台词、放图、放音乐，点一下导出，
 出来的文件发给谁都能打开玩。
 
+| 手机上玩成品 | 游戏菜单 |
+|:---:|:---:|
+| <img src="docs/images/m-game.jpg" width="240" alt="竖屏手机上运行成品：立绘、对话框、右侧存档/回顾/设置"> | <img src="docs/images/m-menu.jpg" width="240" alt="手机端游戏菜单：继续游戏、回顾台词、保存/读取进度、快进、自动、设置、回到标题"> |
+
 ## 装它
 
 **[⬇ 下载 MYONL-v1.2.0.apk](https://github.com/123456789556/myonl/releases/download/v1.2.0/MYONL-v1.2.0.apk)** · 安卓 7.0 以上 · 手机平板同一个包
@@ -47,7 +51,7 @@
 
 只想做游戏的话，上面那些就够了。下面是技术细节。
 
-> 全量测试：**1313 passed, 3 skipped**（2026-11-19 本机亲手复跑，Windows，退出码 0，129.67s）。
+> 全量测试：**1393 passed, 3 skipped**（2026-11-19 本机亲手复跑，Windows，退出码 0，139.85s）。
 > 这个数是带日期的实测值；下一版会变，届时一并更新。
 
 ## 手机端能做什么、做不到什么
@@ -72,7 +76,7 @@ APK 的 `minSdk` 是 24（安卓 7.0），一个包同时装手机和安卓平�
 | :--- | :--- |
 | 任何浏览器打开，不装东西 | 自己导出的单文件 HTML（编辑器底部「导出」一点就有） |
 | 编辑器单文件（`file://` 双击就能编，带离线内核） | `py -3 tools/build_editor_single.py` → `dist/web/editor-single.html` |
-| Windows 双击即玩（编辑器 + 打包器） | 仓库内 `py -3 tools/build_release_zip.py` 自建 |
+| **发行包**（Windows 双击即玩，玩家的机器上不用装 Python） | 仓库内 `py -3 tools/build_release_zip.py` 自建；包里只放成品和使用说明，不带源码指令 |
 
 > 不做 iOS。网页包在 iOS 浏览器里能打开，但没有 iOS 安装包。
 
