@@ -1413,18 +1413,14 @@
   } catch (e) { /* 老浏览器就算了 */ }
 
   // ---------- 8. 开机提示 ----------
-  // 只提示一次，别每次进编辑器都糊一脸
-  try {
-    if (!sessionStorage.getItem("myonl:off:told")) {
-      sessionStorage.setItem("myonl:off:told", "1");
-      setTimeout(function () {
-        // 同一句话在电脑上不能叫"手机本地模式"：宽屏按电脑说法讲
-        var narrow = window.innerWidth < 720;
-        toast(narrow ? "手机本地模式：作品存在这台设备里"
-                     : "本地模式：作品和素材都存在这台电脑上，不联网也能用");
-      }, 500);
-    }
-  } catch (e) { /* ignore */ }
+  // 2026-11-19：开机不再弹「本地模式」提示。
+  // 这条一开机就横在屏幕下沿，压住底部导航（实测盖掉「导入/设置」两项），
+  // 而它说的内容——存在这台设备、不联网——属于「软件详情」，
+  // 现在常驻在「设置」里，想确认时自己看，不再开机糊一次。
+  // 下面这段保留作历史，不再执行。
+  // try {
+  //   if (!sessionStorage.getItem("myonl:off:told")) { ... }
+  // } catch (e) { /* ignore */ }
 
   // ---------- 9. P131：PWA 分享进来 ----------
   // 相册里长按「分享到 MYONL」→ 系统 POST 到 /share-target → sw.js 把文件存进素材库 inbox →

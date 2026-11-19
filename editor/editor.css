@@ -1994,20 +1994,10 @@ input[type="color"] {
 .m-home { padding-bottom: calc(64px + env(safe-area-inset-bottom)); }
 
 /* 手机横过来（矮屏）：导航转成左侧竖条，不跟正文抢高度，拇指也够得到 */
-@media (orientation: landscape) and (max-height: 520px) {
-  .m-home-nav {
-    left: 0; right: auto; top: 0; bottom: 0;
-    width: calc(54px + env(safe-area-inset-left));
-    height: auto; flex-direction: column;
-    padding: env(safe-area-inset-top) 0 env(safe-area-inset-bottom) env(safe-area-inset-left);
-    border-top: 0; border-right: 1px solid var(--surface0);
-  }
-  .m-nav-item.on::after {
-    left: auto; right: 6px; top: 50%; bottom: auto;
-    transform: translateY(-50%); width: 2px; height: 18px;
-  }
-  .m-home { padding-left: calc(66px + env(safe-area-inset-left)); padding-bottom: 16px; }
-}
+/* 横屏：导航仍留在底部。
+   曾经把它转成左侧竖条省高度，实测 64px 的竖条还是压住了「我的作品」标题，
+   而且用户的要求本来就是「屏幕下方有几个可点的」——横过来也别把导航搬走。
+   360 高的屏留 56 给导航，正文还剩 304，够用。 */
 
 /* 设置：底部弹层（手机习惯），不做全屏弹窗 */
 .m-sheet { position: fixed; inset: 0; z-index: 520; }
@@ -3172,6 +3162,21 @@ body.m-home-open .ob-card { display: none !important; }
 /* 遮罩别压成一片死黑：抽屉只占下半屏，上面要能看见首页，才像"盖了一层"而不是"进了另一页" */
 .m-set-sheet .m-sheet-mask { display: block !important; background: rgba(0, 0, 0, .28); }
 .m-set-sheet .m-sheet-body { background: var(--mantle); }
+/* 主题色：32px 圆点，选中描一圈。Material 3 的 48dp 触摸目标在窄屏放四个会挤，
+   这里用 32 视觉 + gap 14，实际可点区域已经够拇指。 */
+.m-swatches { display: inline-flex; gap: 14px; align-items: center; }
+.m-swatches button {
+  width: 32px; height: 32px; border-radius: 999px; border: 2px solid transparent;
+  padding: 0; cursor: pointer; outline: none;
+  box-shadow: 0 1px 3px rgba(0,0,0,.2);
+}
+.m-swatches button.on { border-color: var(--text); }
+/* 设置里的分节标题与只读值：软件详情用，跟可点的行区分开 */
+.m-set-sec {
+  margin: 18px 0 6px; font-size: 11px; letter-spacing: 1px;
+  color: var(--subtext0); text-transform: uppercase;
+}
+.m-set-val { font-size: 12px; color: var(--subtext1); }
 .m-home-set:focus { background: var(--mantle); color: var(--subtext1); outline: none; }
 .m-home-set:focus-visible { outline: 1px solid var(--blue); }
 
@@ -3282,4 +3287,10 @@ body.m-home-open .ob-card { display: none !important; }
   /* 底部导航占了 56px，右下角的 toast 挪到它上面，别横着压住「新建/导入/设置」。
      实测 360×800 上一条开机提示正好盖住后面三项。 */
   .toast-wrap { bottom: calc(56px + env(safe-area-inset-bottom) + 12px); left: 12px; right: 12px; align-items: stretch; }
+}
+
+/* 横屏：左栏已经占了宽度，提示条再横跨整宽就压住正文和底部 tab，
+   收回右下角小条。放在最后，覆盖上面那条触屏规则的 left/right。 */
+@media (orientation: landscape) and (max-height: 520px) {
+  .toast-wrap { left: auto; right: 16px; bottom: calc(56px + 16px); align-items: flex-end; }
 }

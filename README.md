@@ -16,6 +16,23 @@
 |:---:|:---:|
 | <img src="docs/images/m-game.jpg" width="240" alt="竖屏手机上运行成品：立绘、对话框、右侧存档/回顾/设置"> | <img src="docs/images/m-menu.jpg" width="240" alt="手机端游戏菜单：继续游戏、回顾台词、保存/读取进度、快进、自动、设置、回到标题"> |
 
+## 长什么样
+
+四种手机竖屏（安卓 360×800 / 苹果 390×844 / 安卓 412×915 / 老机 360×640）：
+同一套界面在每种屏上都是底部四个入口，正文给导航让位。
+
+![竖屏四种](docs/images/showcase-portrait.png)
+
+横屏（手机 800×360 / 平板 1024×768）：导航留在底部，不搬去侧边。
+
+![横屏两种](docs/images/showcase-landscape.png)
+
+深色与浅色（设置里随时切）：
+
+![深浅主题](docs/images/showcase-theme.png)
+
+预览框可以按手机比例看（16:9 / 20:9 / 4:3），做的时候知道自己的画面在真机上什么处境。
+
 ## 装它
 
 **[⬇ 下载 MYONL-v1.2.0.apk](https://github.com/123456789556/myonl/releases/download/v1.2.0/MYONL-v1.2.0.apk)** · 安卓 7.0 以上 · 手机平板同一个包

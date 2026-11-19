@@ -60,11 +60,9 @@
         '<button type="button" class="m-quick-item" id="mHomeDemo" style="display:none">' +
           '<b>&#9654;</b><span>试玩示例</span></button>' +
       '</div>' +
-      '<div class="m-home-note">' +
-        '<div class="m-home-note-t">都在你手上</div>' +
-        '<div class="m-home-note-b">作品、素材、存档只存这台设备，不上传。' +
-        '想给别人看，进作品后点底部「导出」里的「做成成品」——一个 .html，发过去就能打开。</div>' +
-      '</div>' +
+      // 原来这里有一张「都在你手上」说明卡，讲的是存储在哪、怎么发给别人。
+      // 这两件事首页已经在别处说过（列表副标题「本地保存 · 不上云」、导出页也有），
+      // 再摆一块同义文字只是占高度，删掉。
       '<div class="m-home-steps">' +
         '<div class="m-home-sec">三步上手</div>' +
         '<button type="button" class="m-step" data-step="script">' +
@@ -242,6 +240,14 @@
     var _rp = RATIO_PAD[localStorage.getItem("myonl_preview_ratio")];
     if (_rp) document.documentElement.style.setProperty("--sf-pad", _rp);
   } catch (e) {}
+  // 主题色：启动时按上次选的恢复，否则每次开都跳回蓝
+  try {
+    var _ac = localStorage.getItem("myonl_accent");
+    if (_ac) {
+      document.documentElement.style.setProperty("--blue", _ac);
+      document.documentElement.style.setProperty("--lavender", _ac);
+    }
+  } catch (e) {}
   function openSettings() {
     if (sheet) { sheet.remove(); sheet = null; return; }
     var theme = "dark";
@@ -275,6 +281,20 @@
             '<button type="button" data-v="4:3">4:3</button>' +
           '</span></div>' +
         '<div class="m-set-note">只改上面那块预览框的形状，不动导出结果。做的时候拿它对照自己手机的屏幕。</div>' +
+        '<div class="m-set-row"><span>主题色</span>' +
+          '<span class="m-swatches" id="mSetAccent">' +
+            '<button type="button" data-c="#4f8cff" style="background:#4f8cff"></button>' +
+            '<button type="button" data-c="#8b7cf6" style="background:#8b7cf6"></button>' +
+            '<button type="button" data-c="#22c1c3" style="background:#22c1c3"></button>' +
+            '<button type="button" data-c="#3ecf8e" style="background:#3ecf8e"></button>' +
+          '</span></div>' +
+        '<div class="m-set-note">选中态、按钮、作品卡上的蓝都跟着换。深色浅色都生效。</div>' +
+        '<div class="m-set-sec">软件详情</div>' +
+        '<div class="m-set-row"><span>存储方式</span><span class="m-set-val">本地，不上云</span></div>' +
+        '<div class="m-set-row"><span>数据位置</span><span class="m-set-val">这台设备</span></div>' +
+        '<div class="m-set-note">作品和素材都留在这台设备上，不联网也不上传。' +
+        '想给别人看：进作品，在底部「导出」里点「做成成品」，得到一个 .html，发过去就能打开。' +
+        '换手机不会自动带走，需要自己导出。</div>' +
       '</div>';
     // 抽屉挂 <html> 而不是 <body>：body 上挂了编辑器各种档位类，fixed 定位在里面被算成流的位置
   // （实测顶边跑到 1007，正好是内容底部）。挂 html 之后 fixed 的包含块就是视口本身。
@@ -341,6 +361,26 @@
         try { localStorage.setItem("myonl_preview_ratio", v); } catch (err) {}
         document.documentElement.style.setProperty("--sf-pad", RATIO_PAD[v] || "56.25%");
         rg.querySelectorAll("button").forEach(function (x) { x.classList.toggle("on", x === b); });
+      });
+    }
+
+    // 主题色：只换强调色（选中态、按钮、作品卡描边），不动背景与文字。
+    var ac = sheet.querySelector("#mSetAccent");
+    if (ac) {
+      var curAccent = "#4f8cff";
+      try { curAccent = localStorage.getItem("myonl_accent") || "#4f8cff"; } catch (e) {}
+      ac.querySelectorAll("button").forEach(function (x) {
+        x.classList.toggle("on", x.dataset.c === curAccent);
+      });
+      ac.addEventListener("click", function (e) {
+        var b = e.target.closest ? e.target.closest("button[data-c]") : null;
+        if (!b) return;
+        var c = b.dataset.c;
+        try { localStorage.setItem("myonl_accent", c); } catch (err) {}
+        document.documentElement.style.setProperty("--blue", c);
+        // 悬停色用同色相提亮，不引入第二个色
+        document.documentElement.style.setProperty("--lavender", c);
+        ac.querySelectorAll("button").forEach(function (x) { x.classList.toggle("on", x === b); });
       });
     }
   }
