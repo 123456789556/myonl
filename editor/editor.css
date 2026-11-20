@@ -1831,8 +1831,8 @@ input[type="color"] {
   .clothesline, .cl-trigger { display: none !important; }
   /* 底部悬浮按钮会盖住最后几行，编辑区留出让位高度（按钮 52 + 状态栏 30 + 间距） */
   .left-pane { padding-bottom: 96px; }
-  /* 状态栏钉在屏幕最底，悬浮按钮抬到它上面，两者不打架 */
-  .statusbar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 83; height: 30px;
+  /* 状态栏紧贴编辑区（第几行/有没有错属于正文上下文），五个 tab 才是导航，压屏幕最底 */
+  .statusbar { position: fixed; left: 0; right: 0; bottom: calc(52px + env(safe-area-inset-bottom)); z-index: 83; height: 30px;
     font-size: 11px; overflow-x: auto; white-space: nowrap; }
 
   /* ---- 顶部工具条 / 菜单栏：手机上只留图标，文字交给菜单 ---- */
@@ -1931,7 +1931,7 @@ input[type="color"] {
     max-height: 46dvh; overflow: auto; }
 
   .m-tabbar {
-    display: flex; position: fixed; left: 0; right: 0; bottom: 30px; z-index: 84;
+    display: flex; position: fixed; left: 0; right: 0; bottom: 0; z-index: 84;
     background: var(--mantle); border-top: 1px solid var(--surface0);
     padding-bottom: env(safe-area-inset-bottom);
     height: calc(52px + env(safe-area-inset-bottom));
@@ -1948,7 +1948,7 @@ input[type="color"] {
     bottom: 6px; height: 2px; border-radius: 2px; background: var(--blue);
   }
   /* tab 栏和键盘快捷条占位：让正文能滚到最后一行 */
-  .left-pane { padding-bottom: 140px; }
+  .left-pane { padding-bottom: 84px; }
   .m-keybar.show { bottom: calc(82px + env(safe-area-inset-bottom)); }
 }
 /* ==================== P65：手机端第一层「工作台」 ====================
@@ -2124,7 +2124,7 @@ input[type="color"] {
   .statusbar > select,
   .statusbar > .spacer { display: none !important; }
   .statusbar #status { font-size: 11.5px; }
-  .statusbar #sbLine { margin-left: auto; color: var(--overlay0); }
+  .statusbar #sbLine { margin-right: auto; color: var(--overlay0); }
 
   /* 3. 顶栏：按钮统一 34×34 圆角 10，「文件」做成等高胶囊 */
   .menubar { height: 50px; padding: 0 10px; gap: 6px; }
