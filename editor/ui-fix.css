@@ -132,6 +132,14 @@ html.kb-open .m-sheet-body { bottom: var(--kb-h, 0px) !important; }
   #sbSave { cursor: pointer; }
   #sbSave.dirty { color: var(--blue) !important; font-weight: 600; }
   #status.sb-tap { cursor: pointer; text-decoration: underline dotted; }
+  /* 状态栏三段挤在 390 宽里会互相压住（"检查无误 · 共 1 行"直接叠在"共 1 行"上）：
+     #sbLine 有 margin-right:auto 会把右边的 #status 挤出容器，两个都不收缩 → 文字重叠。
+     让行号固定宽、检查结果可收缩省略，宁可 § 也不叠字。 */
+  .statusbar #sbLine { flex: 0 0 auto; }
+  .statusbar #status {
+    flex: 0 1 auto; min-width: 0; overflow: hidden;
+    white-space: nowrap; text-overflow: ellipsis;
+  }
 
   /* 源码模式：一行语法提示 + ? 面板 */
   .m-codehint {
@@ -182,17 +190,17 @@ html.kb-open .m-sheet-body { bottom: var(--kb-h, 0px) !important; }
 
 .tx-box.tx-nvl { left: 16px; right: 16px; bottom: auto; top: 50%; transform: translateY(-50%); text-align: center; }
 
-/* P188：逐句/源码分段提为固定条（ui_polish syncModeSlot 挂 body.m-script-tab）。
-   场景页是 fixed 全屏 z310，分段埋在左栏里会被它盖死；提上来 z315，场景页下移让位。 */
+/* 逐句/源码属于「剧本」内部，不常驻：ui_polish 把分段移进场景页头部下方，
+   这里是它进页后的间距。原来提成悬浮固定条 = 顶部/分段/底部三层导航，
+   用户会问「点剧本和点逐句有什么区别」（诊断 P0，README 第 13 条）。 */
 @media (max-width: 860px), (max-height: 520px), (pointer: coarse) and (hover: none) and (max-width: 1400px) {
-  body.m-script-tab .m-modebar {
-    position: fixed; left: 0; right: 0; top: var(--mb-top, 50px);
-    z-index: 315; box-sizing: border-box;
-  }
-  body.m-script-tab .left-pane { padding-top: 58px; }
-  body.m-script-tab #scenePage {
-    top: calc(var(--mb-top, 50px) + 58px) !important; padding-top: 0 !important;
-  }
+  #scenePage .m-modebar { padding: 6px 12px 2px; }
+  /* 场景页头一行里塞了「‹ 场景列表 / 标题 / 长说明 / ＋新场景 / 保存 / ⋯ / ✕」，
+     390 宽下标题被压成 0 宽，用户看不见自己在编辑哪一幕。长说明那句给桌面看，
+     手机上收掉，把宽度还给标题。 */
+  #scenePage .cp-title { flex: 0 0 auto; min-width: 84px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #scenePage .cp-hint { display: none; }
+  #scenePage .cp-spacer { flex: 1 1 0; min-width: 0; }
   /* 打字态：快捷条(fixed bottom)会盖住状态栏，保存按钮点不到 → 状态栏抬到快捷条上方 */
   body.m-typing .statusbar {
     position: fixed; left: 0; right: 0; z-index: 425;
@@ -200,7 +208,62 @@ html.kb-open .m-sheet-body { bottom: var(--kb-h, 0px) !important; }
   }
   /* 状态栏是 fixed 时会被底栏（z 420）盖住下半截，文字看着像被切了 */
   .statusbar { z-index: 425; }
-}
-@media (max-height: 520px) and (orientation: landscape) {
-  body.m-script-tab .m-modebar { left: 60px; }
+  /* 预览工具栏搬到舞台右侧竖排浮条（ui_polish syncPvRail），底部只留状态文字。
+     深色玻璃底而不是白底：舞台是 #2e2e4a→#12121c，白条会在深色上跳起来。 */
+  .preview-bar .pv-btn { display: none !important; }
+  .pv-rail {
+    position: absolute; right: 10px; top: 50%; transform: translateY(-50%);
+    display: flex; flex-direction: column; gap: 2px; padding: 6px 5px;
+    border-radius: 14px; z-index: 40;
+    background: rgba(14,16,26,.72); border: 1px solid rgba(255,255,255,.12);
+    -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
+    box-shadow: 0 8px 24px rgba(0,0,0,.35);
+  }
+  .pv-rail .pv-btn {
+    width: 36px; height: 36px; display: flex; align-items: center; justify-content: center;
+    border-radius: 10px; color: rgba(255,255,255,.82); font-size: 16px; user-select: none;
+  }
+  .pv-rail .pv-btn:active { background: rgba(79,140,255,.3); color: #fff; }
+  .pv-sep { height: 1px; margin: 3px 7px; background: rgba(255,255,255,.14); }
+  /* 浮条挂在 .preview-wrap 上（previewWrap 每帧被 innerHTML 重写，挂不进去） */
+  .preview-wrap.pv-rail-host { position: relative; }
+  /* 底栏只留三个内容 tab；外观/预览改由菜单和顶栏触发 */
+  .m-tabbar .m-tab.m-tab-hidden { display: none !important; }
+  /* 顶栏「预览」：跟菜单同排，描边而非实心 —— 顶栏的主按钮是返回 */
+  .m-top-preview {
+    height: 34px; padding: 0 14px; margin: 0 8px; border-radius: 10px;
+    border: 1px solid var(--surface0); background: var(--mantle); color: var(--text);
+    font-size: 13.5px; font-family: inherit; cursor: pointer;
+  }
+  .m-top-preview:active { background: var(--surface0); }
+  /* 首页主次：作品卡里的"继续编辑"是这一屏唯一实心动作，
+     下面那排新建/导入/试玩是次要动作，降成描边浅底并缩小（README 13.③） */
+  .m-card-cta {
+    align-self: flex-start; margin-top: 8px;
+    padding: 5px 14px; border-radius: 999px;
+    background: var(--blue); color: #fff; font-size: 12.5px; font-weight: 600;
+    line-height: 1.2; pointer-events: none;
+  }
+  .m-quick-item {
+    min-height: 58px; background: transparent; border-color: var(--surface0);
+    border-style: dashed;
+  }
+  .m-quick-item b { color: var(--subtext0); font-size: 15px; }
+  .m-quick-item span { color: var(--subtext0); font-size: 12px; }
+  .m-home-sec { color: var(--subtext0); font-weight: 400; font-size: 12px; }
+  /* 场景页空态：合成一块，居中，给一个实心主按钮（README 13.③：空屏也要有唯一主动作） */
+  #scenePage .scene-body.m-empty-center {
+    display: flex; align-items: center; justify-content: center; padding: 0 16px;
+  }
+  #scenePage .m-empty-fold {
+    margin: 0; width: 100%; max-width: 420px; padding: 22px 18px; border-radius: 16px;
+    background: var(--mantle); border: 1px solid var(--surface0); text-align: center;
+  }
+  .m-empty-t { font-size: 16px; font-weight: 600; color: var(--text); margin-bottom: 8px; }
+  .m-empty-b { font-size: 12.5px; line-height: 1.6; color: var(--subtext0); margin-bottom: 16px; }
+  .m-empty-cta {
+    height: 40px; padding: 0 22px; border-radius: 999px; border: none;
+    background: var(--blue); color: #fff; font-size: 14px; font-weight: 600;
+    font-family: inherit; cursor: pointer;
+  }
 }

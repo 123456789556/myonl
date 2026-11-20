@@ -532,11 +532,15 @@
     // 留着只会在两种条件下冒出来打架（而且 emoji 图标本身和整体风格不搭）。
     var tabbar = document.createElement("div");
     tabbar.className = "m-tabbar";
+    // P189：底栏只留三个内容 tab（剧本 / 素材 / 导出）。「外观」是参数页、「预览」是看结果，
+    // 都不是一类内容，跟三个内容 tab 平级会让人分不清点哪个才对。
+    // 外观走菜单里的「UI 设计区」，预览走顶栏右侧按钮 —— 两个按钮仍留在这里（CSS 隐藏），
+    // 只是变成被别处触发的入口，下面的 click 分发逻辑不用改。
     tabbar.innerHTML =
       '<button type="button" class="m-tab active" data-tab="script">剧本</button>' +
       '<button type="button" class="m-tab" data-tab="assets">素材</button>' +
-      '<button type="button" class="m-tab" data-tab="look">外观</button>' +
-      '<button type="button" class="m-tab" data-tab="preview">预览</button>' +
+      '<button type="button" class="m-tab m-tab-hidden" data-tab="look">外观</button>' +
+      '<button type="button" class="m-tab m-tab-hidden" data-tab="preview">预览</button>' +
       '<button type="button" class="m-tab" data-tab="export">导出</button>';
     document.body.appendChild(tabbar);
 

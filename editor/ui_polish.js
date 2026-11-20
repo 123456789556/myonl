@@ -44,6 +44,18 @@
     try { name = JSON.parse(localStorage.getItem("myonl:off:lib:v1") || "{}").current || ""; } catch (e) { }
     if (!name) name = (($("filePath") || {}).textContent || "").trim();
     if (t2.textContent !== name) { t2.textContent = name; t2.title = name; }
+    // 顶栏右侧「预览」：预览原本是底栏五个 tab 之一，跟剧本/素材/导出平级，
+    // 可它是个看结果的动作、不是一类内容。收进顶栏后底栏只留三个内容 tab（README 13.①）。
+    if (fm && !document.getElementById("mTopPreview")) {
+      var pvb = document.createElement("button");
+      pvb.type = "button"; pvb.id = "mTopPreview"; pvb.className = "m-top-preview";
+      pvb.textContent = "预览";
+      pvb.addEventListener("click", function () {
+        var t = document.querySelector('.m-tab[data-tab="preview"]');
+        if (t) t.click();
+      });
+      fm.parentNode.insertBefore(pvb, fm);
+    }
   }
 
   /* ---- 2 保存状态：多久前存的 / 未保存点一下就存 ---- */
@@ -252,7 +264,9 @@
     if (!st) return;
     var m = st.textContent.match(/^检查无误 · (\d+) 条$/);
     if (m) {
-      st.textContent = "检查无误 · 共 " + m[1] + " 行";
+      // 手机状态栏只剩 90px，写"检查无误 · 共 N 行"会被挤成一片叠字。
+      // 省略号留给窄屏，语义靠 title：点一下能看每一行是什么（README 12.④ 要写清 N 是什么）。
+      st.textContent = (narrow() ? "✓ 共 " : "检查无误 · 共 ") + m[1] + " 行";
       st.title = "点一下看每一行是什么";
       st.classList.add("sb-tap");
     }
@@ -340,34 +354,116 @@
     }, 0);
   }, true);
 
-  /* ---- 9 逐句/源码分段提为固定条 ----
-     分段原来埋在左栏里，场景页（fixed 全屏）一开就把它盖住：默认逐句之后
-     用户永远摸不到「源码」。剧本 tab 且没有别的二级页时提为固定条，
-     场景页整体下移让位；源码态左栏加 padding 不被压。 */
+  /* ---- 9 预览工具栏：底部四图标搬到舞台右侧竖排浮条 ----
+     README 第 6 条：按钮不许一样大、一样重，同屏动作多就收。底部一条四个同号图标
+     既没主次，又占走台词框正下方的位置。手机改成右侧浮条：两两一组、中间一道分隔，
+     拇指够得到，也不压台词。桌面不动（那里有位置放）。
+     用克隆 + 转发 click，避免搬动 DOM 破坏原按钮上的事件绑定。 */
+  var pvRail = null;
+  function syncPvRail() {
+    var bar = $("previewBar"), wrap = $("previewWrap");
+    if (!bar || !wrap) return;
+    var btns = bar.querySelectorAll(".pv-btn");
+    if (!narrow()) {
+      if (pvRail) { pvRail.remove(); pvRail = null; }
+      return;
+    }
+    if (!pvRail) {
+      pvRail = document.createElement("div");
+      pvRail.className = "pv-rail";
+      // 不能挂进 previewWrap：editor_main 每次渲染都是 previewWrap.innerHTML = ...
+      // （L560 / L676 / L685 / L831），浮条一挂上去下一帧就被整块重写冲掉。
+      // 挂在它外层 .preview-wrap 上，那层没人重写。
+      var host = wrap.parentNode || wrap;
+      host.appendChild(pvRail);
+      if (host !== wrap) host.classList.add("pv-rail-host");
+    }
+    if (!pvRail.childElementCount) {
+      Array.prototype.forEach.call(btns, function (b, i) {
+        if (i === 2) {
+          var sp = document.createElement("div");
+          sp.className = "pv-sep";
+          pvRail.appendChild(sp);
+        }
+        var c = b.cloneNode(true);
+        c.removeAttribute("id");
+        c.addEventListener("click", function () { b.click(); });
+        pvRail.appendChild(c);
+      });
+    }
+  }
+
+  /* ---- 10 逐句/源码属于「剧本」内容，不常驻 ----
+     场景页是全屏内容页，分段埋在左栏里会被它盖死；但提成悬浮固定条就成了
+     顶部/分段/底部三层导航（诊断 P0：用户会问「点剧本和点逐句有什么区别」）。
+     正确做法：剧本页打开时把分段放进场景页头部下面——它是这一页的视图切换，
+     离开剧本页就跟着走。源码态它自然回到左栏顶部。 */
   function syncModeSlot() {
-    var b = document.body;
-    var cur = document.querySelector(".m-tab.active");
-    var onScript = narrow() && (!cur || cur.dataset.tab === "script") && !b.classList.contains("m-home-open");
-    var other = false;
-    document.querySelectorAll(".center-page.open").forEach(function (p) {
-      if (p.id !== "scenePage") other = true;
-    });
-    var on = onScript && !other;
-    b.classList.toggle("m-script-tab", on);
-    if (on) {
-      var mb = document.querySelector(".menubar");
-      if (mb) document.documentElement.style.setProperty("--mb-top", Math.round(mb.getBoundingClientRect().bottom) + "px");
+    var bar = document.querySelector(".m-modebar");
+    var sp = document.getElementById("scenePage");
+    if (bar && sp && narrow()) {
+      var inScene = sp.classList.contains("open");
+      if (inScene && bar.parentNode !== sp) {
+        // 场景页的子节点是 cp-head / scene-tools / scene-body / scn-pop，没有 cp-body。
+        // 先按名字找内容区，找不到就插到头部块之后（children[1] 之前），
+        // 千万别 appendChild 到末尾——那里被 fixed 状态栏盖住，按钮点不到。
+        var body = sp.querySelector(".cp-body,.scene-body,.scene-main");
+        if (body) sp.insertBefore(bar, body);
+        else {
+          var head = sp.querySelector(".cp-head") || sp.firstElementChild;
+          if (head && head.nextSibling) sp.insertBefore(bar, head.nextSibling);
+          else sp.appendChild(bar);
+        }
+      } else if (!inScene && bar.parentNode === sp) {
+        var wrap = $("sourceWrap");
+        if (wrap && wrap.parentNode) wrap.parentNode.insertBefore(bar, wrap);
+      }
     }
     // 打字时快捷条压在状态栏上，保存点不到：把状态栏抬到快捷条上面
+    var b = document.body;
     if (b.classList.contains("m-typing")) {
       var kb = document.querySelector(".m-keybar");
       if (kb) document.documentElement.style.setProperty("--kb-bottom", kb.style.bottom || "30px");
     }
   }
 
+  /* ---- 11 场景页空态：两句话说同一件事，合成一个 + 一个主按钮 ----
+     原来左列"还没有 @label，先给场景起个名字吧"、右列"这个文件还没有场景"，
+     手机只有一列，两块空态上下叠着，屏幕一半是空白，用户也不知道下一步点哪。 */
+  function syncSceneEmpty() {
+    var sp = $("scenePage");
+    if (!sp || !narrow() || !sp.classList.contains("open")) return;
+    var es = sp.querySelectorAll(".scene-empty");
+    if (es.length < 2 || document.getElementById("mSceneEmptyCta")) return;
+    var keep = es[0];
+    Array.prototype.slice.call(es, 1).forEach(function (e) { e.remove(); });
+    keep.classList.add("m-empty-fold");
+    // 桌面是「左列列表 + 右列表单」两栏，手机只有一列：另一栏空着也在撑高度，
+    // 屏幕下半截就变成死白。整块只留这一块空态，居中。
+    var body = keep.closest(".scene-body");
+    if (body) {
+      body.classList.add("m-empty-center");
+      Array.prototype.forEach.call(body.children, function (c) {
+        if (!c.contains(keep)) c.style.display = "none";
+      });
+      // 直接挂到 scene-body 下：留在 .scene-list（宽 236、overflow auto）里
+      // 卡会被裁成窄条，也没法在整屏里居中。
+      if (keep.parentNode !== body) body.appendChild(keep);
+    }
+    keep.innerHTML =
+      '<div class="m-empty-t">还没有场景</div>' +
+      '<div class="m-empty-b">一个作品由若干「幕」组成。先建第一幕，写下第一句台词。</div>' +
+      '<button type="button" class="m-empty-cta" id="mSceneEmptyCta">＋ 创建第一幕</button>';
+    var cta = document.getElementById("mSceneEmptyCta");
+    cta.addEventListener("click", function () {
+      var add = document.getElementById("sceneAdd");
+      if (add) add.click();
+    });
+  }
+
   /* ---- 启动 ---- */
   function tick() {
-    fixTopbar(); hookSaveSync(); syncSave(); fixModeBar(); fixStatus(); renderTextPreview(); syncModeSlot();
+    fixTopbar(); hookSaveSync(); syncSave(); fixModeBar(); fixStatus(); renderTextPreview(); syncModeSlot(); syncPvRail(); syncSceneEmpty();
   }
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", function () { tick(); setInterval(tick, 700); });

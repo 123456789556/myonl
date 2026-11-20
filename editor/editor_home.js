@@ -141,6 +141,10 @@
           '<span class="m-chip">' + p.assets + ' 个素材</span>' +
           '<span class="m-chip m-chip-dim">' + ago(p.mtime) + '</span>' +
         '</span>' +
+        // 整张卡都是可点的，这里只是把"点它会进编辑器"这件事写出来。
+        // 有作品时首页唯一该做的事就是这个，不该跟新建/导入三个按钮一样平（README 13.③）。
+        // 用 span 不用 button：外面那层已经是 button，嵌套 button 在 HTML 里是非法的。
+        '<span class="m-card-cta">继续编辑</span>' +
       '</span>' +
       '<span class="m-card-go">›</span></button>';
   }
