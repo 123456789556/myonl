@@ -3,7 +3,7 @@
 [简体中文](README.md) | **English**
 
 ![tests](https://github.com/123456789556/myonl/actions/workflows/tests.yml/badge.svg?branch=main)
-![Release](https://img.shields.io/badge/release-v1.2.0-blue)
+![Release](https://img.shields.io/badge/release-v1.2.14-blue)
 ![Android](https://img.shields.io/badge/Android-7.0%2B%20phone%20%26%20tablet-3DDC84)
 ![Windows](https://img.shields.io/badge/Windows-辅助%20packager-0078D4)
 ![Python](https://img.shields.io/badge/Python-3.9%2B-3776AB)
@@ -145,7 +145,8 @@ Four projects under `games/`, ready to edit:
 - **教程示例** (14 files) — directives explained line by line
 - **标准示例** (24 files) — a complete project: script, assets, config
 - **新游戏模板** (21 files) — bare skeleton from scratch
-- **newbie_demo** (7 files) — the sample bundled into the APK
+- **newbie_demo** (7 files) — the sample packed into the app's assets; the home screen no longer
+  exposes a "demo" entry (it now opens a short editable tutorial project instead)
 
 All assets are self-made placeholders; reuse and delete freely. Someone else's game as a reference
 would be redistribution and does not belong in this repo.
