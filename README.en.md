@@ -5,9 +5,11 @@
 ![tests](https://github.com/123456789556/myonl/actions/workflows/tests.yml/badge.svg?branch=main)
 ![Release](https://img.shields.io/badge/release-v1.2.14-blue)
 ![Android](https://img.shields.io/badge/Android-7.0%2B%20phone%20%26%20tablet-3DDC84)
-![Windows](https://img.shields.io/badge/Windows-辅助%20packager-0078D4)
+![Windows](https://img.shields.io/badge/Windows-desktop%20packager-0078D4)
 ![Python](https://img.shields.io/badge/Python-3.9%2B-3776AB)
 ![License](https://img.shields.io/badge/License-MIT-green)
+![Offline](https://img.shields.io/badge/offline-100%25-2ea44f)
+![Account](https://img.shields.io/badge/account-none-lightgrey)
 
 **Make a game on your phone.** Install one APK, open it, and you can create a project, write
 scenes, keep everything on the device, and export it — no network, no account, no cloud.
@@ -24,7 +26,7 @@ scenes, keep everything on the device, and export it — no network, no account,
 
 | You want | Take |
 | :--- | :--- |
-| Android phone or tablet, installed | [**MYONL-v1.2.0.apk**](https://github.com/123456789556/myonl/releases/download/v1.2.0/MYONL-v1.2.0.apk) |
+| Android phone or tablet, installed | [**MYONL-v1.2.14.apk**](https://github.com/123456789556/myonl/releases/download/v1.2.14/MYONL-v1.2.14.apk) |
 | Any browser, nothing installed | a single-file HTML you exported |
 | Windows, double-click (editor + packager) | build it in-repo: `py -3 tools/build_release_zip.py` |
 
@@ -59,9 +61,20 @@ but there is no iOS installer.
   starts at 40 MB and a strong warning at 80 MB (export is not blocked either way), but past 80 MB
   low-end devices most likely white-screen. A folder/zip release for larger assets is not built yet.
 
-The phone parser does not implement `@voice`, `@anim`, `@fg`, `@cg`, `@camera`, `@transition`,
-`@plug`, or `@include`; using one raises a clear error with the line number. The full boundary is
-in [docs/手机端编游戏.md](docs/手机端编游戏.md).
+The phone **editor** cannot write 8 directives: `@voice`, `@anim`, `@fg`, `@cg`, `@camera`,
+`@transition`, `@plug`, `@include`. Writing one raises a clear error with the line number.
+
+> Read this as two layers, not one:
+>
+> - **The player supports them all.** `web/myonl-player.js` implements `cg`, `fg`, `anim`,
+>   `camera`, `transition` and `voice`, so a bundle exported on the desktop plays them normally on a
+>   phone — camera moves, voice, sprite easing all work.
+> - **The phone editor never emits those ops.** A phone project is a single file: `@include` has no
+>   second file to pull in, and `@plug` has no plugin to load.
+>
+> Real boundary: write them on the desktop, and the exported bundle behaves on the phone. Letting
+> the phone write them too would need parsing branches in `engine/parser.js`, not a new player.
+> Full boundary in [docs/手机端编游戏.md](docs/手机端编游戏.md).
 
 ## What a script looks like
 
