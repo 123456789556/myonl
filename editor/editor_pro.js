@@ -2041,7 +2041,7 @@
 
   // ---------- 1. 编辑器主题（深色 / 浅色） ----------
   var THEME_KEY = "gal_editor_theme";
-  function currentTheme() { return document.documentElement.getAttribute("data-theme") === "light" ? "light" : "dark"; }
+  function currentTheme() { return document.documentElement.getAttribute("data-theme") === "dark" ? "dark" : "light"; }
   function applyTheme(t) {
     t = t === "light" ? "light" : "dark";
     document.documentElement.setAttribute("data-theme", t);
@@ -2051,7 +2051,8 @@
   }
   var savedTheme = null;
   try { savedTheme = localStorage.getItem(THEME_KEY); } catch (e) {}
-  applyTheme(savedTheme === "light" ? "light" : "dark");
+  // 默认浅色：白底黑字最像"写东西"的软件，也让截图发人不发光。想深色在设置里换，换完记住。
+  applyTheme(savedTheme === "dark" ? "dark" : "light");
   window.__setEditorTheme = applyTheme;
   window.__themeToggle = function () { applyTheme(currentTheme() === "light" ? "dark" : "light"); toast(currentTheme() === "light" ? "已切换到浅色界面" : "已切换到深色界面"); };
 
