@@ -2951,7 +2951,7 @@ input[type="color"] {
   .scene-page .sf-stage-wrap { margin: 10px 0 4px; }
   /* 预览比例可在设置里切（16:9 / 20:9 全面屏 / 4:3 老手机），
      用同一段剧本看它在不同屏上什么处境，而不是只能看固定 16:9。 */
-  .scene-page .sf-stage { height: 0; padding-bottom: var(--sf-pad, 56.25%); position: relative; border-radius: 12px; overflow: hidden; }
+  .scene-page .sf-stage { height: 0; padding-bottom: var(--sf-pad, 36%); position: relative; border-radius: 12px; overflow: hidden; }
   .scene-page .sf-stage-hint { font-size: 11.5px; }
   .scene-page .sf-cast, .scene-page .sf-say, .scene-page .sf-opt { flex-wrap: wrap; gap: 6px; padding: 8px; border-radius: 10px; align-items: flex-start; }
   .scene-page .sf-cast select, .scene-page .sf-say select, .scene-page .sf-say textarea,

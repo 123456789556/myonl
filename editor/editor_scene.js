@@ -41,7 +41,6 @@
   sceneSearch.className = "set-search";
   sceneSearch.id = "sceneSearch";
   sceneSearch.placeholder = "搜索场景名…";
-  // 筛选下拉也放进工具条，给顶部按钮腾地方（窗口窄时不换行遮挡）
   try {
     var filterEl = $("sceneFilter");
     if (filterEl) toolsBar.appendChild(filterEl);
@@ -55,7 +54,6 @@
   var model = null;
 
   function fit() {
-    // 小窗口下别把场景页顶到可视区外（739×650 实测会整页落到屏幕下方）
     var top = tabs.offsetTop + tabs.offsetHeight;
     page.style.top = Math.max(0, Math.min(top, window.innerHeight - 220)) + "px";
   }
@@ -72,7 +70,6 @@
       if (m) marks.push({ name: m[1], start: i });
     }
     var out = [];
-    // 一个 @label 都没有（新建的空剧本就是这样）时，整份文件当成一个场景，
     // 否则场景列表一片空白，手机第一眼看到的就是「什么都没有」。
     if (!marks.length) {
       var any = lines.some(function (x) { return x.trim() && !/^\s*#/.test(x); });
@@ -409,8 +406,8 @@
     rows.push('<div class="sf-layer fixed bg"><span class="sf-layer-tag">最下</span>' +
       '<span class="sf-layer-name">背景' + (model.bg ? " · " + esc(model.bg.name) : "") + "</span></div>");
     // 图层 z 序是"要做精细调整时才需要"的东西，默认折起来：新手先把台词写通顺更重要
-    return '<details class="sf-fold"><summary class="sf-sec sf-sec-layer">图层顺序 <span class="sf-hint">谁压在上面</span></summary>' +
-      '<div class="sf-layers" id="sfLayers">' + rows.join("") + "</div></details>";
+    return '<div class="sf-sec sf-sec-layer">图层顺序 <span class="sf-hint">谁压在上面</span>' +
+      '<div class="sf-layers" id="sfLayers">' + rows.join("") + "</div>";
   }
 
   function reorderLayers(fromI, toI) {
@@ -509,13 +506,15 @@
     var images = assetList("images"), audios = assetList("audio");
     var h = [];
     h.push('<div class="sf-scene"><span class="sf-label">场景</span><b>' + esc(model.name) + "</b></div>");
+    h.push('<div class="sf-stage-wrap"><div class="sf-stage" id="sfStage"></div><div class="sf-stage-hint">拖动角色调整位置 · 双击复位 · 也可用下面的位置下拉</div></div>');
+    h.push('<details class="sf-fold"><summary class="sf-sec sf-sec-res">场景设置 <span class="sf-hint">背景 · 音乐 · 图层 · 跳转</span></summary>');
     h.push('<div class="sf-row"><span class="sf-label">背景</span><select id="sfBg">' + optsHtml(images, model.bg ? model.bg.name : "", "（保持不变）") + "</select></div>");
     h.push('<div class="sf-row"><span class="sf-label">音乐</span><select id="sfMusic">' + optsHtml(audios, model.music ? model.music.name : "", "（保持不变）") + "</select></div>");
     var videos = assetList("videos");
     h.push('<div class="sf-row"><span class="sf-label">视频</span><select id="sfVideo" title="@video 全屏视频：只有视频、没有台词的过场就靠它">' + optsHtml(videos, model.video ? model.video.name : "", "（无视频）") + "</select></div>");
     h.push('<datalist id="sfExprList">' + Object.keys(exprs).map(function (k) { return '<option value="' + esc(k) + '">'; }).join("") + "</datalist>");
-    h.push('<div class="sf-stage-wrap"><div class="sf-stage" id="sfStage"></div><div class="sf-stage-hint">拖动角色调整位置 · 双击复位 · 也可用下面的位置下拉</div></div>');
     h.push(layerPanelHtml());
+    h.push("</details>");
     h.push('<div class="sf-sec sf-sec-char">角色 <button type="button" class="icon-btn" id="sfAddChar">＋ 加角色</button></div>');
     h.push('<div id="sfChars">');
     model.chars.forEach(function (c, i) {
@@ -550,7 +549,8 @@
         '<button type="button" class="icon-btn sf-del" data-kind="opt" data-i="' + i + '">✕</button></div>');
     });
     h.push("</div>");
-    h.push('<div class="sf-row"><span class="sf-label">结束跳转</span><input id="sfJump" placeholder="@jump 目标（留空=不跳）" value="' + esc(model.jump ? model.jump.target : "") + '"></div>');
+    h.push('<details class="sf-fold"><summary class="sf-sec">结束跳转 <span class="sf-hint">这一场演完跳哪</span></summary>');
+    h.push('<div class="sf-row"><span class="sf-label">结束跳转</span><input id="sfJump" placeholder="@jump 目标（留空=不跳）" value="' + esc(model.jump ? model.jump.target : "") + '"></div></details>');
     h.push('<div class="sf-actions"><button type="button" class="icon-btn" id="sfSaveBtn">保存这个场景</button></div>');
     formEl.innerHTML = h.join("");
     wire();
