@@ -481,7 +481,28 @@
     if (staleSeen === txt) return;
     staleSeen = txt;
     var btn = $("sceneRefresh");
-    if (btn) btn.click();
+    if (!btn) return;
+    // 这次重扫是「补上初始化时序」，不是用户按的 —— 弹一句"已重新读取剧本"只会让人莫名其妙。
+    var t = null;
+    try { t = window.__editor.toast; window.__editor.toast = function () {}; } catch (e) { }
+    btn.click();
+    try { window.__editor.toast = t; } catch (e) { }
+  }
+
+  /* ---- 11c 场景详情里的小舞台：没有背景时是个 0 高的空盒子 ----
+     台词卡顶上原本该有一块画面预览，没选背景时 #sfStage 是空的，
+     hint 在手机上又被藏了 → 整块塌成一个点。这里在空的时候撑一块占位。 */
+  function syncStageEmpty() {
+    var sp = $("scenePage");
+    if (!sp || !sp.classList.contains("open")) return;
+    var st = $("sfStage");
+    if (!st || !st.parentNode) return;
+    var wr = st.parentNode;
+    if (!wr.classList.contains("sf-stage-wrap")) return;
+    // 判「有没有画面」而不是「有没有子节点」：空舞台里本来就放着 .sf-stage-empty 和
+    // 「真实渲染预览」按钮两个子节点，按子节点数永远判成"有内容"。
+    var hasPic = !!st.querySelector(".sf-stage-bg, .sf-stage-video-el, .sf-stage-missing");
+    wr.classList.toggle("m-stage-empty", !hasPic);
   }
 
   /* 空态合成时把 scene-body 的其它子项 display:none 了。等真有场景之后，
@@ -517,7 +538,7 @@
   /* ---- 启动 ---- */
   function tick() {
     fixTopbar(); hookSaveSync(); syncSave(); fixModeBar(); fixStatus(); renderTextPreview();
-    syncModeSlot(); syncPvRail(); syncSceneStale(); syncSceneEmpty(); syncSceneEmptyUndo(); hookLookEntry();
+    syncModeSlot(); syncPvRail(); syncSceneStale(); syncSceneEmpty(); syncSceneEmptyUndo(); syncStageEmpty(); hookLookEntry();
   }
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", function () { tick(); setInterval(tick, 700); });

@@ -2728,7 +2728,9 @@ input[type="color"] {
   /* 正文让开左侧 60px：用 padding 而不是 margin（main 是 flex:1，margin 会被 flex 吃掉） */
   .main { padding-left: 60px !important; box-sizing: border-box; }
   /* center-page 是 position:fixed，不吃 .main 的内边距 —— 横屏得自己让开左侧 tab 栏，否则列表被压掉半行字 */
-  .center-page { left: 60px !important; width: calc(100% - 74px) !important; right: auto !important; overflow-x: hidden; box-sizing: border-box; }
+  /* P190：原来只让到 74px，右侧留的 14px 缝隙正好把底下的顶栏按钮露出半截（看起来像画面上有个莫名其妙的圆）。
+     只让 tab 栏那 60px，右边贴齐。 */
+  .center-page { left: 60px !important; width: calc(100% - 60px) !important; right: auto !important; overflow-x: hidden; box-sizing: border-box; }
   .center-page .modal-wide, .center-page .modal { width: 100% !important; max-width: 100% !important; box-sizing: border-box; }
   .m-grouplist { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 18px; }
   .m-gr-val { max-width: 46%; }
@@ -2922,6 +2924,11 @@ input[type="color"] {
   .scene-page .scene-body { flex-direction: column; overflow: hidden; }
   .scene-page .scene-list { width: 100%; flex: 1 1 auto; min-height: 0; border-right: 0; }
   .scene-page .scene-form { width: 100%; flex: 1 1 auto; min-height: 0; overflow: auto; display: none; }
+  /* P190：下面 3028 行有 `#sceneForm{display:flex}`（id 级，P183 分镜带那批），
+     它的优先级压过上面那条 class 级的 display:none —— 手机从那时起就是「列表 + 表单」
+     上下同屏，列表只剩两行高，四幕只看得见一幕。这里用 id 级把两态真正分开：
+     列表页只给列表，点一幕才进详情。 */
+  .scene-page:not(.m-detail) #sceneForm { display: none; }
   .scene-page.m-detail .scene-list { display: none; }
   .scene-page.m-detail .scene-form { display: block; }
   .scene-page.m-detail .scene-tools { display: none; }
@@ -3068,9 +3075,13 @@ input[type="color"] {
    P113：横屏场景页改两栏 —— 左改参数、右看画面。
    横屏时 390 高塞不下单列竖排，台词框拉得又宽又空，预览被挤到看不见。
    竖屏不动（竖屏是"台词在上、预览在下"，已经顺）。
+
+   P190 补一个前提：这段只在「详情」里生效（m-detail）。
+   原来不管在哪一态都把 #sceneForm 打开，结果横屏进场景页是「列表 29px + 表单」，
+   列表被压成一条缝，四幕只能看见第一行。横屏也该先看列表、点一幕再进详情。
    ============================================================ */
 @media (max-height: 520px), (min-width: 900px) and (pointer: coarse) and (max-width: 1400px) {
-  #scenePage #sceneForm {
+  #scenePage.m-detail #sceneForm {
     display: grid !important;
     grid-template-columns: minmax(0, 1fr) minmax(200px, 38%) !important;
     grid-auto-rows: min-content;
@@ -3078,6 +3089,20 @@ input[type="color"] {
     align-content: start;
     align-items: start;
   }
+  #scenePage #sceneForm > * { grid-column: 1; min-width: 0; }
+  /* 预览钉在右列，滚左边的时候画面一直看得见 */
+  #scenePage #sceneForm > .sf-stage-wrap {
+    grid-column: 2;
+    grid-row: 1 / span 40;
+    position: sticky;
+    top: 72px;
+    align-self: start;
+    margin-top: 0 !important;
+  }
+  #scenePage #sceneForm > .sf-actions { grid-column: 1 / -1; }
+  /* 横屏地窄，台词框不用再拉满 */
+  #scenePage .scene-form { padding-right: 10px; }
+}
   #scenePage #sceneForm > * { grid-column: 1; min-width: 0; }
   /* 预览钉在右列，滚左边的时候画面一直看得见 */
   #scenePage #sceneForm > .sf-stage-wrap {

@@ -46,9 +46,9 @@ FILE_BUDGET: dict[str, int] = {
     "editor/strip.css": 100,         # P183 分镜带样式，新文件
     "editor/asset_thumb.js": 50,     # P184b 缩略图生成（240 边，只给列表看，不动原图），新文件
     "editor/editor_shell.js": 874,
-    "editor/ui_polish.js": 527,   # P188 主链路收口 + P189 结构两层（模式槽/预览浮条/空态合成/外观入口）+ P190 场景页时序兜底（场景列表重扫 + 空态恢复显示），新文件
-    "editor/ui-fix.css": 311,     # P186 手机外壳 + P188 主链路样式 + P189 结构两层（浮条/场景 order/外观预览置顶）+ P190，新文件
-    "editor/editor.css": 3354,   # P179 首页去大卡后布局收口 +5；P185 顶部安全带（挖孔/侧边 cutout）+18
+    "editor/ui_polish.js": 548,   # P188 主链路收口 + P189 结构两层（模式槽/预览浮条/空态合成/外观入口）+ P190 场景页时序兜底（场景列表重扫 + 空态恢复 + 空舞台占位 + 重扫不弹 toast），新文件
+    "editor/ui-fix.css": 325,     # P186 手机外壳 + P188 主链路样式 + P189 结构两层（浮条/场景 order/外观预览置顶）+ P190 空舞台占位（宽度显式给，否则 padding 撑高的舞台会塌成 0），新文件
+    "editor/editor.css": 3379,   # P179 首页去大卡后布局收口 +5；P185 顶部安全带（挖孔/侧边 cutout）+18；P190 +25 手机场景两态真正分开（#sceneForm 的 id 级 display 压过 class 级 none）+ 横屏列表不再被表单挤成 29px + 横屏右侧不留缝
     "engine/editor.py": 3038,   # P184b asset_thumb.js 静态路由 +1；P188 ui_polish.js 路由 +1
     "engine/parser.py": 1080,
 }

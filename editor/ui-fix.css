@@ -281,9 +281,23 @@ html.kb-open .m-sheet-body { bottom: var(--kb-h, 0px) !important; }
   #scenePage #sceneForm > #sfChars      { order: 12; }
   #scenePage #sceneForm > .sf-actions   { order: 20; }
   /* 舞台预览只是确认画面，不要占掉半屏 */
-  #scenePage .sf-stage-wrap { max-height: 210px; }
+  /* 宽度必须显式给：这一列是 flex，`.sf-stage` 用 padding-bottom 百分比撑高度，
+     宽度一塌高度就跟着变 0 —— 竖屏实测 wrap 是 0×96，画面那块直接消失。 */
+  #scenePage .sf-stage-wrap { width: 100%; max-width: 100%; box-sizing: border-box; max-height: 210px; }
   #scenePage .sf-stage { max-height: 190px; }
   #scenePage .sf-stage-hint { display: none; }
+  /* 还没选背景时舞台是空的（hint 又被藏了），整块会塌成一个点：
+     台词卡顶上突然什么都没有，看不出这里本来该有画面。撑一块占位并把话说清楚。 */
+  #scenePage .sf-stage-wrap.m-stage-empty {
+    min-height: 96px; position: relative;
+    background: var(--surface0); border-radius: 12px;
+  }
+  #scenePage .sf-stage-wrap.m-stage-empty .sf-stage { display: none; }
+  #scenePage .sf-stage-wrap.m-stage-empty::after {
+    content: "选背景后这里显示画面预览"; position: absolute; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px; color: var(--subtext0);
+  }
   /* 状态栏是 fixed 的（bottom 52px + 26 高），最后一个「保存这个场景」会被压在它下面 */
   #scenePage #sceneForm { padding-bottom: 86px; }
   /* 外观一级页：先看见效果，再决定改哪一组。
