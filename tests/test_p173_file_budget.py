@@ -47,7 +47,7 @@ FILE_BUDGET: dict[str, int] = {
     "editor/asset_thumb.js": 50,     # P184b 缩略图生成（240 边，只给列表看，不动原图），新文件
     "editor/editor_shell.js": 870,
     "editor/ui_polish.js": 377,   # P188 主链路收口（顶栏/保存状态/逐句默认/文字预览/导入动作单）+ 取消回首页 + 分段固定条 + 打字态状态栏抬升 + 背景归当前句，新文件
-    "editor/ui-fix.css": 204,     # P186 手机外壳 + P188 主链路样式 + 分段固定条/打字态状态栏 + 桌面新建弹窗折叠区 + 背景铺满舞台，新文件
+    "editor/ui-fix.css": 206,     # P186 手机外壳 + P188 主链路样式 + 分段固定条/打字态状态栏 + 桌面新建弹窗折叠区 + 背景铺满舞台 + 状态栏层级，新文件
     "editor/editor.css": 3354,   # P179 首页去大卡后布局收口 +5；P185 顶部安全带（挖孔/侧边 cutout）+18
     "engine/editor.py": 3038,   # P184b asset_thumb.js 静态路由 +1；P188 ui_polish.js 路由 +1
     "engine/parser.py": 1080,
