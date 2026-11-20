@@ -1,8 +1,9 @@
 # -*- coding: utf-8 -*-
 """发行包清单守护：零帮助抽测第 2 步要双击的 tools/win_env_check.bat 必须随包。
 
-背景（2026-11-07 实测）：rc7 发行包里没有该脚本，而 docs/计划/00-总览.md §三
-的抽测清单第 2 步直接要求双击 `tools/win_env_check.bat` —— 陌生人照清单走到
+背景（2026-11-07 实测）：rc7 发行包里没有该脚本，而零帮助抽测清单第 2 步
+（原 docs/计划/00-总览.md §三，2026-11-20 起迁到内部仓 BACKLOG 的 R7）
+直接要求双击 `tools/win_env_check.bat` —— 陌生人照清单走到
 第 2 步就会找不到文件。本测试防止打包脚本再漏掉它。
 """
 from __future__ import annotations

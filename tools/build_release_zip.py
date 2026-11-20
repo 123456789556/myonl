@@ -133,8 +133,8 @@ def build(version: str, out: Path) -> Path:
             src = ROOT / "games" / proj
             if src.is_dir():
                 entries += _add_tree(zf, src, f"{prefix}/games/{proj}")
-        # 零帮助抽测清单第 2 步要双击 tools/win_env_check.bat（docs/计划/00-总览.md §三）；
-        # 以前只在仓库里有、没进包，抽测走到第 2 步就找不到文件，故必须随包。
+        # 零帮助抽测清单第 2 步要双击 tools/win_env_check.bat（清单已从原 docs/计划/00-总览.md
+        # 迁到内部仓 BACKLOG 的 R7）；以前只在仓库里有、没进包，抽测走到第 2 步就找不到文件，故必须随包。
         zf.write(ROOT / "tools" / "win_env_check.bat", f"{prefix}/tools/win_env_check.bat")
         entries += 1
     size_mb = out.stat().st_size / 1024 / 1024
