@@ -520,7 +520,7 @@
     h.push('<div id="sfChars">');
     model.chars.forEach(function (c, i) {
       if (c.del) return;
-      h.push('<div class="sf-cast" data-i="' + i + '"><select class="sf-char">' + optsHtml(pool, c.name, "角色…") + '</select>' +
+      h.push('<div class="sf-cast" data-i="' + i + '"><select class="sf-char">' + optsHtml(pool, c.name, pool.length ? "角色…" : "（还没建角色）") + '</select>' +
         '<input class="sf-expr" list="sfExprList" placeholder="表情" value="' + esc(c.expr) + '">' +
         '<input class="sf-scale" type="number" min="0.5" max="2" step="0.05" placeholder="缩放" title="scale 0.5~2" value="' + (c.scale != null ? c.scale : "") + '">' +
         '<input class="sf-z" type="number" step="1" placeholder="层级" title="z 图层顺序，大者在上" value="' + (c.z != null ? c.z : "") + '">' +
@@ -536,7 +536,7 @@
     h.push('<div id="sfSays">');
     model.says.forEach(function (s, i) {
       if (s.del) return;
-      h.push('<div class="sf-say" data-i="' + i + '"><select class="sf-who">' + optsHtml(pool, s.who, "角色…") + "</select>" +
+      h.push('<div class="sf-say" data-i="' + i + '"><select class="sf-who">' + optsHtml(pool, s.who, pool.length ? "角色…" : "（还没建角色）") + "</select>" +
         '<textarea class="sf-text" rows="2" placeholder="台词内容">' + esc(s.text) + "</textarea>" +
         '<button type="button" class="icon-btn sf-del" data-kind="say" data-i="' + i + '">✕</button></div>');
     });
