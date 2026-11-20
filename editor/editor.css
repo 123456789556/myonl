@@ -1878,7 +1878,7 @@ input[type="color"] {
   .right-pane {
     position: fixed; left: 0; right: 0; bottom: 0; width: 100vw; max-width: 100vw;
     height: 62dvh; z-index: 78; border-left: none; border-top: 1px solid var(--surface0);
-    transform: translateY(103%); transition: transform .18s ease;
+    transform: translateY(118%); transition: transform .18s ease;
     box-shadow: 0 -8px 24px rgba(0,0,0,.45);
   }
   .main.mobile-preview-open .right-pane { transform: none; }
@@ -1937,15 +1937,15 @@ input[type="color"] {
     height: calc(52px + env(safe-area-inset-bottom));
   }
   .m-tab {
-    flex: 1; display: flex; align-items: center; justify-content: center;
+    flex: 1; display: flex; align-items: center; justify-content: center; height: 100%;
     background: none; border: none; color: var(--subtext0); font-size: 14px;
     font-family: inherit; padding: 0; cursor: pointer; position: relative;
     transition: color .15s ease;
   }
   .m-tab.active { color: var(--blue); font-weight: 600; }
   .m-tab.active::after {
-    content: ""; position: absolute; left: 50%; transform: translateX(-50%);
-    top: 0; width: 22px; height: 2px; border-radius: 2px; background: var(--blue);
+    content: ""; position: absolute; left: 25%; right: 25%;
+    bottom: 6px; height: 2px; border-radius: 2px; background: var(--blue);
   }
   /* tab 栏和键盘快捷条占位：让正文能滚到最后一行 */
   .left-pane { padding-bottom: 140px; }
@@ -2225,13 +2225,13 @@ input[type="color"] {
 
   /* 底部 tab 选中态：原来套一层浅蓝胶囊，字是白的，等于看不清。改回「蓝字 + 细线」 */
   .m-tab, .m-tab:active, .m-tab.active {
-    background: transparent !important;
+    background: transparent !important; outline: none !important;
     -webkit-tap-highlight-color: transparent;
   }
   .m-tab.active { color: var(--blue) !important; font-weight: 600; }
   .m-tab.active::after {
-    content: ""; position: absolute; left: 50%; transform: translateX(-50%);
-    top: 0; width: 22px; height: 2px; border-radius: 2px; background: var(--blue);
+    content: ""; position: absolute; left: 25%; right: 25%;
+    bottom: 6px; height: 2px; border-radius: 2px; background: var(--blue);
   }
 }
 @media (max-height: 520px) {
