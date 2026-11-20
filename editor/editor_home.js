@@ -317,9 +317,8 @@
         '<div class="m-set-sec">软件详情</div>' +
         '<div class="m-set-row"><span>存储方式</span><span class="m-set-val">本地，不上云</span></div>' +
         '<div class="m-set-row"><span>数据位置</span><span class="m-set-val">这台设备</span></div>' +
-        '<div class="m-set-note">作品和素材都留在这台设备上，不联网也不上传。' +
-        '想给别人看：进作品，在底部「导出」里点「做成成品」，得到一个 .html，发过去就能打开。' +
-        '换手机不会自动带走，需要自己导出。</div>' +
+        '<div class="m-set-note">存储方式：本地存储，数据留在这台设备上，不联网也不上传。<br>' +
+        '需要转移或分享？→ 进作品 → 底部「导出」→ 选择导出格式。</div>' +
       '</div>';
     // 抽屉挂 <html> 而不是 <body>：body 上挂了编辑器各种档位类，fixed 定位在里面被算成流的位置
   // （实测顶边跑到 1007，正好是内容底部）。挂 html 之后 fixed 的包含块就是视口本身。
@@ -482,7 +481,10 @@
 
     var ifr = document.createElement("iframe");
     ifr.id = "mDemoFrame";
-    ifr.src = "./game.html";
+    // shellbar=1：告诉播放器「外面这条退出栏一直在」，游戏里就别再画一个浮动的
+    // 「退出试玩」——两个同名按钮叠在顶部，用户不知道点哪个（诊断 P0）。
+    // 游戏内菜单里的退出项保留，作为第二条路。
+    ifr.src = "./game.html" + "?shellbar=1";
     ifr.style.cssText = "flex:1 1 auto;display:block;width:100%;height:100%;border:0;background:#000";
 
     wrap.appendChild(bar);

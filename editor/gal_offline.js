@@ -160,7 +160,7 @@
   // 新作品给一句能立刻改的旁白，跟电脑端「新建游戏 = hello 模板」一致
   function starterText() {
     // 每行都控制在 13 字内：手机正文只有约 300px（15px 字号 ≈ 20 字），写长了就折行，折出来的尾巴会贴到最左边
-    return "# 下一行换成你想说的话\n# 改完点右上角 ⋯ 里保存\n@ hello world!\n";
+    return "# 下一行换成你想说的话\n# 写完点左下「未保存」存\n@ hello world!\n";
   }
 
   function toast(msg, isErr) {
@@ -717,6 +717,46 @@
       ok: false,
       message: "手机端不能直接从网址抓图（浏览器跨站限制读不到文件）。"
         + "请先把图存到相册，再用「＋」从相册导入。"
+    });
+  };
+
+  // P188：编辑器「导入」按钮走 POST /api/import（base64）。离线内核以前只有 import_url，
+  // 这条路在手机上必失败（素材进不来、动作单不弹）。补路由，落库复用 persistAsset 同一套。
+  ROUTES["POST /api/import"] = function (input, init) {
+    var b = bodyOf(init);
+    var cat = String(b.category || "");
+    var fname = String(b.filename || "素材");
+    var b64 = String(b.data_b64 || "");
+    if (!b64) return jsonRes({ ok: false, message: "没收到文件内容" }, 400);
+    if (cat === "fonts") return jsonRes({ ok: false, message: "手机端暂不收字体素材，请在电脑上导入" });
+    var ext = (fname.split(".").pop() || "").toLowerCase();
+    var mime = cat === "audio"
+      ? ({ wav: "audio/wav", mp3: "audio/mpeg", ogg: "audio/ogg" }[ext] || "audio/mpeg")
+      : ({ png: "image/png", jpg: "image/jpeg", jpeg: "image/jpeg", webp: "image/webp" }[ext] || "image/png");
+    var url = "data:" + mime + ";base64," + b64;
+    var stem = fname.replace(/\.[^.]+$/, "").slice(0, 40) || "素材";
+    var taken = idxRead(), kinds = kindRead();
+    var kind = cat === "audio" ? "audio" : "image";
+    var existed = taken.indexOf(stem) >= 0;
+    var pre = Promise.resolve();
+    if (b.overwrite && existed) {
+      pre = dbRun("readwrite", function (st) { return st.delete(stem); }).then(function () {
+        taken.splice(taken.indexOf(stem), 1); delete kinds[stem];
+      });
+    }
+    var th = kind === "image" && window.MYONLThumb
+      ? window.MYONLThumb.fromDataUrl(url, 240).catch(function () { return null; })
+      : Promise.resolve(null);
+    return Promise.all([pre, th]).then(function (r) {
+      return persistAsset(stem, kind, url, taken, kinds, r[1]);
+    }).then(function (name) {
+      return jsonRes({
+        ok: true, name: name, path: name,
+        overwritten: !!(b.overwrite && existed),
+        renamed_from: name !== stem ? stem : undefined
+      });
+    }).catch(function (e) {
+      return jsonRes({ ok: false, message: String((e && e.message) || e) }, 500);
     });
   };
 

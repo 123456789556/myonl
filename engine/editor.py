@@ -758,6 +758,7 @@ class _EditorHandler(BaseHTTPRequestHandler):
         ("GET", "/editor_scene.js"): "_serve_scene_js",
         ("GET", "/editor_strip.js"): "_serve_js",
         ("GET", "/asset_thumb.js"): "_serve_js",
+        ("GET", "/ui_polish.js"): "_serve_js",
         ("GET", "/strip.css"): "_serve_editor_css",
         ("GET", "/ui-fix.css"): "_serve_editor_css",
         ("GET", "/editor_characters.js"): "_serve_characters_js",

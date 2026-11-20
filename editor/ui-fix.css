@@ -75,3 +75,132 @@ html.kb-open .m-sheet-body { bottom: var(--kb-h, 0px) !important; }
   }
   .main.mobile-preview-open .right-pane .preview-wrap { flex: 1 1 auto; min-height: 0; }
 }
+
+/* ==================== P188 主链路收口 ==================== */
+
+/* 预览文字舞台：有台词就演那一句。单文件/离线版没有渲染服务，
+   以前这里只有一句"去电脑上打开"——等于告诉手机用户这工具不行。 */
+.preview-placeholder.txt-stage {
+  position: relative; display: block; width: 100%; height: 100%;
+  max-width: none; padding: 0 !important; overflow: hidden; border-radius: 12px;
+  text-align: left;
+}
+/* 背景必须铺满舞台：editor.css 里有 `#previewWrap img{height:auto!important}`（id 选择器）
+   和 `.preview-img-wrap img{object-fit:contain}`，普通规则压不住，背景只画到 4:3 高。 */
+#previewWrap .tx-bg {
+  position: absolute; inset: 0;
+  width: 100% !important; height: 100% !important; object-fit: cover !important;
+}
+.tx-bg.miss { opacity: 0; }
+.tx-top {
+  position: absolute; top: 8px; left: 10px; right: 10px;
+  display: flex; justify-content: space-between; align-items: center;
+  font-size: 11px; color: rgba(255,255,255,.78); text-shadow: 0 1px 3px rgba(0,0,0,.5);
+}
+.tx-run {
+  border: 1px solid rgba(255,255,255,.35); background: rgba(10,12,20,.45);
+  color: #fff; border-radius: 999px; padding: 4px 14px; font-size: 12px;
+}
+.tx-box {
+  position: absolute; left: 10px; right: 10px; bottom: 12px;
+  background: rgba(8,10,18,.74); border: 1px solid rgba(255,255,255,.14);
+  border-radius: 12px; padding: 10px 14px;
+}
+.tx-who { color: #7fb0ff; font-size: 12.5px; font-weight: 600; margin-bottom: 4px; }
+.tx-text { color: rgba(255,255,255,.94); font-size: 15px; line-height: 1.6; }
+
+@media (max-width: 860px), (max-height: 520px), (pointer: coarse) and (hover: none) and (max-width: 1400px) {
+  /* 弹窗掩罩原来 z=300，比手机整页 center-page(310) 低：逐句场景页默认开着之后，
+     新建/冲突等弹窗全被盖在它下面，点了像没反应。掩罩必须盖住整页层和底栏。 */
+  .modal-mask { z-index: 430 !important; }
+  /* 新建作品：手机上只留一个名字输入框。主题/对齐/保存位置都有默认值，
+     建完去「外观」改；第一步不该让人做四个决定。 */
+  #newGameModal .ng-adv { display: none !important; }
+
+  /* 顶栏：‹ 作品列表 + 作品名。原来的文件名标题（script.gal）对新手没有信息量 */
+  .menubar .m-title:not(.m-title2) { display: none !important; }
+  .m-title2 {
+    flex: 1 1 auto; min-width: 0; text-align: center;
+    font-size: 13px; font-weight: 600; color: var(--text);
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  #mHomeBack { width: auto !important; padding: 0 8px !important; display: inline-flex !important; align-items: center; gap: 2px; }
+  #mHomeBack .mb-back-txt { font-size: 12.5px; white-space: nowrap; }
+
+  /* 保存状态手机上必须看得见（原来整条被 :not(#status):not(#sbLine) 藏了） */
+  .statusbar > .sb-item#sbSave { display: inline-flex !important; }
+  #sbSave { cursor: pointer; }
+  #sbSave.dirty { color: var(--blue) !important; font-weight: 600; }
+  #status.sb-tap { cursor: pointer; text-decoration: underline dotted; }
+
+  /* 源码模式：一行语法提示 + ? 面板 */
+  .m-codehint {
+    display: flex; align-items: center; gap: 8px; padding: 5px 10px;
+    font-size: 11.5px; color: var(--subtext0);
+    background: var(--mantle); border-bottom: 1px solid var(--surface0);
+  }
+  .m-codehelp {
+    margin-left: auto; flex: 0 0 auto; border: 1px solid var(--surface0);
+    background: var(--base); color: var(--blue); border-radius: 999px;
+    padding: 2px 10px; font-size: 11.5px;
+  }
+  .m-syntax {
+    position: fixed; left: 10px; right: 10px; z-index: 460;
+    bottom: calc(60px + env(safe-area-inset-bottom));
+    background: var(--base); border: 1px solid var(--surface0); border-radius: 14px;
+    padding: 10px 12px; box-shadow: 0 10px 34px rgba(0,0,0,.28);
+    max-height: 55vh; overflow: auto;
+  }
+  .m-syntax-head { font-size: 12px; font-weight: 600; color: var(--subtext0); padding-bottom: 6px; }
+  .m-syntax-row { display: flex; gap: 10px; align-items: baseline; padding: 4px 0; font-size: 12.5px; }
+  .m-syntax-row code { flex: 0 0 46%; color: var(--blue); font-size: 12px; word-break: break-all; }
+  .m-syntax-row span { color: var(--text); }
+  .m-syntax-foot { font-size: 11.5px; color: var(--subtext0); padding-top: 6px; border-top: 1px solid var(--surface0); margin-top: 4px; }
+
+  /* 导入后的指令菜单：底部动作单，拇指够得到，文案说人话 */
+  .insert-menu {
+    left: 10px !important; right: 10px !important; top: auto !important;
+    bottom: calc(62px + env(safe-area-inset-bottom)) !important;
+    width: auto !important; max-height: 58vh; overflow: auto;
+    border-radius: 16px; padding: 8px; z-index: 470;
+  }
+  .insert-menu .ins-head { font-size: 12px; color: var(--subtext0); padding: 4px 6px 8px; }
+  .insert-menu button { display: block; width: 100%; text-align: left; padding: 10px 12px; border-radius: 10px; }
+  .insert-menu button b { display: block; font-size: 14px; font-weight: 600; }
+  .insert-menu button i { display: block; font-style: normal; font-size: 11.5px; opacity: .7; margin-top: 2px; }
+}
+/* 桌面端新建弹窗的「高级设置」：details 默认是三角+粗体，跟浅色 modal 不一套。
+   收成一行小字，三角换成细箭头，展开时才显内容。手机端整块隐藏（见上）。 */
+#newGameModal .ng-adv > summary {
+  list-style: none; cursor: pointer; margin-top: 10px;
+  font-size: 12px; color: var(--surface2); user-select: none;
+}
+#newGameModal .ng-adv > summary::-webkit-details-marker { display: none; }
+#newGameModal .ng-adv > summary::before { content: "▸"; margin-right: 6px; }
+#newGameModal .ng-adv[open] > summary::before { content: "▾"; }
+#newGameModal .ng-adv[open] > summary { color: var(--text); }
+
+.tx-box.tx-nvl { left: 16px; right: 16px; bottom: auto; top: 50%; transform: translateY(-50%); text-align: center; }
+
+/* P188：逐句/源码分段提为固定条（ui_polish syncModeSlot 挂 body.m-script-tab）。
+   场景页是 fixed 全屏 z310，分段埋在左栏里会被它盖死；提上来 z315，场景页下移让位。 */
+@media (max-width: 860px), (max-height: 520px), (pointer: coarse) and (hover: none) and (max-width: 1400px) {
+  body.m-script-tab .m-modebar {
+    position: fixed; left: 0; right: 0; top: var(--mb-top, 50px);
+    z-index: 315; box-sizing: border-box;
+  }
+  body.m-script-tab .left-pane { padding-top: 58px; }
+  body.m-script-tab #scenePage {
+    top: calc(var(--mb-top, 50px) + 58px) !important; padding-top: 0 !important;
+  }
+  /* 打字态：快捷条(fixed bottom)会盖住状态栏，保存按钮点不到 → 状态栏抬到快捷条上方 */
+  body.m-typing .statusbar {
+    position: fixed; left: 0; right: 0; z-index: 425;
+    bottom: calc(var(--kb-bottom, 30px) + 42px); box-sizing: border-box;
+  }
+  /* 状态栏是 fixed 时会被底栏（z 420）盖住下半截，文字看着像被切了 */
+  .statusbar { z-index: 425; }
+}
+@media (max-height: 520px) and (orientation: landscape) {
+  body.m-script-tab .m-modebar { left: 60px; }
+}

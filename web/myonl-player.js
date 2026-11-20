@@ -2517,6 +2517,9 @@
   function drawExitChip() {
     state.exitRect = null;
     if (!isEmbedded()) return;
+    // 外层编辑器带了自己的退出栏（?shellbar=1）时不画浮动退出键：
+    // 两个「退出试玩」叠在屏幕顶部是重复入口。菜单里的退出项仍在。
+    if (/[?&]shellbar=1/.test(location.search)) return;
     const W = L.viewW;
     const u = Math.min(L.viewW, L.viewH);
     const k = W / (window.innerWidth || W);

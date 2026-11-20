@@ -270,30 +270,28 @@
   <!-- 新建游戏弹窗 -->
   <div class="modal-mask" id="newGameModal" style="display:none">
     <div class="modal">
-      <div class="modal-title">新建游戏</div>
-      <input id="newGameName" maxlength="20" placeholder="游戏名：中文/字母/数字/下划线，≤20 字符">
-      <div class="field" style="margin-top:10px;gap:6px">
-        <input id="newGameDir" placeholder="保存位置（留空则默认在 games/ 下）" readonly style="flex:1;cursor:default">
-        <button class="icon-btn" id="newGameBrowse" type="button" style="flex-shrink:0" title="Browse · 选择游戏项目目录">选择</button>
-      </div>
-      <!-- P46：UI 主题 + 正文对齐（写入 config.json，建后也可手改换肤） -->
-      <div class="field" style="margin-top:10px;gap:8px;align-items:center">
-        <label for="newGameTheme" style="white-space:nowrap">界面主题</label>
-        <select id="newGameTheme" style="flex:1">
-          <option value="black" selected>黑·左列（默认）</option>
-          <option value="purple">紫（夜紫面板 + 金高亮）</option>
-          <option value="white">白（浅色面板 + 深字）</option>
-        </select>
-      </div>
-      <div class="field" style="margin-top:8px;gap:8px;align-items:center">
-        <label for="newGameAlign" style="white-space:nowrap">正文对齐</label>
-        <select id="newGameAlign" style="flex:1">
-          <option value="left" selected>左对齐·顶格（默认）</option>
-          <option value="center">居中</option>
-          <option value="right">右对齐·顶格</option>
-        </select>
-      </div>
-      <div class="modal-hint">将在所选位置下创建游戏目录，含示例教学剧本与占位素材，创建后自动打开。</div>
+      <div class="modal-title">新建作品</div>
+      <input id="newGameName" maxlength="20" placeholder="给作品起个名字">
+      <!-- 诊断 P0：名字是唯一必填；保存位置/主题/对齐都有默认值，收进折叠区（手机直接隐藏）。 -->
+      <details class="ng-adv"><summary>高级设置（保存位置 / 主题 / 对齐，都有默认值）</summary>
+        <div class="field" style="margin-top:10px;gap:6px">
+          <input id="newGameDir" placeholder="保存位置（留空则默认在 games/ 下）" readonly style="flex:1;cursor:default">
+          <button class="icon-btn" id="newGameBrowse" type="button" style="flex-shrink:0" title="Browse · 选择游戏项目目录">选择</button>
+        </div>
+        <!-- P46：UI 主题 + 正文对齐（写入 config.json，建后也可手改换肤） -->
+        <div class="field" style="margin-top:10px;gap:8px;align-items:center">
+          <label for="newGameTheme" style="white-space:nowrap">界面主题</label>
+          <select id="newGameTheme" style="flex:1"><option value="black" selected>黑·左列（默认）</option><option value="purple">紫（夜紫面板 + 金高亮）</option><option value="white">白（浅色面板 + 深字）</option></select>
+        </div>
+        <div class="field" style="margin-top:8px;gap:8px;align-items:center">
+          <label for="newGameAlign" style="white-space:nowrap">正文对齐</label>
+          <select id="newGameAlign" style="flex:1">
+            <option value="left" selected>左对齐·顶格（默认）</option>
+            <option value="center">居中</option>
+            <option value="right">右对齐·顶格</option>
+          </select>
+        </div>
+      </details>
       <div class="modal-err" id="newGameErr"></div>
       <div class="modal-actions">
         <button class="icon-btn" id="newGameCancel" title="取消新建游戏">取消</button>
@@ -594,6 +592,6 @@
   <script src="/editor_characters.js"></script>
   <script src="/editor_level.js"></script>
   <script src="/editor_uidesign.js"></script>
-  <script src="/editor_shell.js?v=p98"></script><script src="/editor_home.js?v=p98"></script><script src="/editor_link.js?v=p98"></script><script src="/editor_mobile.js?v=p98"></script><script src="/apk_sign.js?v=p171"></script>
+  <script src="/editor_shell.js?v=p98"></script><script src="/editor_home.js?v=p98"></script><script src="/editor_link.js?v=p98"></script><script src="/editor_mobile.js?v=p98"></script><script src="/apk_sign.js?v=p171"></script><script src="/ui_polish.js?v=p188"></script>
 </body>
 </html>
