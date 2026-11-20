@@ -109,7 +109,7 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
 /* 源码编辑区 */
 .source-wrap { flex: 1; display: flex; position: relative; min-height: 0; overflow: hidden; }
 .line-numbers {
-  width: 50px; background: var(--mantle); color: var(--surface2); text-align: right;
+  width: 50px; background: var(--base); color: var(--overlay0); text-align: right;
   padding: 10px 8px 10px 0; font-family: "Consolas", "Courier New", monospace;
   font-size: 14px; line-height: 1.6; overflow: hidden; user-select: none; flex-shrink: 0;
 }
