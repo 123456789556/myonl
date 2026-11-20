@@ -184,14 +184,10 @@
   }
 
   function newProject() {
-    // 复用编辑器自己的「新建游戏」弹窗：先进编辑器，再点它
+    // 直接点工具栏的「新建游戏」，别绕下拉菜单绕一圈：
+    // 菜单项的 id 对不上时，菜单会留在屏幕上、新建弹窗又没打开，用户就看到一个悬着的菜单
     enterEditor();
-    setTimeout(function () {
-      var menuFile = document.querySelector('.menu-item[data-menu="file"]');
-      if (menuFile) menuFile.click();
-      var ng = $("menuNewGame") || $("btnNewGame");
-      if (ng) ng.click();
-    }, 120);
+    setTimeout(function () { var nb = $("btnNew"); if (nb) nb.click(); }, 120);
   }
 
   // 导入：手机上没有「打开文件对话框」以外的路子，所以走 <input type=file>。

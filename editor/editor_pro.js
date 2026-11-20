@@ -1998,7 +1998,9 @@
   intercept("settingsModal", "设置中心");
   intercept("uiDesignModal", "UI 设计区");
 
-  $("cpSplit").addEventListener("click", function () {
+  // 手机上「并排」按钮早被 remove 了，这里必须判空：不判空直接崩，还连带 cpClose 和 Esc 都没绑上
+  var cpSplitBtn = $("cpSplit");
+  if (cpSplitBtn) cpSplitBtn.addEventListener("click", function () {
     page.classList.toggle("split");
     this.classList.toggle("on", page.classList.contains("split"));
     fit();

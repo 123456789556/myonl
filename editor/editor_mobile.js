@@ -345,7 +345,11 @@
       var otherPageOpen = Array.prototype.some.call(
         document.querySelectorAll(".center-page.open"),
         function (p) { return p.id !== "scenePage"; });
-      if (!otherPageOpen) setScriptMode("sent");
+      // 底栏停在「外观」「导出」时不该再把场景页盖回来：导出会先关掉所有 center-page，
+      // 80ms 后 boot 跑到这里，那些页还没重新出现，只看 otherPageOpen 拦不住。
+      var curTab = document.querySelector(".m-tab.active");
+      var onScript = !curTab || curTab.dataset.tab === "script";
+      if (onScript && !otherPageOpen) setScriptMode("sent");
       // 只有一个场景（空剧本、单幕故事）时直接进那一幕。
       // 否则第一眼是「一条列表 + 整屏空白」，手机上看就是没东西。
       setTimeout(function () {
