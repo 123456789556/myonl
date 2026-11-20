@@ -832,7 +832,7 @@
   ROUTES["POST /api/preview"] = function () {
     return jsonRes({
       ok: false,
-      message: window.innerWidth < 720
+      message: (navigator.maxTouchPoints > 0 || window.innerWidth < 720)
         ? "手机版不画画面，先写剧本；想看画面去电脑上打开"
         : "这一版不渲染画面，请用完整版",
     });
@@ -1272,25 +1272,31 @@
       })
       .catch(function () { sizeLine.textContent = ""; });
 
-    [["做成成品（.html，能发人）", function () { window.__myonlExportPack(); }, 1],
-     ["打成 APK（能直接装）", function () { window.__myonlExportApk(); }, 1],
-     ["历史版本（改坏了能退回去）", function () { if (window.MYONLSnapshotsUI) window.MYONLSnapshotsUI.open(); }, 0],
-     ["拿出这个作品（.gal）", function () { window.__myonlExportGal(); }, 0],
-     ["拿出全部作品（.json）", function () { window.__myonlExportLib(); }, 0]
+    [["导出网页版 HTML", "发给朋友，浏览器打开就能试玩", function () { window.__myonlExportPack(); }, 1],
+     ["导出安卓安装包 APK", "装到安卓手机，像 App 一样打开", function () { window.__myonlExportApk(); }, 1],
+     ["版本历史", "改坏了能退回之前保存的版本", function () { if (window.MYONLSnapshotsUI) window.MYONLSnapshotsUI.open(); }, 0],
+     ["导出当前项目 .gal", "备份，或换设备后接着编辑", function () { window.__myonlExportGal(); }, 0],
+     ["备份全部作品 .json", "把所有作品打成一个文件带走", function () { window.__myonlExportLib(); }, 0]
     ].forEach(function (it) {
       var b = document.createElement("button");
       b.type = "button";
-      b.textContent = it[0];
-      // 主次要分：前两个是"真把东西发出去"，后面三个是导出备份 / 退回旧版。
-      // 五个长得一模一样，用户就不知道先点哪个。
-      var primary = it[2];
-      b.style.cssText = "display:block;width:100%;margin:6px 0 0;padding:11px 14px;border-radius:12px;" +
+      // 两行：第一行动作，第二行说清「导出去干什么用、还能不能接着编辑」。
+      // 只写「能发人」这种口语，用户既不知道该点哪个，也不知道导完还能不能改。
+      var t = document.createElement("span");
+      t.textContent = it[0];
+      t.style.cssText = "display:block;font-size:14px;font-weight:600";
+      var s = document.createElement("span");
+      s.textContent = it[1];
+      s.style.cssText = "display:block;margin-top:3px;font-size:11.5px;line-height:1.5;font-weight:400;opacity:.72";
+      b.appendChild(t); b.appendChild(s);
+      var primary = it[3];
+      b.style.cssText = "display:block;width:100%;margin:8px 0 0;padding:10px 13px;border-radius:12px;" +
         "border:1px solid rgba(79,140,255," + (primary ? ".55" : ".22") + ");" +
         "background:rgba(79,140,255," + (primary ? ".22" : ".07") + ");" +
         "color:" + (primary ? (light ? "#0f52ba" : "#dce8ff") : (light ? "#42506a" : "#9fb2d0")) + ";" +
         "font-size:14px;line-height:1.3;box-sizing:border-box;text-align:left;min-height:0";
       b.style.height = "auto";
-      b.addEventListener("click", it[1]);
+      b.addEventListener("click", it[2]);
       bar.appendChild(b);
     });
     return bar;

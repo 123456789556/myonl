@@ -1,0 +1,77 @@
+/* 手机外壳修正（安全区补色 / 横屏让位 / 键盘让位 / 预览舞台）
+   单独一个文件，不再往 editor.css 里塞 —— 那份已经 3300 多行，预算卡得紧。 */
+/* ==================== P186 手机外壳三处硬伤 ==================== */
+
+/* 1｜安全区不该露出另一块底色。
+   顶栏是 --crust，屏幕最上面那一条安全区原来露的是页面底（浅色），
+   远看像顶栏上面粘了一条脏边。用顶栏自己的颜色往上补一格，视觉上顶栏就是变高了。 */
+html:not(.native-shell) .menubar::before {
+  content: ""; position: absolute; left: 0; right: 0;
+  top: calc(-1 * var(--safe-top, 0px)); height: var(--safe-top, 0px);
+  background: var(--crust); pointer-events: none;
+}
+
+/* 2｜横屏：首页（作品列表）是全屏 fixed 层，没跟着 .main 一起让开左侧 60px 竖栏，
+   于是标题被压掉半个字。这是「边框把后面那一页遮住」的真正来源。 */
+@media (max-height: 520px) and (min-width: 640px) {
+  .m-home {
+    left: 60px !important;
+    width: calc(100% - 60px) !important;
+  }
+}
+
+/* 3｜键盘弹起。安卓 WebView 全屏时键盘浮在页面上，innerHeight 不一定缩，
+   fixed 在底部的导航条和居中弹窗会被压掉下半截。--kb-h 由 editor_utils.js 写。 */
+html.kb-open .modal-mask { padding-bottom: var(--kb-h, 0px); }
+html.kb-open .modal { max-height: calc(100dvh - var(--kb-h, 0px) - 48px); }
+/* 输入时把底部导航收起来。抬上去它就会悬在正文中间压住台词卡（试过，更糟）；
+   键盘自己带「完成」，这时候不需要切 tab。 */
+html.kb-open .m-tabbar { display: none !important; }
+html.kb-open .m-sheet-body { bottom: var(--kb-h, 0px) !important; }
+
+/* 4｜手机预览页：原来为了躲开「空白网格」，把预览容器收成 flex:0 0 auto，
+   结果整页只剩顶部一条 92px 的小窗，下面 660px 全是空 —— 比网格更难看。
+   现在让它吃满剩余高度，底换成舞台式渐变（不是网格），空态就铺在舞台中间。
+   空态在的时候还要藏掉「⌖ 预览·第N行」徽标（它是 absolute 的，会压住标题）。 */
+@media (max-width: 860px), (max-height: 520px), (pointer: coarse) and (hover: none) and (max-width: 1400px) {
+  .preview-wrap { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; }
+  .preview-img-wrap, #previewWrap {
+    flex: 1 1 auto !important; max-height: none !important; min-height: 160px !important;
+    padding: 10px !important; border-radius: 14px !important;
+    background: radial-gradient(circle at 50% 34%, #2e2e4a 0%, #12121c 78%) !important;
+    background-image: radial-gradient(circle at 50% 34%, #2e2e4a 0%, #12121c 78%) !important;
+    border-color: transparent !important;
+  }
+  .preview-img-wrap img, #previewWrap img { max-height: 100%; object-fit: contain; border-radius: 8px; }
+  .preview-placeholder { padding: 0 18px; text-align: center; max-width: 340px; }
+  .preview-placeholder .empty-title { color: rgba(255,255,255,.94) !important; font-size: 16px !important; }
+  .preview-placeholder .empty-sub {
+    color: rgba(255,255,255,.60) !important; font-size: 12px !important;
+    line-height: 1.65 !important; margin: 7px 0 14px !important;
+  }
+  .preview-placeholder .empty-actions { justify-content: center !important; }
+  .preview-placeholder .empty-actions .icon-btn {
+    color: rgba(255,255,255,.88) !important; border: 1px solid rgba(255,255,255,.2) !important;
+    border-radius: 999px !important; padding: 6px 15px !important; background: rgba(255,255,255,.06) !important;
+  }
+  #previewWrap:has(.preview-placeholder) ~ .preview-anchor { display: none !important; }
+}
+
+
+/* 5｜横屏点「预览」什么都不发生：@media (max-height:520px) 里把 .right-pane 整个
+   display:none 了（注释写着「走底部第四个 tab 的整页预览」），可第四个 tab 打开
+     的恰恰就是 .right-pane —— 于是这个入口在横屏是死的。
+   横屏时要预览就把它当整页浮层放出来，让开左侧 60px 竖栏和顶部安全带。 */
+@media (max-height: 520px) and (min-width: 640px) {
+  .main.mobile-preview-open .right-pane {
+    display: flex !important;
+    position: fixed !important;
+    left: 60px !important; right: 0 !important; top: 0 !important; bottom: 0 !important;
+    width: auto !important; max-width: none !important; height: auto !important;
+    z-index: 350 !important;
+    background: var(--base) !important;
+    padding-top: var(--safe-top, 0px) !important;
+    padding-right: var(--safe-right, 0px) !important;
+  }
+  .main.mobile-preview-open .right-pane .preview-wrap { flex: 1 1 auto; min-height: 0; }
+}

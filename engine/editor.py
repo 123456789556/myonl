@@ -758,7 +758,8 @@ class _EditorHandler(BaseHTTPRequestHandler):
         ("GET", "/editor_scene.js"): "_serve_scene_js",
         ("GET", "/editor_strip.js"): "_serve_js",
         ("GET", "/asset_thumb.js"): "_serve_js",
-        ("GET", "/strip.css"): "_serve_strip_css",
+        ("GET", "/strip.css"): "_serve_editor_css",
+        ("GET", "/ui-fix.css"): "_serve_editor_css",
         ("GET", "/editor_characters.js"): "_serve_characters_js",
         ("GET", "/editor_main.js"): "_serve_main_js",
         ("GET", "/editor_utils.js"): "_serve_utils_js",
@@ -990,15 +991,14 @@ class _EditorHandler(BaseHTTPRequestHandler):
 
     def _serve_index(self, parsed=None) -> None:
         self._serve_editor_file("index.html", "text/html; charset=utf-8")
-
     def _serve_editor_css(self, parsed=None) -> None:
-        self._serve_editor_file("editor.css", "text/css; charset=utf-8")
+        # 样式表按请求路径取文件（editor.css / strip.css / ui-fix.css 共用这个方法）
+        name = parsed.path.lstrip("/") if parsed is not None and parsed.path else "editor.css"
+        self._serve_editor_file(name if name.endswith(".css") else "editor.css",
+                                "text/css; charset=utf-8")
 
     def _serve_js(self, parsed=None) -> None:
         self._serve_editor_file(parsed.path.lstrip("/"), "application/javascript; charset=utf-8")
-
-    def _serve_strip_css(self, parsed=None) -> None:
-        self._serve_editor_file("strip.css", "text/css; charset=utf-8")
 
     # ---- P65：手机端 PWA（添加到主屏幕后全屏，不显示浏览器工具栏）----
 

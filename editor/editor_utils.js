@@ -132,4 +132,24 @@
     escapeText, lineIndent, _clKey, assetURL, thumbURL, el, field, selectField, row,
     iconBtn, summaryOf, fieldRow, mkInput, mkTextarea, mkSelect,
   };
+
+  /* 键盘让位：安卓 WebView 全屏时键盘是浮在页面上的（adjustResize 不一定生效），
+     fixed 在底部的导航、以及居中的弹窗会被键盘压住一半。这里把「键盘占掉的高度」
+     写进 --kb-h，CSS 拿它把底栏和弹窗抬上去；键盘一收就归零。
+     用 visualViewport 而不是 innerHeight：前者真的会缩，后者可能一动不动。 */
+  (function trackKeyboard() {
+    if (!window.visualViewport) return;
+    const vv = window.visualViewport;
+    let last = -1;
+    function sync() {
+      const kb = Math.max(0, Math.round(window.innerHeight - vv.height - vv.offsetTop));
+      document.documentElement.classList.toggle("kb-open", kb > 120);
+      if (kb === last) return;
+      last = kb;
+      document.documentElement.style.setProperty("--kb-h", kb + "px");
+    }
+    vv.addEventListener("resize", sync);
+    vv.addEventListener("scroll", sync);
+    sync();
+  })();
 })();

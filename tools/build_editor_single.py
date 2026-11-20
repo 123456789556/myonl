@@ -53,7 +53,7 @@ def build(out_file: Path) -> dict:
         return "<style>\n%s\n</style>" % path.read_text(encoding="utf-8")
 
     html, n_css = re.subn(
-        r'<link[^>]*href="/([A-Za-z0-9_]+\.css)(?:\?v=[^"]*)?"[^>]*>',
+        r'<link[^>]*href="/([A-Za-z0-9_-]+\.css)(?:\?v=[^"]*)?"[^>]*>',
         inline_css,
         html,
     )

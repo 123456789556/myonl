@@ -1746,7 +1746,7 @@
     const actions = document.createElement("div");
     actions.className = "field-actions";
     const save = document.createElement("button");
-    save.textContent = "保存修改";
+    save.textContent = "保存这一项";
     save.title = "Save Changes · 保存当前卡片修改";
     save.addEventListener("click", async (e) => {
       e.stopPropagation();

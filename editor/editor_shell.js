@@ -503,11 +503,11 @@
     mainEl.classList.remove("mobile-tree-open", "mobile-preview-open", "mobile-asset-open");
     if (maskEl) maskEl.classList.remove("on");
   }
-
   function syncMask() {
     if (!maskEl) return;
+    // 预览是整页内容不是抽屉：挂遮罩=整页压暗+点哪儿都把预览关掉（用户说的
+    // 「半透明浮层压住后面那一页」）。只有真抽屉（文件树、素材）才需要蒙层。
     var open = mainEl.classList.contains("mobile-tree-open") ||
-               mainEl.classList.contains("mobile-preview-open") ||
                mainEl.classList.contains("mobile-asset-open");
     maskEl.classList.toggle("on", open);
   }

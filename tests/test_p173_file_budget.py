@@ -40,7 +40,7 @@ FILE_BUDGET: dict[str, int] = {
     "editor/editor_main.js": 3395,   # P184b 素材列表改用缩略图 +2
     "editor/editor_pro.js": 2160,
     "editor/editor_uidesign.js": 1520,
-    "editor/gal_offline.js": 1696,   # P184b 入库不缩、另存缩略图 +24（回退 P184 后重做）；+1 缩略图拦截只兜 ?folder=
+    "editor/gal_offline.js": 1702,   # P184b 入库不缩、另存缩略图 +24（回退 P184 后重做）；+1 缩略图拦截只兜 ?folder=；+6 导出按钮改成「动作 + 一句用途」
     "editor/editor_scene.js": 1207,  # P183 台词区搬去 editor_strip.js，净减 8 行，cap 跟着降
     "editor/editor_strip.js": 60,    # P183 分镜带（一句一张卡），新文件
     "editor/strip.css": 100,         # P183 分镜带样式，新文件

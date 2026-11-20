@@ -1873,11 +1873,11 @@
       var ph = wrap.querySelector(".preview-placeholder");
       if (!ph || ph.getAttribute("data-aug")) return;
       ph.setAttribute("data-aug", "1");
-      ph.innerHTML = '<div class="empty-title">还没有可看的画面</div>' +
-        '<div class="empty-sub">先写一句台词，或点下面按钮试试。</div>' +
+      ph.innerHTML = '<div class="empty-title">画面还没出来</div>' +
+        '<div class="empty-sub">没有背景图的时候，成品会用一层渐变兜底；台词已经存好了，点「试玩这一句」就能看到你写的那句。</div>' +
         '<div class="empty-actions">' +
-        '<button type="button" class="icon-btn" data-empty="import">导入素材</button>' +
-        '<button type="button" class="icon-btn" data-empty="run">运行游戏</button>' +
+        '<button type="button" class="icon-btn" data-empty="import">加一张背景</button>' +
+        '<button type="button" class="icon-btn" data-empty="run">试玩这一句</button>' +
         "</div>";
     }
     wrap.addEventListener("click", function (ev) {

@@ -25,7 +25,7 @@
     '<button type="button" class="cp-btn" id="sceneRename" title="改名（连带改所有跳转与选项指向）">改名</button>' +
     '<button type="button" class="cp-btn" id="sceneDel" title="删除当前场景（有跳转引用会先提示）">删除</button>' +
     '<button type="button" class="cp-btn" id="sceneRefresh" title="重新读取剧本">刷新</button>' +
-    '<button type="button" class="cp-btn" id="sceneSave" title="把改动写回 .gal 文件（只改对应行）">保存修改</button>' +
+    '<button type="button" class="cp-btn" id="sceneSave" title="把这一场的改动写回 .gal 文件（只改对应行，不碰别的场景）">保存本场景</button>' +
     '<button type="button" class="cp-btn" id="sceneClose" title="关闭（Esc）">✕ 关闭</button>' +
     "</div>" +
     '<div class="scene-body"><div class="scene-list" id="sceneList"></div><div class="scene-form" id="sceneForm"></div></div>';
