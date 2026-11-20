@@ -87,8 +87,6 @@
     return out;
   }
 
-  // 台词行解析：@[[...]] 整屏 / @[...] 普通（名字可再套 []）/ @ 角色 文本（旧写法）。
-  // 独立成函数便于测试直接执行；必须与 engine/parser.py 的 _say_bracket 保持一致：
   // 先认双括号，再按「方括号深度」找单括号的闭合位置，不能用惰性正则（会把嵌套名截断）。
   function stripLeadColon(s) {
     s = String(s == null ? "" : s).trim();
@@ -130,7 +128,6 @@
     var choiceLine = -1;
     for (var i = 0; i < seg.length; i++) {
       var t = seg[i];
-      // 背景/音乐保留名字后面的演出参数（fadein/fadeout），保存时不丢
       var b = t.match(/^@bg\s+(\S+)(.*)$/);
       if (b) m.bg = { i: i, name: b[1], extra: (b[2] || "").trim() };
       var mu = t.match(/^@music\s+(\S+)(.*)$/);
@@ -495,6 +492,7 @@
     });
   }
 
+  var SAY_TIPS = ["她推开门。", "「你终于来了。」", "@旁白 雨还在下。"];
   function renderForm() {
     if (!model) return;
     var chars = allCharacters();
@@ -537,7 +535,9 @@
       if (s.del) return;
       h.push('<div class="sf-say" data-i="' + i + '"><select class="sf-who">' + optsHtml(pool, s.who, pool.length ? "角色…" : "（还没建角色）") + "</select>" +
         '<textarea class="sf-text" rows="2" placeholder="台词内容">' + esc(s.text) + "</textarea>" +
-        '<button type="button" class="icon-btn sf-del" data-kind="say" data-i="' + i + '">✕</button></div>');
+        '<button type="button" class="icon-btn sf-del" data-kind="say" data-i="' + i + '">✕</button>' +
+        (s.text ? "" : '<div class="sf-tipbox"><span class="sf-hint">试一句：</span>' + SAY_TIPS.map(function (t) { return '<button type="button" class="sf-tip">' + esc(t) + "</button>"; }).join("") + "</div>") +
+        "</div>");
     });
     h.push("</div>");
     h.push('<div class="sf-sec sf-sec-opt">选项（@choice） <button type="button" class="icon-btn" id="sfAddOpt">＋ 加选项</button></div>');

@@ -1668,6 +1668,8 @@ input[type="text"], input[type="search"], select { background: var(--input-bg); 
 .sf-sprite span { font-size: 11px; color: var(--subtext0); }
 .sf-sprite.dragging { cursor: grabbing; border-color: var(--blue); box-shadow: 0 0 0 2px rgba(77,170,252,.35); }
 .sf-stage-hint { font-size: 11px; color: var(--surface2); margin-top: 5px; }
+.sf-tipbox { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 7px; }
+.sf-tip { background: var(--surface0); color: var(--subtext0); border: none; border-radius: 999px; padding: 5px 11px; font-size: 11.5px; cursor: pointer; font-family: inherit; }
 .sf-pos { flex: 0 0 78px; }
 
 .sf-stage-inherit { position: absolute; left: 8px; bottom: 8px; font-size: 10.5px; color: var(--subtext0); background: rgba(0,0,0,.55); padding: 2px 7px; border-radius: var(--r-pill); }
@@ -1868,8 +1870,6 @@ input[type="color"] {
     font-size: 13px; font-family: "Consolas", "Courier New", monospace; cursor: pointer;
   }
   .m-kb:active { background: #2b3648; }
-  /* P126：这里的 #2f6df6 是早期随手填的蓝，全站主色是 #4f8cff ——
-     同一屏里两种蓝，看着就像两张皮拼的。统一到主色。 */
   .m-kb.act { background: #4f8cff; border-color: #4f8cff; color: #fff;
     font-family: inherit; }
   /* 键盘弹起来时，浮动按钮和状态栏让位，别跟快捷条叠 */
@@ -2157,7 +2157,6 @@ input[type="color"] {
   .statusbar #status { color: var(--green, #69db7c); }
 }
 
-/* P68 续2：抽屉真正藏出屏外（原来 -110% 位移露出 13px，屏幕上多一条灰竖带）*/
 @media (max-width: 860px), (max-height: 520px), (pointer: coarse) and (hover: none) and (max-width: 1400px) {
   .file-pane {
     left: 0 !important; width: min(86vw, 340px) !important;

@@ -425,5 +425,19 @@
   }, true);
   setInterval(function () { if (narrow() && document.querySelector(".m-grouplist")) refreshSummaries(); }, 800);
 
+  // 空台词卡下的「试一句」：点一下直接把那句话填进那个输入框。
+  // 新手对着空框不知道第一句写什么，这就是给他一个起手式的台阶。
+  document.addEventListener("click", function (e) {
+    var t = e.target && e.target.closest ? e.target.closest(".sf-tip") : null;
+    if (!t) return;
+    var box = t.closest(".sf-tipbox");
+    var ta = box && box.parentNode.querySelector(".sf-text");
+    if (!ta) return;
+    e.preventDefault();
+    ta.value = t.textContent;
+    ta.focus();
+    ta.dispatchEvent(new Event("input", { bubbles: true }));
+  }, true);
+
   window.MYONLMobile = { boot: boot, closeGroup: closeGroup, refresh: refreshSummaries };
 })();
