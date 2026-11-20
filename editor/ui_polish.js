@@ -461,9 +461,14 @@
     });
   }
 
+  /* 场景详情的内容顺序不在这里改：`#sceneForm` 是一列 flex，每一块靠 editor.css
+     里的 order 决定位置（3028-3041），改 DOM 先后没用。视觉顺序统一由
+     ui-fix.css 里的 order 覆盖（舞台 → 台词 → 选项 → 设置/角色 → 保存）。 */
+
   /* ---- 启动 ---- */
   function tick() {
-    fixTopbar(); hookSaveSync(); syncSave(); fixModeBar(); fixStatus(); renderTextPreview(); syncModeSlot(); syncPvRail(); syncSceneEmpty();
+    fixTopbar(); hookSaveSync(); syncSave(); fixModeBar(); fixStatus(); renderTextPreview();
+    syncModeSlot(); syncPvRail(); syncSceneEmpty();
   }
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", function () { tick(); setInterval(tick, 700); });

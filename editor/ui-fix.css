@@ -266,4 +266,24 @@ html.kb-open .m-sheet-body { bottom: var(--kb-h, 0px) !important; }
     background: var(--blue); color: #fff; font-size: 14px; font-weight: 600;
     font-family: inherit; cursor: pointer;
   }
+  /* 场景详情：主角是台词，不是设置项。
+     #sceneForm 是 flex column，位置由 order 决定（editor.css 3028-3041），
+     原来「角色/台词/舞台/图层/选项」交错排，一开详情满屏是背景音乐视频。
+     手机重排：确认画面 → 台词 → 选项 → 设置与角色收底 → 保存。 */
+  #scenePage #sceneForm > .sf-stage-wrap { order: 1; }
+  #scenePage #sceneForm > .sf-sec-say   { order: 2; }
+  #scenePage #sceneForm > #sfSays,
+  #scenePage #sceneForm > .sf-cards     { order: 3; }
+  #scenePage #sceneForm > .sf-sec-opt   { order: 4; }
+  #scenePage #sceneForm > #sfOpts       { order: 5; }
+  #scenePage #sceneForm > .sf-fold      { order: 10; }
+  #scenePage #sceneForm > .sf-sec-char  { order: 11; }
+  #scenePage #sceneForm > #sfChars      { order: 12; }
+  #scenePage #sceneForm > .sf-actions   { order: 20; }
+  /* 舞台预览只是确认画面，不要占掉半屏 */
+  #scenePage .sf-stage-wrap { max-height: 210px; }
+  #scenePage .sf-stage { max-height: 190px; }
+  #scenePage .sf-stage-hint { display: none; }
+  /* 状态栏是 fixed 的（bottom 52px + 26 高），最后一个「保存这个场景」会被压在它下面 */
+  #scenePage #sceneForm { padding-bottom: 86px; }
 }
