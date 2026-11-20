@@ -546,6 +546,14 @@
       });
     }
 
+    // 场景页、UI 设计弹窗都盖在主编辑器上，closeDrawers 只管侧栏抽屉、管不到它们 ——
+    // 不关的话点别的 tab 画面一动不动，人会以为 tab 坏了。四个分支都要这一步。
+    function closeOverlays() {
+      var sc = document.querySelector("#scenePage.open"); if (sc) { var c = $("sceneClose"); if (c) c.click(); }
+      var um = $("uiDesignModal"), uc = $("uidClose"); if (um && uc && um.style.display !== "none") uc.click();
+      for (var o of document.querySelectorAll(".center-page.open")) o.classList.remove("open");
+    }
+
     tabbar.addEventListener("click", function (e) {
       var btn = e.target.closest ? e.target.closest(".m-tab") : null;
       if (!btn) return;
@@ -553,38 +561,33 @@
       setTab(which);
       if (which === "script") {
         closeDrawers();
-        // 场景页是盖在主编辑器上的中心页，closeDrawers 管不到它 ——
-        // 不关的话按「剧本」画面一动不动，人会以为 tab 坏了（导出那边早就补了这一步）
-        var scn0 = document.querySelector("#scenePage.open");
-        if (scn0) { var sc0 = $("sceneClose"); if (sc0) sc0.click(); }
+        closeOverlays();
         return;
       }
       if (which === "assets") { toggleDrawer("mobile-asset-open"); return; }
-      if (which === "preview") { toggleDrawer("mobile-preview-open"); return; }
+      if (which === "preview") {
+        closeDrawers();
+        closeOverlays();
+        toggleDrawer("mobile-preview-open");
+        return;
+      }
       if (which === "look") {
         closeDrawers();
+        closeOverlays();
         var ui = $("btnUIDesign");
         if (ui) ui.click();
         // 从「导出」模式切回「外观」：把藏起来的参数区放回来，标题改回
         var toLook = function () {
           var cp = document.querySelector(".center-page.open");
-          if (cp && cp.classList.contains("mode-export")) {
-            cp.classList.remove("mode-export");
-            var t = cp.querySelector(".cp-title");
-            if (t) t.textContent = "UI 设计区";
-          }
+          if (cp && cp.classList.contains("mode-export")) { cp.classList.remove("mode-export"); var t = cp.querySelector(".cp-title"); if (t) t.textContent = "UI 设计区"; }
         };
-        setTimeout(toLook, 260);
-        setTimeout(toLook, 760);
+        [260, 760].forEach(function (d) { setTimeout(toLook, d); });
         return;
       }
       if (which === "export") {
         closeDrawers();
-        // 场景页开着时先关掉：它也是 .center-page.open，不关的话下面
-        // querySelector(".center-page.open") 拿到的是场景页，
-        // 加 mode-export 就把场景编辑切成了导出模式。
-        var scn = document.querySelector("#scenePage.open");
-        if (scn) { var sc = $("sceneClose"); if (sc) sc.click(); }
+        // 先关掉盖着的场景页：下面 querySelector(".center-page.open") 会拿到它，导出就切错页
+        closeOverlays();
         var ui2 = $("btnUIDesign");
         if (ui2) ui2.click();       // 导出在「界面设计」弹窗里，手机端一步到位
         // 导出卡在「界面设计」最底下：打开后把中心页面切成「导出」模式，

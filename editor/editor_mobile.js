@@ -340,7 +340,12 @@
       buildSceneMobile();
       // 按钮默认就高亮「逐句」，但以前只建了按钮、没真的打开场景页，
       // 结果用户看到「逐句编辑」是选中的、界面却还是源码 + 一片空白。
-      setScriptMode("sent");
+      // 但点「外观」会 80ms 后再 boot 一次，那时 UI 设计区已经开了，
+      // 这里再 setScriptMode("sent") 就把场景页重新盖回去，用户点外观画面还是场景表单。
+      var otherPageOpen = Array.prototype.some.call(
+        document.querySelectorAll(".center-page.open"),
+        function (p) { return p.id !== "scenePage"; });
+      if (!otherPageOpen) setScriptMode("sent");
       // 只有一个场景（空剧本、单幕故事）时直接进那一幕。
       // 否则第一眼是「一条列表 + 整屏空白」，手机上看就是没东西。
       setTimeout(function () {
