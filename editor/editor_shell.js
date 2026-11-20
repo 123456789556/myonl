@@ -264,6 +264,7 @@
       { label: "素材库", action: () => $("btnAssets").click() },
       { label: "底部面板", shortcut: "Ctrl+J", action: () => window.__dockToggle && window.__dockToggle() },
       { label: "游戏界面位置（左 / 右）", action: () => window.__previewSideToggle && window.__previewSideToggle() },
+      { label: "源码字号 +（手机看小字累）", action: () => window.__bumpSrcFont && window.__bumpSrcFont() },
       { label: "切换主题（深色 / 浅色）", action: () => window.__themeToggle && window.__themeToggle() },
       { label: "场景编辑（可视化）", action: () => window.__openSceneEditor && window.__openSceneEditor() },
       { label: "角色库（角色与立绘）", action: () => window.__openCharacterManager && window.__openCharacterManager() },

@@ -361,11 +361,50 @@
     }
   }
 
+  /* ======================= 源码字号（手机上字太小） ======================= */
+  // 360 宽、15px 一行只能塞约 20 字，长剧本看着就是一片糊。这里给一个直接能调的：
+  // 双击左边的行号栏放大一档（行号栏 user-select:none，不会跟选词打架），⋯ 菜单里也有一项。
+  var SRC_PX = [15, 18, 21];
+  var SRC_FONT_KEY = "myonl:srcFont";
+
+  function applySrcFont(px) {
+    var src = document.getElementById("source");
+    if (!src) return;
+    src.style.fontSize = px + "px";
+    // 行号栏跟着放大，否则 21px 正文旁边还是 11px 的小数字，宽度也不够两位数
+    var ln = document.getElementById("lineNumbers");
+    if (ln) { ln.style.fontSize = Math.round(px * 0.72) + "px"; ln.style.width = Math.round(px * 2.4) + "px"; }
+    Array.prototype.forEach.call(document.querySelectorAll(".hl-layer"), function (h) {
+      h.style.fontSize = px + "px";
+    });
+    try { localStorage.setItem(SRC_FONT_KEY, String(px)); } catch (e) {}
+  }
+
+  function bumpSrcFont() {
+    var src = document.getElementById("source");
+    var cur = parseInt((src && src.style.fontSize) || "15", 10);
+    applySrcFont(SRC_PX[(SRC_PX.indexOf(cur) + 1) % SRC_PX.length]);
+  }
+  window.__bumpSrcFont = bumpSrcFont;
+
+  function bindSrcFont() {
+    var ln = document.getElementById("lineNumbers");
+    if (ln && !ln.__fontBound) {
+      ln.__fontBound = true;
+      ln.title = "双击放大源码字号";
+      ln.addEventListener("dblclick", bumpSrcFont);
+    }
+    var saved = 0;
+    try { saved = parseInt(localStorage.getItem(SRC_FONT_KEY), 10); } catch (e) {}
+    if (SRC_PX.indexOf(saved) >= 0) applySrcFont(saved);
+  }
+
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", boot);
   } else {
     boot();
   }
+  setTimeout(bindSrcFont, 900);
 
   if (mq.addEventListener) mq.addEventListener("change", boot);
   else if (mq.addListener) mq.addListener(boot);
