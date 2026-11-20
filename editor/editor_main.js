@@ -624,7 +624,7 @@
     // 手机状态栏只有一格宽：长文案会把自己挤成半行，窄屏用短的
     const narrow = window.matchMedia && window.matchMedia("(max-width:860px), (max-height:520px)").matches;
     setStatus(true, narrow
-      ? `通过 · ${checkResp.count} 条`
+      ? `检查无误 · ${checkResp.count} 条`
       : `语法检查通过 · ${checkResp.count} 条指令`);
     highlightError(null);
     renderProblems([]);

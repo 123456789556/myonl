@@ -159,7 +159,8 @@
 
   // 新作品给一句能立刻改的旁白，跟电脑端「新建游戏 = hello 模板」一致
   function starterText() {
-    return "# 在这里写你的第一句台词，改完点右上角保存\n@ hello world!\n";
+    // 每行都控制在 13 字内：手机正文只有约 300px（15px 字号 ≈ 20 字），写长了就折行，折出来的尾巴会贴到最左边
+    return "# 下一行换成你想说的话\n# 改完点右上角 ⋯ 里保存\n@ hello world!\n";
   }
 
   function toast(msg, isErr) {
