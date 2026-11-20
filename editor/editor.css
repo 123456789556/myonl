@@ -3146,7 +3146,7 @@ body.m-few-projects .m-home-side { margin-top: 0 !important; }
 }
 /* 只两格：设置不属于"开始新的"——它在页头右上角已经有一个入口，
    同一功能摆两处，人会先猜"这两个设置是不是不一样"。 */
-.m-quick { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.m-quick { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
 .m-quick-item {
   display: flex; flex-direction: column; align-items: flex-start; justify-content: center;
   gap: 7px; min-height: 74px; padding: 11px 13px; cursor: pointer;

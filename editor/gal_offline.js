@@ -1250,20 +1250,20 @@
 
   // 导出条：手机上原来的「导出」分组点开是皮肤参数 + 三个打后端的按钮，
   // 离线时全是废的。所以点到名字含「导出」的分组时，往子页顶部插一条
-  // 真能用的：拿出剧本 / 拿出整个作品库 / 塞回作品库。
   function exportBar() {
+    var light = document.documentElement.getAttribute("data-theme") === "light";   // 下面几处颜色按深底写的，浅色下浅字配浅底看不见
     var bar = document.createElement("div");
     bar.className = "off-export";
     bar.style.cssText = "padding:12px 14px 14px;border-bottom:1px solid rgba(255,255,255,.08);" +
       "background:rgba(79,140,255,.07)";
     var tip = document.createElement("div");
-    tip.style.cssText = "font-size:12px;line-height:1.6;color:#9fb2d0;margin-bottom:10px";
+    tip.style.cssText = "font-size:12px;line-height:1.6;color:" + (light ? "#5a6577" : "#9fb2d0") + ";margin-bottom:10px";
     tip.textContent = "第一个按钮出 .html，发给谁都能双击玩。";
     bar.appendChild(tip);
     // 先让人看见有多大，再决定走哪条：单文件发人，还是打成 APK。
     // 点完才发现"打不开"是最糟的体验。
     var sizeLine = document.createElement("div");
-    sizeLine.style.cssText = "font-size:12px;line-height:1.6;color:#8fa3bf;margin:0 0 4px";
+    sizeLine.style.cssText = "font-size:12px;line-height:1.6;color:" + (light ? "#6b7787" : "#8fa3bf") + ";margin:0 0 4px";
     sizeLine.textContent = "正在算体积…";
     bar.appendChild(sizeLine);
     (window.MYONLAssets ? window.MYONLAssets.allSplit() : Promise.resolve({ assets: {}, audio: {} }))
@@ -1291,7 +1291,7 @@
       b.style.cssText = "display:block;width:100%;margin:6px 0 0;padding:11px 14px;border-radius:12px;" +
         "border:1px solid rgba(79,140,255," + (primary ? ".55" : ".22") + ");" +
         "background:rgba(79,140,255," + (primary ? ".22" : ".07") + ");" +
-        "color:" + (primary ? "#dce8ff" : "#9fb2d0") + ";" +
+        "color:" + (primary ? (light ? "#0f52ba" : "#dce8ff") : (light ? "#42506a" : "#9fb2d0")) + ";" +
         "font-size:14px;line-height:1.3;box-sizing:border-box;text-align:left;min-height:0";
       b.style.height = "auto";
       b.addEventListener("click", it[1]);
@@ -1317,20 +1317,19 @@
     host.insertBefore(exportBar(), host.firstChild);
   }
   // 素材条：手机上原来素材页永远是空的（/api/assets 回空清单），
-  // 用户只能用编辑器自带的渐变当背景 —— 这就是"看着像 demo 不像游戏"的根。
-  // 这条给一个真入口：从相册选图 → 压缩 → 存进 IndexedDB → 素材页立刻看得到。
   // 手机端做游戏真正卡住的地方是素材进不来：相册里翻半天、也不确定压没压。
-  // 这条给一个「投递区」——点一下选文件，桌面还能直接把文件拖进来。
-  // 收什么、压多大、存哪儿，全写在框里，不用猜。
+  // 这条给一个「投递区」——点选文件（相册也在里面），桌面还能直接拖进来；
+  // 收什么、压多大、存哪儿全写在框里，不用猜。
   var MAX_FILES = 20;
   var MAX_BYTES = 24 * 1024 * 1024;
   function mbText(n) { return (Math.round((n / 1048576) * 10) / 10).toFixed(1) + " MB"; }
 
   function assetBar() {
+    var light = document.documentElement.getAttribute("data-theme") === "light";
     var bar = document.createElement("div");
     bar.className = "off-assets";
-    bar.style.cssText = "padding:12px 14px 14px;border-bottom:1px solid rgba(255,255,255,.08);" +
-      "background:rgba(79,140,255,.07)";
+    bar.style.cssText = "padding:12px 14px 14px;border-bottom:1px solid " +
+      (light ? "rgba(0,0,0,.08)" : "rgba(255,255,255,.08)") + ";background:rgba(79,140,255,.07)";
 
     var drop = document.createElement("div");
     drop.style.cssText = "border:1.5px dashed rgba(79,140,255,.52);border-radius:14px;" +
@@ -1338,17 +1337,17 @@
       "transition:background .15s,border-color .15s;-webkit-tap-highlight-color:transparent";
 
     var t1 = document.createElement("div");
-    t1.style.cssText = "font-size:15px;line-height:1.4;color:#dce8ff;font-weight:600";
+    t1.style.cssText = "font-size:15px;line-height:1.4;color:" + (light ? "#123d78" : "#dce8ff") + ";font-weight:600";
     t1.textContent = "把文件放进来";
 
     var btns = document.createElement("div"); btns.style.cssText = "display:flex;gap:8px;justify-content:center;margin-top:10px;flex-wrap:wrap";
     [["从相册选图", "album"], ["导入本地文件", "local"]].forEach(function (b) {
       var el = document.createElement("button");
       el.type = "button"; el.dataset.pick = b[1]; el.textContent = b[0];
-      el.style.cssText = "padding:7px 14px;border-radius:9px;border:1px solid rgba(79,140,255,.55);background:rgba(79,140,255,.16);color:#dce8ff;font-size:13px"; btns.appendChild(el);
+      el.style.cssText = "padding:7px 14px;border-radius:9px;border:1px solid rgba(79,140,255,.55);background:rgba(79,140,255,.16);color:" + (light ? "#0f52ba" : "#dce8ff") + ";font-size:13px"; btns.appendChild(el);
     });
     var t2 = document.createElement("div");
-    t2.style.cssText = "font-size:12px;line-height:1.75;color:#8fa3c0;margin-top:8px";
+    t2.style.cssText = "font-size:12px;line-height:1.75;color:" + (light ? "#66727f" : "#8fa3c0") + ";margin-top:8px";
     t2.innerHTML = "图片压到最长边 1280 · WAV 转成 webm · 其余音频原样存<br>" +
       "单个不超过 24 MB，一次最多 " + MAX_FILES + " 个";
 
