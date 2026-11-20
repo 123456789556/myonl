@@ -41,10 +41,12 @@ FILE_BUDGET: dict[str, int] = {
     "editor/editor_pro.js": 2160,
     "editor/editor_uidesign.js": 1520,
     "editor/gal_offline.js": 1700,   # P181 WAV 导入转码 +52（新能力，非放宽）
-    "editor/editor_scene.js": 1215,  # P175 背景缺失占位 +5 行（修复用户提过的空白预览）
+    "editor/editor_scene.js": 1207,  # P183 台词区搬去 editor_strip.js，净减 8 行，cap 跟着降
+    "editor/editor_strip.js": 60,    # P183 分镜带（一句一张卡），新文件
+    "editor/strip.css": 100,         # P183 分镜带样式，新文件
     "editor/editor_shell.js": 870,
     "editor/editor.css": 3336,   # P179 首页去大卡后布局收口 +5（新能力，非放宽）
-    "engine/editor.py": 3030,   # P178 体积体检路由 +17（新能力，非放宽）
+    "engine/editor.py": 3036,   # P183 新前端文件 editor_strip.js / strip.css 的静态路由 +6（新能力，非放宽）
     "engine/parser.py": 1080,
 }
 

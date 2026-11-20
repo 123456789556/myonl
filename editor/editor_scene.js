@@ -492,7 +492,6 @@
     });
   }
 
-  var SAY_TIPS = ["她推开门。", "「你终于来了。」", "@旁白 雨还在下。"];
   function renderForm() {
     if (!model) return;
     var chars = allCharacters();
@@ -529,17 +528,7 @@
         '<button type="button" class="icon-btn sf-del" data-kind="char" data-i="' + i + '">✕</button></div>');
     });
     h.push("</div>");
-    h.push('<div class="sf-sec sf-sec-say">台词 <button type="button" class="icon-btn" id="sfAddSay">＋ 加台词</button></div>');
-    h.push('<div id="sfSays">');
-    model.says.forEach(function (s, i) {
-      if (s.del) return;
-      h.push('<div class="sf-say" data-i="' + i + '"><select class="sf-who">' + optsHtml(pool, s.who, pool.length ? "角色…" : "（还没建角色）") + "</select>" +
-        '<textarea class="sf-text" rows="2" placeholder="台词内容">' + esc(s.text) + "</textarea>" +
-        '<button type="button" class="icon-btn sf-del" data-kind="say" data-i="' + i + '">✕</button>' +
-        (s.text ? "" : '<div class="sf-tipbox"><span class="sf-hint">试一句：</span>' + SAY_TIPS.map(function (t) { return '<button type="button" class="sf-tip">' + esc(t) + "</button>"; }).join("") + "</div>") +
-        "</div>");
-    });
-    h.push("</div>");
+    h.push(window.MYONLStrip.render(model, pool, { esc: esc, optsHtml: optsHtml }));
     h.push('<div class="sf-sec sf-sec-opt">选项（@choice） <button type="button" class="icon-btn" id="sfAddOpt">＋ 加选项</button></div>');
     h.push('<div id="sfOpts">');
     model.options.forEach(function (o, i) {
@@ -759,13 +748,17 @@
     var says = [];
     for (var j = 0; j < sayEls.length; j++) {
       var who = sayEls[j].querySelector(".sf-who"), txt = sayEls[j].querySelector(".sf-text");
-      if (!who || !who.value) continue;
+      if (!who) continue;
+      var t2 = (txt && txt.value) || "";
+      // 空句直接丢；有字但没选角色，兜底成「旁白」，否则用户加了句等于没加
+      if (!t2.trim()) continue;
+      var wv = who.value || "旁白";
       var si = parseInt(sayEls[j].getAttribute("data-i"), 10);
       var baseSay = (!isNaN(si) && model.says[si]) ? model.says[si] : null;
       // 新加的台词默认用方括号写法（不用先登记角色）；原有台词保留原写法
       says.push({ i: (baseSay && baseSay.i != null) ? baseSay.i : null,
-                  who: who.value, text: (txt && txt.value) || "",
-                  style: (baseSay && baseSay.style) || "bracket" });
+                  who: wv, text: t2,
+                  style: who.value ? ((baseSay && baseSay.style) || "bracket") : "plain" });
     }
     model.newSays = says;
     var optEls = formEl.querySelectorAll(".sf-opt");
@@ -848,8 +841,8 @@
     var sayAnchor = sayIdx.length ? sayIdx[sayIdx.length - 1] : castAnchor;
     model.newSays.forEach(function (x) {
       var line = x.style === "bracket2" ? "@[[" + x.who + "]]"
-        : x.style === "plain" ? "@ " + x.who
-          : "@[" + x.who + "]";
+        : x.style === "bracket" ? "@[" + x.who + "]"
+          : x.who ? "@ " + x.who : "@";
       if (x.text) line += " " + x.text;
       if (x.i != null && sayAt[x.i]) seg[x.i] = line;
       else markAdd(sayAnchor, [line]);

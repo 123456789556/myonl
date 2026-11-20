@@ -756,6 +756,8 @@ class _EditorHandler(BaseHTTPRequestHandler):
         ("GET", "/editor_pro.js"): "_serve_pro_js",
         # 场景视图（可视化编辑）：独立模块，源码/场景互不覆盖
         ("GET", "/editor_scene.js"): "_serve_scene_js",
+        ("GET", "/editor_strip.js"): "_serve_strip_js",
+        ("GET", "/strip.css"): "_serve_strip_css",
         ("GET", "/editor_characters.js"): "_serve_characters_js",
         ("GET", "/editor_main.js"): "_serve_main_js",
         ("GET", "/editor_utils.js"): "_serve_utils_js",
@@ -990,6 +992,12 @@ class _EditorHandler(BaseHTTPRequestHandler):
 
     def _serve_editor_css(self, parsed=None) -> None:
         self._serve_editor_file("editor.css", "text/css; charset=utf-8")
+
+    def _serve_strip_js(self, parsed=None) -> None:
+        self._serve_editor_file("editor_strip.js", "application/javascript; charset=utf-8")
+
+    def _serve_strip_css(self, parsed=None) -> None:
+        self._serve_editor_file("strip.css", "text/css; charset=utf-8")
 
     # ---- P65：手机端 PWA（添加到主屏幕后全屏，不显示浏览器工具栏）----
 
