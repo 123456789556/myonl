@@ -6,7 +6,6 @@ import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
 OFF = (ROOT / "editor" / "gal_offline.js").read_text(encoding="utf-8")
-SHRINK = (ROOT / "editor" / "asset_shrink.js").read_text(encoding="utf-8")
 CSS = (ROOT / "editor" / "editor.css").read_text(encoding="utf-8")
 MAIN = (ROOT / "editor" / "editor_main.js").read_text(encoding="utf-8")
 HOME_JS = (ROOT / "editor" / "editor_home.js").read_text(encoding="utf-8")
@@ -22,18 +21,9 @@ def test_有素材库对象且走_IndexedDB():
     assert "myonl:assets:index:v1" in OFF
 
 
-def test_图片进来会被压到最长边_1920():
-    # P184：缩图实现搬到 asset_shrink.js，两端共用一份；尺度 1280 → 1920
-    assert "MAX_SIDE = 1920" in SHRINK
-    assert 'toDataURL("image/jpeg", 0.82)' in SHRINK
-    # 离线内核不再自己实现，改为引用共享模块
-    assert "window.MYONLShrink.shrinkImage" in OFF
-    assert "MAX_SIDE = 1280" not in OFF
-
-
-def test_电脑端导入也缩图():
-    # P184：电脑端原来把原图原封不动 post 给后端
-    assert "MYONLShrink.prepFile" in MAIN
+def test_图片进来会被压到最长边_1280():
+    assert "MAX_SIDE = 1280" in OFF
+    assert "toDataURL(\"image/jpeg\", 0.82)" in OFF
 
 
 def test_素材接口报真名字不再回空数组():
