@@ -40,14 +40,14 @@ FILE_BUDGET: dict[str, int] = {
     "editor/editor_main.js": 3395,   # P184b 素材列表改用缩略图 +2
     "editor/editor_pro.js": 2160,
     "editor/editor_uidesign.js": 1520,
-    "editor/gal_offline.js": 1742,   # P184b 入库不缩、另存缩略图 +24（回退 P184 后重做）；+1 缩略图拦截只兜 ?folder=；+6 导出按钮改成「动作 + 一句用途」；P188 +40 补 POST /api/import（手机导入此前必失败）
+    "editor/gal_offline.js": 1745,   # P184b 入库不缩、另存缩略图 +24（回退 P184 后重做）；+1 缩略图拦截只兜 ?folder=；+6 导出按钮改成「动作 + 一句用途」；P188 +40 补 POST /api/import（手机导入此前必失败）；P190 +3 /api/new 收 text 种子（教程作品由它建）
     "editor/editor_scene.js": 1207,  # P183 台词区搬去 editor_strip.js，净减 8 行，cap 跟着降
     "editor/editor_strip.js": 60,    # P183 分镜带（一句一张卡），新文件
     "editor/strip.css": 100,         # P183 分镜带样式，新文件
     "editor/asset_thumb.js": 50,     # P184b 缩略图生成（240 边，只给列表看，不动原图），新文件
     "editor/editor_shell.js": 874,
-    "editor/ui_polish.js": 478,   # P188 主链路收口（顶栏/保存状态/逐句默认/文字预览/导入动作单）+ 取消回首页 + 分段固定条 + 打字态状态栏抬升 + 背景归当前句，新文件
-    "editor/ui-fix.css": 289,     # P186 手机外壳 + P188 主链路样式 + 分段固定条/打字态状态栏 + 桌面新建弹窗折叠区 + 背景铺满舞台 + 状态栏层级，新文件
+    "editor/ui_polish.js": 527,   # P188 主链路收口 + P189 结构两层（模式槽/预览浮条/空态合成/外观入口）+ P190 场景页时序兜底（场景列表重扫 + 空态恢复显示），新文件
+    "editor/ui-fix.css": 311,     # P186 手机外壳 + P188 主链路样式 + P189 结构两层（浮条/场景 order/外观预览置顶）+ P190，新文件
     "editor/editor.css": 3354,   # P179 首页去大卡后布局收口 +5；P185 顶部安全带（挖孔/侧边 cutout）+18
     "engine/editor.py": 3038,   # P184b asset_thumb.js 静态路由 +1；P188 ui_polish.js 路由 +1
     "engine/parser.py": 1080,

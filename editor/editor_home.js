@@ -79,10 +79,11 @@
           '<b>＋</b><span>新建作品</span></button>' +
         '<button type="button" class="m-quick-item" id="mHomeImport">' +
           '<b>&#8615;</b><span>导入作品</span></button>' +
-        // P126：APK 里一直带着 game.html（547 KB 的内置示例），但界面没有入口 ——
-        // 装了的人以为是个空编辑器。有这个文件才显示这一项，浏览器里没有就不出现。
-        '<button type="button" class="m-quick-item" id="mHomeDemo" style="display:none">' +
-          '<b>&#9654;</b><span>试玩示例</span></button>' +
+        // 原来这里是「试玩示例」，点开是 game.html 里那份和编辑器无关的演示。
+        // 换成「新手教程」：真的建一份能打开、能改、能导出的短作品，
+        // 让人第一眼看到的是"这东西长什么样"，而不是一个不认识的黑盒 demo。
+        '<button type="button" class="m-quick-item" id="mHomeTut">' +
+          '<b>&#9776;</b><span>新手教程</span></button>' +
       '</div>' +
       // P176：这里原本还有一块「三步上手」。删了 —— 编辑器菜单里已经有
       // 「帮助 → 新手引导」，同一套教程摆两处，首页就多占五六行高度，
@@ -459,65 +460,71 @@
     if (w.parentNode) w.parentNode.removeChild(w);
   }
 
-  function openDemo() {
-    if ($("mDemoLayer")) return;
-    var wrap = document.createElement("div");
-    wrap.id = "mDemoLayer";
-    wrap.style.cssText = "position:fixed;inset:0;z-index:99999;background:#000;" +
-      "display:flex;flex-direction:column";
+  // 「试玩示例」那条路整条删了（openDemo / iframe 内嵌层 / 退出试玩的 postMessage）：
+  // 它放的是 game.html 里一份和编辑器无关的 demo，点开只看到"别人的游戏"，
+  // 新手得不到任何关于"我这东西能做成什么"的信息。新手要看的是能改的东西。
 
-    var bar = document.createElement("div");
-    bar.style.cssText = "flex:0 0 auto;display:flex;align-items:center;gap:8px;" +
-      "padding:6px 10px;background:#101722;border-bottom:1px solid rgba(255,255,255,.09)";
-    var tip = document.createElement("div");
-    tip.textContent = "试玩中 · 不是发布出去的成品";
-    tip.style.cssText = "flex:1;min-width:0;color:#8fa3c0;font-size:12px;line-height:1.3;" +
-      "overflow:hidden;text-overflow:ellipsis;white-space:nowrap";
-    var out = document.createElement("button");
-    out.type = "button";
-    out.textContent = "退出试玩";
-    out.style.cssText = "flex:0 0 auto;padding:6px 12px;border-radius:8px;" +
-      "border:1px solid rgba(79,140,255,.55);background:rgba(79,140,255,.20);" +
-      "color:#dce8ff;font-size:13px;line-height:1.2";
-    out.addEventListener("click", closeDemo);
-    bar.appendChild(tip);
-    bar.appendChild(out);
+  // 「新手教程」= 建一份真作品，不是播一个内置 demo。
+  // 已经在库里就直开（用户可能自己改过它，别覆盖）；没有才建一次。
+  var TUT_NAME = "新手教程";
+  var TUT_TEXT = [
+    "# 这是「新手教程」：一份真能玩、真能改的作品",
+    "# 以 # 开头的是注释，不上屏；以 @ 开头的才是游戏里的一句话",
+    "",
+    "@label start",
+    "@[旁白] 这一句是旁白。想改就直接改。",
+    "@[小满] 这一句是角色台词，名字在方括号里。",
+    "@[小满] 写方括号就不用在角色库里先建人。",
+    "@[旁白] 一屏只说一句话，读起来才像游戏。",
+    "",
+    "@choice:",
+    "> 继续看写法 -> 怎么写",
+    "> 直接看素材 -> 素材",
+    "",
+    "@label 怎么写",
+    "@[旁白] 一行一句话，想加就加一行。",
+    "@[旁白] 想让角色说话，名字放进方括号。",
+    "@[旁白] 底部「素材」放图和音乐，点一下就插成背景。",
+    "",
+    "@choice:",
+    "> 下一步 -> 素材",
+    "> 回到开头 -> start",
+    "",
+    "@label 素材",
+    "@[旁白] 图片、音乐、视频都放这里。",
+    "@[旁白] 选中一个素材，会弹出「拿它做什么」。",
+    "@[旁白] 背景、立绘、CG 都在那一步定。",
+    "",
+    "@choice:",
+    "> 下一步 -> 导出",
+    "> 回到开头 -> start",
+    "",
+    "@label 导出",
+    "@[旁白] 写完去底部「导出」。",
+    "@[旁白] 第一个按钮出一个 html，发给谁都能双击玩。",
+    "@[旁白] 也可以出安卓安装包，装到手机上像 App。",
+    "",
+    "@choice:",
+    "> 从头再看一遍 -> start",
+    "> 开始写我自己的 -> start",
+    ""
+  ].join("\n");
 
-    var ifr = document.createElement("iframe");
-    ifr.id = "mDemoFrame";
-    // shellbar=1：告诉播放器「外面这条退出栏一直在」，游戏里就别再画一个浮动的
-    // 「退出试玩」——两个同名按钮叠在顶部，用户不知道点哪个（诊断 P0）。
-    // 游戏内菜单里的退出项保留，作为第二条路。
-    ifr.src = "./game.html" + "?shellbar=1";
-    ifr.style.cssText = "flex:1 1 auto;display:block;width:100%;height:100%;border:0;background:#000";
-
-    wrap.appendChild(bar);
-    wrap.appendChild(ifr);
-    document.body.appendChild(wrap);
+  function openTutorial() {
+    var lib = {};
+    try { lib = JSON.parse(localStorage.getItem("myonl:off:lib:v1") || "{}"); } catch (e) { lib = {}; }
+    var has = (lib.projects || []).some(function (p) { return p.name === TUT_NAME; });
+    if (has) { openProject(TUT_NAME); return; }
+    fetch("/api/new", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: TUT_NAME, text: TUT_TEXT })
+    }).then(function (r) { return r.json(); }).then(function (res) {
+      if (!res.ok) throw new Error(res.message || "建不了教程");
+      openProject(TUT_NAME);
+    }).catch(function (e) { toast(e.message || "建不了教程"); });
   }
 
-  // 游戏里点「退出试玩」→ postMessage 回来。只认自己那个 iframe 发来的，
-  // 免得别的窗口/页面也能把这个层关掉。
-  window.addEventListener("message", function (ev) {
-    var f = $("mDemoFrame");
-    if (!ev || !ev.data || !f) return;
-    if (ev.source !== f.contentWindow) return;
-    if (ev.data.type === "myonl-exit-demo") closeDemo();
-  });
-
-  // P126：探一下 game.html 在不在。用 GET + no-store 而不是 HEAD：部分 WebView
-  // 对 HEAD 直接不返回，探不出来就永远不显示这个入口。
-  (function () {
-    var db = $("mHomeDemo");
-    if (!db) return;
-    db.addEventListener("click", function () {
-      if (db.dataset.ok === "1") { openDemo(); return; }
-      toast("这个版本没带示例");
-    });
-    try {
-      fetch("./game.html", {cache: "no-store"}).then(function (r) {
-        if (r.ok) { db.style.display = ""; db.dataset.ok = "1"; }
-      }).catch(function () {});
-    } catch (e) { /* 老 WebView 没有 fetch 就算了，不显示 */ }
-  })();
+  var tut = $("mHomeTut");
+  if (tut) tut.addEventListener("click", openTutorial);
 })();

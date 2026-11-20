@@ -286,4 +286,26 @@ html.kb-open .m-sheet-body { bottom: var(--kb-h, 0px) !important; }
   #scenePage .sf-stage-hint { display: none; }
   /* 状态栏是 fixed 的（bottom 52px + 26 高），最后一个「保存这个场景」会被压在它下面 */
   #scenePage #sceneForm { padding-bottom: 86px; }
+  /* 外观一级页：先看见效果，再决定改哪一组。
+     editor.css 2642 把整个 .ui-design-body 藏了，于是这一页只剩十行参数名。
+     这里只放出预览、继续藏参数表单（参数在二级页里，带滑杆和数字）。 */
+  .center-page:not(.mode-export) .ui-design-body { display: block !important; padding: 10px 12px 0 !important; }
+  /* 预览要在分组列表上面：先看见手机里的样子，再决定改哪一组。
+     .modal-wide 是普通块，DOM 顺序是 标题→说明→tabs→body→列表，
+     用 order 把 body 提到列表前（标题 order 更小，仍在最上）。 */
+  .modal-wide { display: flex; flex-direction: column; }
+  .modal-wide > .modal-title { order: -3; }
+  .modal-wide > .ui-design-tabs { order: -2; }
+  .modal-wide > .ui-design-body { order: -1; }
+  /* 弹窗里那段"保存后写回 config.json / settings.json"是给开发者看的说明书，
+     手机上占掉三行还说不清该干什么（README 12.②） */
+  .modal-wide > .modal-hint { display: none !important; }
+  .center-page:not(.mode-export) .ui-design-body .ui-design-form { display: none !important; }
+  .center-page:not(.mode-export) .ui-design-preview {
+    display: block !important; width: 100%; min-width: 0; max-width: none;
+    height: 200px; max-height: 200px; margin: 0 0 4px;
+  }
+  .center-page.mode-export .ui-design-body { display: block !important; }
+  /* 分组行右侧改成一句人话（"位置 · 大小 · 文字"），不再是"当前 420" */
+  .m-gr-val { text-align: right; }
 }

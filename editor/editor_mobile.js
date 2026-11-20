@@ -28,19 +28,29 @@
 
   /* ============================ 外观：分组列表 ============================ */
 
-  function firstValue(panel) {
-    if (!panel) return "";
-    var v = panel.querySelector(".uid-val");
-    return v ? ("当前 " + v.textContent.trim()) : "";
-  }
+  // 每组一句人话：说清"点进去能改什么"。原来这里显示「当前 10」「当前 420」，
+  // 那是开发者参数，创作者不知道 10 是什么单位；数字留在二级页的滑杆旁边（README 13.④）。
+  var GROUP_HINT = {
+    "对话框": "位置 · 大小 · 文字",
+    "名字框": "说话人名字怎么显示",
+    "对话框皮肤": "换一套跟画风搭的外观",
+    "选项按钮": "分支选项长什么样",
+    "快捷栏": "存档 / 读档 / 自动那一排",
+    "游戏内菜单": "玩家点菜单看到的",
+    "设置页": "玩家能调的音量与文字速度",
+    "配色": "主色与文字颜色",
+    "界面开关": "哪些界面要显示",
+    "全局": "字体 · 缩放 · 整体风格"
+  };
 
   function refreshSummaries() {
     var list = document.querySelector(".m-grouplist");
     if (!list) return;
     Array.prototype.forEach.call(list.querySelectorAll(".m-group-row"), function (row) {
-      var panel = document.getElementById(row.dataset.panel);
       var slot = row.querySelector(".m-gr-val");
-      if (slot) slot.textContent = firstValue(panel);
+      if (!slot) return;
+      var name = (row.querySelector(".m-gr-name") || {}).textContent || "";
+      slot.textContent = GROUP_HINT[name.trim()] || "";
     });
   }
 

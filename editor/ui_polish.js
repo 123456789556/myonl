@@ -465,10 +465,59 @@
      里的 order 决定位置（3028-3041），改 DOM 先后没用。视觉顺序统一由
      ui-fix.css 里的 order 覆盖（舞台 → 台词 → 选项 → 设置/角色 → 保存）。 */
 
+  /* ---- 11b 场景页打开时正文可能还没进来 ----
+     编辑器初始化时 refresh() 如果跑在文件读入之前，scenes 会是 0，两栏一起落到空态；
+     之后正文到了没人重扫，用户点开新作品第一眼就是"还没有场景"。
+     这里做一件最小的事：正文里有 @label、而列表只剩空态 → 点一次「刷新」重扫。 */
+  var staleSeen = null;
+  function syncSceneStale() {
+    var sp = $("scenePage");
+    if (!sp || !sp.classList.contains("open")) return;
+    var list = $("sceneList");
+    if (!list || !list.querySelector(".scene-empty")) return;
+    var txt = "";
+    try { txt = window.__editor && window.__editor.getText ? window.__editor.getText() : ""; } catch (e) { txt = ""; }
+    if (!txt || txt.indexOf("@label") < 0) return;
+    if (staleSeen === txt) return;
+    staleSeen = txt;
+    var btn = $("sceneRefresh");
+    if (btn) btn.click();
+  }
+
+  /* 空态合成时把 scene-body 的其它子项 display:none 了。等真有场景之后，
+     必须把显示恢复，否则重扫完了列表还是看不见。 */
+  function syncSceneEmptyUndo() {
+    var sp = $("scenePage");
+    if (!sp) return;
+    var body = sp.querySelector(".scene-body.m-empty-center");
+    if (!body || body.querySelector(".scene-empty")) return;
+    body.classList.remove("m-empty-center");
+    Array.prototype.forEach.call(body.children, function (c) { c.style.display = ""; });
+  }
+
+  /* ---- 12 外观入口改走菜单后，得自己关掉盖在上面的页 ----
+     底栏「外观」tab 收起来之后，唯一入口是菜单里的「UI 设计区」。
+     那条 action 只写了 btnUIDesign.click()，不像 tab 分支那样先 closeOverlays，
+     场景页是 fixed 全屏 → 点了外观画面纹丝不动，用户以为坏了。 */
+  var lookHooked = false;
+  function hookLookEntry() {
+    var b = $("btnUIDesign");
+    if (!b || lookHooked) return;
+    lookHooked = true;
+    b.addEventListener("click", function () {
+      if (!narrow()) return;
+      var sc = document.querySelector("#scenePage.open");
+      if (sc) { var c = $("sceneClose"); if (c) c.click(); }
+      document.querySelectorAll(".center-page.open").forEach(function (p) {
+        if (p.id !== "uiDesignModal") p.classList.remove("open");
+      });
+    }, true);
+  }
+
   /* ---- 启动 ---- */
   function tick() {
     fixTopbar(); hookSaveSync(); syncSave(); fixModeBar(); fixStatus(); renderTextPreview();
-    syncModeSlot(); syncPvRail(); syncSceneEmpty();
+    syncModeSlot(); syncPvRail(); syncSceneStale(); syncSceneEmpty(); syncSceneEmptyUndo(); hookLookEntry();
   }
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", function () { tick(); setInterval(tick, 700); });

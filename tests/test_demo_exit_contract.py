@@ -6,11 +6,9 @@
 根因是编辑器首页的试玩入口用 `location.href = "./game.html"` 整页跳走：
 编辑器被导航覆盖，游戏里又没有回程，安卓上只能杀掉应用重开。
 
-这个文件守住四件事，任何一件破了，用户就又要「退出软件重开」：
-1. 编辑器侧不许再整页跳；
-2. 内嵌层要认来源，别人发一条消息不能把用户踢出去；
-3. 播放器要知道自己在被内嵌，并且能通知外层；
-4. 退出键的命中判断必须排在所有会「吃点击」的层前面。
+P190 起编辑器首页不再内嵌试玩（改成「新手教程」：直接开一个能改的作品），
+所以「编辑器侧内嵌层 / 来源校验」两条作废；玩家侧的退出契约继续有效，
+以后要再嵌 game.html 得先把它恢复回来。
 """
 from pathlib import Path
 
@@ -42,33 +40,16 @@ def _fn(src: str, name: str) -> str:
     return src[start:nxt]
 
 
-def test_home_does_not_navigate_away_for_demo():
-    """试玩入口不许整页跳走。整页跳 = 编辑器被覆盖，等于没有回程。"""
+def test_home_does_not_open_the_demo_page_at_all():
+    """P190：首页直接开作品，不再跳/嵌 game.html。
+
+    只要这两条重新出现在代码里，就等于把「进得去出不来」的老路铺回去了。
+    """
     src = _code(_home())
     assert 'location.href = "./game.html"' not in src, "试玩还在整页跳，用户退不回来"
     assert 'location.assign("./game.html")' not in src
     assert 'location.replace("./game.html")' not in src
-    assert '"./game.html"' in src, "game.html 都不加载了，这个入口成摆设"
-
-
-def test_home_builds_embedded_layer_with_escape_hatch():
-    src = _home()
-    assert "mDemoLayer" in src and "mDemoFrame" in src, "没有内嵌层"
-    assert "function openDemo(" in src and "function closeDemo(" in src
-    close_body = _fn(src, "closeDemo")
-    # 换空白再拆，否则里面 BGM 会一直响
-    assert "about:blank" in close_body, "拆层前没停 iframe，音频会继续放"
-    assert "removeChild" in close_body
-
-
-def test_home_only_trusts_its_own_frame():
-    """只认自己那个 iframe 发来的退出消息，否则任何页面都能把用户踢出去。"""
-    src = _home()
-    assert 'addEventListener("message"' in src
-    seg = src[src.index('addEventListener("message"'):]
-    seg = seg[:seg.index("})") + 2]
-    assert "contentWindow" in seg, "没校验消息来源"
-    assert "myonl-exit-demo" in src
+    assert '"./game.html"' not in src, "首页又在加载 game.html 了"
 
 
 def test_player_knows_when_it_is_embedded():
