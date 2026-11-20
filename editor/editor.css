@@ -1874,7 +1874,7 @@ input[type="color"] {
     font-family: inherit; }
   /* 键盘弹起来时，浮动按钮和状态栏让位，别跟快捷条叠 */
   body.m-kb-open .statusbar { display: none; }
-  .left-pane { width: 100%; min-width: 0; border-right: none; }
+  .left-pane { width: 100%; min-width: 0; border-right: none; flex: 1 1 auto; min-height: 0; max-height: none; }
   .right-pane {
     position: fixed; left: 0; right: 0; bottom: 0; width: 100vw; max-width: 100vw;
     height: 62dvh; z-index: 78; border-left: none; border-top: 1px solid var(--surface0);
