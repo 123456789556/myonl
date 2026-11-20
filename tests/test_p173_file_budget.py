@@ -37,16 +37,17 @@ ROOT = Path(__file__).resolve().parents[1]
 #   2) 先找过"能不能顺手删掉等价行数"——找不到才涨。
 # 不许做的：为了让自己这次的提交变绿，把上限一把抬高几十行。那这条测试就白设了。
 FILE_BUDGET: dict[str, int] = {
-    "editor/editor_main.js": 3400,
+    "editor/editor_main.js": 3395,   # P184b 素材列表改用缩略图 +2
     "editor/editor_pro.js": 2160,
     "editor/editor_uidesign.js": 1520,
-    "editor/gal_offline.js": 1700,   # P181 WAV 导入转码 +52（新能力，非放宽）
+    "editor/gal_offline.js": 1695,   # P184b 入库不缩、另存缩略图 +24（回退 P184 后重做）
     "editor/editor_scene.js": 1207,  # P183 台词区搬去 editor_strip.js，净减 8 行，cap 跟着降
     "editor/editor_strip.js": 60,    # P183 分镜带（一句一张卡），新文件
     "editor/strip.css": 100,         # P183 分镜带样式，新文件
+    "editor/asset_thumb.js": 50,     # P184b 缩略图生成（240 边，只给列表看，不动原图），新文件
     "editor/editor_shell.js": 870,
     "editor/editor.css": 3336,   # P179 首页去大卡后布局收口 +5（新能力，非放宽）
-    "engine/editor.py": 3036,   # P183 新前端文件 editor_strip.js / strip.css 的静态路由 +6（新能力，非放宽）
+    "engine/editor.py": 3037,   # P184b asset_thumb.js 静态路由 +1
     "engine/parser.py": 1080,
 }
 

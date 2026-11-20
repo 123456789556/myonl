@@ -14,7 +14,7 @@
   const btnRun = $("btnRun");
   // 纯函数工具层（editor_utils.js）：不接触本闭包状态，可独立演进/复用
   const {
-    escapeText, lineIndent, _clKey, assetURL, el, field, selectField, row,
+    escapeText, lineIndent, _clKey, assetURL, thumbURL, el, field, selectField, row,
     iconBtn, summaryOf, fieldRow, mkInput, mkTextarea, mkSelect,
   } = window.MyonlEditorUtils;
 
@@ -2048,7 +2048,7 @@
         const img = document.createElement("img");
         img.loading = "lazy";  // 按需加载，20GB 项目也不卡
         img.alt = name;
-        img.src = assetURL(assetCat, name);
+        img.src = thumbURL(assetCat, name);
         card.appendChild(img);
       }
 

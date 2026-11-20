@@ -21,9 +21,18 @@ def test_有素材库对象且走_IndexedDB():
     assert "myonl:assets:index:v1" in OFF
 
 
-def test_图片进来会被压到最长边_1280():
-    assert "MAX_SIDE = 1280" in OFF
-    assert "toDataURL(\"image/jpeg\", 0.82)" in OFF
+def test_图片入库不缩_另存缩略图给列表用():
+    # P184b：原图原样存（缩了画质就永久没了），另存 240 边小图只给列表显示
+    assert "MAX_SIDE" not in OFF and "shrinkImage" not in OFF
+    assert "function readDataUrl" in OFF
+    assert "window.MYONLThumb.fromDataUrl" in OFF
+    assert "thumbOf" in OFF
+
+
+def test_电脑端导入不在入口缩图():
+    # 电脑端也不做有损处理，压缩留给导出口（engine/webpack.py 的 _shrink_image）
+    assert "MYONLShrink" not in MAIN
+    assert "prepFile" not in MAIN
 
 
 def test_素材接口报真名字不再回空数组():

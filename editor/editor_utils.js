@@ -13,6 +13,14 @@
     return "/api/asset/" + cat + "/" + encodeURIComponent(name);
   }
 
+  // 列表缩略图：手机端有本地素材库（window.MYONLAssets）时才走 /api/thumb，
+  // 电脑端素材本来就是磁盘文件、内存也够，继续用原图，不为它多开一条路由。
+  function thumbURL(cat, name) {
+    return (typeof window !== "undefined" && window.MYONLAssets)
+      ? "/api/thumb?name=" + encodeURIComponent(name)
+      : assetURL(cat, name);
+  }
+
   function el(tag, cls, text) {
     const e = document.createElement(tag);
     if (cls) e.className = cls;
@@ -121,7 +129,7 @@
   }
 
   window.MyonlEditorUtils = {
-    escapeText, lineIndent, _clKey, assetURL, el, field, selectField, row,
+    escapeText, lineIndent, _clKey, assetURL, thumbURL, el, field, selectField, row,
     iconBtn, summaryOf, fieldRow, mkInput, mkTextarea, mkSelect,
   };
 })();

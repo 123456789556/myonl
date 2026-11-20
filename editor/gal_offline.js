@@ -248,33 +248,11 @@
     });
   }
 
-  // 压一下再存：手机相册原图动辄 4000px / 6MB，直接塞进作品，
-  // 导出成 HTML 会变成几十兆，发给谁都打不开。
-  // 最长边 1280、jpg 0.82 —— 视觉小说满屏看也够，一张大概 100~200KB。
-  var MAX_SIDE = 1280;
-  function shrinkImage(file) {
+  // 原图原样存：缩了画质就永久没了。列表要的小图另存一份（见 persistAsset 的 thumb）。
+  function readDataUrl(file) {
     return new Promise(function (res, rej) {
       var fr = new FileReader();
-      fr.onload = function () {
-        var img = new Image();
-        img.onload = function () {
-          var w = img.naturalWidth || img.width;
-          var h = img.naturalHeight || img.height;
-          var m = Math.max(w, h);
-          if (m > MAX_SIDE) { var k = MAX_SIDE / m; w = Math.round(w * k); h = Math.round(h * k); }
-          var cv = document.createElement("canvas");
-          cv.width = w; cv.height = h;
-          var cx = cv.getContext("2d");
-          // 透明底（png/webp）铺黑：播放器舞台本来就是深色，白底会在黑边里炸出来
-          var isPng = /png|webp/i.test(file.type || "");
-          if (!isPng) { cx.fillStyle = "#000"; cx.fillRect(0, 0, w, h); }
-          cx.drawImage(img, 0, 0, w, h);
-          var out = isPng ? cv.toDataURL("image/png") : cv.toDataURL("image/jpeg", 0.82);
-          res({ dataUrl: out, w: w, h: h, type: isPng ? "image/png" : "image/jpeg" });
-        };
-        img.onerror = function () { rej(new Error("这张图读不出来（可能不是图片）")); };
-        img.src = fr.result;
-      };
+      fr.onload = function () { res(String(fr.result || "")); };
       fr.onerror = function () { rej(new Error("读文件失败")); };
       fr.readAsDataURL(file);
     });
@@ -368,12 +346,12 @@
   // 落库一条素材：起不重名的名字、写名字索引 / 类型索引、存进 IndexedDB。
   // add()（选文件、拖进来）和 importShared()（别的 App 分享进来）共用这一套，
   // 避免两条链路对重名、类型、落库的处理出现分叉。
-  function persistAsset(wantName, kind, dataUrl, taken, kinds) {
+  function persistAsset(wantName, kind, dataUrl, taken, kinds, thumb) {
     var name = uniqueName(wantName, taken);
     // 先把素材体写进 IndexedDB，成功后才写名字 / 类型索引；顺序反过来，
     // put 失败就会在索引里留下幽灵名字——列表看得见、素材体取不到。
     return dbRun("readwrite", function (st) {
-      return st.put({ dataUrl: dataUrl, kind: kind }, name);
+      return st.put({ dataUrl: dataUrl, kind: kind, thumb: thumb || null }, name);
     }).then(function () {
       taken.push(name);
       kinds[name] = kind;
@@ -416,7 +394,7 @@
     list: function () { return idxRead(); },
     kindOf: kindOf,
     // 加一组文件，返回真的加进去的名字（重名会自动加 _2）
-    // 图片：压到最长边 1280；音频 / 视频：原样存；其它类型一律不收（成品里用不上，收了只是白占空间）
+    // 图片：原图原样存（画质不丢），另存一张 240 边小图给列表显示；音频 / 视频原样存；其它类型不收
     add: function (files, onEach) {
       var list = Array.prototype.slice.call(files || []);
       var taken = idxRead();
@@ -439,7 +417,13 @@
             return null;
           }
           var step = isImg
-            ? shrinkImage(f).then(function (r) { return { dataUrl: r.dataUrl, kind: "image" }; })
+            ? readDataUrl(f).then(function (u) {
+                // 原图原样存；另出一张 240 边的小图，只给素材列表显示用
+                var t = window.MYONLThumb
+                  ? window.MYONLThumb.fromDataUrl(u, 240).catch(function () { return null; })
+                  : Promise.resolve(null);
+                return t.then(function (th) { return { dataUrl: u, kind: "image", thumb: th }; });
+              })
             : isVid
               ? videoDataUrl(f).then(function (u) { return { dataUrl: u, kind: "video" }; })
               : (looksLikeWav(f)
@@ -454,7 +438,7 @@
                     })
                 : audioDataUrl(f).then(function (u) { return { dataUrl: u, kind: "audio" }; }));
           return step.then(function (r) {
-            return persistAsset(baseName(f), r.kind, r.dataUrl, taken, kinds).then(function (name) {
+            return persistAsset(baseName(f), r.kind, r.dataUrl, taken, kinds, r.thumb).then(function (name) {
               added.push(name);
               if (onEach) onEach(name, added.length, list.length);
             });
@@ -466,6 +450,14 @@
     },
     get: function (name) {
       return dbRun("readonly", function (st) { return st.get(name); });
+    },
+    // 列表用的小图：老素材没存过缩略图就退回原图，别因为缺一张就显示空白
+    thumbOf: function (name) {
+      return dbRun("readonly", function (st) { return st.get(name); }).then(function (v) {
+        if (!v) return null;
+        if (v.thumb) return v.thumb;
+        return v.kind === "image" ? v.dataUrl : null;
+      });
     },
     remove: function (name) {
       return dbRun("readwrite", function (st) { return st.delete(name); }).then(function () {
@@ -845,8 +837,12 @@
         : "这一版不渲染画面，请用完整版",
     });
   };
-  ROUTES["GET /api/thumb"] = function () {
-    return jsonRes({ ok: false, message: "手机本地没有缩略图" });
+  ROUTES["GET /api/thumb"] = function (input) {
+    var n = queryOf(input).name || "";
+    if (!n) return jsonRes({ ok: false, message: "没给素材名" });
+    return window.MYONLAssets.thumbOf(n).then(function (u) {
+      return u ? dataUrlToResponse(u) : jsonRes({ ok: false, message: "这条素材没有缩略图" });
+    });
   };
 
   // 导出：整个作品库打包成一个 JSON 文本，也支持单份 .gal
@@ -1348,7 +1344,7 @@
     });
     var t2 = document.createElement("div");
     t2.style.cssText = "font-size:12px;line-height:1.75;color:" + (light ? "#66727f" : "#8fa3c0") + ";margin-top:8px";
-    t2.innerHTML = "图片压到最长边 1280 · WAV 转成 webm · 其余音频原样存<br>" +
+    t2.innerHTML = "图片原样存（列表用 240 边小图）· WAV 转成 webm · 其余音频原样存<br>" +
       "单个不超过 24 MB，一次最多 " + MAX_FILES + " 个";
 
     drop.appendChild(t1);
