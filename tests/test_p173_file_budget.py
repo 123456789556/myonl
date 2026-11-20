@@ -46,7 +46,7 @@ FILE_BUDGET: dict[str, int] = {
     "editor/strip.css": 100,         # P183 分镜带样式，新文件
     "editor/asset_thumb.js": 50,     # P184b 缩略图生成（240 边，只给列表看，不动原图），新文件
     "editor/editor_shell.js": 870,
-    "editor/editor.css": 3336,   # P179 首页去大卡后布局收口 +5（新能力，非放宽）
+    "editor/editor.css": 3354,   # P179 首页去大卡后布局收口 +5；P185 顶部安全带（挖孔/侧边 cutout）+18
     "engine/editor.py": 3037,   # P184b asset_thumb.js 静态路由 +1
     "engine/parser.py": 1080,
 }

@@ -178,13 +178,16 @@ public class MainActivity extends Activity {
         // 而底部那根手势条**不会跟着藏**，它一直浮在页面最下面吃掉点击 —— 表现的正是
         // "按钮看得见、按不到"。systemGestures 报的才是这条手势区域，即使栏藏了也有效。
         // 顶部同理：无刘海的机器全靠 systemBars（藏了就是 0，顶到边正好），有刘海的靠 cutout。
+        // 横屏时挖孔跑到左边/右边，cutout 报的才是 left/right —— 只处理 top/bottom 会让侧边挖孔压住内容。
         ViewCompat.setOnApplyWindowInsetsListener(web, (v, wi) -> {
             androidx.core.graphics.Insets bars = wi.getInsets(WindowInsetsCompat.Type.systemBars());
             androidx.core.graphics.Insets cut = wi.getInsets(WindowInsetsCompat.Type.displayCutout());
             androidx.core.graphics.Insets ges = wi.getInsets(WindowInsetsCompat.Type.systemGestures());
             int t = Math.max(bars.top, cut.top);
             int b = Math.max(bars.bottom, Math.max(ges.bottom, cut.bottom));
-            v.setPadding(0, t, 0, b);
+            int l = Math.max(bars.left, cut.left);
+            int r = Math.max(bars.right, cut.right);
+            v.setPadding(l, t, r, b);
             return wi;
         });
 
@@ -217,6 +220,10 @@ public class MainActivity extends Activity {
             public void onPageFinished(WebView view, String url) {
                 // 冷启动时分享进来的文件早就读好了，等页面能跑 JS 了再递过去
                 flushShare();
+                // WebView 本体已经按挖孔让过位（见 setOnApplyWindowInsetsListener），
+                // 告诉页面别再自己加一遍顶部安全带，否则顶出双倍空白。
+                view.evaluateJavascript(
+                        "document.documentElement.classList.add('native-shell')", null);
             }
 
             @Override
