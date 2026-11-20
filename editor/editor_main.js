@@ -2225,9 +2225,12 @@
         }
         overwrite = choice === "overwrite";
       }
+      // P2：大图入库前先缩到 1920 边（4000×3000 原图解码 48MB，还会把导出的单文件撑爆）
+      const src = (category === "images" && window.MYONLShrink)
+        ? await window.MYONLShrink.prepFile(f) : f;
       let b64;
       try {
-        b64 = await fileToBase64(f);
+        b64 = await fileToBase64(src);
       } catch (e) {
         msgs.push("「" + f.name + "」读取失败");
         errCount++;
@@ -2236,17 +2239,12 @@
       }
       try {
         const resp = await postJSON("/api/import", {
-          category, filename: f.name, data_b64: b64, overwrite,
+          category, filename: src.name, data_b64: b64, overwrite,
         });
         if (resp.ok) {
           const note = resp.overwritten ? "（已覆盖同名文件）"
             : (resp.renamed_from ? "（重名，改存为 " + resp.name + "）" : "");
           msgs.push("已导入 " + resp.path + note);
-          // P64：手机拍的照片动辄 3–8 MB，导出成单文件会直接翻倍
-          if (category === "images" && f.size > 1536 * 1024) {
-            msgs.push("「" + resp.name + "」有 " + (f.size / 1048576).toFixed(1)
-              + " MB，发出去的单文件会跟着变大（导出时会自动缩到 1600 边内）");
-          }
           imported.push({ category, name: resp.name, path: resp.path });
           assetCat = category;
           okCount++;

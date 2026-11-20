@@ -248,37 +248,9 @@
     });
   }
 
-  // 压一下再存：手机相册原图动辄 4000px / 6MB，直接塞进作品，
-  // 导出成 HTML 会变成几十兆，发给谁都打不开。
-  // 最长边 1280、jpg 0.82 —— 视觉小说满屏看也够，一张大概 100~200KB。
-  var MAX_SIDE = 1280;
-  function shrinkImage(file) {
-    return new Promise(function (res, rej) {
-      var fr = new FileReader();
-      fr.onload = function () {
-        var img = new Image();
-        img.onload = function () {
-          var w = img.naturalWidth || img.width;
-          var h = img.naturalHeight || img.height;
-          var m = Math.max(w, h);
-          if (m > MAX_SIDE) { var k = MAX_SIDE / m; w = Math.round(w * k); h = Math.round(h * k); }
-          var cv = document.createElement("canvas");
-          cv.width = w; cv.height = h;
-          var cx = cv.getContext("2d");
-          // 透明底（png/webp）铺黑：播放器舞台本来就是深色，白底会在黑边里炸出来
-          var isPng = /png|webp/i.test(file.type || "");
-          if (!isPng) { cx.fillStyle = "#000"; cx.fillRect(0, 0, w, h); }
-          cx.drawImage(img, 0, 0, w, h);
-          var out = isPng ? cv.toDataURL("image/png") : cv.toDataURL("image/jpeg", 0.82);
-          res({ dataUrl: out, w: w, h: h, type: isPng ? "image/png" : "image/jpeg" });
-        };
-        img.onerror = function () { rej(new Error("这张图读不出来（可能不是图片）")); };
-        img.src = fr.result;
-      };
-      fr.onerror = function () { rej(new Error("读文件失败")); };
-      fr.readAsDataURL(file);
-    });
-  }
+  // 缩图统一在 editor/asset_shrink.js（两端共用一份，最长边 1920）：
+  // 手机相册原图 4000px / 6MB 直接塞进作品，导出会变成几十兆。
+  var shrinkImage = window.MYONLShrink.shrinkImage;
 
   function baseName(file) {
     var n = String(file.name || "图片").replace(/\.[^.]+$/, "").trim() || "图片";
