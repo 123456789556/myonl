@@ -3,7 +3,7 @@
 **简体中文** | [English](README.en.md)
 
 [![tests](https://github.com/123456789556/myonl/actions/workflows/tests.yml/badge.svg?branch=main)](https://github.com/123456789556/myonl/actions/workflows/tests.yml)
-![Release](https://img.shields.io/badge/release-v1.2.9-blue)
+![Release](https://img.shields.io/badge/release-v1.2.10-blue)
 ![License](https://img.shields.io/badge/License-MIT-green)
 
 写台词、放图、放音乐，导出成一个文件，发给谁都能打开看。
@@ -166,7 +166,7 @@ python tools/pack_apk.py --game dist/single/你的作品.html
 
 ## 装它
 
-**[⬇ 下载 MYONL-v1.2.9.apk](https://github.com/123456789556/myonl/releases/download/v1.2.9/MYONL-v1.2.9.apk)** · 安卓 7.0 以上 · 只按手机屏幕做，平板能装但没专门适配
+**[⬇ 下载 MYONL-v1.2.10.apk](https://github.com/123456789556/myonl/releases/download/v1.2.10/MYONL-v1.2.10.apk)** · 安卓 7.0 以上 · 只按手机屏幕做，平板能装但没专门适配
 
 装好打开就是书架，点「新建作品」开始。底部「导出」有两条出口：
 自包含 `.html`（发微信对方就能玩）和 APK（装到手机上就是一个独立 App）。
@@ -194,7 +194,7 @@ python tools/pack_apk.py --game dist/single/你的作品.html
 
 只想做游戏的话，上面那些就够了。下面是技术细节。
 
-> 全量测试当前 **1401 passed, 3 skipped、退出码 0**（2026-11-19 本机已复跑；数随版本变，以最新一次 `pytest -q` 为准）。
+> 全量测试当前 **1411 passed, 3 skipped、退出码 0**（2026-11-20 本机已复跑；数随版本变，以最新一次 `pytest -q` 为准）。
 
 ## 手机端能做什么、做不到什么
 
