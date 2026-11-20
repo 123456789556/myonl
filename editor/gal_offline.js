@@ -1624,6 +1624,7 @@
   decorate(document);
   // editor_home.js 是「先 innerHTML 再同步 new Image()」，MutationObserver 追不上它。
   // 所以直接在 HTMLImageElement.src 上兜一道：离线时 /api/thumb 一律不加载。
+  // 只兜首页作品卡（?folder=）；素材库列表的 ?name= 是本机素材库真能给图的，必须放行，否则卡片空框。
   try {
     var srcDesc = Object.getOwnPropertyDescriptor(HTMLImageElement.prototype, "src");
     if (srcDesc && srcDesc.set) {
@@ -1631,7 +1632,7 @@
         configurable: true,
         get: function () { return srcDesc.get.call(this); },
         set: function (v) {
-          if (typeof v === "string" && v.indexOf("/api/thumb") >= 0) return;   // 静默丢弃
+          if (typeof v === "string" && v.indexOf("/api/thumb") >= 0 && v.indexOf("name=") < 0) return;
           srcDesc.set.call(this, v);
         }
       });
