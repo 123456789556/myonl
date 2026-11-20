@@ -662,7 +662,7 @@
         // /api/preview 回的是 JSON 提示。直接 blob() 塞进 <img> 只会得到一个破图图标。
         const ct = (r.headers.get("content-type") || "").toLowerCase();
         if (!ct.startsWith("image/")) {
-          let msg = "预览需要电脑端的渲染服务，手机上请直接看中间舞台";
+          let msg = "这一版不渲染画面，想看画面请在电脑上打开";
           try {
             const j = await r.json();
             if (j && j.message) msg = j.message;
@@ -678,7 +678,8 @@
         ph.className = "preview-placeholder";
         ph.textContent = blob.__noimg;
         previewWrap.appendChild(ph);
-        setPreviewBar(false, blob.__noimg);
+        // 这不是报错，是「这一版就是不做渲染」——标红会让人以为自己点坏了
+        setPreviewBar(true, blob.__noimg);
       } else if (blob) {
         const url = URL.createObjectURL(blob);
         previewWrap.innerHTML = `<img src="${url}" alt="预览">`;

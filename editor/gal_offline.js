@@ -841,8 +841,8 @@
     return jsonRes({
       ok: false,
       message: window.innerWidth < 720
-        ? "手机上用中间的舞台看效果"
-        : "电脑上要看实时画面请用完整版；这一版请直接看中间的舞台",
+        ? "手机版不画画面，先写剧本；想看画面去电脑上打开"
+        : "这一版不渲染画面，请用完整版",
     });
   };
   ROUTES["GET /api/thumb"] = function () {
