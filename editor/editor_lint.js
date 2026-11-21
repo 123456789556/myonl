@@ -10,11 +10,14 @@
  *   char-unused    @character 定义了却没在任何台词里出现         info  可能是改名后遗留
  *   jump-broken    @jump 目标不存在                              error 走到这里会卡死
  *   label-orphan   @label 没人跳、也不是第一个 label              info
+ *   asset-missing  @bg/@cg/@fg/@music/@sfx/@voice/@video 引用的素材不在清单里  warn  成品那一屏缺画面/缺声音
  */
 (function () {
   var CMD = ["anim", "bg", "camera", "cg", "chapter", "character", "choice", "elif", "else",
     "end", "fg", "hide", "if", "include", "jump", "label", "music", "plug", "property",
     "set", "sfx", "show", "transition", "video", "voice", "wait"];
+  // 首 token 是素材名的指令。@show/@hide 首 token 是角色名，归 unregistered 管，不在这里重复报。
+  var ASSET_CMD = ["bg", "cg", "fg", "music", "sfx", "voice", "video"];
 
   function text0(t) { return String(t == null ? "" : t).replace(/^\uFEFF/, ""); }
 
@@ -53,7 +56,7 @@
     return null; // "@" 单独一行：下一行整行旁白
   }
 
-  function scan(text) {
+  function scan(text, opts) {
     var lines = text0(text).split("\n");
     var chars = {}, labels = {}, jumps = [], rows = [], used = {};
     var i, t, m;
@@ -156,6 +159,20 @@
       }
     }
 
+    // 素材缺失：清单由调用方给（纯函数不读库）；不传就不查，免得还没导素材的新作品满屏报错。
+    var known = (opts && opts.assets) || null;
+    if (known) {
+      var kset = {};
+      for (i = 0; i < known.length; i++) kset[String(known[i])] = true;
+      for (i = 0; i < rows.length; i++) {
+        var q = rows[i];
+        if (q.kind !== "cmd" || ASSET_CMD.indexOf(q.cmd) < 0) continue;
+        var an = String(q.arg || "").split("#")[0].trim().split(/\s+/)[0].replace(/\.[A-Za-z0-9]+$/, "");
+        if (!an || an === "无" || an === "none" || kset[an]) continue;
+        issues.push({ level: "warn", code: "asset-missing", line: q.no, scene: q.scene, name: an });
+      }
+    }
+
     var order = { error: 0, warn: 1, info: 2 };
     issues.sort(function (a, b) { return (order[a.level] - order[b.level]) || (a.line - b.line); });
     return { lines: lines, rows: rows, chars: chars, labels: labels, jumps: jumps, issues: issues };
@@ -174,8 +191,8 @@
     return c;
   }
 
-  function run(text) {
-    var s = scan(text);
+  function run(text, opts) {
+    var s = scan(text, opts);
     return { issues: s.issues, counts: counts(s.issues), rows: s.rows, chars: s.chars, labels: s.labels };
   }
 

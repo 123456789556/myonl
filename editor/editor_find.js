@@ -189,7 +189,7 @@
       panelEl.classList.add("hidden");
       return refresh();
     }
-    var r = window.MYONLLint ? MYONLLint.run(text()) : null;
+    var r = window.MYONLLint ? MYONLLint.run(text(), lintOpts()) : null;
     if (!r) return;
     var items = [], i;
     if (kind === "char") {
@@ -252,11 +252,18 @@
     return "";
   }
 
+  // 体检要带上素材清单才查得出「引用了不存在的素材」。清单同步取自离线素材库；
+  // 库是空的（还没导素材）就不传，避免新作品一打开满屏都是缺素材。
+  function lintOpts() {
+    var a = (window.MYONLAssets && MYONLAssets.list) ? MYONLAssets.list() : null;
+    return (a && a.length) ? { assets: a } : {};
+  }
+
   function refresh() {
     if (!built || !window.MYONLLint) return;
     var t = text();
     if (mode === "check") {
-      var r = MYONLLint.run(t);
+      var r = MYONLLint.run(t, lintOpts());
       var rows = r.issues.map(function (i) {
         return {
           no: i.line, level: i.level, why: i.name || "",
@@ -330,7 +337,7 @@
 
   // 替换后立刻体检：断链必须当场看见，不能等用户跑起来才发现。
   function afterReplace(count) {
-    var r = MYONLLint.run(text());
+    var r = MYONLLint.run(text(), lintOpts());
     var errs = r.issues.filter(function (i) { return i.level === "error"; });
     if (errs.length) {
       lastAlert = {

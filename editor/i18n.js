@@ -73,6 +73,10 @@
       zh: "「%s」没有任何跳转指向它，也不会被自动播放到",
       en: "Nothing jumps to “%s” and it will never play"
     },
+    "lint.asset-missing": {
+      zh: "素材「%s」不在素材库里，成品到这里会缺画面或缺声音",
+      en: "Asset “%s” is not in the library — this spot will have no image or no sound"
+    },
     "lint.level.error": { zh: "错误", en: "error" },
     "lint.level.warn": { zh: "提醒", en: "warning" },
     "lint.level.info": { zh: "提示", en: "note" }

@@ -1,7 +1,7 @@
 # MYONL · 手机上的视觉小说编辑器
 
 [![tests](https://github.com/123456789556/myonl/actions/workflows/tests.yml/badge.svg?branch=main)](https://github.com/123456789556/myonl/actions/workflows/tests.yml)
-![Release](https://img.shields.io/badge/release-v1.2.27-blue)
+![Release](https://img.shields.io/badge/release-v1.2.28-blue)
 ![License](https://img.shields.io/badge/License-MIT-green)
 ![Platform](https://img.shields.io/badge/platform-Android%207.0%2B%20%C2%B7%20Windows%20%C2%B7%20Web-19b6a3)
 ![Offline](https://img.shields.io/badge/offline-100%25-2ea44f)
@@ -58,7 +58,7 @@ python -m engine.editor
 - 打成 `.apk`，手机上自己就能做完（见下文）
 - 切换深浅主题、换主题色
 - **打字不用管保存**：停 1.5 秒自动留一份草稿，切后台、被系统回收、App 被杀，重开都能接回来（草稿不进版本快照，不会把历史版本挤掉）
-- **查找替换与体检**：按角色 / 场景 / 指令筛句子，点一条就跳到那行；替换默认只动台词正文，勾选后才碰指令与 `@label`；改坏跳转当场列出断链并可点跳
+- **查找替换与体检**：按角色 / 场景 / 指令筛句子，点一条就跳到那行；替换默认只动台词正文，勾选后才碰指令与 `@label`；改坏跳转当场列出断链并可点跳；素材名写错或没导入也会列出来（带行号）
 - **写完能整部跑一遍**：预览面板那颗「试玩」把当前作品编成成品、全屏从头演到底，顶上一条「✕ 退出试玩」，退出回编辑器接着改。跑的就是你导出给玩家的那份 HTML，不是另一套播放逻辑
 
 ## 做不到什么
@@ -215,7 +215,7 @@ python tools/pack_apk.py --game dist/single/你的作品.html
 
 ## 装它
 
-**[⬇ 下载 MYONL-v1.2.27.apk](https://github.com/123456789556/myonl/releases/download/v1.2.27/MYONL-v1.2.27.apk)** · 安卓 7.0 以上 · 只按手机屏幕做，平板能装但没专门适配
+**[⬇ 下载 MYONL-v1.2.28.apk](https://github.com/123456789556/myonl/releases/download/v1.2.28/MYONL-v1.2.28.apk)** · 安卓 7.0 以上 · 只按手机屏幕做，平板能装但没专门适配
 
 装好打开就是书架，点「新建作品」开始。底部「导出」有两条出口：
 自包含 `.html`（发微信对方就能玩）和 APK（装到手机上就是一个独立 App）。
