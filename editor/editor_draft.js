@@ -27,11 +27,17 @@
 
   var LIB_KEY = "myonl:off:lib:v1";
   var DRAFT_KEY = "myonl:off:draft:v1";
+  // P198.1：草稿键只有一份，换作品之后第一次落盘会把上一个作品"还没恢复的"
+  // 那份草稿无声顶掉。挤出来的一份放这里 —— 仍然是一个固定键，不是索引。
+  var ORPHAN_KEY = "myonl:off:draft:v1:orphan";
+  var ORPHAN_DAYS = 7;
   var SESSION_KEY = "myonl:draftShown";
   var DEBOUNCE_MS = 1500;   // 停止输入 1.5 秒写一次
   var CEIL_MS = 30000;      // 连续码字时防抖一直在重置，这条保证 30 秒内必落一次
 
   var last = "";            // 上一次落盘成功的内容
+  var loadedName = "";      // 当前这一屏的 #source 装的是哪个作品
+  var primed = false;       // #source 里确实是"这个作品的正文"了吗
   var timer = null;
   var state = "";           // "" | saved | dirty | draft | fail
   var stamp = "";
@@ -51,15 +57,28 @@
     return lib.projects[0];
   }
 
-  function readDraft() {
+  function readKey(k) {
     try {
-      var d = JSON.parse(localStorage.getItem(DRAFT_KEY) || "null");
+      var d = JSON.parse(localStorage.getItem(k) || "null");
       return (d && typeof d === "object" && typeof d.text === "string") ? d : null;
     } catch (e) { return null; }
   }
+  function readDraft() { return readKey(DRAFT_KEY); }
+  function readOrphan() { return readKey(ORPHAN_KEY); }
 
   function clearDraft() {
     try { localStorage.removeItem(DRAFT_KEY); } catch (e) {}
+  }
+  function clearOrphan() {
+    try { localStorage.removeItem(ORPHAN_KEY); } catch (e) {}
+  }
+
+  function findProj(lib, name) {
+    if (!lib || !lib.projects) return null;
+    for (var i = 0; i < lib.projects.length; i++) {
+      if (lib.projects[i].name === name) return lib.projects[i];
+    }
+    return null;
   }
 
   function hhmm(ts) {
@@ -91,8 +110,7 @@
   // "已保存 18:00"，比没有更让人困惑（那几屏根本没有"保存"这件事）。
   function visible() {
     if (document.body.classList.contains("m-home-open")) return false;
-    var ta = document.getElementById("source");
-    return !!(ta && ta.offsetParent !== null);
+    return !!document.getElementById("source");
   }
 
   function paint() {
@@ -101,15 +119,26 @@
     if (!visible()) { el.style.display = "none"; return; }
     el.style.display = "block";
     var text = "", color = "#9fb3d1";
-    if (state === "saved") { text = "已保存 " + stamp; color = "#7fd6a0"; }
+    // 本作品已保存、但另一个作品还压着一份没恢复的草稿：窄条改成这条，
+    // 让"在工作台漏看了提示"的人还有第二个地方能捞回来。
+    var orp = (state === "saved" || state === "draft") ? readOrphan() : null;
+    if (orp) {
+      var days = Math.max(1, Math.round((now() - (orp.at || 0)) / 86400000));
+      text = "「" + orp.name + "」有未恢复草稿 · " + days + " 天前";
+      color = "#e0c46a";
+    } else if (state === "saved") { text = "已保存 " + stamp; color = "#7fd6a0"; }
     else if (state === "dirty") { text = "存草稿中…"; color = "#e0c46a"; }
     else if (state === "draft") { text = "草稿 " + stamp + " · 未保存"; color = "#8fb8e8"; }
     else if (state === "fail") { text = "自动保存失败 · 点这里重试"; color = "#e07a6a"; }
     el.textContent = text;
     el.style.color = color;
     el.style.opacity = "1";
-    el.style.pointerEvents = state === "fail" ? "auto" : "none";
-    el.onclick = state === "fail" ? function () { flush(); } : null;
+    el.style.pointerEvents = (state === "fail" || orp) ? "auto" : "none";
+    el.onclick = state === "fail" ? function () { flush(); }
+      : (orp ? function () {
+          try { window.__editor.toast("回作品页打开「" + orp.name + "」，进去就会接上那份内容"); }
+          catch (e) {}
+        } : null);
     // 稳定态 2.5 秒后淡下去，但不清空 —— 点一下/鼠标移上来还能看到
     if (el._fade) clearTimeout(el._fade);
     if (state === "saved" || state === "draft") {
@@ -129,11 +158,43 @@
   // 最后这条是自动清理：用户点了保存之后，正式库的 p.text 就等于 textarea，
   // 草稿立刻失去意义，必须立刻删掉，否则下次进作品会弹"发现未保存内容"——假的。
   function flush(force) {
+    // 不在编辑器那屏就一律不写。首页/作品页时 #source 还挂在 DOM 上，
+    // 但里面是上一个作品的残留文本 —— 在这里写会造出一份"空草稿"，
+    // 再被下一个作品挤进 orphan 槽，最后表现为"别的作品有未恢复草稿"。
+    if (!visible()) return;
     var ta = document.getElementById("source");
     if (!ta) return;
-    var p = currentProject(readLib());
+    var lib = readLib();
+    var p = currentProject(lib);
     if (!p) return;
+
+    // 切作品时最容易毁数据的一刻：/api/project 已经把 lib.current 换成新作品，
+    // 但页面还停在旧作品的编辑器上（reload 还没发生），pagehide 一 flush，
+    // 就会把"旧作品的正文"记成"新作品的草稿"，下次进新作品直接把它覆盖掉。
+    // 屏幕里装的是哪个作品，只有这一层知道 —— 对不上就整次丢弃。
     var text = ta.value;
+    if (loadedName && loadedName !== p.name) {
+      loadedName = p.name;
+      primed = false;
+      last = "";
+      return;
+    }
+    // 还没进入"这个作品的编辑器"就不写。判据不是"内容等于正式正文"——
+    // 编辑器初始化读进来的正文和库里存的可能差一个行尾，永远等不到相等，
+    // 那样草稿就再也不会写了（第一次改就踩到）。用 input 事件和启动延时两路点火。
+    if (!primed) return;
+
+    // 跨作品覆盖守卫（路径 A）：换到别的作品之后第一次落盘，会把上一个作品
+    // "还没恢复"的那份草稿顶掉，用户全程看不到任何提示。这里先把它挤到
+    // orphan 槽 —— 还是固定键，不建索引，也不遍历。
+    var old = readDraft();
+    if (old && old.name && old.name !== p.name) {
+      var op = findProj(lib, old.name);
+      // 只有"确实还没落进正式库"的那份才值得留；已经保存过的旧草稿直接作废
+      if (!op || old.text !== (op.text || "")) {
+        try { localStorage.setItem(ORPHAN_KEY, JSON.stringify(old)); } catch (e) {}
+      }
+    }
 
     if (text === (p.text || "")) {
       if (last !== text) { clearDraft(); last = text; }
@@ -172,6 +233,8 @@
   }
 
   function onInput() {
+    // 用户真的在这个作品的编辑器里动手了 —— 这是最可靠的点火信号
+    if (!primed) { primed = true; last = ""; }
     setState("dirty");
     if (timer) clearTimeout(timer);
     timer = setTimeout(function () { timer = null; flush(); }, DEBOUNCE_MS);
@@ -213,35 +276,48 @@
     return true;
   }
 
-  function drop() { clearDraft(); last = ""; setState("saved"); }
+  // 丢弃要按作品名丢：草稿键和 orphan 槽可能分属两个作品，
+  // 一刀全清会把另一个作品还没认领的草稿也带走。
+  function drop(name) {
+    var d = readDraft(), o = readOrphan();
+    if (!name || (d && d.name === name)) clearDraft();
+    if (name && o && o.name === name) clearOrphan();
+    // 编辑器 DOM 里那份 textarea 还留着草稿内容。不还原的话，pagehide / 30 秒兜底
+    // 会把它原样写回来 —— 用户点了「丢弃」，两秒后草稿又"复活"了。
+    var ta = document.getElementById("source");
+    var p = findProj(readLib(), name || (d && d.name));
+    if (ta && p && ta.value !== (p.text || "")) {
+      ta.value = p.text || "";
+      try { ta.dispatchEvent(new Event("input", { bubbles: true })); } catch (e) {}
+    }
+    last = "";
+    setState("saved");
+  }
 
   // 跨页恢复：工作台点「恢复并进入」之后要整页 reload 去编辑器，
   // 内存变量带不过去，所以把"要恢复哪个作品"写进 sessionStorage。
-  var APPLY_KEY = "myonl:applyDraft";
-  function requestApply(name) {
-    try { sessionStorage.setItem(APPLY_KEY, String(name || "")); } catch (e) {}
-  }
   // 等编辑器把正文填进 #source 之后再灌草稿，否则会被初始化覆盖掉。
   // 上限 20 次：进的是播放页或别的地方就自然放弃，不能无限轮询。
-  function tryApply(tries) {
+  function autoApply(tries) {
     tries = tries || 0;
-    var want = "";
-    try { want = sessionStorage.getItem(APPLY_KEY) || ""; } catch (e) {}
-    if (!want) return;
     var p = currentProject(readLib());
     var ta = document.getElementById("source");
-    if (!p || p.name !== want || !ta || ta.value !== (p.text || "") || tries > 20) {
-      if (tries > 20) { try { sessionStorage.removeItem(APPLY_KEY); } catch (e) {} return; }
-      setTimeout(function () { tryApply(tries + 1); }, 300);
+    var d = readDraft();
+    if (!p || !ta || !d || d.name !== p.name) return;
+    if (d.text === (p.text || "")) { clearDraft(); return; }  // 和正式库一模一样，没必要灌
+    if (ta.value !== (p.text || "")) {
+      if (tries < 20) setTimeout(function () { autoApply(tries + 1); }, 300);
       return;
     }
-    try { sessionStorage.removeItem(APPLY_KEY); } catch (e) {}
     applyTo(ta);
   }
 
   function diffText(d) {
     if (!d) return { chars: 0, lines: 0 };
-    var p = currentProject(readLib());
+    // 比的是"这份草稿"和它自己那个作品的正文，不是当前打开的作品 ——
+    // 随手用了 currentProject 会把字数算成隔壁作品的长度。
+    var lib = readLib();
+    var p = findProj(lib, d.name) || currentProject(lib);
     var base = (p && p.text) || "";
     return { chars: d.text.length - base.length, lines: d.text.split("\n").length - base.split("\n").length };
   }
@@ -252,7 +328,35 @@
     if (!readLib()) return;
     var ta = document.getElementById("source");
     if (!ta) return;
+    loadedName = (currentProject(readLib()) || {}).name || "";
+    primed = false;
     last = ta.value;
+
+    // orphan 收编：压着的那份草稿如果正是当前作品，说明用户终于打开它了 ——
+    // 提回主键、清 orphan，然后走下面的自动接上。
+    // 但提回会覆盖主键：如果主键里正压着"另一个作品"的未落库草稿，先把它挤进
+    // orphan，再提回来。不先挤就走的话，B 的草稿会被 A 的提回无声顶掉。
+    var orp = readOrphan();
+    if (orp) {
+      var lib0 = readLib();
+      var cur = (currentProject(lib0) || {}).name;
+      if (orp.name === cur) {
+        var prev = readDraft();
+        var moved = false;
+        if (prev && prev.name && prev.name !== orp.name) {
+          var pp = findProj(lib0, prev.name);
+          if (!pp || prev.text !== (pp.text || "")) {
+            try { localStorage.setItem(ORPHAN_KEY, JSON.stringify(prev)); } catch (e) {}
+            moved = true;
+          }
+        }
+        try { localStorage.setItem(DRAFT_KEY, JSON.stringify(orp)); } catch (e) {}
+        if (!moved) clearOrphan();   // moved 时 orphan 现在装的是 prev，别清
+      } else if ((now() - (orp.at || 0)) > ORPHAN_DAYS * 86400000) {
+        clearOrphan();   // 7 天都没人回来认领，别挂着当僵尸数据
+      }
+    }
+
     ta.addEventListener("input", onInput);
     // 切后台/关页：WebView 里 beforeunload 不可靠，用这两个
     document.addEventListener("visibilitychange", function () {
@@ -284,8 +388,10 @@
       new MutationObserver(function () { paint(); })
         .observe(document.body, { attributes: true, attributeFilter: ["class"] });
     } catch (e) {}
-    // 工作台点了「恢复并进入」：等编辑器初始化把正文填进 #source 再灌草稿
-    setTimeout(function () { tryApply(0); }, 400);
+    // 自动接上（路径 B）：工作台的提示是"预告"，不是"开关"。手比眼快直接点
+    // 「继续创作」是最常发生的路径，靠用户点一下恢复等于靠不住 —— 所以进编辑器
+    // 就把草稿灌进去。不想要的人在作品页点「丢弃」，那时草稿已经删了，这里接不到。
+    setTimeout(function () { autoApply(0); }, 250);
   }
 
   if (document.readyState === "loading") {
@@ -296,6 +402,7 @@
 
   window.MYONLDraft = {
     peek: peek, markShown: markShown, applyTo: applyTo, drop: drop, flush: flush,
-    requestApply: requestApply, diffText: diffText, readDraft: readDraft, DRAFT_KEY: DRAFT_KEY
+    autoApply: autoApply, diffText: diffText, readDraft: readDraft,
+    readOrphan: readOrphan, DRAFT_KEY: DRAFT_KEY
   };
 })();

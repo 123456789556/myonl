@@ -465,13 +465,13 @@
         "background:rgba(224,196,106,.10);border:1px solid rgba(224,196,106,.34);";
       tip.innerHTML =
         '<div style="font-size:13px;color:#e0c46a;line-height:1.5">' +
-          '发现未保存内容 · ' + hh + ':' + mm + ' · ' +
+          '上次没保存的内容会自动接上 · ' + hh + ':' + mm + ' · ' +
           (df.chars >= 0 ? "多 " + df.chars : "少 " + (-df.chars)) + ' 字' +
           (dft.stale ? '<br><span style="color:#e08a6a">草稿基于的版本已经变过（回退或导入过）</span>' : '') +
         '</div>' +
         '<div style="display:flex;gap:8px;margin-top:8px">' +
           '<button type="button" id="mDraftGo" style="flex:1;height:34px;border:0;border-radius:9px;' +
-            'background:#4f8cff;color:#fff;font-size:13px">恢复并进入</button>' +
+            'background:#4f8cff;color:#fff;font-size:13px">继续创作（接上次内容）</button>' +
           '<button type="button" id="mDraftNo" style="flex:0 0 76px;height:34px;' +
             'border:1px solid rgba(160,180,210,.4);border-radius:9px;background:transparent;' +
             'color:#9fb3d1;font-size:13px">丢弃</button>' +
@@ -479,13 +479,14 @@
       var hero = workEl.querySelector(".m-work-hero");
       if (hero && hero.parentNode) hero.parentNode.insertBefore(tip, hero.nextSibling);
       else workEl.insertBefore(tip, workEl.firstChild);
+      // P198.1：这里不再"问要不要恢复" —— 进去会自动接上，所以按钮就是"继续创作"。
+      // 留「丢弃」是因为"我不要那版"必须有个地方按，不然自动接上就成了强制。
       tip.querySelector("#mDraftGo").addEventListener("click", function () {
         window.MYONLDraft.markShown(dft);
-        window.MYONLDraft.requestApply(p.name);
         openProject(folder, null, "script");
       });
       tip.querySelector("#mDraftNo").addEventListener("click", function () {
-        window.MYONLDraft.drop();
+        window.MYONLDraft.drop(p.name);
         tip.remove();
       });
     }
