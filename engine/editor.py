@@ -789,6 +789,8 @@ class _EditorHandler(BaseHTTPRequestHandler):
         ("GET", "/editor_lint.js"): "_serve_lint_js",
         # P199a 查找替换的界面层（浮层 + chips + 结果列表）
         ("GET", "/editor_find.js"): "_serve_find_js",
+        # 界面词典（按键中英切换，词典一处收口）
+        ("GET", "/i18n.js"): "_serve_i18n_js",
         # P67：游戏画面方向（any / portrait / landscape），存进工程 config.json
         ("GET", "/api/orientation"): "_get_orientation",
         ("POST", "/api/orientation"): "_set_orientation",
@@ -1131,6 +1133,9 @@ class _EditorHandler(BaseHTTPRequestHandler):
 
     def _serve_find_js(self, parsed=None) -> None:
         self._serve_editor_file("editor_find.js", "application/javascript; charset=utf-8")
+
+    def _serve_i18n_js(self, parsed=None) -> None:
+        self._serve_editor_file("i18n.js", "application/javascript; charset=utf-8")
 
     def _serve_apk_sign_js(self, parsed=None) -> None:
         self._serve_editor_file("apk_sign.js", "application/javascript; charset=utf-8")

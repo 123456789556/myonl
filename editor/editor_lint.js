@@ -124,31 +124,19 @@
     for (i = 0; i < rows.length; i++) {
       var r = rows[i];
       if (r.kind === "say" && r.unregistered) {
-        issues.push({
-          level: "warn", code: "unregistered", line: r.no, scene: r.scene, name: r.char,
-          msg: "「" + r.char + "」没登记，这行会被静默当旁白渲染，角色名不显示"
-        });
+        issues.push({ level: "warn", code: "unregistered", line: r.no, scene: r.scene, name: r.char });
       } else if (r.kind === "say" && r.stray) {
-        issues.push({
-          level: "warn", code: "bracket-stray", line: r.no, scene: r.scene, name: r.char,
-          msg: "渲染正常，但角色库里没有「" + r.char + "」这个条目"
-        });
+        issues.push({ level: "warn", code: "bracket-stray", line: r.no, scene: r.scene, name: r.char });
       }
     }
     for (var name in chars) {
       if (!used[name]) {
-        issues.push({
-          level: "info", code: "char-unused", line: chars[name], name: name,
-          msg: "「" + name + "」定义了，但没有任何台词用这个角色名"
-        });
+        issues.push({ level: "info", code: "char-unused", line: chars[name], name: name });
       }
     }
     for (i = 0; i < jumps.length; i++) {
       if (!labels[jumps[i].target]) {
-        issues.push({
-          level: "error", code: "jump-broken", line: jumps[i].no, name: jumps[i].target,
-          msg: "@jump 目标「" + jumps[i].target + "」不存在，玩家走到这里会卡死"
-        });
+        issues.push({ level: "error", code: "jump-broken", line: jumps[i].no, name: jumps[i].target });
       }
     }
     for (var lb in labels) {
@@ -164,16 +152,20 @@
         }
       }
       if (!hit) {
-        issues.push({
-          level: "info", code: "label-orphan", line: labels[lb], name: lb,
-          msg: "「" + lb + "」没有任何跳转指向它，也不会被自动播放到"
-        });
+        issues.push({ level: "info", code: "label-orphan", line: labels[lb], name: lb });
       }
     }
 
     var order = { error: 0, warn: 1, info: 2 };
     issues.sort(function (a, b) { return (order[a.level] - order[b.level]) || (a.line - b.line); });
     return { lines: lines, rows: rows, chars: chars, labels: labels, jumps: jumps, issues: issues };
+  }
+
+  // 体检只回 code + 参数，消息由界面层按语言组装。
+  // 这样翻译不会被塞进纯函数里，也不必为了换语言重跑一遍分析。
+  function msgOf(i) {
+    var T = window.MYONLI18N ? window.MYONLI18N.t : function (k, a) { return k + (a ? " " + a : ""); };
+    return T("lint." + i.code, i.name);
   }
 
   function counts(issues) {
@@ -240,11 +232,12 @@
       out.push({
         no: r.no, kind: r.kind, char: r.char || null, scene: r.scene,
         text: r.text || r.arg || "", cmd: r.cmd || null,
-        why: q.char ? ("角色 " + q.char) : (q.cmd ? ("指令 @" + q.cmd) : (q.onlySay ? "台词" : ""))
+        whyKind: q.char ? "char" : (q.cmd ? "cmd" : (q.onlySay ? "say" : "")),
+        whyArg: q.char || q.cmd || ""
       });
     }
     return { rows: out, total: out.length };
   }
 
-  window.MYONLLint = { run: run, scan: scan, replace: replace, filter: filter };
+  window.MYONLLint = { run: run, scan: scan, replace: replace, filter: filter, msgOf: msgOf };
 })();
