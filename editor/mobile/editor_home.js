@@ -448,6 +448,30 @@
         '</div>' +
       '</div>';
     document.body.appendChild(workEl);
+    // P197c：这一屏原来把底栏盖住了 —— 首页那条导航在 .m-home 层里，层被 .m-work 压下去，
+    // 进作品页底部就空了，看着像"tab 被砍了"。这里带一条同样的导航下来，
+    // 点击转给首页那条真导航（新建/导入/教程/设置各自只有一份逻辑）。
+    var nav = document.getElementById("mHomeNav");
+    if (nav) {
+      var clone = nav.cloneNode(true);
+      clone.removeAttribute("id");
+      clone.querySelectorAll("[id]").forEach(function (n) { n.removeAttribute("id"); });
+      clone.classList.add("m-work-nav");
+      clone.querySelectorAll(".m-nav-item").forEach(function (b) { b.classList.remove("on"); });
+      var first = clone.querySelector('.m-nav-item[data-nav="home"]');
+      if (first) first.classList.add("on");
+      workEl.appendChild(clone);
+      clone.addEventListener("click", function (e) {
+        var it = e.target.closest ? e.target.closest(".m-nav-item") : null;
+        if (!it) return;
+        if (it.dataset.nav === "home") {
+          if (workEl) { workEl.remove(); workEl = null; }
+          return;
+        }
+        var orig = nav.querySelector('.m-nav-item[data-nav="' + it.dataset.nav + '"]');
+        if (orig) orig.click();
+      });
+    }
     var img = workEl.querySelector(".m-work-cover img");
     var cv = workEl.querySelector(".m-work-cover");
     // 先把渐变 + 首字垫上，图真加载出来再换成图。反过来做的话没图的工程

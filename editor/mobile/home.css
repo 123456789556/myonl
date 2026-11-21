@@ -295,4 +295,11 @@ body.m-has-projects .m-home-list { flex: 0 0 auto !important; }
   .m-work-rows { margin-top: 6px; }
   .m-work-rows button { height: 42px; margin-bottom: 6px; }
 }
+/* 作品页也带底栏：沿用首页那条导航，只是从 fixed 改成流内，
+   这样它排在资源清单之后，不会被内容盖住。 */
+.m-work-nav {
+  position: static !important; z-index: auto !important;
+  flex: 0 0 auto; margin: 12px -18px calc(-18px - env(safe-area-inset-bottom));
+  height: calc(56px + env(safe-area-inset-bottom));
+}
 .m-work-tip { margin-top: 14px; padding-top: 0; font-size: 12px; color: var(--subtext0); line-height: 18px; }
