@@ -17,7 +17,7 @@ import pytest
 pytestmark = [pytest.mark.unit]
 
 ROOT = Path(__file__).resolve().parents[1]
-HOME = ROOT / "editor" / "editor_home.js"
+HOME = ROOT / "editor" / "mobile" / "editor_home.js"
 PLAYER = ROOT / "web" / "myonl-player.js"
 
 

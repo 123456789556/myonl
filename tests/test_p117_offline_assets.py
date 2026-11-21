@@ -8,7 +8,7 @@ ROOT = Path(__file__).resolve().parents[1]
 OFF = (ROOT / "editor" / "gal_offline.js").read_text(encoding="utf-8")
 CSS = (ROOT / "editor" / "editor.css").read_text(encoding="utf-8")
 MAIN = (ROOT / "editor" / "editor_main.js").read_text(encoding="utf-8")
-HOME_JS = (ROOT / "editor" / "editor_home.js").read_text(encoding="utf-8")
+HOME_JS = (ROOT / "editor" / "mobile" / "editor_home.js").read_text(encoding="utf-8")
 
 pytestmark = [pytest.mark.unit]
 

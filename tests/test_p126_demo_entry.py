@@ -9,7 +9,7 @@ from pathlib import Path
 import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
-HOME = (ROOT / "editor" / "editor_home.js").read_text(encoding="utf-8")
+HOME = (ROOT / "editor" / "mobile" / "editor_home.js").read_text(encoding="utf-8")
 OFF = (ROOT / "editor" / "gal_offline.js").read_text(encoding="utf-8")
 CI = (ROOT / ".github" / "workflows" / "android-apk.yml").read_text(encoding="utf-8")
 

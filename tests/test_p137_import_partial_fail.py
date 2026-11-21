@@ -20,7 +20,7 @@ import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
 OFFLINE = (ROOT / "editor" / "gal_offline.js").read_text(encoding="utf-8")
-HOME = (ROOT / "editor" / "editor_home.js").read_text(encoding="utf-8")
+HOME = (ROOT / "editor" / "mobile" / "editor_home.js").read_text(encoding="utf-8")
 NODE = shutil.which("node")
 
 pytestmark = [pytest.mark.unit]

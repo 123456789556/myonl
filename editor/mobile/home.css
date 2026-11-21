@@ -1,0 +1,87 @@
+/* P193c 手机端首页 v2：分组、教程引导条、按下反馈、空态样例。
+   只加视觉层次，不加新导航层 —— 总纲第 13 节：结构两层，底栏 3 格。
+   单独一个文件，不往已顶格预算的 editor.css / ui-fix.css 里塞。 */
+
+/* 「开始新的」只剩两格：三列网格会把两个按钮拉成扁条 */
+.m-quick.m-quick-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+
+/* 教程引导条：整宽一行，图标 + 两行字。
+   三格等宽按钮只能写「新手教程」四个字，说不清点了会发生什么。 */
+.m-tut-card {
+  display: flex; align-items: center; gap: 11px; width: 100%;
+  margin-top: 10px; padding: 12px 13px; min-height: 56px; cursor: pointer;
+  border-radius: 12px; text-align: left; font-family: inherit; color: var(--text);
+  background: rgba(79, 140, 255, .07);
+  background: color-mix(in srgb, var(--blue) 8%, transparent);
+  border: 1px solid rgba(79, 140, 255, .3);
+  border-color: color-mix(in srgb, var(--blue) 30%, transparent);
+  -webkit-tap-highlight-color: transparent;
+  transition: transform .12s ease, background .16s ease;
+}
+.m-tut-card:active { transform: scale(.985); background: rgba(79, 140, 255, .14); }
+.m-tut-ic {
+  flex: 0 0 auto; display: flex; align-items: center; justify-content: center;
+  width: 34px; height: 34px; border-radius: 10px; color: var(--blue);
+  background: color-mix(in srgb, var(--blue) 16%, transparent);
+}
+.m-tut-ic svg { width: 19px; height: 19px; }
+.m-tut-body { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.m-tut-t { font-size: 13.5px; font-weight: 600; color: var(--text); }
+.m-tut-d { font-size: 11.5px; line-height: 1.45; color: var(--subtext0); }
+.m-tut-go { flex: 0 0 auto; font-size: 17px; line-height: 1; color: var(--blue); }
+
+/* 引导条下面那句说明：纯文字，不再套一张卡（套卡会和上面那条抢重量） */
+.m-home-tip { margin: 9px 2px 0; font-size: 11.5px; line-height: 1.6; color: var(--overlay0); }
+
+/* 分组标题：最近在改 / 更早。只在两段都有内容时出现（JS 控制） */
+.m-home-grp { flex: 0 0 auto; display: flex; align-items: baseline; gap: 7px; margin: 16px 2px 8px; }
+.m-home-grp:first-child { margin-top: 2px; }
+.m-home-grp b { font-size: 12.5px; font-weight: 600; color: var(--subtext0); letter-spacing: .3px; }
+.m-home-grp i { font-style: normal; font-size: 11px; color: var(--overlay0); }
+/* 横屏列表是两列 grid：分组标题要跨整行，否则标题只占左半格、右边空一块 */
+@media (min-width: 700px) and (max-height: 520px) {
+  .m-home-grp { grid-column: 1 / -1; }
+}
+
+/* 卡片内部再压一层：chips 与名字的间距、body 行距，各收 1–2px。
+   四张卡叠起来省近 40px，390×844 上多露出一张。 */
+.m-home-card .m-card-body { gap: 2px; }
+.m-home-card .m-card-chips { margin-top: 4px; gap: 4px; }
+
+/* 只有一个作品时，列表末尾补一张虚线卡（JS 输出），把空白留在最底下而不是中间 */
+.m-card-ghost { border-style: dashed; background: transparent; }
+.m-card-ghost:active { background: var(--mantle); }
+.m-card-ghost .m-card-name { color: var(--subtext1); font-weight: 500; }
+
+/* 一屏装得下「四张卡 + 新建 + 引导条 + 那句说明」：分组标题、列表间距、快捷格
+   各收几像素。收过头会挤，这里只收到刚好——390×844 上说明文本底边落在底栏之上。 */
+.m-home-grp { margin: 10px 2px 6px; }
+.m-home-list { gap: 8px; }
+.m-quick-item { min-height: 62px; gap: 5px; }
+.m-home-sec { margin: 10px 2px 6px; }
+.m-home-tip { margin-top: 6px; }
+
+/* 卡片按下要有反馈：现在按下去和按完一个样，像没收到 */
+.m-home-card { transition: transform .12s ease; }
+.m-home-card:active { transform: scale(.986); }
+
+/* 「更早」的作品把缩略图收小：一屏多露两条，但还点得开 */
+.m-home-card.m-card-old { opacity: .94; }
+.m-home-card.m-card-old .m-card-thumb { width: 54px; height: 54px; }
+
+/* 空态：一句说明 + 一句成品台词当样例，不是「暂无数据」。
+   吃满列表区但内容竖直居中 —— 撑满却不居中，就是三行字吊在框顶、下面整片空。 */
+.m-empty {
+  flex: 1 1 auto; min-height: 180px; display: flex; flex-direction: column;
+  justify-content: center; gap: 7px;
+  padding: 22px 20px; border-radius: 14px; border: 1px dashed var(--surface1);
+}
+.m-empty-ic { display: block; color: var(--overlay0); }
+.m-empty-ic svg { width: 34px; height: 34px; stroke-width: 1.1; }
+.m-empty-t { font-size: 14px; font-weight: 600; color: var(--subtext1); }
+.m-empty-d { font-size: 12.5px; line-height: 1.6; color: var(--subtext0); }
+.m-empty-say {
+  margin-top: 6px; padding: 10px 12px; border-radius: 10px; color: var(--text);
+  background: var(--mantle); border: 1px solid var(--surface0);
+  font-size: 12.5px; line-height: 1.5;
+}

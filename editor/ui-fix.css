@@ -236,14 +236,9 @@ html.kb-open .m-sheet-body { bottom: var(--kb-h, 0px) !important; }
     font-size: 13.5px; font-family: inherit; cursor: pointer;
   }
   .m-top-preview:active { background: var(--surface0); }
-  /* 首页主次：作品卡里的"继续编辑"是这一屏唯一实心动作，
-     下面那排新建/导入/试玩是次要动作，降成描边浅底并缩小（README 13.③） */
-  .m-card-cta {
-    align-self: flex-start; margin-top: 8px;
-    padding: 5px 14px; border-radius: 999px;
-    background: var(--blue); color: #fff; font-size: 12.5px; font-weight: 600;
-    line-height: 1.2; pointer-events: none;
-  }
+  /* 作品卡不再挂「继续编辑」实心按钮（P193c）：每张卡一个蓝胶囊，一屏四个主操作 = 没有主次，
+     而且把卡撑到 110px 高，一屏只看得到两张。整卡可点 + 按下变浅 + 右侧 › 足够表达"点它就进"，
+     微信/QQ 的会话列表也是这个做法。 */
   .m-quick-item {
     min-height: 58px; background: transparent; border-color: var(--surface0);
     border-style: dashed;

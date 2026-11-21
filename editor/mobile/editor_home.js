@@ -65,12 +65,10 @@
   // P116：首页自成一屏，不掺编辑器那套 tab —— 那五个 tab 是「作品内部」的事，
   // 摆在工作台底下等于让人以为首页还有五个没展开的页。
   document.body.classList.add("m-home-open");
-  // 书架还空着的时候，说明卡（"都在你手上…"）和三步上手说的是同一件事：先建作品。
-  // 第一次打开的人面前不该同时摆七块可读的东西 —— 说明卡收起来，留三步上手当唯一指引。
-  try {
-    var lib0 = JSON.parse(localStorage.getItem("myonl:off:lib:v1") || "{}");
-    if (!((lib0 && lib0.projects) || []).length) document.body.classList.add("m-home-empty");
-  } catch (e) { }
+  // 书架空着时说明卡（"都在你手上…"）收起来：第一次打开的人面前不该同时摆七块可读的东西。
+  // 这个类名改由 render 按 /api/home 的真实条数来加 —— 原来这里读 localStorage 的离线库，
+  // 服务端有作品、离线库还没同步时，首页会同时处于"空态样式"和"有卡"的矛盾状态
+  // （空态下 CSS 会藏掉卡片里的说明文本、把列表当空容器）。
   layer.innerHTML =
     '<div class="m-home-head">' +
       '<div><div class="m-home-title">我的作品</div>' +
@@ -80,26 +78,34 @@
     '<div class="m-home-list" id="mHomeList"></div>' +
     '<div class="m-home-side">' +
       '<div class="m-home-sec">开始新的</div>' +
-      '<div class="m-quick">' +
+      '<div class="m-quick m-quick-2">' +
         '<button type="button" class="m-quick-item" id="mHomeNew">' +
           '<b>＋</b><span>新建作品</span></button>' +
         '<button type="button" class="m-quick-item" id="mHomeImport">' +
           '<b>&#8615;</b><span>导入作品</span></button>' +
-        // 原来这里是「试玩示例」，点开是 game.html 里那份和编辑器无关的演示。
-        // 换成「新手教程」：真的建一份能打开、能改、能导出的短作品，
-        // 让人第一眼看到的是"这东西长什么样"，而不是一个不认识的黑盒 demo。
-        '<button type="button" class="m-quick-item" id="mHomeTut">' +
-          '<b>&#9776;</b><span>新手教程</span></button>' +
       '</div>' +
+      // P193c：新手教程从三格等宽按钮里独立出来，做成一条引导。
+      // 原来这里是「试玩示例」，点开是 game.html 里那份和编辑器无关的黑盒 demo；
+      // 换成真的建一份能打开、能改、能导出的短作品，让人第一眼看到"这东西长什么样"。
+      // 三格按钮只说明"这里有个东西"，说不清"点了会怎样"——独立一条才有位置写两句人话。
+      '<button type="button" class="m-tut-card" id="mHomeTut">' +
+        '<span class="m-tut-ic">' + ico("M3.2 3h9.6v10H3.2zM6.5 6.1l3.4 1.9-3.4 1.9z") + '</span>' +
+        '<span class="m-tut-body">' +
+          '<span class="m-tut-t">新手教程：先照着走一遍</span>' +
+          '<span class="m-tut-d">建一份 21 条的短作品，改两句就懂</span>' +
+        '</span>' +
+        '<span class="m-tut-go">›</span>' +
+      '</button>' +
+      // 用户要的那段说明：放在下面、一句话、讲清"现在能做什么"。
+      // 不写"仅为示例"这种免责话——新人看到的第一句应该是有用的信息。
+      '<div class="m-home-tip">没图没音乐也能先写台词，画面在「素材」里补。</div>' +
       // P176：这里原本还有一块「三步上手」。删了 —— 编辑器菜单里已经有
       // 「帮助 → 新手引导」，同一套教程摆两处，首页就多占五六行高度，
       // 而且它只在空列表时出现，等于新用户第一次进来看到的是两套重复的说明。
       '</div>' +
     '</div>' +
-    // 底部导航：手机/平板的拇指够得到的位置，四个都是真动作，不留哑按钮。
-    // 横屏矮屏时 CSS 把它转成左侧竖条，不跟正文抢高度。
-    // 图标走 VSCode 那套：单色线条、1.4 线宽、跟着主题色，不是 emoji。
-    // emoji 会带自己的颜色和字号，放在工具栏里像贴纸，跟界面永远不是一套。
+    // 底部导航：手机/平板的拇指够得到的位置，三个都是真动作，不留哑按钮。
+    // 横屏矮屏时 CSS 把它转成左侧竖条，不跟正文抢高度（P193 起首页层直接藏掉编辑器底栏）。
     '<div class="m-home-nav" id="mHomeNav">' +
       '<button type="button" class="m-nav-item on" data-nav="home">' +
         ico('M2.6 4.2h10.8v8.2a.8.8 0 0 1-.8.8H3.4a.8.8 0 0 1-.8-.8V4.2zM2.6 6.6h10.8') +
@@ -132,14 +138,15 @@
     return new Date(ts * 1000).toLocaleDateString();
   }
 
-  function card(p) {
+  function card(p, old) {
     var folder = p.folder.replace(/"/g, "&quot;");
     var name = p.name.replace(/</g, "&lt;");
     // 以前第一张做成整宽大卡（封面铺满、底部渐深）。一张卡吃满一屏，
     // 作品一多就变成"上面一大块、下面挤成一条"，而且没封面时那块空的
     // 蓝色渐变比什么都重。现在统一成横向小卡：一屏能看到五六个，
     // 「新建 / 导入」也不会被压到底。
-    return '<button type="button" class="m-home-card" data-folder="' + folder + '">' +
+    return '<button type="button" class="m-home-card' + (old ? " m-card-old" : "") +
+      '" data-folder="' + folder + '">' +
       '<span class="m-card-thumb" data-folder="' + folder + '"></span>' +
       '<span class="m-card-body">' +
         '<span class="m-card-name">' + name + '</span>' +
@@ -148,10 +155,6 @@
           '<span class="m-chip">' + p.assets + ' 个素材</span>' +
           '<span class="m-chip m-chip-dim">' + ago(p.mtime) + '</span>' +
         '</span>' +
-        // 整张卡都是可点的，这里只是把"点它会进编辑器"这件事写出来。
-        // 有作品时首页唯一该做的事就是这个，不该跟新建/导入三个按钮一样平（README 13.③）。
-        // 用 span 不用 button：外面那层已经是 button，嵌套 button 在 HTML 里是非法的。
-        '<span class="m-card-cta">继续编辑</span>' +
       '</span>' +
       '<span class="m-card-go">›</span></button>';
   }
@@ -166,15 +169,43 @@
     // 三步上手只在书架空着时出现：已经有作品的用户早就知道怎么写第一句，
     // 那三块一直挂着等于天天给人上第一课。要重看走「帮助 → 新手引导」。
     document.body.classList.toggle("m-has-projects", projects.length > 0);
+    document.body.classList.toggle("m-home-empty", !projects.length);
     // 作品少的时候列表不该把整屏撑满：撑满的结果就是一张小卡孤零零挂在
     // 顶上、底下空出大半屏，「新建 / 导入」被顶到屏幕尽头。少的时候
     // 让列表收到内容高度，「开始新的」自然跟上来。
     document.body.classList.toggle("m-few-projects", projects.length > 0 && projects.length <= 2);
     if (!projects.length) {
-      list.innerHTML = '<div class="m-home-empty">还没有作品。点下面「新建作品」，' +
-        '它自带一句示例台词，你能立刻看到画面。</div>';
+      // 空态给样例，不给一句「暂无」（总纲第 5 / 9 节）。
+      // 一句话说明 + 一句成品台词，比"点新建"更像"这东西做出来是什么样"。
+      list.innerHTML = '<div class="m-empty">' +
+        '<span class="m-empty-ic">' + ico("M3.4 2.6h9.2v11H3.4zM5.6 6.2h4.8M5.6 8.8h4.8") + '</span>' +
+        '<div class="m-empty-t">还没有作品</div>' +
+        '<div class="m-empty-d">建一份就自带一句台词，点开立刻能看到画面。</div>' +
+        '<div class="m-empty-say">她推开门，雨顺着伞骨往下淌。</div>' +
+        '</div>';
     } else {
-      list.innerHTML = projects.map(card).join("");
+      // 按最后修改时间分两段：七天内算「最近在改」，其余归「更早」。
+      // 只有两段都非空才分组——一段内容加两个标题，标题比内容还多。
+      var now = Date.now() / 1000, recent = [], older = [];
+      projects.forEach(function (p) { ((now - p.mtime < 604800) ? recent : older).push(p); });
+      if (recent.length && older.length) {
+        list.innerHTML =
+          '<div class="m-home-grp"><b>最近在改</b><i>' + recent.length + ' 个</i></div>' +
+          recent.map(function (p) { return card(p, false); }).join("") +
+          '<div class="m-home-grp"><b>更早</b><i>' + older.length + ' 个</i></div>' +
+          older.map(function (p) { return card(p, true); }).join("");
+      } else {
+        list.innerHTML = projects.map(function (p) { return card(p, false); }).join("");
+      }
+      // 只有一个作品时补一张虚线卡：空白在列表末尾是正常的，但一整片白会让人
+      // 以为没加载完。QQ 的分组列表末尾也是这么放「创建」入口，动作就在需要它的位置。
+      if (projects.length === 1) {
+        list.innerHTML += '<button type="button" class="m-home-card m-card-ghost" id="mHomeGhost">' +
+          '<span class="m-card-thumb m-card-thumb-new">＋</span>' +
+          '<span class="m-card-body"><span class="m-card-name">再写一个</span>' +
+          '<span class="m-card-chips"><span class="m-chip m-chip-dim">新作品自带一句台词</span>' +
+          '</span></span></button>';
+      }
     }
     // 缩略图单独请求：拿不到就留个空底，不阻塞列表
     list.querySelectorAll(".m-card-thumb[data-folder], .m-hero-cover[data-folder]").forEach(function (th) {
@@ -192,6 +223,8 @@
     list.querySelectorAll(".m-home-card[data-folder], .m-home-hero[data-folder]").forEach(function (b) {
       b.addEventListener("click", function () { openProject(b.dataset.folder, b); });
     });
+    var gh = $("mHomeGhost");
+    if (gh) gh.addEventListener("click", newProject);
   }
 
   function newProject() {
