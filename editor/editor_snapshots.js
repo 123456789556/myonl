@@ -9,7 +9,9 @@
   var VER = 1;
   var MAX_PER_PROJECT = 20;
   var MAX_TOTAL = 60;
-  var MIN_GAP_SECONDS = 60;   // 一分钟内连按保存，只留最后一次
+  var MIN_GAP_SECONDS = 20;   // P197d：60→20 秒。写剧本是一分钟存一次，
+                              // 一分钟窗口把正常写作全合并成一条，历史看着像没在工作
+  var MAX_PER_PROJECT = 30;   // P197d：20→30 版（纯文本，一版才几 KB，多留几格更保险）
 
   function openDB() {
     return new Promise(function (res, rej) {
@@ -171,16 +173,22 @@
     var head = document.createElement("div");
     head.style.cssText = "display:flex;align-items:center;justify-content:space-between;margin-bottom:10px";
     var t = document.createElement("div");
-    t.textContent = "历史版本 · " + (name || "当前作品") + "（" + rows.length + " 个）";
-    t.style.cssText = "color:#dce8ff;font-size:15px;font-weight:600";
+    // P197d：标题只留四个字，作品名和版数换到下一行。
+    // 原来一行硬塞「历史版本 · 作品名（N 个）」，手机上跟右边"关闭"压在一起。
+    t.textContent = "历史版本";
+    t.style.cssText = "color:#dce8ff;font-size:16px;font-weight:600;flex:0 0 auto";
+    var sub = document.createElement("div");
+    sub.textContent = (name || "当前作品") + " · " + rows.length + " 版";
+    sub.style.cssText = "color:#8fa3c0;font-size:12px;margin:-2px 0 10px;flex:0 0 auto";
     var x = document.createElement("button");
     x.type = "button";
     x.textContent = "关闭";
-    x.style.cssText = "padding:6px 12px;border-radius:8px;border:1px solid rgba(255,255,255,.2);" +
+    x.style.cssText = "flex:0 0 auto;padding:6px 12px;border-radius:8px;border:1px solid rgba(255,255,255,.2);" +
       "background:transparent;color:#9fb2d0;font-size:13px";
     x.onclick = closePanel;
     head.appendChild(t); head.appendChild(x);
     panelEl.appendChild(head);
+    panelEl.appendChild(sub);
 
     var box = document.createElement("div");
     box.style.cssText = "flex:1;overflow:auto;display:flex;flex-direction:column;gap:8px";
