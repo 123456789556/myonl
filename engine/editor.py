@@ -1009,7 +1009,7 @@ class _EditorHandler(BaseHTTPRequestHandler):
                                 "text/css; charset=utf-8")
 
     def _serve_js(self, parsed=None) -> None:
-        self._serve_editor_file(parsed.path.lstrip("/"), "application/javascript; charset=utf-8")
+        self._serve_editor_file(parsed.path.lstrip("/") if parsed else "editor_strip.js", "application/javascript; charset=utf-8")  # None 时不碰 .path
 
     # ---- P65：手机端 PWA（添加到主屏幕后全屏，不显示浏览器工具栏）----
 
