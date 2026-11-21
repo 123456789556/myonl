@@ -40,7 +40,7 @@ FILE_BUDGET: dict[str, int] = {
     "editor/editor_main.js": 3395,   # P184b 素材列表改用缩略图 +2
     "editor/editor_pro.js": 2160,
     "editor/editor_uidesign.js": 1520,
-    "editor/gal_offline.js": 1745,   # P184b 入库不缩、另存缩略图 +24（回退 P184 后重做）；+1 缩略图拦截只兜 ?folder=；+6 导出按钮改成「动作 + 一句用途」；P188 +40 补 POST /api/import（手机导入此前必失败）；P190 +3 /api/new 收 text 种子（教程作品由它建）
+    "editor/gal_offline.js": 1770,   # P197d 两条写正文的路都拍快照并等快照提交（+18，1745→1763）；P184b 入库不缩、另存缩略图 +24；P188 +40 补 POST /api/import；P190 +3 /api/new 收 text 种子
     "editor/editor_scene.js": 1207,  # P183 台词区搬去 editor_strip.js，净减 8 行，cap 跟着降
     "editor/editor_strip.js": 60,    # P183 分镜带（一句一张卡），新文件
     "editor/strip.css": 100,         # P183 分镜带样式，新文件

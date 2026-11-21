@@ -769,23 +769,41 @@
     var next = String(b.content == null ? (b.text || "") : b.content);
     // 落盘之前先把"改之前那一版"留一份：以后要还原，靠的就是它。
     // 存独立 IndexedDB，不动作品库本身；写坏了也只丢快照，正文照旧。
-    if (p.text !== next && p.text && window.MYONLSnapshots) {
-      window.MYONLSnapshots.capture({ name: p.name, text: p.text }, next);
+    // P197d：这里改成等快照写完再落正文 —— 原来人手一按就跳走/杀进程，
+    // IndexedDB 事务还没提交，那一版就没了，回退时少一格。首版（空稿）也留，
+    // 否则改坏之后连"从哪儿开始的"都查不到。
+    function commit() {
+      p.text = next;
+      p.mtime = now();
+      writeLib(lib);
+      return jsonRes({ ok: true, path: "script.gal", message: "已保存到手机本地" });
     }
-    p.text = next;
-    p.mtime = now();
-    writeLib(lib);
-    return jsonRes({ ok: true, path: "script.gal", message: "已保存到手机本地" });
+    if (p.text !== next && window.MYONLSnapshots) {
+      return Promise.resolve(window.MYONLSnapshots.capture({ name: p.name, text: p.text }, next))
+        .catch(function () { return 0; })   // 快照写失败也不挡正文
+        .then(commit);
+    }
+    return commit();
   };
 
   ROUTES["POST /api/script"] = function (input, init) {
     var b = bodyOf(init);
     var lib = readLib();
     var p = curProject(lib);
-    p.text = String(b.text == null ? "" : b.text);
-    p.mtime = now();
-    writeLib(lib);
-    return jsonRes({ ok: true, path: "script.gal" });
+    var next = String(b.text == null ? "" : b.text);
+    // P197d：这条也是写正文的路，原来不拍快照 —— 走这条路改的内容回退不了。
+    function commit() {
+      p.text = next;
+      p.mtime = now();
+      writeLib(lib);
+      return jsonRes({ ok: true, path: "script.gal" });
+    }
+    if (p.text !== next && window.MYONLSnapshots) {
+      return Promise.resolve(window.MYONLSnapshots.capture({ name: p.name, text: p.text }, next))
+        .catch(function () { return 0; })
+        .then(commit);
+    }
+    return commit();
   };
 
   ROUTES["POST /api/new"] = function (input, init) {

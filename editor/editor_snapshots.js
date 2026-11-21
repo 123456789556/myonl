@@ -223,8 +223,10 @@
   }
 
   window.MYONLSnapshotsUI = {
-    open: function () {
-      var n = curName();
+    // P197d：能指定作品名。作品页（还没进工程）也要能翻历史，
+    // 原来只看 localStorage 里的 current，在作品页点开就是别的作品的历史。
+    open: function (name) {
+      var n = name || curName();
       list(n).then(function (rows) { render(rows, n); });
     }
   };

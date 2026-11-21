@@ -444,6 +444,8 @@
             '<button type="button" data-tab="assets"><b>素材</b><span>立绘 背景 音频 语音</span><em>›</em></button>' +
             '<button type="button" data-tab="look"><b>外观</b><span>画面比例 字号 主题</span><em>›</em></button>' +
             '<button type="button" data-tab="export"><b>导出</b><span>出成能发出去的包</span><em>›</em></button>' +
+            '<button type="button" class="m-work-hist" id="mWorkHist"><b>历史</b>' +
+              '<span id="mWorkHistNum">每次保存都自动留一版</span><em>›</em></button>' +
           '</div>' +
         '</div>' +
       '</div>';
@@ -490,8 +492,27 @@
       openProject(folder, null, "script");
     });
     workEl.querySelectorAll(".m-work-rows button").forEach(function (b) {
+      if (!b.dataset.tab) return;   // 「历史」那行没有 tab，单独绑
       b.addEventListener("click", function () { openProject(folder, null, b.dataset.tab); });
     });
+    // 历史版本：P197d 把入口从「导出 → 第三行」搬到这里 ——
+    // 之前它埋在导出页里，没有人点得到，等于没有。
+    var hist = workEl.querySelector("#mWorkHist");
+    if (hist) {
+      hist.addEventListener("click", function () {
+        if (window.MYONLSnapshotsUI) window.MYONLSnapshotsUI.open(folder);
+        else alert("这个设备上没有历史版本模块");
+      });
+      if (window.MYONLSnapshots) {
+        window.MYONLSnapshots.list(folder).then(function (rows) {
+          var n = workEl && workEl.querySelector("#mWorkHistNum");
+          if (!n) return;
+          n.textContent = rows.length
+            ? (rows.length + " 版 · 最近 " + ago(rows[0].at))
+            : "每次保存都自动留一版";
+        }).catch(function () {});
+      }
+    }
   }
 
   function enterEditor() {
