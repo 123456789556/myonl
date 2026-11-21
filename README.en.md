@@ -61,20 +61,24 @@ but there is no iOS installer.
   starts at 40 MB and a strong warning at 80 MB (export is not blocked either way), but past 80 MB
   low-end devices most likely white-screen. A folder/zip release for larger assets is not built yet.
 
-The phone **editor** cannot write 8 directives: `@voice`, `@anim`, `@fg`, `@cg`, `@camera`,
-`@transition`, `@plug`, `@include`. Writing one raises a clear error with the line number.
+The phone **editor** still cannot write 3 directives: `@anim`, `@plug`, `@include`.
+Writing one raises a clear error with the line number.
 
-> Read this as two layers, not one:
+> Keep them apart instead of lumping them under "unsupported":
 >
-> - **The player supports them all.** `web/myonl-player.js` implements `cg`, `fg`, `anim`,
->   `camera`, `transition` and `voice`, so a bundle exported on the desktop plays them normally on a
->   phone — camera moves, voice, sprite easing all work.
-> - **The phone editor never emits those ops.** A phone project is a single file: `@include` has no
->   second file to pull in, and `@plug` has no plugin to load.
+> | Directive | Phone can write | Playable on a phone |
+> |---|---|---|
+> | `@anim` | ❌ no parsing branch yet | ✅ works (`myonl-core.js:274`, eased by `myonl-player.js:1517`) |
+> | `@include` | ❌ a phone project is one file | ✅ works (inlined at pack time on the desktop; the bundle never contains this op) |
+> | `@plug` | ❌ no plugin to load | ❌ **does not play** — the player has no plugin implementation and skips it silently |
 >
-> Real boundary: write them on the desktop, and the exported bundle behaves on the phone. Letting
-> the phone write them too would need parsing branches in `engine/parser.js`, not a new player.
-> Full boundary in [docs/手机端编游戏.md](docs/手机端编游戏.md).
+> So only `@anim` and `@include` are "write on desktop, plays on phone". `@plug` is missing on both ends.
+
+The 5 directives opened up on the phone (`@voice` `@cg` `@fg` `@camera` `@transition`) do show up
+in the per-line view — with a Chinese label and a one-line summary (`OP_LABEL` / `summarize` in
+`editor/editor_pro.js:534`) — but there is no parameter form: they can only be edited as a whole line.
+To change `x=` / `alpha=` values, switch to the **Source** view and edit that line. For now the per-line
+view defers to the source line.
 
 ## What a script looks like
 

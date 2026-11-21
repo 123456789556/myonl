@@ -8,6 +8,7 @@
 不许起浏览器、不许联网、不许依赖真视频文件；node 不在就跳过 JS 语法门禁。
 """
 from pathlib import Path
+import re
 import shutil
 import subprocess
 
@@ -44,13 +45,15 @@ def test_parser_js认_video分支():
     assert 'head === "video"' in PARSER_JS or '"video"' in PARSER_JS
 
 
-def test_parser_js错误文案不再把_video列进电脑端打包名单():
-    # 「请到电脑端打包」那条 throw 里，拒收名单是「；」之后那一段。
-    # 「手机端解析器支持：…」前面列 @video 是应该的（它现在真的支持了），所以只看拒收段。
-    idx = PARSER_JS.find("请到电脑端打包")
-    assert idx >= 0, "找不到「请到电脑端打包」报错文案"
-    reject_list = PARSER_JS[max(0, idx - 400):idx].rsplit("；", 1)[-1]
-    assert "@video" not in reject_list, "@video 还挂在手机端解析器的拒收名单里"
+def test_parser_js未支持名单是单一来源且不含_video():
+    # 名单收进 UNSUPPORTED_DIRECTIVES 常量，报错文案由它拼；测试从常量读。
+    # 这样润色文案不会红，放开一条只改常量 + 改这里的期望集合。
+    m = re.search(r"var UNSUPPORTED_DIRECTIVES = \[([^\]]*)\]", PARSER_JS)
+    assert m, "parser.js 里找不到 UNSUPPORTED_DIRECTIVES 常量（名单必须单一来源）"
+    names = re.findall(r'"([a-z]+)"', m.group(1))
+    assert names == ["anim", "plug", "include"], f"未支持名单变了：{names}；放开一条请同步这条期望"
+    assert "video" not in names, "@video 还挂在手机端解析器的拒收名单里"
+    assert "UNSUPPORTED_DIRECTIVES.map" in PARSER_JS, "报错文案应引用常量拼，别把名单写死进中文句子"
 
 
 def test_parser_js视频IR带_file_loop_mute():

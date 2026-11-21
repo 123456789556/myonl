@@ -50,11 +50,26 @@ def test_CI_发完包自己清旧包():
     assert re.search(r"sort -t- -k2 -n -r", wf), "CI 里也要按数字倒序，别按字符串"
 
 
-def test_README_指向的是当前最新的包():
-    readme = _read("README.md")
-    # README 的下载入口必须指到最新 tag，否则玩家点到的是旧包。
-    # v1 起 tag 就是版本号（v1.0.0），旧的 apk-N 写法仍然认，两种都算数。
-    m = re.search(r"releases/download/((?:apk-\d+)|(?:v\d+\.\d+\.\d+))/MYONL-\1\.apk", readme)
-    assert m, "README 没有安卓包下载入口"
-    assert m.group(1) == m.group(1), "下载链接的 tag 和文件名要对得上"
-    assert f"release-{m.group(1)}" in readme, "徽章里的版本号要和下载链接一致"
+_DOWNLOAD_RE = re.compile(r"releases/download/((?:apk-\d+)|(?:v\d+\.\d+\.\d+))/MYONL-\1\.apk")
+
+
+def _tag_of(readme: str):
+    m = _DOWNLOAD_RE.search(readme)
+    return m.group(1) if m else None
+
+
+@pytest.mark.parametrize("path", ["README.md", "README.en.md"])
+def test_README_指向的是当前最新的包(path):
+    """两份 README 都要守：只校验中文那份，英文版就会悄悄指向旧包（P192 就是这么漏的：
+    英文页下载链停在 v1.2.0，徽章写 v1.2.14，玩家点下载拿到十来个版本之前的东西）。"""
+    readme = _read(path)
+    tag = _tag_of(readme)
+    assert tag, f"{path} 没有安卓包下载入口"
+    assert f"release-{tag}" in readme, f"{path} 徽章里的版本号要和下载链接一致（链接是 {tag}）"
+
+
+def test_两份README的版本号必须一样():
+    """发版只改一份、漏掉另一份，正是「徽章/下载链/实际能力三者不同步」的入口。"""
+    zh, en = _tag_of(_read("README.md")), _tag_of(_read("README.en.md"))
+    assert zh and en, "两份 README 都必须有下载入口"
+    assert zh == en, f"中文 README 指向 {zh}，英文 README 指向 {en}，发版漏改一份"
