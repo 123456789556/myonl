@@ -51,6 +51,9 @@ def test_CI_发完包自己清旧包():
 
 
 _DOWNLOAD_RE = re.compile(r"releases/download/((?:apk-\d+)|(?:v\d+\.\d+\.\d+))/MYONL-\1\.apk")
+_README_EN = os.path.join(ROOT, "README.en.md")
+# 英文版 2026-11-21 停维护并删除。文件不在了就不再守它；哪天恢复了，这两条自动继续生效。
+_NEEDS_EN = pytest.mark.skipif(not os.path.exists(_README_EN), reason="英文版已停维护")
 
 
 def _tag_of(readme: str):
@@ -58,9 +61,10 @@ def _tag_of(readme: str):
     return m.group(1) if m else None
 
 
+@_NEEDS_EN
 @pytest.mark.parametrize("path", ["README.md", "README.en.md"])
 def test_README_指向的是当前最新的包(path):
-    """两份 README 都要守：只校验中文那份，英文版就会悄悄指向旧包（P192 就是这么漏的：
+    """有英文版的时候两份都要守：只校验中文那份，英文版就会悄悄指向旧包（P192 就是这么漏的：
     英文页下载链停在 v1.2.0，徽章写 v1.2.14，玩家点下载拿到十来个版本之前的东西）。"""
     readme = _read(path)
     tag = _tag_of(readme)
@@ -68,6 +72,7 @@ def test_README_指向的是当前最新的包(path):
     assert f"release-{tag}" in readme, f"{path} 徽章里的版本号要和下载链接一致（链接是 {tag}）"
 
 
+@_NEEDS_EN
 def test_两份README的版本号必须一样():
     """发版只改一份、漏掉另一份，正是「徽章/下载链/实际能力三者不同步」的入口。"""
     zh, en = _tag_of(_read("README.md")), _tag_of(_read("README.en.md"))

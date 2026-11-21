@@ -1,9 +1,7 @@
 # MYONL · 手机上的视觉小说编辑器
 
-**简体中文** | [English](README.en.md)
-
 [![tests](https://github.com/123456789556/myonl/actions/workflows/tests.yml/badge.svg?branch=main)](https://github.com/123456789556/myonl/actions/workflows/tests.yml)
-![Release](https://img.shields.io/badge/release-v1.2.15-blue)
+![Release](https://img.shields.io/badge/release-v1.2.26-blue)
 ![License](https://img.shields.io/badge/License-MIT-green)
 ![Platform](https://img.shields.io/badge/platform-Android%207.0%2B%20%C2%B7%20Windows%20%C2%B7%20Web-19b6a3)
 ![Offline](https://img.shields.io/badge/offline-100%25-2ea44f)
@@ -59,6 +57,8 @@ python -m engine.editor
 - 导出成品 `.html`，直接发微信或 QQ
 - 打成 `.apk`，手机上自己就能做完（见下文）
 - 切换深浅主题、换主题色
+- **打字不用管保存**：停 1.5 秒自动留一份草稿，切后台、被系统回收、App 被杀，重开都能接回来（草稿不进版本快照，不会把历史版本挤掉）
+- **查找替换与体检**：按角色 / 场景 / 指令筛句子，点一条就跳到那行；替换默认只动台词正文，勾选后才碰指令与 `@label`；改坏跳转当场列出断链并可点跳
 
 ## 做不到什么
 
@@ -183,16 +183,17 @@ python tools/pack_apk.py --game dist/single/你的作品.html
  ─────────
  ‹ 场景列表    4 幕    保存    ✕
  [ 舞台占位 ]   [ 台词输入 ]   一行一句，@ 开头是指令
- 底栏：剧本 / 素材 / 导出                     作品内只有 3 个内容 tab
+ 底栏：剧本 / 素材 / 外观 / 预览 / 导出        预览是个动作，放在动作该在的位置
 
  ③ 导出页                   两条出口，每个都写清「拿去干什么」
  ─────────
  · 单个网页 .html   —— 发微信 / QQ，对方点开就玩
  · 打成 APK        —— 装到安卓上，就是一个独立 App
- 底栏：剧本 / 素材 / 导出（当前停在「导出」）
+ 底栏：剧本 / 素材 / 外观 / 预览 / 导出（当前停在「导出」）
 ```
 
-横屏不把底栏搬去侧边，只是把中间那栏并成左右分栏。四种竖屏尺寸见下面真机截图。
+横屏目前还是两栏（底栏留在下面，没有搬去侧边）。真正的左侧栏 —— 场景树加过滤结果 —— 没做：
+那一步要同时改所有页面的 CSS 与断点，不能跟功能一起改，否则出了问题分不清是谁的。
 
 ## 长什么样
 
@@ -213,7 +214,7 @@ python tools/pack_apk.py --game dist/single/你的作品.html
 
 ## 装它
 
-**[⬇ 下载 MYONL-v1.2.15.apk](https://github.com/123456789556/myonl/releases/download/v1.2.15/MYONL-v1.2.15.apk)** · 安卓 7.0 以上 · 只按手机屏幕做，平板能装但没专门适配
+**[⬇ 下载 MYONL-v1.2.26.apk](https://github.com/123456789556/myonl/releases/download/v1.2.26/MYONL-v1.2.26.apk)** · 安卓 7.0 以上 · 只按手机屏幕做，平板能装但没专门适配
 
 装好打开就是书架，点「新建作品」开始。底部「导出」有两条出口：
 自包含 `.html`（发微信对方就能玩）和 APK（装到手机上就是一个独立 App）。
@@ -296,7 +297,6 @@ APK 的 `minSdk` 是 24（安卓 7.0）。只按手机屏幕排版，平板能�
   存两份（相册一份、工程一份），`.gal` 也跟着变大。
 - **素材卡片点不进去**：看不到这个文件多大、图片多少像素、什么时候加进来的，也不能给它写一句备注。
 - **成品里玩家只能顺着读**：不能查看脚本原文，也不能临时改一句台词再往下走（改了也不会存）。
-- 编辑器**横屏时左边标签栏和底部主导航会同时出现**，两套导航并存，看着乱也占地方。
 - 场景编辑页**右侧那列浮动控件会压住台词输入框**，打字时被挡。
 - **撤销是内存栈**，关掉页面就没了；「历史版本」能整份退回去，但没有"撤销上一步"。
 - 游戏**标题页没有「设置 / 读档 / 退出」**，这些都在游戏里长按屏幕叫出来的菜单里。
@@ -395,11 +395,11 @@ flowchart LR
 
 **代价（说明白）**：`@bg` / `@choice` / `@jump` 这套规则现在存在两份实现——Python 一份、JS 一份。电脑上改了规则，手机上得手动跟一遍，否则**手机上看到的预览和导出的成品可能跟电脑不一致**。这是当前最大的结构风险，不是小问题。
 
-**为什么不直接统一**：Python 那份有 1423 条测试兜着，JS 这份没有同等密度的测试。直接砍掉 Python 等于把护栏一起砍了。真要收敛成一份，得先把等价的 JS 测试建起来再动。
+**为什么不直接统一**：Python 那份有一千四百多条测试兜着，JS 这份没有同等密度的测试。直接砍掉 Python 等于把护栏一起砍了。真要收敛成一份，得先把等价的 JS 测试建起来再动。
 
-**体积与内存（2026-11-20 实测字节，不是估计）**
+**体积与内存（2026-11-21 实测字节，不是估计）**
 - 模板 APK `android/template.apk` **2,204,397 字节**（2.10 MiB），壳是 WebView，`lib/` 下 0 个 .so
-- 编辑器单文件 `dist/web/editor-single.html` **930,292 字节**（908 KiB）；前端 18 个 JS 合计 **627,835 字节**、3 个 CSS 合计 **219,168 字节**
+- 编辑器单文件 `dist/web/editor-single.html` **1,039,454 字节**（1,015 KiB，内联 23 个脚本 / 4 个样式）；前端 `editor/` 下 22 个 JS 合计 **710,237 字节**、4 个 CSS 合计 **236,078 字节**
 - 打包器带内存预算门禁：素材体积超阈值会提示，位图缓存上限 160 MB
 
 
@@ -494,20 +494,6 @@ py -3 -m pytest -q -m slow            # 真实打包 / 全渲染 / 性能用例
 - **打包出来多大？** APK 是壳 + 播放器；单文件网页包**看素材**——素材全内联进 base64 会再涨约三分之一，素材越多越大，这是这条路线的真实上限，不是 bug。
 - **内置 AI 吗？** 没有。引擎对外提供 JSON 控制原语，可被外部脚本 / AI 调用，但产品本身不含模型。
 - **示例素材能商用吗？** 能。`games/` 里的占位图是项目自己画的，跟着 MIT 走。你自己放进去的第三方素材不在此列，见[许可与素材](#许可与素材)。
-
-## English
-
-MYONL is an **offline, MIT-licensed visual-novel (galgame) engine and authoring tool**. You write a
-plain-text `.gal` script; the engine handles parsing, presentation (typewriter, camera, transitions,
-animated sprites, video backgrounds, voice), branching, save/load, a CG gallery, and packaging.
-
-**Player side targets phones and Android tablets**: one project exports to a single-file HTML bundle
-that fills the screen in both orientations, or to an Android APK (minSdk 24) built by GitHub Actions.
-A Windows desktop build (double-click, no Python on the player's machine) ships in parallel.
-
-- Editor / packager from source: Python 3.9+ + `pygame-ce` (Windows only).
-- Tests: `pytest -q` → full suite headless, all green (exact count in the latest CHANGELOG).
-- Documentation is written in Chinese: [快速上手](docs/快速上手.md) · [engine spec](docs/engine_spec.md).
 
 ## 许可
 

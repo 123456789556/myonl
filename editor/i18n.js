@@ -1,16 +1,15 @@
-/* MYONL 界面词典（P199b 前置：按键英文适配）
+/* MYONL 界面词典
  *
- * 只做「一处开关、全部按键跟着走」，不整站翻译。理由：整站翻要动 20 多个文件，
- * 而且文案散落在各处，翻一次就再也对不上；先把新做的这套收口，以后加一个界面就加一组词。
+ * 用途只有一个：把文案收口到一处 —— 以前查找界面那 40 多句中文散在代码里，
+ * 改一句要找半天；现在改这里一处全变。
+ *
+ * 英文词条保留着，但不做语言开关：产品没有英文用户入口（不上架、只有中文教程），
+ * 切过去只会让人看到"英文按钮 + 中文报错"的半吊子界面，比不切更糟。
+ * 真要出英文版那天，把 lang 打开、加一个入口就有，不用重写。
  *
  * 选词原则（参考 VS Code / Photoshop / Android Studio）：
  *   每个动作优先一个单词；业界已经是固定短语的（Replace All）不硬缩；
  *   剧本语境用 Cast / Lines，不用 Characters / Dialogue —— 短，且行内一眼认得出。
- *
- * 用法：
- *   MYONLI18N.t("find.all")        -> "全部替换" / "Replace All"
- *   MYONLI18N.t("lint.broken", "教室") -> 带一个替换参数
- *   MYONLI18N.set("en")            -> 切语言，派发 myonl:lang 事件让界面重渲染
  */
 (function () {
   "use strict";
@@ -79,11 +78,7 @@
     "lint.level.info": { zh: "提示", en: "note" }
   };
 
-  var lang = "zh";
-  try {
-    var saved = localStorage.getItem(KEY);
-    if (saved === "en" || saved === "zh") lang = saved;
-  } catch (e) {}
+  var lang = "zh";   // 固定中文；英文词条留着，开关没开
 
   function t(key, a, b, c) {
     var row = DICT[key];
@@ -97,7 +92,6 @@
   function set(next) {
     if (next !== "en" && next !== "zh") return;
     lang = next;
-    try { localStorage.setItem(KEY, lang); } catch (e) {}
     try { document.dispatchEvent(new CustomEvent("myonl:lang", { detail: lang })); } catch (e) {}
   }
 

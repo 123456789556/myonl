@@ -16,7 +16,7 @@
   "use strict";
   var $ = function (id) { return document.getElementById(id); };
   var root = null, listEl = null, alertEl = null, panelEl = null;
-  var findEl = null, replEl = null, cmdEl = null, langBtn = null;
+  var findEl = null, replEl = null, cmdEl = null;
   var undoBuf = null, undoBtn = null, built = false;
   var lastAlert = null;         // 红条的状态，语言一换要重绘（不能把已经渲染的中文钉死在那）
   var q = { char: null, scene: null, say: false, cmd: null };
@@ -110,7 +110,6 @@
       '<div class="ml-head">' +
         '<input id="mlFind" class="ml-in" autocomplete="off" spellcheck="false">' +
         '<input id="mlRepl" class="ml-in" autocomplete="off" spellcheck="false">' +
-        '<button class="ml-lang" id="mlLang" title="语言 / Language"></button>' +
         '<button class="ml-x" id="mlClose">✕</button>' +
       "</div>" +
       '<div class="ml-row2">' +
@@ -132,19 +131,13 @@
 
     findEl = $("mlFind"); replEl = $("mlRepl"); cmdEl = $("mlCmd");
     listEl = $("mlList"); alertEl = $("mlAlert"); panelEl = $("mlPanel");
-    undoBtn = $("mlUndo"); langBtn = $("mlLang");
+    undoBtn = $("mlUndo");
 
     $("mlClose").addEventListener("click", close);
     findEl.addEventListener("input", function () { pump(); });
     $("mlCheck").addEventListener("click", function () { mode = "check"; refresh(); });
     $("mlAll").addEventListener("click", replaceAll);
     undoBtn.addEventListener("click", undo);
-    langBtn.addEventListener("click", function () {
-      if (!window.MYONLI18N) return;
-      MYONLI18N.toggle();
-      relabel();
-      refresh();
-    });
     cmdEl.addEventListener("change", function () {
       if (cmdEl.checked) toast(T("msg.cmdWarn"));
     });
@@ -166,7 +159,6 @@
     $("mlAll").textContent = T("find.all");
     $("mlCheck").textContent = T("find.check");
     $("mlClose").title = T("find.close");
-    langBtn.textContent = (window.MYONLI18N && MYONLI18N.lang === "en") ? "中" : "EN";
     var fab = $("mlFab");
     if (fab) fab.textContent = T("find.fab");
     if (lastAlert) paintAlert();     // 红条是上一次替换的结果，语言换了要重画
