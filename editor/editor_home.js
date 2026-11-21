@@ -47,12 +47,18 @@
     var main = document.querySelector(".main");
     var menu = document.querySelector(".menubar");
     var st = document.querySelector(".statusbar");
-    [main, menu, st].forEach(function (el) {
+    // P193：编辑器那条「剧本 / 素材 / 导出」底栏也要一起藏。editor.css 里那条
+    // body.m-home-open .m-tabbar 实测没进 CSSOM（10 条 tabbar 规则独缺它），所以首页
+    // 第一层和第二层两套导航同时在场。这里用 visibility 兜住，不赌样式表顺序。
+    var tb = document.querySelector(".m-tabbar");
+    [main, menu, st, tb].forEach(function (el) {
       if (!el) return;
       el.style.visibility = on ? "hidden" : "";
     });
   }
   hideEditor(true);
+  // 底栏比这层晚一点才建好（shell 的 buildMobileUI），补一次，别让它漏出来
+  setTimeout(function () { hideEditor(true); }, 400);
 
   var layer = document.createElement("div");
   layer.className = "m-home";
@@ -104,9 +110,9 @@
       '<button type="button" class="m-nav-item" data-nav="import">' +
         ico('M8 2.2v7.4M4.9 6.6l3.1 3.1 3.1-3.1M2.6 12.6h10.8') +
         '<span>导入</span></button>' +
-      '<button type="button" class="m-nav-item" data-nav="set">' +
-        ico('M2.4 5.1h3.4M9.2 5.1h4.4M2.4 10.9h3.4M9.2 10.9h4.4M7.6 5.1a1.6 1.6 0 1 0 .01 0M5.6 10.9a1.6 1.6 0 1 0 .01 0') +
-        '<span>设置</span></button>' +
+    // P193：底部不放「设置」。它是低频项，且和「新建 / 导入」不是一个类；
+    // 顶部右上角已经有 #mHomeSet，一处入口够了。第一层底栏留三格，数量与第二层
+    // （剧本 / 素材 / 导出）对齐，人一眼能分"我在外面"还是"我在里面"。
     '</div>';
   document.body.appendChild(layer);
 
@@ -235,6 +241,11 @@
 
   function openProject(folder, btn) {
     if (btn) { btn.disabled = true; btn.classList.add("busy"); }
+    // P193：进作品前把作品名记下来。进去之后是整页 reload，编辑器顶栏只剩一个文件名
+    // （script.gal），人分不清在改哪个作品。名字走 sessionStorage 传过去，reload 不掉。
+    try {
+      sessionStorage.setItem("myonl:projName", String(folder).split(/[\\/]/).pop());
+    } catch (e) {}
     fetch("/api/project", {
       method: "POST",
       headers: { "Content-Type": "application/json" },

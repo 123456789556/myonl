@@ -40,8 +40,8 @@
       var anchor = fm || $("mFullscreen");
       if (anchor && anchor.parentNode) anchor.parentNode.insertBefore(t2, anchor);
     }
-    var name = "";
-    try { name = JSON.parse(localStorage.getItem("myonl:off:lib:v1") || "{}").current || ""; } catch (e) { }
+    var name = "";  // P193：优先「刚点进去的作品名」（sessionStorage 跨 reload 不掉），其次离线库 current
+    try { name = sessionStorage.getItem("myonl:projName") || JSON.parse(localStorage.getItem("myonl:off:lib:v1") || "{}").current || ""; } catch (e) { }
     if (!name) name = (($("filePath") || {}).textContent || "").trim();
     if (t2.textContent !== name) { t2.textContent = name; t2.title = name; }
     // 顶栏右侧「预览」：预览原本是底栏五个 tab 之一，跟剧本/素材/导出平级，
