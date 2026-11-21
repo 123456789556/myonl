@@ -37,7 +37,8 @@
 
   var last = "";            // 上一次落盘成功的内容
   var loadedName = "";      // 当前这一屏的 #source 装的是哪个作品
-  var primed = false;       // #source 里确实是"这个作品的正文"了吗
+  var loadGen = 0;          // 装载代际：每换一次"这一屏装的是谁"就 +1
+  var readyGen = -1;        // 正文真正就位后追平成 loadGen；追不上就一律不写
   var timer = null;
   var state = "";           // "" | saved | dirty | draft | fail
   var stamp = "";
@@ -175,14 +176,15 @@
     var text = ta.value;
     if (loadedName && loadedName !== p.name) {
       loadedName = p.name;
-      primed = false;
+      loadGen++;            // 这一屏装的东西作废，等新正文就位再重新点火
+      readyGen = -1;
       last = "";
       return;
     }
-    // 还没进入"这个作品的编辑器"就不写。判据不是"内容等于正式正文"——
-    // 编辑器初始化读进来的正文和库里存的可能差一个行尾，永远等不到相等，
-    // 那样草稿就再也不会写了（第一次改就踩到）。用 input 事件和启动延时两路点火。
-    if (!primed) return;
+    // 代际追不上就是"装载还没完成"，一个字符都不许写。
+    // 以前这里靠"启动后 1.5 秒"点火，那是在赌低端机上正文一定换得完；
+    // 现在只认确定事件（input / applyTo / boot 后内容基线），不认时钟。
+    if (readyGen !== loadGen) return;
 
     // 跨作品覆盖守卫（路径 A）：换到别的作品之后第一次落盘，会把上一个作品
     // "还没恢复"的那份草稿顶掉，用户全程看不到任何提示。这里先把它挤到
@@ -233,9 +235,9 @@
   }
 
   function onInput() {
-    // 用户真的在这个作品的编辑器里动手了 —— 这是最可靠的点火信号
-    if (!primed) { primed = true; last = ""; }
-    setState("dirty");
+    // 用户真的在这个作品的编辑器里动手了 —— 这是最可靠的就位信号
+    readyGen = loadGen;
+    last = "";
     if (timer) clearTimeout(timer);
     timer = setTimeout(function () { timer = null; flush(); }, DEBOUNCE_MS);
   }
@@ -271,6 +273,7 @@
     if (!ta) return false;
     ta.value = d.text;
     try { ta.dispatchEvent(new Event("input", { bubbles: true })); } catch (e) {}
+    readyGen = loadGen;     // 正文已就位；dispatch 的 input 也会把代际追平，这条是双保险
     last = "";              // 强制下一次 flush 重新写（内容还是没正式落库）
     setState("draft");
     return true;
@@ -329,7 +332,8 @@
     var ta = document.getElementById("source");
     if (!ta) return;
     loadedName = (currentProject(readLib()) || {}).name || "";
-    primed = false;
+    loadGen++;
+    readyGen = loadGen;   // boot 时 last 已设成 ta.value，没变化就不会误写
     last = ta.value;
 
     // orphan 收编：压着的那份草稿如果正是当前作品，说明用户终于打开它了 ——

@@ -382,6 +382,9 @@
 
   function openProject(folder, btn, tab) {
     if (btn) { btn.disabled = true; btn.classList.add("busy"); }
+    // 切作品之前，先把"这一屏正在编的正文"落掉。不留这一步的话，唯一能写草稿的时机
+    // 就只剩 pagehide —— 那时 lib.current 已经被改成新作品，旧正文会被记成新作品的草稿。
+    try { if (window.MYONLDraft && MYONLDraft.flush) MYONLDraft.flush(2); } catch (e) {}
     // P193：进作品前把作品名记下来。进去之后是整页 reload，编辑器顶栏只剩一个文件名
     // （script.gal），人分不清在改哪个作品。名字走 sessionStorage 传过去，reload 不掉。
     try {

@@ -785,6 +785,8 @@ class _EditorHandler(BaseHTTPRequestHandler):
         ("GET", "/editor_snapshots.js"): "_serve_snapshots_js",
         # P198 静默草稿（打字就存一份，不进版本快照）
         ("GET", "/editor_draft.js"): "_serve_draft_js",
+        # P199a 剧本体检 / 查找替换 / 过滤（纯函数，不碰 DOM）
+        ("GET", "/editor_lint.js"): "_serve_lint_js",
         # P67：游戏画面方向（any / portrait / landscape），存进工程 config.json
         ("GET", "/api/orientation"): "_get_orientation",
         ("POST", "/api/orientation"): "_set_orientation",
@@ -1121,6 +1123,9 @@ class _EditorHandler(BaseHTTPRequestHandler):
 
     def _serve_draft_js(self, parsed=None) -> None:
         self._serve_editor_file("editor_draft.js", "application/javascript; charset=utf-8")
+
+    def _serve_lint_js(self, parsed=None) -> None:
+        self._serve_editor_file("editor_lint.js", "application/javascript; charset=utf-8")
 
     def _serve_apk_sign_js(self, parsed=None) -> None:
         self._serve_editor_file("apk_sign.js", "application/javascript; charset=utf-8")
