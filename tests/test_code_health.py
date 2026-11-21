@@ -106,21 +106,24 @@ def test_每个测试文件声明分层marker():
 # 下面这些断言就是那道闸门，不是建议：谁把内部文档推上来，测试就红。
 
 # 陌生人需要看的（必须存在）
+# P193：docs 按「在哪一端用」分了子目录 —— 手机端 mobile/，电脑端 desktop/，
+# 两端都用的留在 docs 根。清单跟着走，路径写成相对 docs 的形式。
 _PUBLIC_DOCS = (
     "CHANGELOG.md",        # 这版改了什么
     "engine_spec.md",       # 指令全集：想写剧本的人得查它
     "快速上手.md",          # 怎么开始
-    "手机端编游戏.md",       # 手机这条路怎么走
+    "mobile/手机端编游戏.md",       # 手机这条路怎么走
     "素材导入指南.md",       # 图和音乐怎么放进去
-    "打包使用指南.md",       # 怎么出成品
+    "desktop/打包使用指南.md",       # 怎么出成品
     "存档与升级.md",         # 玩家最怕的那件事
     "版本规则.md",           # 版本号怎么算
     "贡献指南.md",           # 想搭把手的人从哪进
-    "插件开发指南.md",       # 想扩展引擎的人
+    "desktop/插件开发指南.md",       # 想扩展引擎的人
     "架构说明.md",           # 代码怎么组织的
     "产品说明书.md",         # 这东西到底是什么：README 在链它
-    "开发者使用指南.md",     # 上手做游戏：被 快速上手 / 架构说明 / 贡献指南 交叉引用
+    "desktop/开发者使用指南.md",     # 上手做游戏：被 快速上手 / 架构说明 / 贡献指南 交叉引用
     "en/quick-start.md",     # 英文入口
+    "文档分区说明.md",        # 哪份文档放哪个子目录：mobile/ 与 desktop/ 的边界
 )
 
 # 内部自己看的（必须不在仓库里）
@@ -151,7 +154,9 @@ def test_公开文档没有漏登记的():
     这里反着查一遍：顶层 docs/*.md 要么登记成公开，要么明确在内部清单里。
     """
     known = set(_PUBLIC_DOCS) | set(_INTERNAL_DOCS)
-    on_disk = {p.name for p in (ROOT / "docs").glob("*.md")}
+    # P193：分目录后要递归查，否则 mobile/ desktop/ 里的文档绕过这道闸门
+    on_disk = {p.relative_to(ROOT / "docs").as_posix()
+               for p in (ROOT / "docs").rglob("*.md")}
     unknown = sorted(on_disk - known)
     assert not unknown, (
         f"这些文档既不在公开清单、也不在内部清单里 —— 是哪一类得明说：{unknown}")

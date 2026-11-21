@@ -170,11 +170,12 @@ would be redistribution and does not belong in this repo.
 
 ## Documentation
 
-- [Quick start](docs/快速上手.md) · [Phone authoring boundary](docs/手机端编游戏.md)
-- [Engine spec (full directive set)](docs/engine_spec.md) · [Asset import guide](docs/素材导入指南.md)
-- [Packaging guide](docs/打包使用指南.md) · [Saves and upgrades](docs/存档与升级.md)
-- [Architecture](docs/架构说明.md) · [Contributing](docs/贡献指南.md) · [Plugin guide](docs/插件开发指南.md)
-- [Product rationale](docs/产品说明书.md) · [Version rules](docs/版本规则.md) · [Changelog](docs/CHANGELOG.md)
+Split by which device you are on (rules: [doc layout](docs/文档分区说明.md)):
+
+- **Phone**: [Phone authoring boundary](docs/mobile/手机端编游戏.md)
+- **Desktop**: [Packaging guide](docs/desktop/打包使用指南.md) · [Plugin guide](docs/desktop/插件开发指南.md) · [Developer guide](docs/desktop/开发者使用指南.md)
+- **Both**: [Quick start](docs/快速上手.md) · [Engine spec (full directive set)](docs/engine_spec.md) · [Asset import guide](docs/素材导入指南.md) · [Saves and upgrades](docs/存档与升级.md)
+- [Architecture](docs/架构说明.md) · [Contributing](docs/贡献指南.md) · [Product rationale](docs/产品说明书.md) · [Version rules](docs/版本规则.md) · [Changelog](docs/CHANGELOG.md)
 
 ## FAQ
 

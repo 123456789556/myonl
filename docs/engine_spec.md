@@ -1,8 +1,8 @@
 # MYONL 引擎规格（engine_spec.md）
 
 > 这份是**剧本语法与格式层面**的权威参考：指令全集、参数、存档结构、Python/JS API。
-> 平台、打包产物、运行环境以 [README](../README.md)、[打包使用指南](打包使用指南.md)、
-> [手机端编游戏](手机端编游戏.md) 为准；代码怎么组织见 [架构说明](架构说明.md)。
+> 平台、打包产物、运行环境以 [README](../README.md)、[打包使用指南](desktop/打包使用指南.md)、
+> [手机端编游戏](mobile/手机端编游戏.md) 为准；代码怎么组织见 [架构说明](架构说明.md)。
 >
 > 剧本是纯文本 `.gal`（UTF-8，兼容记事本另存的 BOM），每行一条指令，`@` 开头。
 > 手机端解析器（`engine/parser.js`）与电脑端（`engine/parser.py`）逐字段一致，
@@ -112,7 +112,7 @@ engine/timeline.py（镜头 / 转场 / 立绘补间 / 停留调度，不进 Game
 | `@if` | `@if 条件:` + 缩进块；`@elif 条件:`；`@else:` | `@if 好感 > 50:` | 条件分支；支持 `and`/`or`/`not`/比较 |
 | `@choice:` | `@choice:` + 缩进选项列表 | 见 2.6 | 暂停推进等待玩家选择 |
 | `@video` | `@video 视频名 [file] [fps=N] [loop=0\|1] [mute]` | `@video rain fps=24` / `@video op file loop=1 mute` | 视频背景，两条通道见 2.8 |
-| `@plug:` | `@plug:插件指令名 [参数...]` | `@plug:shake 1.0` | 插件入口，见 [插件开发指南](插件开发指南.md) |
+| `@plug:` | `@plug:插件指令名 [参数...]` | `@plug:shake 1.0` | 插件入口，见 [插件开发指南](desktop/插件开发指南.md) |
 | `@include` | `@include 相对路径.gal` | `@include 章节/第一章.gal` | 顶层内联展开另一个剧本；路径相对当前文件目录，禁止循环引用 |
 
 ### 2.6 `@choice:` 缩进格式
@@ -164,7 +164,7 @@ engine/timeline.py（镜头 / 转场 / 立绘补间 / 停留调度，不进 Game
 手机端解析器遇到下列指令会抛清楚的中文错误并指出第几行，不静默走偏：
 `@voice` `@anim` `@fg` `@cg` `@camera` `@transition` `@plug` `@include`。
 手机端已覆盖：`@character` `@bg` `@music` `@sfx` `@show` `@hide` `@wait` `@chapter`
-`@label` `@jump` `@end` `@set` `@if` `@video` + `@choice:` + 台词行。完整边界见 [手机端编游戏](手机端编游戏.md)。
+`@label` `@jump` `@end` `@set` `@if` `@video` + `@choice:` + 台词行。完整边界见 [手机端编游戏](mobile/手机端编游戏.md)。
 
 ---
 

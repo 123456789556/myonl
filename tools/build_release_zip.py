@@ -63,7 +63,7 @@ RELEASE_README = """# MYONL 引擎 · 发行版
 ## 文档
 
 - `文档/快速上手.md` — 三步上手
-- `文档/开发者使用指南.md` — 指令与配置
+- `文档/desktop/开发者使用指南.md` — 指令与配置
 - `LICENSE` / `NOTICE` — 许可与第三方组件
 """
 
@@ -76,6 +76,18 @@ def _release_readme() -> str:
 # 玩家数据：绝不进发行包（升级=解压覆盖，包里带一份就会把玩家的档换掉）
 _PLAYER_DATA_DIRS = ("saves",)
 _PLAYER_DATA_FILES = ("persistent.json",)
+
+# 发行包要带的文档：相对 docs/ 的路径，拷贝时保留子目录（docs 分 mobile/ 与 desktop/ 之后，
+# 平铺会让"快速上手"里的相对链接在包内断掉）。
+_DOCS = (
+    "快速上手.md",
+    "mobile/手机端编游戏.md",
+    "desktop/开发者使用指南.md",
+    "desktop/打包使用指南.md",
+    "engine_spec.md",
+    "素材导入指南.md",
+    "文档分区说明.md",
+)
 
 # 控制台默认 GBK：子进程输出里的非 GBK 字符（emoji/箭头）会让 print 崩，统一 UTF-8
 if hasattr(sys.stdout, "reconfigure"):
@@ -122,8 +134,9 @@ def build(version: str, out: Path) -> Path:
         for name in ("LICENSE", "NOTICE"):
             zf.write(ROOT / name, f"{prefix}/{name}")
             entries += 1
-        # 所有文档都放 文档/：快速上手里的相对链接（开发者使用指南.md 等）才能生效
-        for doc in ("快速上手.md", "开发者使用指南.md", "engine_spec.md", "插件开发指南.md"):
+        # 文档按 docs/ 的原结构进 文档/（P193 起 docs 分 mobile/ 与 desktop/）：
+        # 保留子目录，快速上手里的相对链接（desktop/开发者使用指南.md 这类）才能在包内解析
+        for doc in _DOCS:
             zf.write(ROOT / "docs" / doc, f"{prefix}/文档/{doc}")
             entries += 1
         entries += _add_tree(zf, ROOT / "dist" / "editor", f"{prefix}/editor")
@@ -164,17 +177,21 @@ def verify(zip_path: Path, version: str) -> int:
             if need not in text:
                 print(f"验证失败：发行版 README 缺少「{need}」")
                 return 1
-        # 文档必须齐全，且快速上手里的相对 md 链接都能在包内找到
+        # 文档必须齐全，且包内所有 md 的相对链接都能解析到包里的文件
+        # （P193 起 docs 分了 mobile/ desktop/，链接跨目录，光查"快速上手"一条不够）
         docs = base / "文档"
-        for name in ("快速上手.md", "开发者使用指南.md", "engine_spec.md", "插件开发指南.md"):
+        for name in _DOCS:
             if not (docs / name).is_file():
                 print(f"验证失败：发行包缺少 文档/{name}")
                 return 1
-        quick = (docs / "快速上手.md").read_text(encoding="utf-8")
-        for link in set(re.findall(r"\]\(([^)]+\.md)\)", quick)):
-            if not (docs / link).is_file():
-                print(f"验证失败：快速上手链接失效（包内找不到 文档/{link}）")
-                return 1
+        for md in sorted(docs.rglob("*.md")):
+            text = md.read_text(encoding="utf-8")
+            for link in sorted(set(re.findall(r"\]\(([^)\s]+?\.md)(?:#[^)]*)?\)", text))):
+                if link.startswith(("http://", "https://")):
+                    continue
+                if not (md.parent / link).is_file():
+                    print(f"验证失败：{md.relative_to(docs)} 里的链接失效（包内找不到 {link}）")
+                    return 1
         # 内置素材必须随编辑器进包，否则发行版里「新建游戏」是白板（素材只在示例工程里）
         tpl = base / "editor" / "_internal" / "engine" / "templates" / "standard"
         if not (tpl / "script.gal").is_file() or not (tpl / "images").is_dir():

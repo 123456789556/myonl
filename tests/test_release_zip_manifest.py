@@ -38,8 +38,13 @@ def _make_min_repo(tmp_path):
     project.mkdir(parents=True)
     (project / "script.gal").write_text("@label start\n", encoding="utf-8")
     docs = root / "docs"
-    docs.mkdir()
-    for name in ("快速上手.md", "开发者使用指南.md", "engine_spec.md", "插件开发指南.md"):
+    # P193：docs 分了 mobile/ 与 desktop/，发行包按原结构带子目录，这里造最小结构
+    for sub in ("", "mobile", "desktop"):
+        (docs / sub).mkdir(parents=True, exist_ok=True)
+    for name in ("快速上手.md", "engine_spec.md", "素材导入指南.md", "文档分区说明.md"):
+        (docs / name).write_text("# 占位\n", encoding="utf-8")
+    for name in ("mobile/手机端编游戏.md", "desktop/开发者使用指南.md",
+                 "desktop/打包使用指南.md"):
         (docs / name).write_text("# 占位\n", encoding="utf-8")
     for name in ("LICENSE", "NOTICE"):
         (root / name).write_text("占位\n", encoding="utf-8")

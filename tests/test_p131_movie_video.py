@@ -30,7 +30,7 @@ OFFLINE = _read("editor", "gal_offline.js")
 MANIFEST = _read("editor", "manifest.webmanifest")
 SW = _read("editor", "sw.js") if (ROOT / "editor" / "sw.js").exists() else ""
 INDEX_HTML = _read("editor", "index.html")
-DOC_MOBILE = _read("docs", "手机端编游戏.md")
+DOC_MOBILE = _read("docs", "mobile", "手机端编游戏.md")
 DOC_CHANGELOG = _read("docs", "CHANGELOG.md")
 DOC_IMPORT = _read("docs", "素材导入指南.md")
 

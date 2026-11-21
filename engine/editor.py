@@ -133,14 +133,14 @@ def _editor_front_dir() -> str:
 
 
 # ==================== M1.5：内嵌教程 / 说明书（边写边看） ====================
-# 只读内置 md：id 是固定白名单（不接受用户路径，天然无穿越）；打包后在 _MEIPASS/docs。
+# 只读内置 md：id 是固定白名单（不接受用户路径，天然无穿越）；打包后在 _MEIPASS/docs。P193 起 docs 分 mobile/ desktop/，路径跟着走。
 _HELP_DOCS = (
     ("quickstart", "快速上手", "快速上手.md"),
-    ("dev-guide", "开发者使用指南", "开发者使用指南.md"),
+    ("dev-guide", "开发者使用指南", "desktop/开发者使用指南.md"),
     ("assets", "素材导入指南", "素材导入指南.md"),
     ("engine-spec", "引擎规格（engine_spec）", "engine_spec.md"),
-    ("plugins", "插件开发指南", "插件开发指南.md"),
-    ("packaging", "打包使用指南", "打包使用指南.md"),
+    ("plugins", "插件开发指南", "desktop/插件开发指南.md"),
+    ("packaging", "打包使用指南", "desktop/打包使用指南.md"),
 )
 
 
@@ -2995,7 +2995,7 @@ def serve(project_root: str, port: int = 8000, script_path: str | None = None) -
 
     只绑 127.0.0.1：同 WiFi 的手机连不上，这是刻意的 ——
     那套接口能改剧本、能删文件，不该交给整个局域网。
-    手机端编游戏走的是另一条路（离线内核，见 docs/手机端编游戏.md）。
+    手机端编游戏走的是另一条路（离线内核，见 docs/mobile/手机端编游戏.md）。
     """
     app = EditorApp(project_root, script_path)
     # 清理上次异常退出/被 Windows 占用删不掉的临时剧本（只认 mkstemp 命名，避免误删）

@@ -20,7 +20,7 @@ by position so you can follow it without reading Chinese.
 **Desktop browser (nothing installed)**
 
 - A single-file `.html` someone exported opens in any browser. To author on a computer, see the
-  [developer guide](../开发者使用指南.md) (Chinese).
+  [developer guide](../desktop/开发者使用指南.md) (Chinese).
 
 > There is no iOS build. On the player side, any modern browser can open the single-file bundle.
 
@@ -62,7 +62,7 @@ The phone parser does not implement `@voice`, `@anim`, `@fg`, `@cg`, `@camera`, 
 `@plug`, or `@include`. Using one raises a clear error with the line number — it is not silently
 dropped. Voice / animation / foreground / CG / camera / transition / plugins, multi-file scripts,
 APK builds and tests all go through the desktop route. The full boundary is in the
-[phone authoring guide](../手机端编游戏.md) (Chinese).
+[phone authoring guide](../mobile/手机端编游戏.md) (Chinese).
 
 ## 5. Troubleshooting
 
@@ -70,10 +70,10 @@ APK builds and tests all go through the desktop route. The full boundary is in t
 |---|---|
 | Red text or placeholder blocks in the preview | The script references a missing asset: check the asset name and letter case |
 | Exported file is very large | Assets inline as base64 (~+37%); a soft warning starts at 40 MB and a strong warning at 80 MB (export is not blocked either way), but past 80 MB a low-end device will likely white-screen. Shrink images or split chapters first |
-| You want to keep editing on desktop / build an APK | See the [packaging guide](../打包使用指南.md) (Chinese) |
+| You want to keep editing on desktop / build an APK | See the [packaging guide](../desktop/打包使用指南.md) (Chinese) |
 
 ## 6. Where to go next
 
-- [Phone authoring guide](../手机端编游戏.md) — exactly what the phone route can and cannot do
+- [Phone authoring guide](../mobile/手机端编游戏.md) — exactly what the phone route can and cannot do
 - [engine_spec.md](../engine_spec.md) — full directive set and syntax details (Chinese)
-- [Packaging guide](../打包使用指南.md) — the three exits: single-file HTML, APK, Windows folder build
+- [Packaging guide](../desktop/打包使用指南.md) — the three exits: single-file HTML, APK, Windows folder build

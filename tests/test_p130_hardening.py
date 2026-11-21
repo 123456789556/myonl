@@ -116,7 +116,7 @@ def test_产品说明书不再说放弃安卓():
 
 
 def test_手机端文档不再说素材装不下():
-    src = _read("docs", "手机端编游戏.md")
+    src = _read("docs", "mobile", "手机端编游戏.md")
     assert "装不下素材" not in src
     assert "IndexedDB" in src
 
