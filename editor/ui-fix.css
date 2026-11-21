@@ -27,6 +27,8 @@ html.kb-open .modal { max-height: calc(100dvh - var(--kb-h, 0px) - 48px); }
 /* 输入时把底部导航收起来。抬上去它就会悬在正文中间压住台词卡（试过，更糟）；
    键盘自己带「完成」，这时候不需要切 tab。 */
 html.kb-open .m-tabbar { display: none !important; }
+/* P198：软键盘弹起时底栏藏了，草稿条不能还吊在 52px 的空中，贴到键盘上沿 */
+html.kb-open #mDraftBar { bottom: 8px !important; }
 html.kb-open .m-sheet-body { bottom: var(--kb-h, 0px) !important; }
 
 /* 4｜手机预览页：原来为了躲开「空白网格」，把预览容器收成 flex:0 0 auto，

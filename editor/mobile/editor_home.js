@@ -450,6 +450,45 @@
         '</div>' +
       '</div>';
     document.body.appendChild(workEl);
+    // P198：这一屏本来就是"决定要不要改"的地方，所以未保存草稿在这里就摆出来，
+    // 不等到进了编辑器再弹。不做模态 —— 模态会把封面和「播放」盖住，
+    // 而人可能只是想先看一遍，看完再决定留不留那版草稿。
+    var dft = (window.MYONLDraft && window.MYONLDraft.peek(p.name)) || null;
+    if (dft) {
+      var dt = new Date(dft.at);
+      var hh = (dt.getHours() < 10 ? "0" : "") + dt.getHours();
+      var mm = (dt.getMinutes() < 10 ? "0" : "") + dt.getMinutes();
+      var df = window.MYONLDraft.diffText(dft);
+      var tip = document.createElement("div");
+      tip.className = "m-draft-tip";
+      tip.style.cssText = "margin:0 0 12px;padding:10px 12px;border-radius:12px;" +
+        "background:rgba(224,196,106,.10);border:1px solid rgba(224,196,106,.34);";
+      tip.innerHTML =
+        '<div style="font-size:13px;color:#e0c46a;line-height:1.5">' +
+          '发现未保存内容 · ' + hh + ':' + mm + ' · ' +
+          (df.chars >= 0 ? "多 " + df.chars : "少 " + (-df.chars)) + ' 字' +
+          (dft.stale ? '<br><span style="color:#e08a6a">草稿基于的版本已经变过（回退或导入过）</span>' : '') +
+        '</div>' +
+        '<div style="display:flex;gap:8px;margin-top:8px">' +
+          '<button type="button" id="mDraftGo" style="flex:1;height:34px;border:0;border-radius:9px;' +
+            'background:#4f8cff;color:#fff;font-size:13px">恢复并进入</button>' +
+          '<button type="button" id="mDraftNo" style="flex:0 0 76px;height:34px;' +
+            'border:1px solid rgba(160,180,210,.4);border-radius:9px;background:transparent;' +
+            'color:#9fb3d1;font-size:13px">丢弃</button>' +
+        '</div>';
+      var hero = workEl.querySelector(".m-work-hero");
+      if (hero && hero.parentNode) hero.parentNode.insertBefore(tip, hero.nextSibling);
+      else workEl.insertBefore(tip, workEl.firstChild);
+      tip.querySelector("#mDraftGo").addEventListener("click", function () {
+        window.MYONLDraft.markShown(dft);
+        window.MYONLDraft.requestApply(p.name);
+        openProject(folder, null, "script");
+      });
+      tip.querySelector("#mDraftNo").addEventListener("click", function () {
+        window.MYONLDraft.drop();
+        tip.remove();
+      });
+    }
     // P197c：这一屏原来把底栏盖住了 —— 首页那条导航在 .m-home 层里，层被 .m-work 压下去，
     // 进作品页底部就空了，看着像"tab 被砍了"。这里带一条同样的导航下来，
     // 点击转给首页那条真导航（新建/导入/教程/设置各自只有一份逻辑）。
