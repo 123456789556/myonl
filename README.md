@@ -1,7 +1,7 @@
 # MYONL · 手机上的视觉小说编辑器
 
 [![tests](https://github.com/123456789556/myonl/actions/workflows/tests.yml/badge.svg?branch=main)](https://github.com/123456789556/myonl/actions/workflows/tests.yml)
-![Release](https://img.shields.io/badge/release-v1.2.26-blue)
+![Release](https://img.shields.io/badge/release-v1.2.27-blue)
 ![License](https://img.shields.io/badge/License-MIT-green)
 ![Platform](https://img.shields.io/badge/platform-Android%207.0%2B%20%C2%B7%20Windows%20%C2%B7%20Web-19b6a3)
 ![Offline](https://img.shields.io/badge/offline-100%25-2ea44f)
@@ -59,6 +59,7 @@ python -m engine.editor
 - 切换深浅主题、换主题色
 - **打字不用管保存**：停 1.5 秒自动留一份草稿，切后台、被系统回收、App 被杀，重开都能接回来（草稿不进版本快照，不会把历史版本挤掉）
 - **查找替换与体检**：按角色 / 场景 / 指令筛句子，点一条就跳到那行；替换默认只动台词正文，勾选后才碰指令与 `@label`；改坏跳转当场列出断链并可点跳
+- **写完能整部跑一遍**：预览面板那颗「试玩」把当前作品编成成品、全屏从头演到底，顶上一条「✕ 退出试玩」，退出回编辑器接着改。跑的就是你导出给玩家的那份 HTML，不是另一套播放逻辑
 
 ## 做不到什么
 
@@ -214,7 +215,7 @@ python tools/pack_apk.py --game dist/single/你的作品.html
 
 ## 装它
 
-**[⬇ 下载 MYONL-v1.2.26.apk](https://github.com/123456789556/myonl/releases/download/v1.2.26/MYONL-v1.2.26.apk)** · 安卓 7.0 以上 · 只按手机屏幕做，平板能装但没专门适配
+**[⬇ 下载 MYONL-v1.2.27.apk](https://github.com/123456789556/myonl/releases/download/v1.2.27/MYONL-v1.2.27.apk)** · 安卓 7.0 以上 · 只按手机屏幕做，平板能装但没专门适配
 
 装好打开就是书架，点「新建作品」开始。底部「导出」有两条出口：
 自包含 `.html`（发微信对方就能玩）和 APK（装到手机上就是一个独立 App）。
@@ -298,6 +299,7 @@ APK 的 `minSdk` 是 24（安卓 7.0）。只按手机屏幕排版，平板能�
 - **素材卡片点不进去**：看不到这个文件多大、图片多少像素、什么时候加进来的，也不能给它写一句备注。
 - **成品里玩家只能顺着读**：不能查看脚本原文，也不能临时改一句台词再往下走（改了也不会存）。
 - 场景编辑页**右侧那列浮动控件会压住台词输入框**，打字时被挡。
+- 编辑器里试玩**每次都要把成品重编一遍**，素材多的时候要等几秒；单文件超过 40 MB 会直接拦下来，让你去导出。
 - **撤销是内存栈**，关掉页面就没了；「历史版本」能整份退回去，但没有"撤销上一步"。
 - 游戏**标题页没有「设置 / 读档 / 退出」**，这些都在游戏里长按屏幕叫出来的菜单里。
 - **开场动画、工作室 logo、给玩家看的新手教程**都还没做；自带的两个示例是给开发者看的，
@@ -399,7 +401,7 @@ flowchart LR
 
 **体积与内存（2026-11-21 实测字节，不是估计）**
 - 模板 APK `android/template.apk` **2,204,397 字节**（2.10 MiB），壳是 WebView，`lib/` 下 0 个 .so
-- 编辑器单文件 `dist/web/editor-single.html` **1,039,454 字节**（1,015 KiB，内联 23 个脚本 / 4 个样式）；前端 `editor/` 下 22 个 JS 合计 **710,237 字节**、4 个 CSS 合计 **236,078 字节**
+- 编辑器单文件 `dist/web/editor-single.html` **1,047,187 字节**（1,023 KiB，内联 24 个脚本 / 4 个样式）；前端 `editor/` 下 23 个 JS 合计 **717,747 字节**、4 个 CSS 合计 **236,078 字节**
 - 打包器带内存预算门禁：素材体积超阈值会提示，位图缓存上限 160 MB
 
 

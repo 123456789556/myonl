@@ -1204,41 +1204,46 @@
     });
   };
 
+  /** P201：把当前作品编成一份成品 HTML，不落盘。
+   *  试玩层与「导出网页版」共用这一条 —— 试玩跑的必须就是导出的那份，不能是第二套实现，
+   *  否则「试玩通过、导出翻车」这类事永远查不清。 */
+  function buildPackHtml(p) {
+    if (!window.MYONLPack || !window.MYONLParser) return Promise.reject(new Error("打包器没加载，刷新一下"));
+    var assetsP = (window.MYONLAssets ? window.MYONLAssets.allSplit()
+                                      : Promise.resolve({ assets: {}, audio: {} }));
+    return Promise.all([playerSources(), assetsP]).then(function (both) {
+      var src = both[0], sp = both[1] || {};
+      var assets = sp.assets || {}, audio = sp.audio || {}, moviesPack = moviesOf(sp, assets);
+      var r = window.MYONLPack.buildPack({
+        title: p.name, scriptText: p.text, assets: assets, audio: audio,
+        videos: {}, movies: moviesPack, config: {}, orientation: "any",
+      });
+      if (!r.ok) { var err = new Error(r.error.message || "剧本有问题"); err.line = r.error.line; throw err; }
+      return {
+        html: window.MYONLPack.renderSingle(r.pack, src), mb: r.fileMb || 0, bytes: r.bytes || 0,
+        warn: r.fileWarning || "", warnLevel: r.fileWarningLevel || "",
+        images: Object.keys(assets).length, audio: Object.keys(audio).length, movies: Object.keys(moviesPack).length,
+      };
+    });
+  }
+  window.__myonlBuildPackHtml = function () { return buildPackHtml(curProject()); };
+
   window.__myonlExportPack = function () {
     var p = curProject();
-    if (!window.MYONLPack || !window.MYONLParser) { toast("打包器没加载，刷新一下", true); return; }
     toast("正在把剧本编成成品…");
-    // 素材以前一律传空 —— 于是手机上出的成品永远是纯文字配渐变底。
-    // 现在从 IndexedDB 把素材全取出来：画面归 assets，声音归 audio，真视频归 movies。
-    var assetsP = (window.MYONLAssets ? window.MYONLAssets.allSplit() : Promise.resolve({ assets: {}, audio: {} }));
-    Promise.all([playerSources(), assetsP]).then(function (both) {
-      var src = both[0], sp = both[1] || {};
-      var assets = sp.assets || {}, audio = sp.audio || {};
-      var moviesPack = moviesOf(sp, assets);
-      var names = Object.keys(assets);
-      var r = window.MYONLPack.buildPack({
-        title: p.name, scriptText: p.text,
-        assets: assets, audio: audio, videos: {}, movies: moviesPack, config: {}, orientation: "any",
-      });
-      if (!r.ok) { toast("剧本第 " + r.error.line + " 行：" + r.error.message, true); return; }
-      // 体积口径跟打包器走（data URI 按 base64 还原成字节估），不再自己拿字符串长度瞎算。
-      var mb = r.fileMb || 0;
-      var html = window.MYONLPack.renderSingle(r.pack, src);
-      // P136：硬线（>80MB）在手机上大概率白屏/闪退，不能跟软线一样只喊一句"成品好了"。
-      if (r.fileWarningLevel === "hard") {
-        toast("⚠ 硬线告警：" + r.fileWarning, true);
-      }
-      download(html, p.name + ".html", "text/html;charset=utf-8");
+    buildPackHtml(p).then(function (r) {
+      if (r.warnLevel === "hard") toast("⚠ 硬线告警：" + r.warn, true);
+      download(r.html, p.name + ".html", "text/html;charset=utf-8");
       var parts = [];
-      if (names.length) parts.push(names.length + " 张图");
-      if (Object.keys(moviesPack).length) parts.push(Object.keys(moviesPack).length + " 段视频");
-      if (Object.keys(audio).length) parts.push(Object.keys(audio).length + " 段音频");
-      if (r.fileWarningLevel === "soft") toast("体积提醒：" + r.fileWarning, true);
-      toast(parts.length
-        ? ("成品好了：带了 " + parts.join(" + ") + "，约 " + mb + " MB")
-        : "成品好了（还没有素材，画面是渐变色）");
-    }).catch(function () {
-      toast("这台设备取不到播放器内核，成品导出请在装好的 APK 里用", true);
+      if (r.images) parts.push(r.images + " 张图");
+      if (r.movies) parts.push(r.movies + " 段视频");
+      if (r.audio) parts.push(r.audio + " 段音频");
+      if (r.warnLevel === "soft") toast("体积提醒：" + r.warn, true);
+      toast(parts.length ? ("成品好了：带了 " + parts.join(" + ") + "，约 " + r.mb + " MB")
+                         : "成品好了（还没有素材，画面是渐变色）");
+    }).catch(function (e) {
+      if (e && e.line) toast("剧本第 " + e.line + " 行：" + e.message, true);
+      else toast((e && e.message) || "这台设备取不到播放器内核，成品导出请在装好的 APK 里用", true);
     });
   };
   // 导入：剧本先落地，素材再按原名铺回去。返回 Promise<boolean>，

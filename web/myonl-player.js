@@ -1105,6 +1105,9 @@
   function tryFullscreen() {
     if (fsAsked) return;
     fsAsked = true;
+    // 内嵌试玩（编辑器里那一层）不请求全屏：外层本来就铺满了，再全屏会把外层的
+    // 「退出试玩」栏顶掉 —— 手机返回一次只是退全屏、层还在，人以为卡死了。
+    if (isEmbedded()) return;
     const el = document.documentElement;
     const req = el.requestFullscreen || el.webkitRequestFullscreen || el.msRequestFullscreen;
     if (!req) return;   // 桌面浏览器/被禁用时不弹窗，静默跳过
@@ -2517,9 +2520,11 @@
   function drawExitChip() {
     state.exitRect = null;
     if (!isEmbedded()) return;
-    // 外层编辑器带了自己的退出栏（?shellbar=1）时不画浮动退出键：
-    // 两个「退出试玩」叠在屏幕顶部是重复入口。菜单里的退出项仍在。
-    if (/[?&]shellbar=1/.test(location.search)) return;
+    // 外层编辑器带了自己的退出栏时不画浮动退出键：
+    // 两个「退出试玩」叠在屏幕顶部是重复入口。两种告知方式都认 ——
+    // URL 上的 ?shellbar=1（老写法），以及外层在同源 iframe 里直接写 __MYONL_HOSTBAR
+    //（编辑器试玩层用这个：blob URL 拼 query 会把 origin 弄成不透明，外层就读不到内容了）。
+    if (/[?&]shellbar=1/.test(location.search) || window.__MYONL_HOSTBAR) return;
     const W = L.viewW;
     const u = Math.min(L.viewW, L.viewH);
     const k = W / (window.innerWidth || W);

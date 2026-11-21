@@ -47,12 +47,16 @@ def test_素材真图有单独取图分支():
 
 
 def test_成品导出带上素材():
-    seg = OFF.split("window.__myonlExportPack = function")[1][:1100]
+    # P201 把「编成品」抽成 buildPackHtml（试玩层与导出共用一条构建），守卫跟着搬过去。
+    # 守的还是同一件事：成品里必须真的带素材，不能传空。
+    seg = OFF.split("function buildPackHtml(")[1][:1100]
     assert "MYONLAssets.allSplit()" in seg
     assert "assets: assets" in seg
     assert "audio: audio" in seg
     # 传空的老写法（buildPack 两个参数都是空）不许再回来
     assert "assets: {}, audio: {}, videos" not in seg
+    # 导出必须走那条共用构建，不能偷偷回到自己拼一份
+    assert "buildPackHtml(p)" in OFF.split("window.__myonlExportPack = function")[1][:600]
 
 
 def test_素材分图片和音频两类():
