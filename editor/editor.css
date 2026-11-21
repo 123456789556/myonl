@@ -3173,12 +3173,8 @@ body.m-few-projects .m-home-side { margin-top: 0 !important; }
 }
 /* P176：唯一作品时让卡片自己长高吃掉下方空白（渐变底，拉高不变形） */
 .m-home-list > .m-home-hero:only-child { flex: 1 1 auto !important; height: auto !important; min-height: 260px !important; }
-.m-home-empty {
-  flex: 1 1 auto; display: flex; align-items: center; justify-content: center;
-  padding: 28px 22px; border-radius: 14px; text-align: left;
-  border: 1px dashed var(--surface1); color: var(--subtext0);
-  font-size: 13px; line-height: 1.7;
-}
+/* P193d：旧空态卡 .m-home-empty 的样式删了 —— DOM 早已换成 .m-empty（mobile/home.css），
+   而 body 上空态类同名，这条会把虚线框/居中/内边距套到整页上（横屏空态实测复现）。 */
 
 /* P174：只有一个作品时，动作区紧贴作品卡，剩下的全堆在底部，整片黑。
    让动作区沉到导航上方（margin-top:auto），中间那块空就从"内容没写完"
@@ -3211,7 +3207,7 @@ body.m-few-projects .m-home-side { margin-top: 0 !important; }
 
 /* 书架为空时不摆说明卡：它和「三步上手」说的都是"先建作品"，
    第一次打开的人面前同时摆七块可读的东西，反而不知道该点哪个。 */
-body.m-home-empty .m-home-note { display: none !important; }
+body.m-home-blank .m-home-note { display: none !important; }
 
 /* 首页模式下别让编辑器的新手引导浮层（#obCard / #obMask / #obRing）露出来：
    那三块是"作品内部"的三步引导，摆在书架底下等于在问一个还没建作品的人
@@ -3315,7 +3311,6 @@ body.m-home-open .ob-card { display: none !important; }
     width: 96px !important; height: 100% !important; border-radius: 11px;
   }
   .m-home-list .m-home-card { min-height: 58px !important; }
-  .m-home-empty { padding: 16px 14px; font-size: 12px; }
   /* 横屏右边这一列本来就只够放「开始新的 + 三步上手」；纯文字说明卡挤在里面
      只会被设置抽屉从半行处切开，看起来像坏了。横屏收起它，三步上手能点，留着。 */
   .m-home-note { display: none !important; }

@@ -8,6 +8,8 @@
   var $ = function (id) { return document.getElementById(id); };
 
   var EDIT_KEY = "myonl:editing";
+  // 横屏「左列表 / 右详情」里当前选中的作品目录。竖屏用不到，但两种形态共用同一个渲染函数。
+  var selFolder = null;
 
   var isMobile = function () { return window.matchMedia && window.matchMedia("(max-width:860px), (max-height:520px)").matches; };
   if (!isMobile()) return;
@@ -76,6 +78,9 @@
       '<button type="button" class="m-home-set" id="mHomeSet">设置</button>' +
     '</div>' +
     '<div class="m-home-list" id="mHomeList"></div>' +
+    // P193d：横屏（平板 / 横过来的手机）右侧的「最近在改」详情。
+    // 竖屏不显示（CSS 收掉）—— 竖屏一屏只放一个主角，列表就是主角。
+    '<div class="m-home-detail" id="mHomeDetail"></div>' +
     '<div class="m-home-side">' +
       '<div class="m-home-sec">开始新的</div>' +
       '<div class="m-quick m-quick-2">' +
@@ -169,7 +174,9 @@
     // 三步上手只在书架空着时出现：已经有作品的用户早就知道怎么写第一句，
     // 那三块一直挂着等于天天给人上第一课。要重看走「帮助 → 新手引导」。
     document.body.classList.toggle("m-has-projects", projects.length > 0);
-    document.body.classList.toggle("m-home-empty", !projects.length);
+    // 空态类叫 m-home-blank，不叫 m-home-empty：后者是旧空态卡的类名，
+    // 同名挂在 body 上会把那张卡的虚线框/居中样式套到整页（P193d 实测踩过）。
+    document.body.classList.toggle("m-home-blank", !projects.length);
     // 作品少的时候列表不该把整屏撑满：撑满的结果就是一张小卡孤零零挂在
     // 顶上、底下空出大半屏，「新建 / 导入」被顶到屏幕尽头。少的时候
     // 让列表收到内容高度，「开始新的」自然跟上来。
@@ -221,10 +228,70 @@
       img.src = "/api/thumb?folder=" + encodeURIComponent(f);
     });
     list.querySelectorAll(".m-home-card[data-folder], .m-home-hero[data-folder]").forEach(function (b) {
-      b.addEventListener("click", function () { openProject(b.dataset.folder, b); });
+      b.addEventListener("click", function () {
+        // 横屏走「先选中、右侧看详情、点继续编辑才进」；
+        // 竖屏保持一点就进 —— 一屏只有一个主角，多一步反而累。
+        if (splitMode()) { selFolder = b.dataset.folder; paintDetail(projects); return; }
+        openProject(b.dataset.folder, b);
+      });
     });
     var gh = $("mHomeGhost");
     if (gh) gh.addEventListener("click", newProject);
+    // 右栏详情：默认选中第一个（列表已按最近改排序），选中项离列表了就回落到第一个。
+    // 空列表也要画 —— 横屏把「开始新的」整块收掉了，右栏是教程入口唯一所在，
+    // 不画的话横屏第一次打开的人找不到新手教程。
+    if (projects.length && (!selFolder ||
+        !projects.some(function (p) { return p.folder === selFolder; }))) {
+      selFolder = projects[0].folder;
+    }
+    paintDetail(projects);
+  }
+
+  // 横屏（平板 / 横过来的手机）：宽度够、高度矮。竖屏那套竖着堆五段在这里会全挤成条。
+  function splitMode() {
+    return !!(window.matchMedia &&
+      window.matchMedia("(min-width:700px) and (max-height:520px)").matches);
+  }
+
+  // 右栏详情：大封面 + 名字 + 三个数 + 唯一主操作，下面接教程引导和那句说明。
+  // 竖屏由 CSS 收掉，所以两套文案不会同屏出现两次。
+  function paintDetail(projects) {
+    var box = $("mHomeDetail");
+    if (!box) return;
+    var tutRow =
+      '<button type="button" class="m-det-tut">' +
+        '<span class="m-tut-t">新手教程：先照着走一遍</span>' +
+        '<span class="m-tut-d">建一份 21 条的短作品，改两句就懂</span>' +
+      '</button>' +
+      '<div class="m-det-tip">没图没音乐也能先写台词，画面在「素材」里补。</div>';
+    var p = projects.filter(function (x) { return x.folder === selFolder; })[0] || projects[0];
+    if (!p) {
+      // 空列表：右栏只剩教程 + 说明（新建/导入在底栏，不重复摆）
+      box.innerHTML = tutRow;
+      box.querySelector(".m-det-tut").addEventListener("click", openTutorial);
+      return;
+    }
+    var f = p.folder.replace(/"/g, "&quot;");
+    box.innerHTML =
+      '<div class="m-det-hero" data-folder="' + f + '"></div>' +
+      '<div class="m-det-name">' + p.name.replace(/</g, "&lt;") + '</div>' +
+      '<div class="m-det-meta">' + p.ins + ' 条指令 · ' + p.assets + ' 个素材 · ' + ago(p.mtime) + '</div>' +
+      '<button type="button" class="m-det-go">继续编辑</button>' + tutRow;
+    // 封面单独请求：拿不到就留渐变底，不阻塞
+    var hero = box.querySelector(".m-det-hero");
+    var img = new Image();
+    img.onload = function () {
+      hero.style.backgroundImage = 'url("/api/thumb?folder=' + encodeURIComponent(p.folder) + '")';
+      hero.classList.add("has");
+    };
+    img.src = "/api/thumb?folder=" + encodeURIComponent(p.folder);
+    box.querySelector(".m-det-go").addEventListener("click", function () { openProject(p.folder); });
+    box.querySelector(".m-det-tut").addEventListener("click", openTutorial);
+    // 选中态：左列表里同目录的那张卡描一圈，人一眼知道右边这块说的是谁
+    var list = $("mHomeList");
+    if (list) list.querySelectorAll(".m-home-card").forEach(function (c) {
+      c.classList.toggle("on", c.dataset.folder === p.folder);
+    });
   }
 
   function newProject() {
