@@ -1,43 +1,30 @@
-/* P193c 手机端首页 v2：分组、教程引导条、按下反馈、空态样例。
-   只加视觉层次，不加新导航层 —— 总纲第 13 节：结构两层，底栏 3 格。
+/* P194 手机端首页 v3：底栏五格（作品/教程/新建/导入/设置）、横屏详情改横排。
+   首页正文只留作品列表 + 一句说明 —— 新手教程、新建、导入、设置全收进底栏，
+   不再在正文里各占一块。只加视觉层次，不加新导航层。
    单独一个文件，不往已顶格预算的 editor.css / ui-fix.css 里塞。 */
 
-/* 「开始新的」只剩两格：三列网格会把两个按钮拉成扁条 */
-.m-quick.m-quick-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+/* 说明那句：竖屏跟在列表后面，不吸到底（原来这块容器 margin-top:auto 是为了
+   把「新建 / 导入」两格压到底，那两格删了，说明再吸底就是一句话吊在半空）。 */
+.m-home-tip { margin: 10px 2px 0 !important; font-size: 11.5px; line-height: 1.6; color: var(--overlay0); }
+/* editor.css 给这块容器挂了 margin-top:auto（原意把「新建/导入」压到底）；
+   那两格删了，说明再吸底就是一句话吊在半空，紧跟列表就好。 */
+.m-home-side { margin-top: 0 !important; }
+/* 有作品时列表不该被 flex 拉满整屏：拉满的结果是说明那句话被推到底栏边上，
+   中间一大片空，看着像列表只加载了一半。空态才需要列表撑满（.m-empty 自己 flex:1）。 */
+body.m-has-projects .m-home-list { flex: 0 0 auto !important; }
 
-/* 教程引导条：整宽一行，图标 + 两行字。
-   三格等宽按钮只能写「新手教程」四个字，说不清点了会发生什么。 */
-.m-tut-card {
-  display: flex; align-items: center; gap: 11px; width: 100%;
-  margin-top: 10px; padding: 12px 13px; min-height: 56px; cursor: pointer;
-  border-radius: 12px; text-align: left; font-family: inherit; color: var(--text);
-  background: rgba(79, 140, 255, .07);
-  background: color-mix(in srgb, var(--blue) 8%, transparent);
-  border: 1px solid rgba(79, 140, 255, .3);
-  border-color: color-mix(in srgb, var(--blue) 30%, transparent);
-  -webkit-tap-highlight-color: transparent;
-  transition: transform .12s ease, background .16s ease;
-}
-.m-tut-card:active { transform: scale(.985); background: rgba(79, 140, 255, .14); }
-.m-tut-ic {
-  flex: 0 0 auto; display: flex; align-items: center; justify-content: center;
-  width: 34px; height: 34px; border-radius: 10px; color: var(--blue);
-  background: color-mix(in srgb, var(--blue) 16%, transparent);
-}
-.m-tut-ic svg { width: 19px; height: 19px; }
-.m-tut-body { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
-.m-tut-t { font-size: 13.5px; font-weight: 600; color: var(--text); }
-.m-tut-d { font-size: 11.5px; line-height: 1.45; color: var(--subtext0); }
-.m-tut-go { flex: 0 0 auto; font-size: 17px; line-height: 1; color: var(--blue); }
-
-/* 引导条下面那句说明：纯文字，不再套一张卡（套卡会和上面那条抢重量） */
-.m-home-tip { margin: 9px 2px 0; font-size: 11.5px; line-height: 1.6; color: var(--overlay0); }
+/* 底栏五格：每格更窄，文字再收 0.5px，图标与字之间留 3px */
+.m-home-nav .m-nav-item { gap: 3px; }
+.m-home-nav .m-nav-item span { font-size: 10.5px; }
+/* 没有新内容时的空提示不再撑高整块 */
+.m-home-nav .m-nav-item.m-nav-new svg { stroke-width: 1.6; }
 
 /* 分组标题：最近在改 / 更早。只在两段都有内容时出现（JS 控制） */
 .m-home-grp { flex: 0 0 auto; display: flex; align-items: baseline; gap: 7px; margin: 16px 2px 8px; }
 .m-home-grp:first-child { margin-top: 2px; }
 .m-home-grp b { font-size: 12.5px; font-weight: 600; color: var(--subtext0); letter-spacing: .3px; }
 .m-home-grp i { font-style: normal; font-size: 11px; color: var(--overlay0); }
+
 /* ---------------- 横屏（平板 / 横过来的手机）：左列表 + 右详情 ----------------
    844×390 这种矮屏，竖着堆五段只会全挤成条。左列一列作品、右列是选中作品的详情
    加教程引导；点左边那张卡右侧跟着换，点「继续编辑」才进作品。
@@ -49,8 +36,8 @@
   /* 左列改单列：右侧要多放一块详情，两列卡片会把 chips 挤到换行。
      min-height:0 必须给 —— grid 子项默认不收缩，内容一高就顶出视口、被底栏切掉。 */
   .m-home-list { display: flex !important; flex-direction: column; gap: 6px; min-height: 0; overflow-y: auto; }
-  .m-home-detail { display: flex; flex-direction: column; gap: 6px; min-height: 0; overflow-y: auto; }
-  /* 右栏已经放了详情、教程和说明，原「开始新的」两格与底栏重复，整块收掉 */
+  .m-home-detail { display: flex; flex-direction: column; gap: 8px; min-height: 0; overflow-y: auto; }
+  /* 右栏已经放了详情、教程和说明，原「开始新的」整块与底栏重复，收掉 */
   .m-home-side { display: none !important; }
   /* 左列到底部给一段消隐：矮屏装不下第四张卡很正常，但一刀切在半张卡中间
      看起来像坏了。淡出一点，人能看出"下面还有，能滚"。 */
@@ -68,32 +55,30 @@
   .m-home-card .m-card-name { flex: 0 1 auto; max-width: 42%; font-size: 15px; }
   .m-home-card .m-card-chips { flex: 1 1 auto; margin-top: 0 !important; }
 
-  .m-det-hero {
-    flex: 0 0 auto; height: 72px; border-radius: 12px;
+  /* 详情第一行：正方形缩略图 + 名字/三个数 + 继续编辑，一行横排。
+     原来是一块铺满 380px 宽、72px 高的「封面」—— 5:1 的扁条，图被拉成横带，
+     看着不像封面（用户原话「比例不对」）。正方形图不裁不拉，还把垂直空间省下来。 */
+  .m-det-top { flex: 0 0 auto; display: flex; align-items: center; gap: 10px; }
+  .m-det-thumb {
+    flex: 0 0 auto; width: 52px; height: 52px; border-radius: 10px;
     border: 1px solid var(--surface0);
     background: var(--surface0) center/cover no-repeat;
   }
-  .m-det-hero.has { border-color: transparent; }
-  .m-det-name { font-size: 16px; font-weight: 600; line-height: 1.3; color: var(--text); }
+  .m-det-thumb.has { border-color: transparent; }
+  .m-det-id { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+  .m-det-name {
+    font-size: 15px; font-weight: 600; line-height: 1.3; color: var(--text);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
   .m-det-meta { font-size: 11.5px; color: var(--subtext0); }
   .m-det-go {
-    flex: 0 0 auto; height: 38px; border: 0; border-radius: 12px;
-    background: var(--blue); color: #fff; font-size: 13.5px; font-weight: 600;
+    flex: 0 0 auto; height: 36px; padding: 0 14px; border: 0; border-radius: 11px;
+    background: var(--blue); color: #fff; font-size: 13px; font-weight: 600;
     font-family: inherit; cursor: pointer;
   }
   .m-det-go:active { filter: brightness(.92); }
-  .m-det-tut {
-    flex: 0 0 auto; display: flex; flex-direction: column; align-items: stretch; gap: 1px;
-    margin-top: 2px; padding: 8px 10px; min-height: 44px; height: auto;
-    border-radius: 11px; text-align: left; font-family: inherit; cursor: pointer;
-    background: rgba(79, 140, 255, .08);
-    background: color-mix(in srgb, var(--blue) 8%, transparent);
-    border: 1px solid rgba(79, 140, 255, .28);
-    color: var(--text);
-  }
-  .m-det-tut .m-tut-t { display: block; font-size: 12.5px; line-height: 1.35; }
-  .m-det-tut .m-tut-d { display: block; font-size: 11px; line-height: 1.35; }
-  .m-det-tip { font-size: 11px; line-height: 1.45; color: var(--overlay0); }
+  /* 空列表：右栏只说一句话。教程、新建、导入都在底栏，不再重复画入口 */
+  .m-det-empty { font-size: 12.5px; line-height: 1.7; color: var(--subtext0); }
   /* 选中态：左列那张卡描一圈、名字变主色，一眼知道右侧说的是谁 */
   .m-home-card.on { border-color: rgba(79, 140, 255, .55); }
   .m-home-card.on .m-card-name { color: var(--blue); }
@@ -109,13 +94,10 @@
 .m-card-ghost:active { background: var(--mantle); }
 .m-card-ghost .m-card-name { color: var(--subtext1); font-weight: 500; }
 
-/* 一屏装得下「四张卡 + 新建 + 引导条 + 那句说明」：分组标题、列表间距、快捷格
-   各收几像素。收过头会挤，这里只收到刚好——390×844 上说明文本底边落在底栏之上。 */
+/* 一屏装得下「四张卡 + 引导条 + 那句说明」：分组标题、列表间距各收几像素 */
 .m-home-grp { margin: 10px 2px 6px; }
 .m-home-list { gap: 8px; }
-.m-quick-item { min-height: 62px; gap: 5px; }
 .m-home-sec { margin: 10px 2px 6px; }
-.m-home-tip { margin-top: 6px; }
 
 /* 卡片按下要有反馈：现在按下去和按完一个样，像没收到 */
 .m-home-card { transition: transform .12s ease; }
@@ -125,8 +107,7 @@
 .m-home-card.m-card-old { opacity: .94; }
 .m-home-card.m-card-old .m-card-thumb { width: 54px; height: 54px; }
 
-/* 空态：一句说明 + 一句成品台词当样例，不是「暂无数据」。
-   吃满列表区但内容竖直居中 —— 撑满却不居中，就是三行字吊在框顶、下面整片空。 */
+/* 空态：一句说明 + 一句成品台词当样例，不是「暂无数据」 */
 .m-empty {
   flex: 1 1 auto; min-height: 180px; display: flex; flex-direction: column;
   justify-content: center; gap: 7px;
@@ -141,3 +122,26 @@
   background: var(--mantle); border: 1px solid var(--surface0);
   font-size: 12.5px; line-height: 1.5;
 }
+
+/* ---------------- 底栏「教程」抽屉：语法速查 + 建一份可删练习 ----------------
+   教程不塞进 games/ 当示例工程，也不做成只读文档页：一行一句讲语法，
+   下面直接给「建一份练习」，出来的是能改、能导出、也能删掉的真作品。 */
+.m-tut-doc { display: flex; flex-direction: column; margin: 2px 0 12px; }
+.m-tut-line {
+  padding: 8px 0; border-bottom: 1px solid var(--surface0);
+  font-size: 12.5px; line-height: 1.6; color: var(--subtext1);
+}
+.m-tut-line:last-child { border-bottom: 0; }
+.m-tut-line b {
+  display: inline-block; min-width: 58px; margin-right: 6px;
+  color: var(--text); font-weight: 600;
+}
+.m-tut-start {
+  display: flex; flex-direction: column; gap: 3px; width: 100%;
+  min-height: 52px; padding: 10px 14px; cursor: pointer;
+  border: 0; border-radius: 12px; background: var(--blue); color: #fff;
+  font-family: inherit; font-size: 14px; font-weight: 600; text-align: left;
+  -webkit-tap-highlight-color: transparent;
+}
+.m-tut-start span { font-size: 11.5px; font-weight: 400; opacity: .85; }
+.m-tut-start:active { filter: brightness(.94); }

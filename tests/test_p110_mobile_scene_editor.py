@@ -20,7 +20,7 @@ import pytest
 pytestmark = [pytest.mark.unit]
 
 ROOT = Path(__file__).resolve().parents[1]
-MOBILE_JS = ROOT / "editor" / "editor_mobile.js"
+MOBILE_JS = ROOT / "editor" / "mobile" / "editor_mobile.js"
 CSS = ROOT / "editor" / "editor.css"
 HTML = ROOT / "editor" / "index.html"
 

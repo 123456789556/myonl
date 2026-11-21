@@ -2025,7 +2025,6 @@ input[type="color"] {
 .m-nav-item:active { background: var(--surface0); }
 .m-home { padding-bottom: calc(64px + env(safe-area-inset-bottom)); }
 
-/* 手机横过来（矮屏）：导航转成左侧竖条，不跟正文抢高度，拇指也够得到 */
 /* 横屏：导航仍留在底部。
    曾经把它转成左侧竖条省高度，实测 64px 的竖条还是压住了「我的作品」标题，
    而且用户的要求本来就是「屏幕下方有几个可点的」——横过来也别把导航搬走。

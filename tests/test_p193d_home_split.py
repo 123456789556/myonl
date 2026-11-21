@@ -41,16 +41,18 @@ def test_横屏点卡片先选中不直接进():
     assert "openProject(b.dataset.folder, b);" in HOME_JS
 
 
-def test_详情面板有唯一主操作与教程入口():
+def test_详情面板有唯一主操作():
     assert "function paintDetail(projects)" in HOME_JS
     assert 'class="m-det-go">继续编辑' in HOME_JS
-    assert 'class="m-det-tut"' in HOME_JS
     assert "box.querySelector(\".m-det-go\").addEventListener(\"click\", function () { openProject(p.folder); });" in HOME_JS
+    # P194：教程已进底栏第二格，右栏不再挂第二条教程入口（同一件事第三个位置）
+    assert "m-det-tut" not in HOME_JS
 
 
-def test_横屏空列表右栏仍有教程():
-    # 横屏把「开始新的」整块收掉，右栏是教程唯一入口；空列表不画右栏 = 新手找不到教程
-    assert "box.innerHTML = tutRow;" in HOME_JS
+def test_横屏空列表右栏只给一句指路():
+    # 入口都在底栏（教程 / 新建 / 导入），右栏画按钮就是重复；但空列表不能什么都不画
+    assert "box.innerHTML = '<div class=\"m-det-empty\">" in HOME_JS
+    assert "点底部「教程」照着走一遍，或「新建」直接开写。" in HOME_JS
     assert "paintDetail(projects);\n  }" in HOME_JS
 
 

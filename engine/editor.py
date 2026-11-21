@@ -953,10 +953,11 @@ class _EditorHandler(BaseHTTPRequestHandler):
     # ---- 路由实现 ----
 
     def _serve_editor_file(self, name: str, mime: str) -> None:
-        p = os.path.join(_editor_front_dir(), name)
-        if not os.path.isfile(p):
-            # parser.js / pack.js 是内核，住在 engine/，电脑端和手机端共用同一份
-            p = os.path.join(os.path.dirname(os.path.abspath(__file__)), name)
+        front = _editor_front_dir()
+        # 手机端专属住 editor/mobile/（P194 按端分目录）；parser.js/pack.js 是内核，住在 engine/
+        dirs = (front, os.path.join(front, "mobile"), os.path.dirname(os.path.abspath(__file__)))
+        p = next((os.path.join(d, name) for d in dirs if os.path.isfile(os.path.join(d, name))),
+                 os.path.join(front, name))
         try:
             with open(p, "rb") as f:
                 body = f.read()
@@ -993,7 +994,6 @@ class _EditorHandler(BaseHTTPRequestHandler):
     def _serve_index(self, parsed=None) -> None:
         self._serve_editor_file("index.html", "text/html; charset=utf-8")
     def _serve_editor_css(self, parsed=None) -> None:
-        # 样式表按请求路径取文件（editor.css / strip.css / ui-fix.css / mobile/home.css 共用这个方法）
         name = parsed.path.lstrip("/") if parsed is not None and parsed.path else "editor.css"
         self._serve_editor_file(name if name.endswith(".css") else "editor.css",
                                 "text/css; charset=utf-8")

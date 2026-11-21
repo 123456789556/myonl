@@ -31,6 +31,9 @@
       try { closeDemo(); } catch (e) { }
       return true;
     }
+    // 1.5 设置 / 教程抽屉开着 → 先关抽屉。返回键逐层退：抽屉 → 作品列表 → 退出应用
+    if (sheet) { sheet.remove(); sheet = null; return true; }
+    if (tutSheet) { tutSheet.remove(); tutSheet = null; return true; }
     // 2. 正在编辑某个作品 → 回工作台，而不是把应用退掉
     try {
       if (sessionStorage.getItem(EDIT_KEY) === "1") {
@@ -75,55 +78,39 @@
     '<div class="m-home-head">' +
       '<div><div class="m-home-title">我的作品</div>' +
       '<div class="m-home-sub" id="mHomeSub"></div></div>' +
-      '<button type="button" class="m-home-set" id="mHomeSet">设置</button>' +
     '</div>' +
     '<div class="m-home-list" id="mHomeList"></div>' +
     // P193d：横屏（平板 / 横过来的手机）右侧的「最近在改」详情。
     // 竖屏不显示（CSS 收掉）—— 竖屏一屏只放一个主角，列表就是主角。
     '<div class="m-home-detail" id="mHomeDetail"></div>' +
     '<div class="m-home-side">' +
-      '<div class="m-home-sec">开始新的</div>' +
-      '<div class="m-quick m-quick-2">' +
-        '<button type="button" class="m-quick-item" id="mHomeNew">' +
-          '<b>＋</b><span>新建作品</span></button>' +
-        '<button type="button" class="m-quick-item" id="mHomeImport">' +
-          '<b>&#8615;</b><span>导入作品</span></button>' +
-      '</div>' +
-      // P193c：新手教程从三格等宽按钮里独立出来，做成一条引导。
-      // 原来这里是「试玩示例」，点开是 game.html 里那份和编辑器无关的黑盒 demo；
-      // 换成真的建一份能打开、能改、能导出的短作品，让人第一眼看到"这东西长什么样"。
-      // 三格按钮只说明"这里有个东西"，说不清"点了会怎样"——独立一条才有位置写两句人话。
-      '<button type="button" class="m-tut-card" id="mHomeTut">' +
-        '<span class="m-tut-ic">' + ico("M3.2 3h9.6v10H3.2zM6.5 6.1l3.4 1.9-3.4 1.9z") + '</span>' +
-        '<span class="m-tut-body">' +
-          '<span class="m-tut-t">新手教程：先照着走一遍</span>' +
-          '<span class="m-tut-d">建一份 21 条的短作品，改两句就懂</span>' +
-        '</span>' +
-        '<span class="m-tut-go">›</span>' +
-      '</button>' +
-      // 用户要的那段说明：放在下面、一句话、讲清"现在能做什么"。
-      // 不写"仅为示例"这种免责话——新人看到的第一句应该是有用的信息。
+      // P194：这组「新建作品 / 导入作品」两格删了 —— 底栏第三、四格就是同一个动作，
+      // 一屏摆两处同一件事，人会以为是两条不同的路。
+      // P194：新手教程引导卡也整条删了（用户：这块可以删）。教程入口收进底栏第二格。
+      // 用户要的那段说明保留：一句话、讲清"现在能做什么"。
       '<div class="m-home-tip">没图没音乐也能先写台词，画面在「素材」里补。</div>' +
       // P176：这里原本还有一块「三步上手」。删了 —— 编辑器菜单里已经有
-      // 「帮助 → 新手引导」，同一套教程摆两处，首页就多占五六行高度，
-      // 而且它只在空列表时出现，等于新用户第一次进来看到的是两套重复的说明。
-      '</div>' +
+      // 「帮助 → 新手引导」，同一套教程摆两处，首页就多占五六行高度。
     '</div>' +
-    // 底部导航：手机/平板的拇指够得到的位置，三个都是真动作，不留哑按钮。
-    // 横屏矮屏时 CSS 把它转成左侧竖条，不跟正文抢高度（P193 起首页层直接藏掉编辑器底栏）。
+    // 底部导航：手机/平板拇指够得到的位置。P194 起五格，全是真动作，不留哑按钮：
+    // 作品 / 教程 / 新建 / 导入 / 设置。教程和设置原来散在首页卡片和页头右上角，
+    // 收进底栏后首页正文只剩作品列表，一屏一个主角。
     '<div class="m-home-nav" id="mHomeNav">' +
       '<button type="button" class="m-nav-item on" data-nav="home">' +
         ico('M2.6 4.2h10.8v8.2a.8.8 0 0 1-.8.8H3.4a.8.8 0 0 1-.8-.8V4.2zM2.6 6.6h10.8') +
         '<span>作品</span></button>' +
-      '<button type="button" class="m-nav-item" data-nav="new">' +
+      '<button type="button" class="m-nav-item" data-nav="tut" id="mHomeTut">' +
+        ico('M3 2.8h7.2a2 2 0 0 1 2 2v8.4H5a2 2 0 0 1-2-2V2.8zM5.4 5.6h4.4M5.4 8h4.4') +
+        '<span>教程</span></button>' +
+      '<button type="button" class="m-nav-item m-nav-new" data-nav="new">' +
         ico('M8 2.6v10.8M2.6 8h10.8') +
         '<span>新建</span></button>' +
       '<button type="button" class="m-nav-item" data-nav="import">' +
         ico('M8 2.2v7.4M4.9 6.6l3.1 3.1 3.1-3.1M2.6 12.6h10.8') +
         '<span>导入</span></button>' +
-    // P193：底部不放「设置」。它是低频项，且和「新建 / 导入」不是一个类；
-    // 顶部右上角已经有 #mHomeSet，一处入口够了。第一层底栏留三格，数量与第二层
-    // （剧本 / 素材 / 导出）对齐，人一眼能分"我在外面"还是"我在里面"。
+      '<button type="button" class="m-nav-item" data-nav="set">' +
+        ico('M8 5.4a2.6 2.6 0 1 0 0 5.2 2.6 2.6 0 0 0 0-5.2zM8 2.4v1.4M8 12.2v1.4M2.4 8h1.4M12.2 8h1.4M4 4l1 1M11 11l1 1M12 4l-1 1M5 11l-1 1') +
+        '<span>设置</span></button>' +
     '</div>';
   document.body.appendChild(layer);
 
@@ -253,32 +240,35 @@
       window.matchMedia("(min-width:700px) and (max-height:520px)").matches);
   }
 
-  // 右栏详情：大封面 + 名字 + 三个数 + 唯一主操作，下面接教程引导和那句说明。
+  // 右栏详情：缩略图 + 名字 + 三个数 + 唯一主操作。
   // 竖屏由 CSS 收掉，所以两套文案不会同屏出现两次。
+  // P194 删掉这里的「新手教程」条与说明：教程已经进底栏第二格，说明那句留在竖屏列表下，
+  // 右栏再摆一遍就是同一件事第三个位置。
   function paintDetail(projects) {
     var box = $("mHomeDetail");
     if (!box) return;
-    var tutRow =
-      '<button type="button" class="m-det-tut">' +
-        '<span class="m-tut-t">新手教程：先照着走一遍</span>' +
-        '<span class="m-tut-d">建一份 21 条的短作品，改两句就懂</span>' +
-      '</button>' +
-      '<div class="m-det-tip">没图没音乐也能先写台词，画面在「素材」里补。</div>';
     var p = projects.filter(function (x) { return x.folder === selFolder; })[0] || projects[0];
     if (!p) {
-      // 空列表：右栏只剩教程 + 说明（新建/导入在底栏，不重复摆）
-      box.innerHTML = tutRow;
-      box.querySelector(".m-det-tut").addEventListener("click", openTutorial);
+      // 空列表：右栏只说"去哪儿开始"。入口都在底栏，不再重复画按钮
+      box.innerHTML = '<div class="m-det-empty">还没有作品。<br>' +
+        '点底部「教程」照着走一遍，或「新建」直接开写。</div>';
       return;
     }
     var f = p.folder.replace(/"/g, "&quot;");
+    // 版面顺序：缩略图 + 名字 + 三个数 + 主操作，一行横排。
+    // 原来是「铺满整列的 72px 高封面」—— 380px 宽只要 72px 高，5:1 的扁条，
+    // 图被拉成一条横带、看着就不像封面（用户原话「比例不对」）。正方形小图不裁不拉。
     box.innerHTML =
-      '<div class="m-det-hero" data-folder="' + f + '"></div>' +
-      '<div class="m-det-name">' + p.name.replace(/</g, "&lt;") + '</div>' +
-      '<div class="m-det-meta">' + p.ins + ' 条指令 · ' + p.assets + ' 个素材 · ' + ago(p.mtime) + '</div>' +
-      '<button type="button" class="m-det-go">继续编辑</button>' + tutRow;
-    // 封面单独请求：拿不到就留渐变底，不阻塞
-    var hero = box.querySelector(".m-det-hero");
+      '<div class="m-det-top">' +
+        '<span class="m-det-thumb" data-folder="' + f + '"></span>' +
+        '<span class="m-det-id">' +
+          '<span class="m-det-name">' + p.name.replace(/</g, "&lt;") + '</span>' +
+          '<span class="m-det-meta">' + p.ins + ' 条 · ' + p.assets + ' 素材 · ' + ago(p.mtime) + '</span>' +
+        '</span>' +
+        '<button type="button" class="m-det-go">继续编辑</button>' +
+      '</div>';
+    // 封面单独请求：拿不到就留空底，不阻塞
+    var hero = box.querySelector(".m-det-thumb");
     var img = new Image();
     img.onload = function () {
       hero.style.backgroundImage = 'url("/api/thumb?folder=' + encodeURIComponent(p.folder) + '")';
@@ -286,7 +276,6 @@
     };
     img.src = "/api/thumb?folder=" + encodeURIComponent(p.folder);
     box.querySelector(".m-det-go").addEventListener("click", function () { openProject(p.folder); });
-    box.querySelector(".m-det-tut").addEventListener("click", openTutorial);
     // 选中态：左列表里同目录的那张卡描一圈，人一眼知道右边这块说的是谁
     var list = $("mHomeList");
     if (list) list.querySelectorAll(".m-home-card").forEach(function (c) {
@@ -525,6 +514,47 @@
     }
   }
 
+  // ---- 教程：底栏第二格。语法速查 + 建一份可删的练习 ----
+  // 不做成纯只读文档：看完立刻能点「建一份练习」，得到一份真能改、能导出、
+  // 也能随手删掉的短作品。教程不塞进 games/ 的示例堆里靠代码硬识别，
+  // 玩家想自己写就自己建，教程只是起点。
+  var tutSheet = null;
+  function openTutorialSheet() {
+    if (tutSheet) { tutSheet.remove(); tutSheet = null; return; }
+    tutSheet = document.createElement("div");
+    tutSheet.className = "m-sheet m-set-sheet on";
+    tutSheet.innerHTML =
+      '<div class="m-sheet-mask"></div>' +
+      '<div class="m-sheet-body">' +
+        '<div class="m-sheet-grab"></div>' +
+        '<div class="m-sheet-title">教程' +
+          '<button type="button" class="m-set-done" id="mTutDone">完成</button></div>' +
+        '<div class="m-tut-doc">' +
+          '<div class="m-tut-line"><b>一行一句话</b>剧本里一行就是游戏里的一屏，直接写。</div>' +
+          '<div class="m-tut-line"><b>角色台词</b>@[小满] 这一句是角色台词 —— 方括号里就是说话人，不用先建角色。</div>' +
+          '<div class="m-tut-line"><b>旁白</b>@[旁白] 现在可以开始了</div>' +
+          '<div class="m-tut-line"><b>分支</b>@choice: 下面写 &gt; 选项文字 -&gt; 标签</div>' +
+          '<div class="m-tut-line"><b>画面</b>底部「素材」放图，点一下插成背景；音乐视频同一个入口。</div>' +
+          '<div class="m-tut-line"><b>导出</b>成品是一个 html，发给谁都能双击玩；也能出安卓安装包。</div>' +
+        '</div>' +
+        '<button type="button" class="m-tut-start" id="mTutStart">' +
+          '建一份练习（可删）' +
+          '<span>21 句话的短作品，改两句就懂</span></button>' +
+        '<div class="m-set-note">练习就是一份普通作品，建在你自己的列表里；不想要就删掉，不影响别的。</div>' +
+      '</div>';
+    document.documentElement.appendChild(tutSheet);
+    tutSheet.querySelector(".m-sheet-mask").addEventListener("click", function () {
+      tutSheet.remove(); tutSheet = null;
+    });
+    tutSheet.querySelector("#mTutDone").addEventListener("click", function () {
+      tutSheet.remove(); tutSheet = null;
+    });
+    tutSheet.querySelector("#mTutStart").addEventListener("click", function () {
+      tutSheet.remove(); tutSheet = null;
+      openTutorial();
+    });
+  }
+
   fetch("/api/home").then(function (r) { return r.json(); }).then(function (res) {
     if (!res.ok) throw new Error("读不到作品列表");
     orient = res.orientation || "any";
@@ -537,9 +567,7 @@
     if (sk) sk.addEventListener("click", enterEditor);
   });
 
-  // 设置只剩页头右上角一个入口（三格里的那个删了，同一功能摆两处会让人以为是两件事）
-  var sb = $("mHomeSet");
-  if (sb) sb.addEventListener("click", openSettings);
+  // 设置入口收进底栏第五格（页头右上角那个删了，同一功能摆两处会让人以为是两件事）
   var nb = $("mHomeNew");
   if (nb) nb.addEventListener("click", newProject);
   var ib = $("mHomeImport");
@@ -554,6 +582,7 @@
       if (kind === "new") newProject();
       else if (kind === "import") importProject();
       else if (kind === "set") openSettings();
+      else if (kind === "tut") openTutorialSheet();
       else layer.scrollTo({ top: 0, behavior: "smooth" });
     });
   }
@@ -636,6 +665,6 @@
     }).catch(function (e) { toast(e.message || "建不了教程"); });
   }
 
-  var tut = $("mHomeTut");
-  if (tut) tut.addEventListener("click", openTutorial);
+  // 教程入口在底栏（id=mHomeTut），点击走 nav 委托 → openTutorialSheet，
+  // 这里不再单独绑一次，否则同一下点击会既开抽屉又直接建工程。
 })();
