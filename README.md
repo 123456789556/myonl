@@ -3,7 +3,7 @@
 **简体中文** | [English](README.en.md)
 
 [![tests](https://github.com/123456789556/myonl/actions/workflows/tests.yml/badge.svg?branch=main)](https://github.com/123456789556/myonl/actions/workflows/tests.yml)
-![Release](https://img.shields.io/badge/release-v1.2.14-blue)
+![Release](https://img.shields.io/badge/release-v1.2.15-blue)
 ![License](https://img.shields.io/badge/License-MIT-green)
 ![Platform](https://img.shields.io/badge/platform-Android%207.0%2B%20%C2%B7%20Windows%20%C2%B7%20Web-19b6a3)
 ![Offline](https://img.shields.io/badge/offline-100%25-2ea44f)
@@ -213,7 +213,7 @@ python tools/pack_apk.py --game dist/single/你的作品.html
 
 ## 装它
 
-**[⬇ 下载 MYONL-v1.2.14.apk](https://github.com/123456789556/myonl/releases/download/v1.2.14/MYONL-v1.2.14.apk)** · 安卓 7.0 以上 · 只按手机屏幕做，平板能装但没专门适配
+**[⬇ 下载 MYONL-v1.2.15.apk](https://github.com/123456789556/myonl/releases/download/v1.2.15/MYONL-v1.2.15.apk)** · 安卓 7.0 以上 · 只按手机屏幕做，平板能装但没专门适配
 
 装好打开就是书架，点「新建作品」开始。底部「导出」有两条出口：
 自包含 `.html`（发微信对方就能玩）和 APK（装到手机上就是一个独立 App）。
@@ -513,3 +513,4 @@ A Windows desktop build (double-click, no Python on the player's machine) ships 
 代码 MIT（见 [LICENSE](LICENSE)）。第三方组件与素材的分法见上文[许可与素材](#许可与素材)，逐条声明在 [NOTICE](NOTICE)。
 
 > 本产品完全离线运行，不依赖任何在线服务。
+

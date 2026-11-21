@@ -3,7 +3,7 @@
 [简体中文](README.md) | **English**
 
 ![tests](https://github.com/123456789556/myonl/actions/workflows/tests.yml/badge.svg?branch=main)
-![Release](https://img.shields.io/badge/release-v1.2.14-blue)
+![Release](https://img.shields.io/badge/release-v1.2.15-blue)
 ![Android](https://img.shields.io/badge/Android-7.0%2B%20phone%20%26%20tablet-3DDC84)
 ![Windows](https://img.shields.io/badge/Windows-desktop%20packager-0078D4)
 ![Python](https://img.shields.io/badge/Python-3.9%2B-3776AB)
@@ -26,7 +26,7 @@ scenes, keep everything on the device, and export it — no network, no account,
 
 | You want | Take |
 | :--- | :--- |
-| Android phone or tablet, installed | [**MYONL-v1.2.14.apk**](https://github.com/123456789556/myonl/releases/download/v1.2.14/MYONL-v1.2.14.apk) |
+| Android phone or tablet, installed | [**MYONL-v1.2.15.apk**](https://github.com/123456789556/myonl/releases/download/v1.2.15/MYONL-v1.2.15.apk) |
 | Any browser, nothing installed | a single-file HTML you exported |
 | Windows, double-click (editor + packager) | build it in-repo: `py -3 tools/build_release_zip.py` |
 
@@ -203,3 +203,4 @@ would be redistribution and does not belong in this repo.
 MIT (see [LICENSE](LICENSE)). Third-party components and asset terms are listed in [NOTICE](NOTICE).
 
 > This product runs fully offline and depends on no online service.
+

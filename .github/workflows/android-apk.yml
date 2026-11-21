@@ -188,7 +188,7 @@ jobs:
         with:
           name: "MYONL 安卓包 ${{ github.ref_name }}"
           body: |
-            直接装：下载下面的 .apk（约 4.4 MB）传进手机，允许"未知来源"安装即可。
+            直接装：下载下面的 .apk（约 4 MB）传进手机，允许"未知来源"安装即可。
 
             装上打开就是**编辑器**：新建作品、写剧本、存本机、随时把 `.gal` 导出带走（不上云，不需要联网）。
 
@@ -227,4 +227,5 @@ jobs:
             gh release delete "$t" --repo "$GITHUB_REPOSITORY" --yes --cleanup-tag || echo "删 $t 失败，跳过"
           done
           echo "清理完成"
+
 
