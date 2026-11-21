@@ -227,7 +227,8 @@ html.kb-open .m-sheet-body { bottom: var(--kb-h, 0px) !important; }
   .pv-sep { height: 1px; margin: 3px 7px; background: rgba(255,255,255,.14); }
   /* 浮条挂在 .preview-wrap 上（previewWrap 每帧被 innerHTML 重写，挂不进去） */
   .preview-wrap.pv-rail-host { position: relative; }
-  /* 底栏只留三个内容 tab；外观/预览改由菜单和顶栏触发 */
+  /* P197：底栏五格（剧本/素材/外观/预览/导出）。P189 曾把外观、预览藏起来，
+     真机反馈是「砍掉一半」—— 入口藏起来就等于没有。 */
   .m-tabbar .m-tab.m-tab-hidden { display: none !important; }
   /* 顶栏「预览」：跟菜单同排，描边而非实心 —— 顶栏的主按钮是返回 */
   .m-top-preview {

@@ -29,31 +29,34 @@ def build(out_file: Path) -> dict:
     # <script src="/x.js?v=p98"></script> → 内联
     def inline_js(m: re.Match) -> str:
         fname = m.group(1)
-        # parser.js / pack.js 住在 engine/（它们是内核，电脑端和手机端共用同一份）
+        # 找文件的三条路：editor/ 根、editor/mobile/（P194 起手机端单独住）、engine/（内核共用）
         path = EDITOR / fname
+        if not path.is_file():
+            path = EDITOR / "mobile" / fname
         if not path.is_file():
             path = ROOT / "engine" / fname
         if not path.is_file():
-            return ""     # 拿不到就留空，别让它变成一次 404
+            raise SystemExit("单文件打包：找不到 %s，别让它静默变成 404" % fname)
         body = path.read_text(encoding="utf-8")
         body = body.replace("</script>", "<\\/script>")   # 防止提前闭合
         return "<script>\n/* ==== %s ==== */\n%s\n</script>" % (fname, body)
 
     html, n_js = re.subn(
-        r'<script src="/([A-Za-z0-9_]+\.js)(?:\?v=[^"]*)?"[^>]*></script>',
+        r'<script src="/((?:[A-Za-z0-9_-]+/)*[A-Za-z0-9_]+\.js)(?:\?v=[^"]*)?"[^>]*></script>',
         inline_js,
         html,
     )
 
-    # <link rel="stylesheet" href="/editor.css"> → 内联
+    # <link rel="stylesheet" href="/editor.css"> → 内联（P197c 起允许 mobile/ 这种子目录路径）
     def inline_css(m: re.Match) -> str:
-        path = EDITOR / m.group(1)
+        fname = m.group(1)
+        path = EDITOR / fname
         if not path.is_file():
-            return ""
+            raise SystemExit("单文件打包：找不到样式 %s" % fname)
         return "<style>\n%s\n</style>" % path.read_text(encoding="utf-8")
 
     html, n_css = re.subn(
-        r'<link[^>]*href="/([A-Za-z0-9_-]+\.css)(?:\?v=[^"]*)?"[^>]*>',
+        r'<link[^>]*href="/((?:[A-Za-z0-9_-]+/)*[A-Za-z0-9_-]+\.css)(?:\?v=[^"]*)?"[^>]*>',
         inline_css,
         html,
     )

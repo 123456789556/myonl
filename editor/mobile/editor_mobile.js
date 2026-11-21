@@ -449,5 +449,64 @@
     ta.dispatchEvent(new Event("input", { bubbles: true }));
   }, true);
 
+  // P197：手机上「检查器 / 时间线」是桌面右栏的分段，点了只切右栏内部区块 ——
+  // 手机右栏在抽屉里，主界面看不到任何变化，于是这两个按钮在真机上就是"点了没反应"。
+  // 手机上直接收掉：预览有底栏那一格，检查器/时间线留给电脑。
+  function dropRightTabs() {
+    var t = document.getElementById("rightTabs");
+    if (t && narrow()) t.remove();
+  }
+  dropRightTabs();
+  document.addEventListener("click", function (e) {
+    var t = e.target;
+    if (t && t.closest && t.closest("#btnUIDesign")) setTimeout(function () { boot(); dropRightTabs(); }, 80);
+  }, true);
+
+  // P197b：手机端「导出」不该是"打开一整个界面设计弹窗、还要自己滑到底才看见导出"。
+  // 点导出就把弹窗收成导出页：只留导出条（.off-export / .uid-web），参数区全部收起；
+  // 切回「外观」或关弹窗时再放回来。桌面端不动。原来单独一个 export_sheet.js，
+  // 但静态路由是白名单，多一个文件就要多一条路由 + 多一个打包清单项，合进来省两处。
+  var attHidden = [];   // [元素, 原 display]
+  var txtHidden = [];   // [元素, 原文字]
+  function exportModal() { return document.getElementById("uiDesignModal") || document.querySelector(".ui-design-modal"); }
+  function hideEl(el) {
+    if (!el || !el.style || el.style.display === "none") return;
+    attHidden.push([el, el.style.display]);
+    el.style.display = "none";
+  }
+  function focusExport() {
+    if (!(navigator.maxTouchPoints > 0 && Math.min(window.innerWidth, window.innerHeight) < 700)) return;
+    var m = exportModal();
+    if (!m) return;
+    restoreExport();
+    m.querySelectorAll(".ui-design-form, .m-subbody, .modal-body").forEach(function (f) {
+      f.childNodes.forEach(function (c) {
+        if (c.nodeType !== 1) return;
+        if (c.classList.contains("off-export") || c.classList.contains("uid-web")) return;
+        if (!c.textContent.trim() && !c.querySelector("button, input, img")) return;
+        hideEl(c);
+      });
+    });
+    m.querySelectorAll(".right-tabs, .uid-tabs, .ui-design-tabs, .uid-nav, .ui-dl").forEach(hideEl);
+    m.querySelectorAll(".cp-title, .uid-title, .modal-title").forEach(function (t) {
+      if (/导出/.test(t.textContent)) return;
+      txtHidden.push([t, t.textContent]);
+      t.textContent = "导出";
+    });
+    var bar = m.querySelector(".off-export, .uid-web");
+    if (bar && bar.scrollIntoView) bar.scrollIntoView({ block: "start" });
+  }
+  function restoreExport() {
+    attHidden.forEach(function (h) { if (h[0].style) h[0].style.display = h[1]; });
+    txtHidden.forEach(function (h) { h[0].textContent = h[1]; });
+    attHidden = [];
+    txtHidden = [];
+  }
+  window.__mExport = { focus: focusExport, restore: restoreExport };
+  document.addEventListener("click", function (e) {
+    var t = e.target;
+    if (t && t.closest && t.closest("#uidClose, .uid-close")) setTimeout(restoreExport, 60);
+  }, true);
+
   window.MYONLMobile = { boot: boot, closeGroup: closeGroup, refresh: refreshSummaries };
 })();

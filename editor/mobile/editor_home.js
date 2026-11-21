@@ -37,6 +37,8 @@
     // 1.5 设置 / 教程抽屉开着 → 先关抽屉。返回键逐层退：抽屉 → 作品列表 → 退出应用
     if (sheet) { sheet.remove(); sheet = null; return true; }
     if (tutSheet) { tutSheet.remove(); tutSheet = null; return true; }
+    // 1.6 作品页开着 → 退回作品列表（P197：这一层是新增的，返回键要认得它）
+    if (typeof workEl !== "undefined" && workEl) { workEl.remove(); workEl = null; return true; }
     // 2. 正在编辑某个作品 → 回工作台，而不是把应用退掉
     try {
       if (sessionStorage.getItem(EDIT_KEY) === "1") {
@@ -47,6 +49,26 @@
     // 3. 工作台本身就是最外层，返回就是退出应用 —— 交给壳
     return false;
   };
+
+  // P197：作品页点「播放 / 素材 / 导出」会整页 reload（工程根变了）。reload 后这个 IIFE
+  // 会先撞上下面那条「已在编辑器里就 return」，所以接住待打开 tab 的代码必须放在它前面。
+  function firePendingTab() {
+    var tab = null;
+    try { tab = sessionStorage.getItem("myonl:enterTab"); } catch (e) {}
+    if (!tab) return;
+    var tries = 0;
+    var tick = function () {
+      var b = document.querySelector('.m-tab[data-tab="' + tab + '"]');
+      if (b) {
+        try { sessionStorage.removeItem("myonl:enterTab"); } catch (e) {}
+        b.click();
+        return;
+      }
+      if (++tries < 15) setTimeout(tick, 120);
+    };
+    setTimeout(tick, 200);
+  }
+  firePendingTab();
 
   try { if (sessionStorage.getItem(EDIT_KEY) === "1") return; } catch (e) {}
 
@@ -244,7 +266,7 @@
         // 横屏走「先选中、右侧看详情、点继续编辑才进」；
         // 竖屏保持一点就进 —— 一屏只有一个主角，多一步反而累。
         if (splitMode()) { selFolder = b.dataset.folder; paintDetail(projects); return; }
-        openProject(b.dataset.folder, b);
+        openWork(b.dataset.folder);
       });
     });
     var gh = $("mHomeGhost");
@@ -305,7 +327,7 @@
       hero.classList.add("has");
     };
     img.src = "/api/thumb?folder=" + encodeURIComponent(p.folder);
-    box.querySelector(".m-det-go").addEventListener("click", function () { openProject(p.folder); });
+    box.querySelector(".m-det-go").addEventListener("click", function () { openWork(p.folder); });
     // 选中态：左列表里同目录的那张卡描一圈，人一眼知道右边这块说的是谁
     var list = $("mHomeList");
     if (list) list.querySelectorAll(".m-home-card").forEach(function (c) {
@@ -358,12 +380,15 @@
     setTimeout(function () { t.remove(); }, 2400);
   }
 
-  function openProject(folder, btn) {
+  function openProject(folder, btn, tab) {
     if (btn) { btn.disabled = true; btn.classList.add("busy"); }
     // P193：进作品前把作品名记下来。进去之后是整页 reload，编辑器顶栏只剩一个文件名
     // （script.gal），人分不清在改哪个作品。名字走 sessionStorage 传过去，reload 不掉。
     try {
       sessionStorage.setItem("myonl:projName", String(folder).split(/[\\/]/).pop());
+      // P197：作品页上点「播放 / 素材 / 导出」进编辑器后要自动落到那一格
+      if (tab) sessionStorage.setItem("myonl:enterTab", tab);
+      else sessionStorage.removeItem("myonl:enterTab");
     } catch (e) {}
     fetch("/api/project", {
       method: "POST",
@@ -380,6 +405,68 @@
       t.textContent = e.message || "打不开这个工程";
       layer.appendChild(t);
       setTimeout(function () { t.remove(); }, 2200);
+    });
+  }
+
+  // ---- 作品页（P197）：点作品先进这一屏，不直接进编辑器 ----
+  // 为什么加这一层：点卡就进编辑器，等于第一次用的人打开就是行号、等宽字、@ 指令。
+  // 这一屏先给封面和「播放」，人能立刻知道"这是个能玩的东西"，再决定改不改。
+  var workEl = null;
+  function openWork(folder) {
+    var p = null;
+    for (var i = 0; i < allProjects.length; i++) {
+      if (allProjects[i].folder === folder) p = allProjects[i];
+    }
+    if (!p) return;
+    if (workEl) workEl.remove();
+    workEl = document.createElement("div");
+    workEl.className = "m-work";
+    // P197b 作品工作台：封面 + 「写 / 玩」两个入口 + 创作资源清单。
+    // 不走纯编辑器那一套：这一屏要先让人看见"这是个能玩的作品"，
+    // 再由他自己点进去改。资源清单里的每一项都是真入口，点了就跳对应页。
+    workEl.innerHTML =
+      '<div class="m-work-head">' +
+        '<button type="button" class="m-work-back" id="mWorkBack">‹ 作品</button>' +
+        '<span class="m-work-dot">' + ago(p.mtime) + '</span>' +
+      '</div>' +
+      '<div class="m-work-body">' +
+        '<div class="m-work-hero">' +
+          '<div class="m-work-cover"><img alt=""></div>' +
+          '<div class="m-work-title">' + String(p.name).replace(/</g, "&lt;") + '</div>' +
+          '<div class="m-work-meta">' + (p.ins || 0) + ' 句台词 · ' + ago(p.mtime) + '</div>' +
+          '<button type="button" class="m-work-play" id="mWorkPlay">▶ 播放看一遍</button>' +
+          '<button type="button" class="m-work-write" id="mWorkWrite">✎ 继续创作</button>' +
+        '</div>' +
+        '<div class="m-work-side">' +
+          '<div class="m-work-sec"><span>创作资源</span><i></i></div>' +
+          '<div class="m-work-rows">' +
+            '<button type="button" data-tab="script"><b>剧本</b><span>' + (p.ins || 0) + ' 句台词</span><em>›</em></button>' +
+            '<button type="button" data-tab="assets"><b>素材</b><span>立绘 背景 音频 语音</span><em>›</em></button>' +
+            '<button type="button" data-tab="look"><b>外观</b><span>画面比例 字号 主题</span><em>›</em></button>' +
+            '<button type="button" data-tab="export"><b>导出</b><span>出成能发出去的包</span><em>›</em></button>' +
+          '</div>' +
+        '</div>' +
+      '</div>';
+    document.body.appendChild(workEl);
+    var img = workEl.querySelector(".m-work-cover img");
+    var cv = workEl.querySelector(".m-work-cover");
+    // 先把渐变 + 首字垫上，图真加载出来再换成图。反过来做的话没图的工程
+    // 会先闪一块死灰（离线设备 / 新作品都是这个情形）。
+    cv.classList.add("empty");
+    cv.dataset.ch = String(p.name || "作").trim().charAt(0);
+    img.addEventListener("load", function () { cv.classList.remove("empty"); cv.classList.add("on"); });
+    img.src = "/api/thumb?folder=" + encodeURIComponent(folder);
+    workEl.querySelector("#mWorkBack").addEventListener("click", function () {
+      if (workEl) { workEl.remove(); workEl = null; }
+    });
+    workEl.querySelector("#mWorkPlay").addEventListener("click", function () {
+      openProject(folder, null, "preview");
+    });
+    workEl.querySelector("#mWorkWrite").addEventListener("click", function () {
+      openProject(folder, null, "script");
+    });
+    workEl.querySelectorAll(".m-work-rows button").forEach(function (b) {
+      b.addEventListener("click", function () { openProject(folder, null, b.dataset.tab); });
     });
   }
 

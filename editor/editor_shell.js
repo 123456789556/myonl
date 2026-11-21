@@ -532,15 +532,15 @@
     // 留着只会在两种条件下冒出来打架（而且 emoji 图标本身和整体风格不搭）。
     var tabbar = document.createElement("div");
     tabbar.className = "m-tabbar";
-    // P189：底栏只留三个内容 tab（剧本 / 素材 / 导出）。「外观」是参数页、「预览」是看结果，
-    // 都不是一类内容，跟三个内容 tab 平级会让人分不清点哪个才对。
-    // 外观走菜单里的「UI 设计区」，预览走顶栏右侧按钮 —— 两个按钮仍留在这里（CSS 隐藏），
-    // 只是变成被别处触发的入口，下面的 click 分发逻辑不用改。
+    // P197：底栏回到五格：剧本 / 素材 / 外观 / 预览 / 导出。
+    // P189 曾把「外观」「预览」藏起来，理由是它们不算"内容"；真机上用户的反馈是
+    // 「连设置都砍掉了」「砍掉一半」—— 藏起来的入口等于不存在。
+    // 宁可多两个格子，也不要求用户先去猜入口藏在哪个菜单里。
     tabbar.innerHTML =
       '<button type="button" class="m-tab active" data-tab="script">剧本</button>' +
       '<button type="button" class="m-tab" data-tab="assets">素材</button>' +
-      '<button type="button" class="m-tab m-tab-hidden" data-tab="look">外观</button>' +
-      '<button type="button" class="m-tab m-tab-hidden" data-tab="preview">预览</button>' +
+      '<button type="button" class="m-tab" data-tab="look">外观</button>' +
+      '<button type="button" class="m-tab" data-tab="preview">预览</button>' +
       '<button type="button" class="m-tab" data-tab="export">导出</button>';
     document.body.appendChild(tabbar);
 
@@ -568,7 +568,9 @@
         closeOverlays();
         return;
       }
-      if (which === "assets") { toggleDrawer("mobile-asset-open"); return; }
+      // P197：素材抽屉是手机上的独立层，必须先关掉盖在上面的全屏页（场景页/UI 弹窗），
+      // 否则点了素材什么都不动 —— 抽屉开在场景页下面，人看不见，就以为按钮坏了。
+      if (which === "assets") { closeDrawers(); closeOverlays(); toggleDrawer("mobile-asset-open"); return; }
       if (which === "preview") {
         closeDrawers();
         closeOverlays();
@@ -578,6 +580,7 @@
       if (which === "look") {
         closeDrawers();
         closeOverlays();
+        if (window.__mExport) window.__mExport.restore();   // 上一屏是导出就把参数区放回来
         var ui = $("btnUIDesign");
         if (ui) ui.click();
         // 从「导出」模式切回「外观」：把藏起来的参数区放回来，标题改回
@@ -594,6 +597,12 @@
         closeOverlays();
         var ui2 = $("btnUIDesign");
         if (ui2) ui2.click();       // 导出在「界面设计」弹窗里，手机端一步到位
+        // P197b：手机上把这个弹窗收成"导出页"——只留导出条，参数区全收起。
+        // 之前点导出看到一整屏 UI 参数，人以为点错了，以为按钮坏了。
+        if (window.__mExport) {
+          setTimeout(function () { window.__mExport.focus(); }, 200);
+          setTimeout(function () { window.__mExport.focus(); }, 700);
+        }
         // 导出卡在「界面设计」最底下：打开后把中心页面切成「导出」模式，
         // 只留说明 + 导出按钮，否则用户点导出看到的是一屏 UI 参数，以为点错了
         var toExport = function () {
