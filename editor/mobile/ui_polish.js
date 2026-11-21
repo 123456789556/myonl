@@ -28,11 +28,11 @@
     if (back && !back.querySelector(".mb-back-txt")) {
       var s = document.createElement("span");
       s.className = "mb-back-txt";
-      s.textContent = "作品列表";
+      s.textContent = "作品";
       back.appendChild(s);
     }
     var fm = document.querySelector('.menubar .menu-item[data-menu="file"]');
-    if (fm && fm.textContent !== "菜单") fm.textContent = "菜单";
+    if (fm && fm.textContent !== "菜单" && fm.getAttribute("data-p202") !== "1") fm.textContent = "菜单";
     var t2 = document.querySelector(".m-title2");
     if (!t2) {
       t2 = document.createElement("span");

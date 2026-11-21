@@ -42,7 +42,9 @@ def test_首页正文不再重复摆同一件事():
     assert 'id="mHomeImport"' not in HOME_JS
     assert "m-quick-item" not in HOME_JS
     # 那句说明留着（用户要的），但不再挂在被压到底部的动作区上
-    assert "没图没音乐也能先写台词" in HOME_JS
+    # P202：按「界面上只留 ≤6 字标签」压成一行短标签，同一层意思不变
+    assert "先写台词，画面后补" in HOME_JS
+    assert "没图没音乐也能先写台词" not in HOME_JS
 
 
 def test_教程是速查加可删练习():

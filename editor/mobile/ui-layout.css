@@ -1,0 +1,66 @@
+/* P202 手机版面护栏（新文件，不挤 ui-fix.css 的预算）
+   四条规矩，一条都不能破：
+   ① 任何按钮/标签不折行、不被压窄；顶栏放不下就进「更多」，不压缩
+   ② 顶栏吃进状态栏高度，别再让系统时间压住第一行
+   ③ 浮层/抽屉不越安全区、不超屏，内容自己滚
+   ④ 浮动球给内容让位，不许盖字 */
+html.m-shell .menubar {
+  flex-wrap: nowrap !important; overflow-x: clip;
+  padding-top: max(var(--safe-top, 0px), env(safe-area-inset-top, 0px));
+}
+html.m-shell .menubar > *, html.m-shell .menubar .menu-item,
+html.m-shell .m-top-preview, html.m-shell #mHomeBack, html.m-shell #mFullscreen {
+  flex: 0 0 auto !important; white-space: nowrap !important;
+}
+/* 横屏只留「返回 / 作品名 / 预览 / 菜单」四个，编辑/视图/运行/帮助收进「菜单」 */
+html.m-shell.m-wide .menubar .menu-item:not([data-menu="file"]),
+html.m-shell.m-wide #mFullscreen { display: none !important; }
+html.m-shell.m-wide .menubar .menu-item[data-menu="file"],
+html.m-shell.m-wide #mTopPreview { min-width: 36px; padding: 0 8px; text-align: center; }
+/* 作品名可点改名：给一点可点的暗示，但不加文字 */
+html.m-shell .m-title2 { cursor: pointer; text-decoration: underline dotted transparent; }
+html.m-shell .m-title2:active { text-decoration-color: var(--surface2); }
+
+/* 查找浮层贴顶是错的：状态栏时间会压在输入框上 */
+html.m-shell #mlRoot {
+  padding-top: max(var(--safe-top, 0px), env(safe-area-inset-top, 0px)) !important;
+  box-sizing: border-box;
+}
+/* 抽屉不能超过屏幕：最后一张卡被切在屏外等于没有 */
+html.m-shell .m-sheet-body {
+  max-height: calc(100dvh - max(var(--safe-top, 0px), env(safe-area-inset-top, 0px)) - 14px) !important;
+  overflow: auto !important;
+  padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px)) !important;
+}
+/* 浮动球不压字：页面底部给它留出球径 */
+html.m-shell .center-page { padding-bottom: 92px !important; }
+html.m-shell #mlFab { bottom: calc(96px + env(safe-area-inset-bottom, 0px)) !important; }
+/* 横屏：整页层底边必须顶到 tab 栏上沿。原来按竖屏 52px 让位，横屏 tab 只有 42，
+   中间露一条 10px 的底 —— 截图里那块"凭空多出来的灰方块"就是这条缝。 */
+html.m-shell.m-wide #scenePage.center-page,
+html.m-shell.m-wide .center-page {
+  bottom: calc(42px + env(safe-area-inset-bottom, 0px)) !important;
+  padding-bottom: 76px !important;
+}
+
+/* 改名层：居中卡片，高度受屏幕约束，不弹系统键盘遮挡按钮 */
+.p202-mask { position: fixed; inset: 0; z-index: 640; background: rgba(0,0,0,.42); }
+.p202-box {
+  position: fixed; left: 18px; right: 18px; top: 50%; transform: translateY(-50%);
+  z-index: 641; background: var(--base); border: 1px solid var(--surface0);
+  border-radius: 16px; padding: 16px 14px 12px; box-shadow: 0 16px 44px rgba(0,0,0,.3);
+  max-height: calc(100dvh - 24px); box-sizing: border-box;
+}
+.p202-box h4 { margin: 0 0 10px; font-size: 15px; font-weight: 600; color: var(--text); }
+.p202-in {
+  width: 100%; height: 42px; box-sizing: border-box; padding: 0 12px;
+  border: 1px solid var(--surface1); border-radius: 10px; background: var(--mantle);
+  color: var(--text); font-size: 15px; font-family: inherit;
+}
+.p202-row { display: flex; gap: 8px; margin-top: 12px; }
+.p202-row button {
+  flex: 1 1 0; height: 40px; border-radius: 10px; font-size: 14.5px;
+  font-family: inherit; cursor: pointer; white-space: nowrap;
+}
+.p202-cancel { border: 1px solid var(--surface1); background: var(--mantle); color: var(--subtext0); }
+.p202-ok { border: none; background: var(--blue); color: #fff; font-weight: 600; }

@@ -760,7 +760,7 @@ class _EditorHandler(BaseHTTPRequestHandler):
         ("GET", "/asset_thumb.js"): "_serve_js",
         ("GET", "/ui_polish.js"): "_serve_js",
         ("GET", "/strip.css"): "_serve_editor_css",
-        ("GET", "/ui-fix.css"): "_serve_editor_css", ("GET", "/mobile/home.css"): "_serve_editor_css",
+        ("GET", "/ui-fix.css"): "_serve_editor_css", ("GET", "/mobile/home.css"): "_serve_editor_css", ("GET", "/mobile/ui-layout.css"): "_serve_editor_css", ("GET", "/ui_layout.js"): "_serve_js",
         ("GET", "/editor_characters.js"): "_serve_characters_js",
         ("GET", "/editor_main.js"): "_serve_main_js",
         ("GET", "/editor_utils.js"): "_serve_utils_js",

@@ -808,10 +808,10 @@
 
   ROUTES["POST /api/new"] = function (input, init) {
     var b = bodyOf(init);
-    var name = String(b.name || "").trim();
-    if (!name) return jsonRes({ ok: false, message: "名字不能为空" }, 400);
+    var lib = readLib(); var name = String(b.name || "").trim();
+    // P202 先建后名：空名不再报错，按时间给个默认名（之后点顶栏作品名就能改）
+    if (!name) { var d0 = new Date(), p2 = function (n) { return (n < 10 ? "0" : "") + n; }; name = "未命名 · " + p2(d0.getMonth() + 1) + p2(d0.getDate()) + "-" + p2(d0.getHours()) + p2(d0.getMinutes()); while (findProject(lib, name)) name += "·"; }
     if (/[\/\\]/.test(name)) return jsonRes({ ok: false, message: "名字里不能有斜杠" }, 400);
-    var lib = readLib();
     if (findProject(lib, name)) return jsonRes({ ok: false, message: "已经有同名作品了：" + name }, 400);
     // text 可选：底栏「教程」抽屉里那份练习要一次建成一份能读能改的短剧本，
     // 不是「hello world」那种空壳。为空仍走老的空项目模板。
@@ -1320,7 +1320,7 @@
       "background:rgba(79,140,255,.07)";
     var tip = document.createElement("div");
     tip.style.cssText = "font-size:12px;line-height:1.6;color:" + (light ? "#5a6577" : "#9fb2d0") + ";margin-bottom:10px";
-    tip.textContent = "第一个按钮出 .html，发给谁都能双击玩。";
+    tip.textContent = "⬇ 网页版；APK 装到手机";
     bar.appendChild(tip);
     // 先让人看见有多大，再决定走哪条：单文件发人，还是打成 APK。
     // 点完才发现"打不开"是最糟的体验。
@@ -1334,15 +1334,15 @@
         Object.keys(o).forEach(function (k) { n += String(o[k] || "").length; });
         var mb = n / 1048576;
         sizeLine.textContent = "现在约 " + mb.toFixed(1) + " MB · " +
-          (mb > 30 ? "超过 30 MB，别发单文件了，走 APK" : "能单文件发");
+          (mb > 30 ? "超过 30 MB，走 APK" : "能单文件发");
       })
       .catch(function () { sizeLine.textContent = ""; });
 
-    [["导出网页版 HTML", "发给朋友，浏览器打开就能试玩", function () { window.__myonlExportPack(); }, 1],
-     ["导出安卓安装包 APK", "装到安卓手机，像 App 一样打开", function () { window.__myonlExportApk(); }, 1],
-     ["版本历史", "改坏了能退回之前保存的版本", function () { if (window.MYONLSnapshotsUI) window.MYONLSnapshotsUI.open(); }, 0],
-     ["导出当前项目 .gal", "备份，或换设备后接着编辑", function () { window.__myonlExportGal(); }, 0],
-     ["备份全部作品 .json", "把所有作品打成一个文件带走", function () { window.__myonlExportLib(); }, 0]
+    [["⬇ 网页版 HTML", "浏览器打开就能玩", function () { window.__myonlExportPack(); }, 1],
+     ["⬇ 安装包 APK", "装到手机像 App", function () { window.__myonlExportApk(); }, 1],
+     ["↺ 版本历史", "改坏了能退回", function () { if (window.MYONLSnapshotsUI) window.MYONLSnapshotsUI.open(); }, 0],
+     ["⬇ 项目备份 .gal", "换设备接着改", function () { window.__myonlExportGal(); }, 0],
+     ["⬇ 全部作品 .json", "打成一个文件", function () { window.__myonlExportLib(); }, 0]
     ].forEach(function (it) {
       var b = document.createElement("button");
       b.type = "button";

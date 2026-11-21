@@ -124,8 +124,7 @@
       // P194：这组「新建作品 / 导入作品」两格删了 —— 底栏第三、四格就是同一个动作，
       // 一屏摆两处同一件事，人会以为是两条不同的路。
       // P194：新手教程引导卡也整条删了（用户：这块可以删）。教程入口收进底栏第二格。
-      // 用户要的那段说明保留：一句话、讲清"现在能做什么"。
-      '<div class="m-home-tip">没图没音乐也能先写台词，画面在「素材」里补。</div>' +
+      '<div class="m-home-tip">先写台词，画面后补</div>' +
       // P176：这里原本还有一块「三步上手」。删了 —— 编辑器菜单里已经有
       // 「帮助 → 新手引导」，同一套教程摆两处，首页就多占五六行高度。
     '</div>' +
@@ -243,8 +242,7 @@
       if (projects.length === 1) {
         list.innerHTML += '<button type="button" class="m-home-card m-card-ghost" id="mHomeGhost">' +
           '<span class="m-card-thumb m-card-thumb-new">＋</span>' +
-          '<span class="m-card-body"><span class="m-card-name">再写一个</span>' +
-          '<span class="m-card-meta">新作品自带一句台词</span>' +
+          '<span class="m-card-body"><span class="m-card-name">新建项目</span>' +
           '</span></button>';
       }
     }
@@ -336,8 +334,21 @@
   }
 
   function newProject() {
-    // 直接点工具栏的「新建游戏」，别绕下拉菜单绕一圈：
-    // 菜单项的 id 对不上时，菜单会留在屏幕上、新建弹窗又没打开，用户就看到一个悬着的菜单
+    // P202 先建后名：别先 enterEditor 打开上一个作品、再弹「起名」框 —— 用户看到的就是
+    // 「点了新建，里面还是我上一部」。手机上直接建一条默认名的空作品并切过去，
+    // 名字之后点顶栏那一行就能改。
+    if (window.__MYONL_OFFLINE) {
+      fetch("/api/new", { method: "POST", headers: { "Content-Type": "application/json" }, body: '{"name":""}' })
+        .then(function (r) { return r.json(); })
+        .then(function (r) {
+          if (!r.ok) { toast(r.message || "新建失败"); return; }
+          try { sessionStorage.setItem("myonl:projName", r.path); sessionStorage.setItem(EDIT_KEY, "1"); } catch (e) {}
+          location.reload();
+        })
+        .catch(function (e) { toast("新建失败：" + (e.message || e)); });
+      return;
+    }
+    // 电脑端保留弹窗：那儿有目录选择、主题、对齐，一步也省不掉
     enterEditor();
     setTimeout(function () { var nb = $("btnNew"); if (nb) nb.click(); }, 120);
   }
@@ -444,11 +455,11 @@
           '<div class="m-work-sec"><span>创作资源</span><i></i></div>' +
           '<div class="m-work-rows">' +
             '<button type="button" data-tab="script"><b>剧本</b><span>' + (p.ins || 0) + ' 句台词</span><em>›</em></button>' +
-            '<button type="button" data-tab="assets"><b>素材</b><span>立绘 背景 音频 语音</span><em>›</em></button>' +
-            '<button type="button" data-tab="look"><b>外观</b><span>画面比例 字号 主题</span><em>›</em></button>' +
-            '<button type="button" data-tab="export"><b>导出</b><span>出成能发出去的包</span><em>›</em></button>' +
+            '<button type="button" data-tab="assets"><b>素材</b><span>图片·音频·语音</span><em>›</em></button>' +
+            '<button type="button" data-tab="look"><b>外观</b><span>比例·字号·主题</span><em>›</em></button>' +
+            '<button type="button" data-tab="export"><b>导出</b><span>网页 / 安装包</span><em>›</em></button>' +
             '<button type="button" class="m-work-hist" id="mWorkHist"><b>历史</b>' +
-              '<span id="mWorkHistNum">每次保存都自动留一版</span><em>›</em></button>' +
+              '<span id="mWorkHistNum">自动留版</span><em>›</em></button>' +
           '</div>' +
         '</div>' +
       '</div>';
