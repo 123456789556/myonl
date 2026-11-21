@@ -10,6 +10,9 @@
   var EDIT_KEY = "myonl:editing";
   // 横屏「左列表 / 右详情」里当前选中的作品目录。竖屏用不到，但两种形态共用同一个渲染函数。
   var selFolder = null;
+  // 搜索：全量列表留一份，输入即过滤。空字符串 = 不筛。
+  var allProjects = [];
+  var findQ = "";
 
   var isMobile = function () { return window.matchMedia && window.matchMedia("(max-width:860px), (max-height:520px)").matches; };
   if (!isMobile()) return;
@@ -76,8 +79,20 @@
   // （空态下 CSS 会藏掉卡片里的说明文本、把列表当空容器）。
   layer.innerHTML =
     '<div class="m-home-head">' +
-      '<div><div class="m-home-title">我的作品</div>' +
-      '<div class="m-home-sub" id="mHomeSub"></div></div>' +
+      '<div class="m-home-hid">' +
+        '<div class="m-home-title">我的作品</div>' +
+        '<div class="m-home-sub" id="mHomeSub"></div></div>' +
+      '<button type="button" class="m-home-find" id="mHomeFind" aria-label="搜作品">' +
+        '<svg viewBox="0 0 16 16" width="18" height="18" fill="none" stroke="currentColor" ' +
+          'stroke-width="1.5" stroke-linecap="round" aria-hidden="true">' +
+          '<circle cx="6.8" cy="6.8" r="4.2"/><path d="M9.9 9.9L13.4 13.4"/></svg>' +
+      '</button>' +
+    '</div>' +
+    // 搜索是真过滤：打字就把卡片筛掉，不是摆一个假框。作品多了才用得上。
+    '<div class="m-home-findbox" id="mHomeFindBox" hidden>' +
+      '<input type="search" id="mHomeFindInput" placeholder="搜作品名" autocomplete="off" ' +
+        'enterkeyhint="search">' +
+      '<button type="button" id="mHomeFindClear">取消</button>' +
     '</div>' +
     '<div class="m-home-list" id="mHomeList"></div>' +
     // P193d：横屏（平板 / 横过来的手机）右侧的「最近在改」详情。
@@ -102,8 +117,8 @@
       '<button type="button" class="m-nav-item" data-nav="tut" id="mHomeTut">' +
         ico('M3 2.8h7.2a2 2 0 0 1 2 2v8.4H5a2 2 0 0 1-2-2V2.8zM5.4 5.6h4.4M5.4 8h4.4') +
         '<span>教程</span></button>' +
-      '<button type="button" class="m-nav-item m-nav-new" data-nav="new">' +
-        ico('M8 2.6v10.8M2.6 8h10.8') +
+      '<button type="button" class="m-nav-item m-nav-main" data-nav="new">' +
+        '<span class="m-nav-main-ic">' + ico('M8 2.2v11.6M2.2 8h11.6') + '</span>' +
         '<span>新建</span></button>' +
       '<button type="button" class="m-nav-item" data-nav="import">' +
         ico('M8 2.2v7.4M4.9 6.6l3.1 3.1 3.1-3.1M2.6 12.6h10.8') +
@@ -142,11 +157,9 @@
       '<span class="m-card-thumb" data-folder="' + folder + '"></span>' +
       '<span class="m-card-body">' +
         '<span class="m-card-name">' + name + '</span>' +
-        '<span class="m-card-chips">' +
-          '<span class="m-chip">' + p.ins + ' 条指令</span>' +
-          '<span class="m-chip">' + p.assets + ' 个素材</span>' +
-          '<span class="m-chip m-chip-dim">' + ago(p.mtime) + '</span>' +
-        '</span>' +
+        // 三个胶囊换成一行灰字：胶囊是表单元素，一屏四条卡叠起来全是圆角块，
+        // 看着像设置项而不是"我的作品"。一行文字重量轻，也省 16px 高度。
+        '<span class="m-card-meta">' + p.ins + ' 句 · ' + p.assets + ' 素材 · ' + ago(p.mtime) + '</span>' +
       '</span>' +
       '<span class="m-card-go">›</span></button>';
   }
@@ -154,10 +167,15 @@
   function render(projects) {
     var list = $("mHomeList");
     if (!list) return;
+    allProjects = projects;
+    var q = findQ.trim().toLowerCase();
+    var shown = q ? projects.filter(function (x) {
+      return String(x.name).toLowerCase().indexOf(q) >= 0;
+    }) : projects;
     var sub = $("mHomeSub");
-    // 只留数量。原来写"N 个作品 · 本地保存 · 不上云"，
-    // 「不上云」在 README 和设置「软件详情」里都已经说过，副标题重复第三遍没有信息量。
-    if (sub) sub.textContent = projects.length + " 个作品";
+    if (sub) sub.textContent = q
+      ? ("搜到 " + shown.length + " 个")
+      : (projects.length + " 个作品");
     // 三步上手只在书架空着时出现：已经有作品的用户早就知道怎么写第一句，
     // 那三块一直挂着等于天天给人上第一课。要重看走「帮助 → 新手引导」。
     document.body.classList.toggle("m-has-projects", projects.length > 0);
@@ -177,11 +195,18 @@
         '<div class="m-empty-d">建一份就自带一句台词，点开立刻能看到画面。</div>' +
         '<div class="m-empty-say">她推开门，雨顺着伞骨往下淌。</div>' +
         '</div>';
+    } else if (!shown.length) {
+      // 搜了但没命中：说清"搜的是什么"，别给一片空白
+      list.innerHTML = '<div class="m-empty">' +
+        '<div class="m-empty-t">没搜到「' + findQ.replace(/</g, "&lt;") + '」</div>' +
+        '<div class="m-empty-d">作品名对不上。换个词，或点右边「取消」看全部 ' +
+        projects.length + ' 个。</div>' +
+        '</div>';
     } else {
       // 按最后修改时间分两段：七天内算「最近在改」，其余归「更早」。
       // 只有两段都非空才分组——一段内容加两个标题，标题比内容还多。
       var now = Date.now() / 1000, recent = [], older = [];
-      projects.forEach(function (p) { ((now - p.mtime < 604800) ? recent : older).push(p); });
+      shown.forEach(function (p) { ((now - p.mtime < 604800) ? recent : older).push(p); });
       if (recent.length && older.length) {
         list.innerHTML =
           '<div class="m-home-grp"><b>最近在改</b><i>' + recent.length + ' 个</i></div>' +
@@ -189,7 +214,7 @@
           '<div class="m-home-grp"><b>更早</b><i>' + older.length + ' 个</i></div>' +
           older.map(function (p) { return card(p, true); }).join("");
       } else {
-        list.innerHTML = projects.map(function (p) { return card(p, false); }).join("");
+        list.innerHTML = shown.map(function (p) { return card(p, false); }).join("");
       }
       // 只有一个作品时补一张虚线卡：空白在列表末尾是正常的，但一整片白会让人
       // 以为没加载完。QQ 的分组列表末尾也是这么放「创建」入口，动作就在需要它的位置。
@@ -197,8 +222,8 @@
         list.innerHTML += '<button type="button" class="m-home-card m-card-ghost" id="mHomeGhost">' +
           '<span class="m-card-thumb m-card-thumb-new">＋</span>' +
           '<span class="m-card-body"><span class="m-card-name">再写一个</span>' +
-          '<span class="m-card-chips"><span class="m-chip m-chip-dim">新作品自带一句台词</span>' +
-          '</span></span></button>';
+          '<span class="m-card-meta">新作品自带一句台词</span>' +
+          '</span></button>';
       }
     }
     // 缩略图单独请求：拿不到就留个空底，不阻塞列表
@@ -255,18 +280,23 @@
       return;
     }
     var f = p.folder.replace(/"/g, "&quot;");
-    // 版面顺序：缩略图 + 名字 + 三个数 + 主操作，一行横排。
+    // 版面：大一点的方图 + 名字 + 两格数字 + 一整条主按钮，竖着填满右栏。
     // 原来是「铺满整列的 72px 高封面」—— 380px 宽只要 72px 高，5:1 的扁条，
-    // 图被拉成一条横带、看着就不像封面（用户原话「比例不对」）。正方形小图不裁不拉。
+    // 图被拉成一条横带（用户原话「比例不对」）。正方形不裁不拉；
+    // 再补两格数字把右栏的高度撑起来，不至于上面一行、下面空 250px。
     box.innerHTML =
       '<div class="m-det-top">' +
         '<span class="m-det-thumb" data-folder="' + f + '"></span>' +
         '<span class="m-det-id">' +
           '<span class="m-det-name">' + p.name.replace(/</g, "&lt;") + '</span>' +
-          '<span class="m-det-meta">' + p.ins + ' 条 · ' + p.assets + ' 素材 · ' + ago(p.mtime) + '</span>' +
+          '<span class="m-det-meta">最近改在 ' + ago(p.mtime) + '</span>' +
         '</span>' +
-        '<button type="button" class="m-det-go">继续编辑</button>' +
-      '</div>';
+      '</div>' +
+      '<div class="m-det-kv">' +
+        '<div><b>' + p.ins + '</b><span>句台词</span></div>' +
+        '<div><b>' + p.assets + '</b><span>个素材</span></div>' +
+      '</div>' +
+      '<button type="button" class="m-det-go">继续编辑</button>';
     // 封面单独请求：拿不到就留空底，不阻塞
     var hero = box.querySelector(".m-det-thumb");
     var img = new Image();
@@ -519,6 +549,16 @@
   // 也能随手删掉的短作品。教程不塞进 games/ 的示例堆里靠代码硬识别，
   // 玩家想自己写就自己建，教程只是起点。
   var tutSheet = null;
+  // 教程里一条：图标 + 标题 + 一句人话 + 一行能照抄的写法。
+  // 六行纯文字读起来像说明书；一条一块卡，手指知道每块在讲什么。
+  function tutItem(ic, title, desc, code) {
+    return '<div class="m-tut-item">' +
+      '<span class="m-tut-ic2">' + ico(ic) + '</span>' +
+      '<span class="m-tut-b"><b>' + title + '</b><span>' + desc + '</span>' +
+      (code ? '<code>' + code.replace(/</g, "&lt;") + '</code>' : '') +
+      '</span></div>';
+  }
+
   function openTutorialSheet() {
     if (tutSheet) { tutSheet.remove(); tutSheet = null; return; }
     tutSheet = document.createElement("div");
@@ -529,17 +569,25 @@
         '<div class="m-sheet-grab"></div>' +
         '<div class="m-sheet-title">教程' +
           '<button type="button" class="m-set-done" id="mTutDone">完成</button></div>' +
-        '<div class="m-tut-doc">' +
-          '<div class="m-tut-line"><b>一行一句话</b>剧本里一行就是游戏里的一屏，直接写。</div>' +
-          '<div class="m-tut-line"><b>角色台词</b>@[小满] 这一句是角色台词 —— 方括号里就是说话人，不用先建角色。</div>' +
-          '<div class="m-tut-line"><b>旁白</b>@[旁白] 现在可以开始了</div>' +
-          '<div class="m-tut-line"><b>分支</b>@choice: 下面写 &gt; 选项文字 -&gt; 标签</div>' +
-          '<div class="m-tut-line"><b>画面</b>底部「素材」放图，点一下插成背景；音乐视频同一个入口。</div>' +
-          '<div class="m-tut-line"><b>导出</b>成品是一个 html，发给谁都能双击玩；也能出安卓安装包。</div>' +
-        '</div>' +
+        // 主操作放在最上面：点开教程的人下一步就是"动手"，不该先滚一屏说明才看到按钮。
+        // 练习是普通作品，建在自己列表里，能改也能删。
         '<button type="button" class="m-tut-start" id="mTutStart">' +
           '建一份练习（可删）' +
           '<span>21 句话的短作品，改两句就懂</span></button>' +
+        '<div class="m-tut-doc">' +
+          tutItem("M3.6 3.4h8.8M3.6 6.4h8.8M3.6 9.4h5.2", "一行一句话",
+            "剧本里一行就是游戏里的一屏，直接写。", "") +
+          tutItem("M2.6 3.2h10.8v9.6H2.6zM4.8 1.6v2M11.2 1.6v2", "角色台词",
+            "方括号里写说话人，不用先去角色库建人。", "@[小满] 你终于来了。") +
+          tutItem("M3.2 2.6h9.6v10.4H3.2z", "旁白",
+            "括号里写「旁白」，就是画外音。", "@[旁白] 雨还在下。") +
+          tutItem("M3.4 8.2h3.6M9 8.2h3.6M3.4 5.4h9.2M8 2.2v11.6", "分支",
+            "@choice 下面每行一个选项，箭头后面是跳到哪一页。", "> 追上去 -> 第一章") +
+          tutItem("M2.6 3.4h10.8v9.2H2.6zM5.6 3.4v9.2", "画面",
+            "底部「素材」放图，点一下插成背景；音乐、视频同一个入口。", "") +
+          tutItem("M8 2.2v7.4M4.9 6.6l3.1 3.1 3.1-3.1M2.6 12.6h10.8", "导出",
+            "成品是一个 html，发给谁都能双击玩；也能打成安卓安装包。", "") +
+        '</div>' +
         '<div class="m-set-note">练习就是一份普通作品，建在你自己的列表里；不想要就删掉，不影响别的。</div>' +
       '</div>';
     document.documentElement.appendChild(tutSheet);
@@ -567,11 +615,20 @@
     if (sk) sk.addEventListener("click", enterEditor);
   });
 
-  // 设置入口收进底栏第五格（页头右上角那个删了，同一功能摆两处会让人以为是两件事）
-  var nb = $("mHomeNew");
-  if (nb) nb.addEventListener("click", newProject);
-  var ib = $("mHomeImport");
-  if (ib) ib.addEventListener("click", importProject);
+  // 搜作品：点放大镜展开输入框，打字就把卡片筛掉；「取消」收起并恢复全部。
+  // 真过滤，不是摆个假框 —— 作品一多，这是第一个会用到的功能。
+  var foldbox = $("mHomeFindBox"), fin = $("mHomeFindInput");
+  function setFind(on) {
+    if (!foldbox) return;
+    foldbox.hidden = !on;
+    if (on && fin) fin.focus();
+    if (!on) { findQ = ""; if (fin) fin.value = ""; render(allProjects); }
+  }
+  var findBtn = $("mHomeFind");
+  if (findBtn) findBtn.addEventListener("click", function () { setFind(foldbox.hidden); });
+  if (fin) fin.addEventListener("input", function () { findQ = fin.value; render(allProjects); });
+  var findClr = $("mHomeFindClear");
+  if (findClr) findClr.addEventListener("click", function () { setFind(false); });
   // 底部导航复用上面三个真动作，不另写一套逻辑，省得两处行为跑偏
   var navEl = $("mHomeNav");
   if (navEl) {

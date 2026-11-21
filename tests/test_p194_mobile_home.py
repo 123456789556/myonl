@@ -61,7 +61,7 @@ def test_横屏详情不再用扁封条():
     assert "m-det-hero" not in HOME_JS
     assert '<div class="m-det-top">' in HOME_JS
     assert '<span class="m-det-thumb"' in HOME_JS
-    assert "width: 52px; height: 52px" in CSS
+    assert "width: 88px; height: 88px" in CSS
 
 
 def test_手机端前端住mobile目录():

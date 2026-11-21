@@ -1,43 +1,93 @@
-/* P194 手机端首页 v3：底栏五格（作品/教程/新建/导入/设置）、横屏详情改横排。
-   首页正文只留作品列表 + 一句说明 —— 新手教程、新建、导入、设置全收进底栏，
-   不再在正文里各占一块。只加视觉层次，不加新导航层。
+/* P195 手机端首页 v4：卡片规格、搜索、浮起的新建键、卡片化教程。
+   P194 的底栏五格、横屏左列表右详情、按端分目录都保留。
    单独一个文件，不往已顶格预算的 editor.css / ui-fix.css 里塞。 */
 
-/* 说明那句：竖屏跟在列表后面，不吸到底（原来这块容器 margin-top:auto 是为了
-   把「新建 / 导入」两格压到底，那两格删了，说明再吸底就是一句话吊在半空）。 */
+/* ---------------- 竖屏卡片规格 ----------------
+   46px 缩略 + 三个胶囊那版：一屏只塞得下四张卡，卡下面还空半屏 —— 既没填满也不透气。
+   这里改成 72px 方图、名字一行、下面一行灰字（句 / 素材 / 时间），卡高从 110 掉到 92，
+   一屏能露五到六张。三个胶囊是表单元素，一叠起来像设置项，不像"我的作品"。 */
+.m-home-card { padding: 12px !important; gap: 12px !important; margin-bottom: 10px !important; }
+.m-card-thumb { width: 72px !important; height: 72px !important; border-radius: 12px !important; }
+.m-home-card .m-card-name { font-size: 16.5px; }
+.m-home-card .m-card-meta { font-size: 12.5px; color: var(--subtext0); }
+
+/* ---------------- 顶栏 + 搜索 ----------------
+   放大镜是真的：打字就把卡片筛掉，作品一多第一个会用到的功能。 */
+.m-home-title { font-size: 22px !important; }
+.m-home-find {
+  flex: 0 0 auto; width: 38px; height: 38px; border-radius: 50%; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  border: 1px solid var(--surface0); background: var(--mantle); color: var(--subtext1);
+  -webkit-tap-highlight-color: transparent;
+}
+.m-home-find:active { background: var(--surface0); color: var(--text); }
+.m-home-findbox { display: flex; align-items: center; gap: 8px; margin: 0 0 10px; }
+.m-home-findbox[hidden] { display: none !important; }
+.m-home-findbox input {
+  flex: 1 1 auto; min-width: 0; min-height: 40px; padding: 0 12px; border-radius: 10px;
+  border: 1px solid var(--surface1); background: var(--mantle); color: var(--text);
+  font-family: inherit; font-size: 14px;
+}
+.m-home-findbox input:focus { outline: none; border-color: var(--blue); }
+.m-home-findbox button {
+  flex: 0 0 auto; min-height: 40px; padding: 0 12px; border: 0; border-radius: 10px;
+  background: transparent; color: var(--blue); font-family: inherit; font-size: 13px;
+  font-weight: 600; cursor: pointer;
+}
+
+/* 说明那句：紧跟列表，不吸到底 */
 .m-home-tip { margin: 10px 2px 0 !important; font-size: 11.5px; line-height: 1.6; color: var(--overlay0); }
 /* editor.css 给这块容器挂了 margin-top:auto（原意把「新建/导入」压到底）；
-   那两格删了，说明再吸底就是一句话吊在半空，紧跟列表就好。 */
+   那两格删了，说明再吸底就是一句话吊在半空。 */
 .m-home-side { margin-top: 0 !important; }
-/* 有作品时列表不该被 flex 拉满整屏：拉满的结果是说明那句话被推到底栏边上，
-   中间一大片空，看着像列表只加载了一半。空态才需要列表撑满（.m-empty 自己 flex:1）。 */
+/* 有作品时列表不该被 flex 拉满整屏；空态才需要撑满（.m-empty 自己 flex:1） */
 body.m-has-projects .m-home-list { flex: 0 0 auto !important; }
 
-/* 底栏五格：每格更窄，文字再收 0.5px，图标与字之间留 3px */
-.m-home-nav .m-nav-item { gap: 3px; }
-.m-home-nav .m-nav-item span { font-size: 10.5px; }
-/* 没有新内容时的空提示不再撑高整块 */
-.m-home-nav .m-nav-item.m-nav-new svg { stroke-width: 1.6; }
-
 /* 分组标题：最近在改 / 更早。只在两段都有内容时出现（JS 控制） */
-.m-home-grp { flex: 0 0 auto; display: flex; align-items: baseline; gap: 7px; margin: 16px 2px 8px; }
-.m-home-grp:first-child { margin-top: 2px; }
+.m-home-grp { flex: 0 0 auto; display: flex; align-items: baseline; gap: 7px; margin: 12px 2px 7px; }
+.m-home-grp:first-child { margin-top: 0; }
 .m-home-grp b { font-size: 12.5px; font-weight: 600; color: var(--subtext0); letter-spacing: .3px; }
 .m-home-grp i { font-style: normal; font-size: 11px; color: var(--overlay0); }
 
+/* 卡片按下要有反馈：按下去和按完一个样，像没收到 */
+.m-home-card { transition: transform .12s ease; }
+.m-home-card:active { transform: scale(.986); }
+
+/* 只有一个作品时列表末尾那张虚线卡 */
+.m-card-ghost { border-style: dashed; background: transparent; }
+.m-card-ghost:active { background: var(--mantle); }
+.m-card-ghost .m-card-name { color: var(--subtext1); font-weight: 500; }
+
+/* 「更早」的作品缩略图收小一点：一屏多露两条，但还点得开 */
+.m-home-card.m-card-old { opacity: .94; }
+.m-home-card.m-card-old .m-card-thumb { width: 64px !important; height: 64px !important; }
+
+/* ---------------- 底栏：中间「新建」做成浮起的圆键 ----------------
+   五格平铺时新建和别的格一样重，可它是这一屏唯一"往前推"的动作。
+   圆键上浮 16px、蓝底白加号，拇指落在中间也刚好。 */
+.m-nav-item.m-nav-main { position: relative; }
+.m-nav-main-ic {
+  display: flex; align-items: center; justify-content: center;
+  width: 44px; height: 44px; margin-top: -18px; border-radius: 50%;
+  background: var(--blue); color: #fff;
+  box-shadow: 0 4px 12px rgba(79, 140, 255, .38);
+}
+.m-nav-main-ic svg { width: 18px; height: 18px; stroke: #fff; }
+.m-nav-item.m-nav-main:active .m-nav-main-ic { filter: brightness(.92); }
+.m-nav-item.m-nav-main span:last-child { margin-top: 2px; }
+
 /* ---------------- 横屏（平板 / 横过来的手机）：左列表 + 右详情 ----------------
-   844×390 这种矮屏，竖着堆五段只会全挤成条。左列一列作品、右列是选中作品的详情
-   加教程引导；点左边那张卡右侧跟着换，点「继续编辑」才进作品。
-   竖屏收掉详情（一屏只有一个主角，列表就是主角）。 */
+   844×390 这种矮屏，竖着堆只会全挤成条。左列一列作品、右列是选中作品的详情，
+   点左边那张卡右侧跟着换，点「继续编辑」才进作品。竖屏收掉详情（一屏一个主角）。 */
 .m-home-detail { display: none; }
 
 @media (min-width: 700px) and (max-height: 520px) {
   .m-home-grp { grid-column: 1 / -1; }
-  /* 左列改单列：右侧要多放一块详情，两列卡片会把 chips 挤到换行。
+  /* 左列改单列：右侧要多放一块详情，两列卡片会把文字挤到换行。
      min-height:0 必须给 —— grid 子项默认不收缩，内容一高就顶出视口、被底栏切掉。 */
   .m-home-list { display: flex !important; flex-direction: column; gap: 6px; min-height: 0; overflow-y: auto; }
-  .m-home-detail { display: flex; flex-direction: column; gap: 8px; min-height: 0; overflow-y: auto; }
-  /* 右栏已经放了详情、教程和说明，原「开始新的」整块与底栏重复，收掉 */
+  .m-home-detail { display: flex; flex-direction: column; gap: 10px; min-height: 0; overflow-y: auto; }
+  /* 右栏已经放了详情，原「开始新的」整块与底栏重复，收掉 */
   .m-home-side { display: none !important; }
   /* 左列到底部给一段消隐：矮屏装不下第四张卡很正常，但一刀切在半张卡中间
      看起来像坏了。淡出一点，人能看出"下面还有，能滚"。 */
@@ -47,33 +97,40 @@ body.m-has-projects .m-home-list { flex: 0 0 auto !important; }
   }
   /* 底栏在底部占 46px + 安全区：不给它留位置，第三张卡会被压掉半截 */
   .m-home { padding-bottom: calc(52px + env(safe-area-inset-bottom)) !important; }
-  /* 横屏左列要一屏露完三张卡：卡内压成一行 —— 名字在左、三个数在右，
-     高度从 66 掉到 48，三张卡加两个分组标题正好落在 274 的可视区里 */
-  .m-home-card { padding: 7px 11px !important; gap: 9px !important; }
+  /* 横屏左列要一屏露完四张卡：卡内压成一行 —— 名字在左、数字在右 */
+  .m-home-card { padding: 7px 11px !important; gap: 9px !important; margin-bottom: 0 !important; }
   .m-card-thumb { width: 34px !important; height: 34px !important; }
   .m-home-card .m-card-body { flex-direction: row; align-items: center; gap: 10px; }
   .m-home-card .m-card-name { flex: 0 1 auto; max-width: 42%; font-size: 15px; }
-  .m-home-card .m-card-chips { flex: 1 1 auto; margin-top: 0 !important; }
+  .m-home-card .m-card-meta { flex: 1 1 auto; margin-top: 0 !important; }
 
-  /* 详情第一行：正方形缩略图 + 名字/三个数 + 继续编辑，一行横排。
-     原来是一块铺满 380px 宽、72px 高的「封面」—— 5:1 的扁条，图被拉成横带，
-     看着不像封面（用户原话「比例不对」）。正方形图不裁不拉，还把垂直空间省下来。 */
-  .m-det-top { flex: 0 0 auto; display: flex; align-items: center; gap: 10px; }
+  /* 详情：88px 方图 + 名字 + 两格数字 + 一整条主按钮，竖着把右栏填满。
+     原来是一块铺满 380px 宽、72px 高的「封面」—— 5:1 的扁条，图被拉成横带
+     （用户原话「比例不对」）。正方形不裁不拉，两格数字把高度顶起来。 */
+  .m-det-top { flex: 0 0 auto; display: flex; align-items: center; gap: 12px; }
   .m-det-thumb {
-    flex: 0 0 auto; width: 52px; height: 52px; border-radius: 10px;
+    flex: 0 0 auto; width: 88px; height: 88px; border-radius: 12px;
     border: 1px solid var(--surface0);
     background: var(--surface0) center/cover no-repeat;
   }
   .m-det-thumb.has { border-color: transparent; }
-  .m-det-id { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+  .m-det-id { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 5px; }
   .m-det-name {
-    font-size: 15px; font-weight: 600; line-height: 1.3; color: var(--text);
-    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    font-size: 17px; font-weight: 600; line-height: 1.3; color: var(--text);
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
   }
   .m-det-meta { font-size: 11.5px; color: var(--subtext0); }
+  .m-det-kv { flex: 0 0 auto; display: flex; gap: 10px; }
+  .m-det-kv div {
+    flex: 1 1 0; display: flex; flex-direction: column; gap: 1px;
+    padding: 9px 12px; border-radius: 12px;
+    background: var(--mantle); border: 1px solid var(--surface0);
+  }
+  .m-det-kv b { font-size: 19px; font-weight: 600; line-height: 1.1; color: var(--text); }
+  .m-det-kv span { font-size: 11px; color: var(--subtext0); }
   .m-det-go {
-    flex: 0 0 auto; height: 36px; padding: 0 14px; border: 0; border-radius: 11px;
-    background: var(--blue); color: #fff; font-size: 13px; font-weight: 600;
+    flex: 0 0 auto; width: 100%; height: 44px; border: 0; border-radius: 12px;
+    background: var(--blue); color: #fff; font-size: 14px; font-weight: 600;
     font-family: inherit; cursor: pointer;
   }
   .m-det-go:active { filter: brightness(.92); }
@@ -83,29 +140,6 @@ body.m-has-projects .m-home-list { flex: 0 0 auto !important; }
   .m-home-card.on { border-color: rgba(79, 140, 255, .55); }
   .m-home-card.on .m-card-name { color: var(--blue); }
 }
-
-/* 卡片内部再压一层：chips 与名字的间距、body 行距，各收 1–2px。
-   四张卡叠起来省近 40px，390×844 上多露出一张。 */
-.m-home-card .m-card-body { gap: 2px; }
-.m-home-card .m-card-chips { margin-top: 4px; gap: 4px; }
-
-/* 只有一个作品时，列表末尾补一张虚线卡（JS 输出），把空白留在最底下而不是中间 */
-.m-card-ghost { border-style: dashed; background: transparent; }
-.m-card-ghost:active { background: var(--mantle); }
-.m-card-ghost .m-card-name { color: var(--subtext1); font-weight: 500; }
-
-/* 一屏装得下「四张卡 + 引导条 + 那句说明」：分组标题、列表间距各收几像素 */
-.m-home-grp { margin: 10px 2px 6px; }
-.m-home-list { gap: 8px; }
-.m-home-sec { margin: 10px 2px 6px; }
-
-/* 卡片按下要有反馈：现在按下去和按完一个样，像没收到 */
-.m-home-card { transition: transform .12s ease; }
-.m-home-card:active { transform: scale(.986); }
-
-/* 「更早」的作品把缩略图收小：一屏多露两条，但还点得开 */
-.m-home-card.m-card-old { opacity: .94; }
-.m-home-card.m-card-old .m-card-thumb { width: 54px; height: 54px; }
 
 /* 空态：一句说明 + 一句成品台词当样例，不是「暂无数据」 */
 .m-empty {
@@ -123,21 +157,30 @@ body.m-has-projects .m-home-list { flex: 0 0 auto !important; }
   font-size: 12.5px; line-height: 1.5;
 }
 
-/* ---------------- 底栏「教程」抽屉：语法速查 + 建一份可删练习 ----------------
-   教程不塞进 games/ 当示例工程，也不做成只读文档页：一行一句讲语法，
-   下面直接给「建一份练习」，出来的是能改、能导出、也能删掉的真作品。 */
-.m-tut-doc { display: flex; flex-direction: column; margin: 2px 0 12px; }
-.m-tut-line {
-  padding: 8px 0; border-bottom: 1px solid var(--surface0);
-  font-size: 12.5px; line-height: 1.6; color: var(--subtext1);
+/* ---------------- 教程抽屉：一条一块卡 ----------------
+   六行纯文字读起来像说明书；一条一块卡（图标 + 标题 + 一句人话 + 一行能照抄的写法），
+   手指知道每块在讲什么。下面接「建一份练习（可删）」，出来的是能改能删的真作品。 */
+.m-tut-doc { display: flex; flex-direction: column; gap: 8px; margin: 2px 0 12px; }
+.m-tut-item {
+  display: flex; gap: 10px; padding: 10px 11px; border-radius: 12px;
+  background: var(--mantle); border: 1px solid var(--surface0);
 }
-.m-tut-line:last-child { border-bottom: 0; }
-.m-tut-line b {
-  display: inline-block; min-width: 58px; margin-right: 6px;
-  color: var(--text); font-weight: 600;
+.m-tut-ic2 {
+  flex: 0 0 auto; width: 28px; height: 28px; border-radius: 8px;
+  display: flex; align-items: center; justify-content: center; color: var(--blue);
+  background: color-mix(in srgb, var(--blue) 12%, transparent);
+}
+.m-tut-ic2 svg { width: 15px; height: 15px; }
+.m-tut-b { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.m-tut-b b { font-size: 13px; font-weight: 600; color: var(--text); }
+.m-tut-b span { font-size: 11.5px; line-height: 1.5; color: var(--subtext0); }
+.m-tut-b code {
+  margin-top: 2px; padding: 5px 8px; border-radius: 8px; overflow-x: auto; white-space: nowrap;
+  background: var(--base); border: 1px solid var(--surface0); color: var(--text);
+  font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 11.5px;
 }
 .m-tut-start {
-  display: flex; flex-direction: column; gap: 3px; width: 100%;
+  display: flex; flex-direction: column; gap: 3px; width: 100%; margin-bottom: 12px;
   min-height: 52px; padding: 10px 14px; cursor: pointer;
   border: 0; border-radius: 12px; background: var(--blue); color: #fff;
   font-family: inherit; font-size: 14px; font-weight: 600; text-align: left;
