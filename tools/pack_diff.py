@@ -11,6 +11,7 @@
 import json
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -59,6 +60,51 @@ def diff_at(a, b, where="根"):
     return None
 
 
+# P192：games/ 里四个工程都没用到这 5 条新放开的指令，光跑它们只能证明"没改坏"，
+# 证明不了"新分支对得上"。所以在临时目录合成一份用例，5 条各来一次，进同一套对拍。
+SYNTH = (
+    "@label start\n"
+    "@cg cg_雨夜\n"
+    "@fg fg_雨 x=10 y=-8 alpha=0.5\n"
+    "@[林晚] 你又迟到了两分钟。\n"
+    "@voice a.ogg\n"
+    "@camera pan 左 1.5\n"
+    "@transition wipe 右 0.4\n"
+    "@end\n"
+)
+
+
+def compare_one(name: str, path: Path):
+    """对同一份剧本跑两边，返回 (是否一致, Python 侧条数)。工程与合成用例共用这一份逻辑。"""
+    text = path.read_text(encoding="utf-8-sig")
+    py_ins = strip_file(parser.parse_text(text, str(path)))
+
+    r = subprocess.run(
+        ["node", str(ROOT / "tools" / "_pack_node.js"), str(path)],
+        capture_output=True, text=True, encoding="utf-8", cwd=str(ROOT),
+    )
+    if r.returncode != 0:
+        print(f"[FAIL] {name}: node 跑挂了\n{r.stderr[:400]}")
+        return False, len(py_ins)
+    try:
+        js = json.loads(r.stdout)
+    except json.JSONDecodeError:
+        print(f"[FAIL] {name}: node 输出不是 JSON\n{r.stdout[:200]}")
+        return False, len(py_ins)
+    if not js.get("ok"):
+        err = js.get("error") or {}
+        print(f"[FAIL] {name}: JS 报错 第{err.get('line')}行 {err.get('message')}")
+        return False, len(py_ins)
+
+    js_ins = strip_file(js["instructions"])
+    d = diff_at(py_ins, js_ins, name)
+    if d:
+        print(f"[FAIL] {name}: {d}")
+        return False, len(py_ins)
+    print(f"[ OK ] {name}  {len(py_ins)} 条  逐字段一致")
+    return True, len(py_ins)
+
+
 def main():
     games = sorted(p.parent for p in ROOT.glob("games/*/script.gal"))
     dump_idx = None
@@ -67,43 +113,27 @@ def main():
 
     ok = fail = 0
     for g in games:
-        f = g / "script.gal"
-        text = f.read_text(encoding="utf-8-sig")
-        py_ins = parser.parse_text(text, str(f))
-
-        r = subprocess.run(
-            ["node", str(ROOT / "tools" / "_pack_node.js"), str(f)],
-            capture_output=True, text=True, encoding="utf-8", cwd=str(ROOT),
-        )
-        if r.returncode != 0:
-            print(f"[FAIL] {g.name}: node 跑挂了\n{r.stderr[:400]}")
+        good, count = compare_one(g.name, g / "script.gal")
+        if good:
+            ok += 1
+        else:
             fail += 1
-            continue
-        try:
-            js = json.loads(r.stdout)
-        except json.JSONDecodeError:
-            print(f"[FAIL] {g.name}: node 输出不是 JSON\n{r.stdout[:200]}")
-            fail += 1
-            continue
-        if not js.get("ok"):
-            err = js.get("error") or {}
-            print(f"[FAIL] {g.name}: JS 报错 第{err.get('line')}行 {err.get('message')}")
-            fail += 1
-            continue
-
-        js_ins = strip_file(js["instructions"])
-        py_ins = strip_file(py_ins)
-        d = diff_at(py_ins, js_ins, g.name)
-        if d:
-            print(f"[FAIL] {g.name}: {d}")
-            fail += 1
-            continue
-        ok += 1
-        print(f"[ OK ] {g.name}  {len(py_ins)} 条  逐字段一致")
-
-        if dump_idx is not None and dump_idx < len(py_ins):
+        if good and dump_idx is not None and dump_idx < count:
+            py_ins = strip_file(parser.parse_text((g / "script.gal").read_text(encoding="utf-8-sig")))
             print("   Python:", canon(py_ins[dump_idx]))
-            print("   JS    :", canon(js_ins[dump_idx]))
+
+    # 合成用例：写在系统临时目录，不落仓库
+    with tempfile.NamedTemporaryFile("w", suffix=".gal", delete=False, encoding="utf-8") as tf:
+        tf.write(SYNTH)
+        tmp = Path(tf.name)
+    try:
+        good, _ = compare_one("合成用例（5 条新指令）", tmp)
+    finally:
+        tmp.unlink(missing_ok=True)
+    if good:
+        ok += 1
+    else:
+        fail += 1
 
     print(f"\n{ok} 个一致 / {fail} 个不一致")
     return 1 if fail else 0

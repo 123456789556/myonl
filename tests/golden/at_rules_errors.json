@@ -1,0 +1,53 @@
+{
+  "version": 1,
+  "cases": [
+    {
+      "name": "fg_too_many_args",
+      "script": "@label start\n@fg a b c d e\n@end\n",
+      "line": 2,
+      "message": "@fg 需要 1 个参数（前景素材名 / 无），可追加 x=像素 / y=像素 / alpha=0~1"
+    },
+    {
+      "name": "fg_alpha_out_of_range",
+      "script": "@label start\n@fg fg_雨 alpha=1.5\n@end\n",
+      "line": 2,
+      "message": "alpha 范围 0~1，实际为 1.5"
+    },
+    {
+      "name": "fg_x_not_int",
+      "script": "@label start\n@fg fg_雨 x=1.5\n@end\n",
+      "line": 2,
+      "message": "x 应为整数（像素偏移），实际为 \"1.5\""
+    },
+    {
+      "name": "camera_unknown_kind",
+      "script": "@label start\n@camera dolly 1\n@end\n",
+      "line": 2,
+      "message": "@camera 子命令 \"dolly\" 不支持（pan/zoom/shake/reset）"
+    },
+    {
+      "name": "voice_without_say",
+      "script": "@label start\n@voice a.ogg\n@end\n",
+      "line": 2,
+      "message": "@voice 必须紧跟在一条台词之后（前一行应是 \"@ 角色 文本\" 或 \"@ 旁白\"，中间不能有其他指令）"
+    },
+    {
+      "name": "cg_too_many_args",
+      "script": "@label start\n@cg a b\n@end\n",
+      "line": 2,
+      "message": "@cg 需要 1 个参数（CG 名称），实际给了 2 个"
+    },
+    {
+      "name": "transition_unknown_kind",
+      "script": "@label start\n@transition fade 1\n@end\n",
+      "line": 2,
+      "message": "@transition 子命令 \"fade\" 不支持（dissolve/wipe/slide）"
+    },
+    {
+      "name": "camera_pan_zero_secs",
+      "script": "@label start\n@camera pan 左 0\n@end\n",
+      "line": 2,
+      "message": "@camera pan 的秒数必须 > 0"
+    }
+  ]
+}

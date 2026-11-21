@@ -8,11 +8,12 @@
    对拍脚本 tools/pack_diff.py 会拿 games/ 下所有工程跑两遍比一遍。
    不一致就是 bug，不许"差不多"。
 
-   已覆盖（5 个真实工程用到的全部）：
+   已覆盖：
      character / set / bg / music / sfx / chapter / label / say /
-     show / hide / choice / jump / if / end / wait / video
+     show / hide / choice / jump / if / end / wait / video /
+     voice / cg / fg / camera / transition（P192 补齐；字段与校验照 parser.py 逐条对齐）
    未覆盖（遇到就抛清楚的中文错误，不静默走偏）：
-     voice / anim / fg / cg / camera / transition / plug / @include
+     anim / plug / @include
    ============================================================ */
 (function (global) {
   "use strict";
@@ -64,6 +65,15 @@
   var COND = new RegExp("^(" + W + "+?)\\s*(==|!=|>=|<=|>|<)\\s*(-?\\d+(?:\\.\\d+)?)$");
   var INT_ARG = /^-?\d+$/;
   var NUMBER = /^-?\d+(?:\.\d+)?$/;
+  // _DIR_ALIAS 的 JS 版：@camera / @transition 的方向参数，中英都认，输出统一中文
+  var DIRS = { "左": "左", left: "左", "右": "右", right: "右",
+               "上": "上", up: "上", "下": "下", down: "下" };
+
+  /* 手机端解析器不产出的指令：单一来源。
+     报错文案由它拼，测试也从它读 —— 放开一条只改这个数组，
+     别再把条数或名单写死进中文句子（写死过一次，改文案就得同步改测试）。
+     P192 已从这里移出 voice / cg / fg / camera / transition。 */
+  var UNSUPPORTED_DIRECTIVES = ["anim", "plug", "include"];
 
   function num(s) {
     var v = Number(s);
@@ -136,7 +146,12 @@
       var L = this.lines[this.i];
       if (L.indent < base) break;
       if (L.indent > base) throw synErr(L.n, "意外的缩进：该行不属于任何 @if 或 @choice 语句块");
-      out.push(this.one());
+      var one = this.one();
+      // parser.py:193 同一条约束：@voice 只能紧跟台词，中间不能夹别的指令
+      if (one.op === "voice" && (!out.length || out[out.length - 1].op !== "say")) {
+        throw synErr(one.line, '@voice 必须紧跟在一条台词之后（前一行应是 "@ 角色 文本" 或 "@ 旁白"，中间不能有其他指令）');
+      }
+      out.push(one);
     }
     return out;
   };
@@ -237,6 +252,115 @@
 
     if (head === "video") {
       return parseVideoArgs(n, argstr);
+    }
+
+    /* ---- P192：补上 5 条演出指令的解析 ----
+     * 播放器（web/myonl-player.js）早就实现了 cg / fg / voice / camera / transition，
+     * 一直只拦在解析器这层，作者在手机上连写都写不出来。字段名、参数个数、取值范围
+     * 全部照 engine/parser.py 对齐，双端由 tests/golden/at_rules.json 对拍兜着，
+     * 谁单方面改动都会让 CI 变红。 */
+    if (head === "voice") {
+      var av = argstr.split(/\s+/).filter(Boolean);
+      if (av.length !== 1 || !av[0]) {
+        throw synErr(n, "@voice 需要 1 个参数（配音文件名），实际给了 " + av.length + " 个");
+      }
+      return { op: "voice", sound: av[0], line: n };
+    }
+
+    if (head === "cg") {
+      var ac = argstr.split(/\s+/).filter(Boolean);
+      if (ac.length !== 1 || !ac[0]) {
+        throw synErr(n, "@cg 需要 1 个参数（CG 名称），实际给了 " + ac.length + " 个");
+      }
+      return { op: "cg", name: ac[0], line: n };
+    }
+
+    if (head === "fg") {
+      var fgArgs = argstr.split(/\s+/).filter(Boolean);
+      if (!fgArgs.length || fgArgs.length > 4) {
+        throw synErr(n, "@fg 需要 1 个参数（前景素材名 / 无），可追加 x=像素 / y=像素 / alpha=0~1");
+      }
+      var fgn = fgArgs[0], fx = 0, fy = 0, falpha = 1;
+      for (var fi = 1; fi < fgArgs.length; fi++) {
+        var fp = fgArgs[fi];
+        if (fp.indexOf("=") < 0) {
+          throw synErr(n, '@fg 的扩展参数应为 x=像素 / y=像素 / alpha=0~1，实际为 "' + fp + '"');
+        }
+        var fk = fp.split("=")[0], fv = fp.slice(fk.length + 1);
+        if (fk === "x" || fk === "y") {
+          if (!INT_ARG.test(fv)) throw synErr(n, fk + ' 应为整数（像素偏移），实际为 "' + fv + '"');
+          if (fk === "x") fx = parseInt(fv, 10); else fy = parseInt(fv, 10);
+        } else if (fk === "alpha") {
+          if (!NUMBER.test(fv)) throw synErr(n, 'alpha 应为数字（范围 0~1），实际为 "' + fv + '"');
+          falpha = Number(fv);
+          if (falpha < 0 || falpha > 1) throw synErr(n, "alpha 范围 0~1，实际为 " + fv);
+        } else {
+          throw synErr(n, '@fg 不支持参数 "' + fk + '="：可用 x=像素 / y=像素 / alpha=0~1');
+        }
+      }
+      if (fgn === "none") fgn = "无";
+      else if (fgn !== "无" && !NAME.test(fgn)) {
+        throw synErr(n, '前景素材名 "' + fgn + '" 不合法：只能含中英文、数字和下划线');
+      }
+      return { op: "fg", name: fgn, x: fx, y: fy, alpha: falpha, line: n };
+    }
+
+    if (head === "camera") {
+      var camArgs = argstr.split(/\s+/).filter(Boolean);
+      if (camArgs.length < 2) throw synErr(n, "@camera 需要 子命令(pan/zoom/shake/reset) + 参数");
+      var ck = camArgs[0];
+      if (["pan", "zoom", "shake", "reset"].indexOf(ck) < 0) {
+        throw synErr(n, '@camera 子命令 "' + ck + '" 不支持（pan/zoom/shake/reset）');
+      }
+      var ca = camArgs.slice(1);
+      if (ck === "pan") {
+        if (ca.length !== 2 || !DIRS[ca[0]]) {
+          throw synErr(n, "@camera pan 格式：@camera pan 方向(左/右/上/下，也可 left/right/up/down) 秒数");
+        }
+        if (!NUMBER.test(ca[1])) throw synErr(n, '@camera pan 的秒数应为数字，实际 "' + ca[1] + '"');
+        if (!(Number(ca[1]) > 0)) throw synErr(n, "@camera pan 的秒数必须 > 0");
+        return { op: "camera", kind: "pan", args: [DIRS[ca[0]], num(ca[1])], line: n };
+      }
+      if (ck === "zoom") {
+        if (ca.length !== 2) throw synErr(n, "@camera zoom 格式：@camera zoom 起始缩放 结束缩放");
+        for (var zi = 0; zi < 2; zi++) {
+          if (!NUMBER.test(ca[zi])) throw synErr(n, '@camera zoom 的缩放比例应为数字，实际 "' + ca[zi] + '"');
+        }
+        return { op: "camera", kind: "zoom", args: [num(ca[0]), num(ca[1])], line: n };
+      }
+      if (ck === "shake") {
+        if (ca.length !== 2) throw synErr(n, "@camera shake 格式：@camera shake 秒数 幅度");
+        if (!NUMBER.test(ca[0]) || !NUMBER.test(ca[1])) throw synErr(n, "@camera shake 的秒数和幅度应为数字");
+        if (!(Number(ca[0]) > 0)) throw synErr(n, "@camera shake 的秒数必须 > 0");
+        return { op: "camera", kind: "shake", args: [num(ca[0]), num(ca[1])], line: n };
+      }
+      // reset
+      if (ca.length !== 1) throw synErr(n, "@camera reset 格式：@camera reset 秒数");
+      if (!NUMBER.test(ca[0])) throw synErr(n, '@camera reset 的秒数应为数字，实际 "' + ca[0] + '"');
+      if (!(Number(ca[0]) > 0)) throw synErr(n, "@camera reset 的秒数必须 > 0");
+      return { op: "camera", kind: "reset", args: [num(ca[0])], line: n };
+    }
+
+    if (head === "transition") {
+      var trArgs = argstr.split(/\s+/).filter(Boolean);
+      if (!trArgs.length) throw synErr(n, "@transition 需要 子命令(dissolve/wipe/slide) + 参数");
+      var tk = trArgs[0];
+      if (["dissolve", "wipe", "slide"].indexOf(tk) < 0) {
+        throw synErr(n, '@transition 子命令 "' + tk + '" 不支持（dissolve/wipe/slide）');
+      }
+      var ta = trArgs.slice(1);
+      if (tk === "dissolve") {
+        if (ta.length !== 1) throw synErr(n, "@transition dissolve 格式：@transition dissolve 秒数");
+        if (!NUMBER.test(ta[0])) throw synErr(n, '@transition dissolve 的秒数应为数字，实际 "' + ta[0] + '"');
+        if (!(Number(ta[0]) > 0)) throw synErr(n, "@transition dissolve 的秒数必须 > 0");
+        return { op: "transition", kind: "dissolve", args: [num(ta[0])], line: n };
+      }
+      if (ta.length !== 2 || !DIRS[ta[0]]) {
+        throw synErr(n, "@transition " + tk + " 格式：@transition " + tk + " 方向(左/右/上/下，也可 left/right/up/down) 秒数");
+      }
+      if (!NUMBER.test(ta[1])) throw synErr(n, '@transition ' + tk + ' 的秒数应为数字，实际 "' + ta[1] + '"');
+      if (!(Number(ta[1]) > 0)) throw synErr(n, "@transition " + tk + " 的秒数必须 > 0");
+      return { op: "transition", kind: tk, args: [DIRS[ta[0]], num(ta[1])], line: n };
     }
 
     if (head === "show") {
@@ -381,8 +505,11 @@
     if (head === "choice:" || (head === "choice" && argstr === ":")) return this.choice(n, L.indent);
     if (head === "choice") throw synErr(n, '@choice 后面需要冒号，写法是单独一行 "@choice:"，后接缩进的选项列表');
 
-    throw synErr(n, '未知指令 "@' + head + '"（手机端解析器支持：@character @bg @music @sfx @show @hide @wait @chapter @label '
-      + '@jump @end @set @if @video @choice: "@[角色] 文本" "@ 文本"；@voice/@anim/@fg/@cg/@camera/@transition/@plug 请到电脑端打包）');
+    var unsNames = UNSUPPORTED_DIRECTIVES.map(function (d) { return "@" + d; }).join(" / ");
+    throw synErr(n, '未知指令 "@' + head + '"（手机端解析器支持：@character @bg @music @sfx @show @hide @wait '
+      + '@chapter @label @jump @end @set @if @video @voice @cg @fg @camera @transition @choice: '
+      + '"@[角色] 文本" "@ 文本"；暂时写不了的是 ' + unsNames
+      + '（@anim、@include 的成品在手机上能演，@plug 连成品也不演：播放器没有插件实现））');
   };
 
   Parser.prototype.sayNext = function (line) {
