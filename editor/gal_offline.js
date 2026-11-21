@@ -795,7 +795,7 @@
     if (/[\/\\]/.test(name)) return jsonRes({ ok: false, message: "名字里不能有斜杠" }, 400);
     var lib = readLib();
     if (findProject(lib, name)) return jsonRes({ ok: false, message: "已经有同名作品了：" + name }, 400);
-    // text 可选：首页「新手教程」要一次建成一份能读能改的短剧本，
+    // text 可选：底栏「教程」抽屉里那份练习要一次建成一份能读能改的短剧本，
     // 不是「hello world」那种空壳。为空仍走老的空项目模板。
     var seed = typeof b.text === "string" && b.text ? b.text : starterText();
     lib.projects.push({ name: name, text: seed, ctime: now(), mtime: now() });

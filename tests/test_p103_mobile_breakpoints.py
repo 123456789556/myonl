@@ -55,5 +55,14 @@ def test_tablet_body_line_measure():
 
 
 def test_landscape_menubar_clears_tab_column():
-    """横屏左侧竖 tab 栏占 60px，顶栏原来没让位，左上「‹ 返回」被压在底下点不到。"""
-    assert ".menubar { padding-left: 68px !important; }" in CSS
+    """P196：横屏原来把 tab 栏竖到左侧 60px，正文、顶栏、状态栏一路补 padding 让位。
+
+    真机上 flex:1 + top:0/bottom:0 把三个 tab 拉成一列铺满整屏高（用户原话「手机上只有这三个」），
+    几层补偿叠起来还让正文看着像被灰罩压住。现在导航回底部横排，这些让位全部取消，
+    所以这里改为断言「不再有左竖条」，而不是断言 menubar 让了 68px。
+    """
+    assert "flex-direction: column; border-top: 0; border-right: 1px solid var(--surface0);" not in CSS
+    assert ".main { padding-left: 60px !important; box-sizing: border-box; }" not in CSS
+    assert ".menubar { padding-left: 68px !important; }" not in CSS
+    assert "width: 60px !important" not in CSS
+    assert "flex-direction: row !important" in CSS

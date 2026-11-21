@@ -741,17 +741,17 @@
       document.body.classList.remove("m-kb-open");
     }
   }
-  // ---- 手机键盘快捷条：@ 系列指令 + 缩进 + 撤销。手机上打 "@choice:" 太慢。----
+  // ---- 手机键盘快捷条：@ 系列指令 + 标点 + 缩进 + 撤销。手机上打 "@choice:" / "@[名字]" 太慢。----
   var keybarEl = null;
   var KB_KEYS = [
+    ["hash", "#", "# ", null], ["gt", ">", "> ", null], ["lb", "[", "[", null], ["rb", "]", "]", null],
     ["at", "@", "@", null],
     ["bg", "@bg", "@bg ", null],
     ["show", "@show", "@show ", null],
     ["chapter", "@chapter", "@chapter ", null],
     ["voice", "@voice", "@voice ", null],
     ["choice", "@choice:", "@choice:\n    ", null],
-    ["if", "@if", "@if ", null],
-    ["set", "@set", "@set ", null],
+    ["if", "@if", "@if ", null], ["set", "@set", "@set ", null],
     ["label", "@label", "@label ", null],
     ["transition", "@transition", "@transition ", null],
     ["fg", "@fg", "@fg ", null],

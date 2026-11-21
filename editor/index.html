@@ -9,35 +9,26 @@
 </head>
 <body>
 <!-- 轻量加载指示（顶部进度条 + 右下角徽标，不挡交互，约 0.6s 淡出） -->
-<div id="moyul-splash">
-  <div class="splash-bar"></div>
-  <div class="splash-badge">
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16">
-      <rect x="2" y="2" width="20" height="20" rx="5" fill="#1e1e2e" stroke="#89b4fa" stroke-width="1.5"/>
-      <text x="12" y="15.5" font-family="Arial" font-size="11" font-weight="800" fill="#89b4fa" text-anchor="middle">MY</text>
-    </svg>
-    加载中…
-  </div>
-</div>
+<div id="moyul-splash" style="pointer-events:none"><div class="splash-bar"></div>
+<div class="splash-badge"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16"><rect x="2" y="2" width="20" height="20" rx="5" fill="#1e1e2e" stroke="#89b4fa" stroke-width="1.5"/><text x="12" y="15.5" font-family="Arial" font-size="11" font-weight="800" fill="#89b4fa" text-anchor="middle">MY</text></svg>加载中…</div></div>
 <script>
 (function () {
   var s = document.getElementById('moyul-splash');
   if (!s) return;
-  // localStorage 开关：moyul_splash = "off" 时直接跳过加载动画
-  try {
-    if (localStorage.getItem('moyul_splash') === 'off') {
-      s.parentNode.removeChild(s);
-      return;
-    }
-  } catch (e) {}
+  // P196：真机上这层 z99999 全屏，CSS 一旦没解析到 pointer-events:none 就成了「灰屏点不动」。
+  // 所以 inline 再钉一遍，不依赖 CSS；任一路径 1.5s 内必须撤掉。
+  s.style.pointerEvents = 'none';
+  try { if (localStorage.getItem('moyul_splash') === 'off') { s.parentNode.removeChild(s); return; } } catch (e) {}
   var hide = function () {
     if (s.dataset.done) return;
     s.dataset.done = '1';
-    s.classList.add('hide');
+    s.style.opacity = '0';
     setTimeout(function () { if (s.parentNode) s.parentNode.removeChild(s); }, 420);
   };
-  // 页面资源就绪后淡出（约 0.6s，不挡交互）
   setTimeout(hide, 600);
+  window.addEventListener('error', hide);
+  window.addEventListener('load', function () { setTimeout(hide, 400); });
+  setTimeout(hide, 1500);
 })();
 </script>
   <!-- 菜单栏（VSCode 式：文件/编辑/视图/运行/帮助） -->

@@ -2716,20 +2716,22 @@ input[type="color"] {
   .m-sheet-act.m-sheet-insert { background: var(--blue); border-color: var(--blue); color: #fff; }
 }
 
-/* 横屏（844×390 这类）：tab 栏挪到左边竖排，正文整条横向空间还给内容 */
+/* 横屏（844×390 这类）：导航仍贴底横排。
+   P196：原来这里把 tab 栏竖到左侧 60px，正文让 60px、menubar 再补 68px、statusbar 补 60px。
+   真机上那条竖条把三个 tab 拉成一列铺满整屏高（flex:1 + top:0/bottom:0），
+   用户原话「手机上只有这三个」；几层补偿叠起来，正文看着像被灰罩压住。
+   一屏一个主角、导航永远在底部，跟竖屏同一套，不另造一套结构。
+   横屏真正的收益（分组两列、二级页左右分栏）留在下面。 */
 @media (max-height: 520px) and (min-width: 640px) {
   .m-tabbar {
-    top: 0; bottom: 0; left: 0; right: auto; width: 60px !important; height: auto !important;
-    flex-direction: column; border-top: 0; border-right: 1px solid var(--surface0);
-    padding-top: 6px; padding-bottom: 0;
+    top: auto !important; bottom: 0 !important; left: 0 !important; right: 0 !important;
+    width: auto !important; height: calc(42px + env(safe-area-inset-bottom)) !important;
+    flex-direction: row !important;
+    border-top: 1px solid var(--surface0); border-right: 0;
+    padding-top: 0; padding-bottom: env(safe-area-inset-bottom);
   }
-  .m-tab { height: 44px; line-height: 44px; font-size: 12px; }
-  /* 正文让开左侧 60px：用 padding 而不是 margin（main 是 flex:1，margin 会被 flex 吃掉） */
-  .main { padding-left: 60px !important; box-sizing: border-box; }
-  /* center-page 是 position:fixed，不吃 .main 的内边距 —— 横屏得自己让开左侧 tab 栏，否则列表被压掉半行字 */
-  /* P190：原来只让到 74px，右侧留的 14px 缝隙正好把底下的顶栏按钮露出半截（看起来像画面上有个莫名其妙的圆）。
-     只让 tab 栏那 60px，右边贴齐。 */
-  .center-page { left: 60px !important; width: calc(100% - 60px) !important; right: auto !important; overflow-x: hidden; box-sizing: border-box; }
+  .m-tab { height: 100%; flex: 1; line-height: normal; font-size: 13px; }
+  .center-page { left: 0 !important; width: 100% !important; right: 0 !important; overflow-x: hidden; box-sizing: border-box; }
   .center-page .modal-wide, .center-page .modal { width: 100% !important; max-width: 100% !important; box-sizing: border-box; }
   .m-grouplist { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 18px; }
   .m-gr-val { max-width: 46%; }
@@ -2738,9 +2740,8 @@ input[type="color"] {
   .m-subbody { display: flex; gap: 44px; align-items: flex-start; justify-content: center; padding: 10px 14px 20px; }
   .m-subbody .uid-panel { order: 1; flex: 1 1 auto; max-width: 470px !important; }
   .m-subbody .ui-design-preview { order: 2; flex: 0 0 232px; max-height: none; }
-  .statusbar { padding-left: 60px !important; box-sizing: border-box; }
-  /* P103：左侧竖 tab 栏占了 0~60px，顶栏没让位 —— 左上「‹ 返回」被压在 tab 栏底下，横屏点不到 */
-  .menubar { padding-left: 68px !important; }
+  /* 导航回到底部后，原来给左侧竖条让位的三处补偿（statusbar 60px / menubar 68px）全部取消：
+     它们叠在一起正是横屏顶栏按钮被挤到左边缘、正文像被压住的原因。 */
   /* 390 高的横屏里，420px 宽的引导卡盖掉正文中段：收窄贴右下，正文左侧基本露出 */
   .ob-card {
     left: auto !important; right: 14px !important; transform: none !important;
@@ -3088,20 +3089,6 @@ input[type="color"] {
     align-content: start;
     align-items: start;
   }
-  #scenePage #sceneForm > * { grid-column: 1; min-width: 0; }
-  /* 预览钉在右列，滚左边的时候画面一直看得见 */
-  #scenePage #sceneForm > .sf-stage-wrap {
-    grid-column: 2;
-    grid-row: 1 / span 40;
-    position: sticky;
-    top: 72px;
-    align-self: start;
-    margin-top: 0 !important;
-  }
-  #scenePage #sceneForm > .sf-actions { grid-column: 1 / -1; }
-  /* 横屏地窄，台词框不用再拉满 */
-  #scenePage .scene-form { padding-right: 10px; }
-}
   #scenePage #sceneForm > * { grid-column: 1; min-width: 0; }
   /* 预览钉在右列，滚左边的时候画面一直看得见 */
   #scenePage #sceneForm > .sf-stage-wrap {
