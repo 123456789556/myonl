@@ -24,11 +24,122 @@
   var ROWS = [
     ["pack", "网页版 HTML", "一个文件，浏览器打开就能玩，发给谁都能开", "⬇"],
     ["apk", "安装包 APK", "装到手机上像 App，图标点开就是游戏", "⬇"],
-    ["gal", "项目备份 .gal", "把这一份连素材打包，换设备能接着改", "⤓"],
+    ["proj", "作品文件 .myonl", "剧本和素材打成一个文件，换手机、换电脑接着改", "⤓"],
     ["lib", "全部作品 .json", "所有作品合成一份，当总备份", "⤓"],
     ["hist", "版本历史", "改坏了退回上一版，不用重写", "↺"],
     ["imp", "导入别人的作品", "粘贴、选文件、网页版 html 三条路，都能导", "⤒"]
   ];
+
+  // P212：这格原来叫「项目备份 .gal」，副题写「把这一份连素材打包」—— 但 __myonlExportGal
+  // 只 download(p.text)，素材一个没带。用户换手机恢复出来一堆找不着图的作品，比没备份更上火。
+  // .gal 本来就是纯剧本文本（导入他人文本还要靠它），所以另开一个真包：.myonl。
+  function bare(n) { return String(n).replace(/\.[A-Za-z0-9]{1,5}$/, ""); }
+
+  // 剧本里被点名的素材：@bg 教室 / @music 雨.mp3 这类指令的首个参数
+  function refNames(text) {
+    var out = {};
+    String(text || "").split(/\r?\n/).forEach(function (ln) {
+      var m = /^@(bg|cg|fg|music|sfx|voice|video)\s+([^\s#]+)/.exec(ln.replace(/^\s+/, ""));
+      if (!m) return;
+      var v = m[2];
+      if (/^(无|none|off)$/i.test(v)) return;
+      out[bare(v)] = 1;
+    });
+    return out;
+  }
+
+  // 只带这个作品真正用到的素材。一个都没点名（或名字对不上）就全带 —— 宁可多带，不能少带。
+  function pickAssets(text, sp) {
+    var want = refNames(text), named = Object.keys(want).length > 0;
+    var out = { assets: {}, audio: {}, movies: {}, kinds: {} };
+    [["assets", "image"], ["audio", "audio"], ["movies", "video"]].forEach(function (pair) {
+      var k = pair[0], kind = pair[1], src = (sp && sp[k]) || {};
+      Object.keys(src).forEach(function (n) {
+        if (named && !want[bare(n)]) return;
+        out[k][n] = src[n];
+        out.kinds[n] = kind;
+      });
+    });
+    return out;
+  }
+
+  // 落地：安卓壳走 __MYONLSave 桥（WebView 不理 a[download]），浏览器走 blob 下载
+  function saveText(text, filename, mime) {
+    var type = mime || "text/plain;charset=utf-8";
+    var bridge = window.__MYONLSave;
+    if (bridge && typeof bridge.save === "function") {
+      try {
+        var b64 = btoa(unescape(encodeURIComponent(text)));
+        bridge.save(filename, type.split(";")[0], b64);
+        if (window.toast) window.toast("已导出 " + filename);
+        return;
+      } catch (e) { /* 桥坏了退回浏览器 */ }
+    }
+    try {
+      var a = document.createElement("a");
+      a.href = URL.createObjectURL(new Blob([text], { type: type }));
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(function () { try { URL.revokeObjectURL(a.href); a.remove(); } catch (e2) {} }, 4000);
+      if (window.toast) window.toast("已导出 " + filename + "（在下载里找）");
+    } catch (e3) {
+      if (window.toast) window.toast("这个环境不让直接下载", true);
+    }
+  }
+
+  function currentProj() {
+    var lib = (window.__myonlLib && window.__myonlLib.read) ? (window.__myonlLib.read() || {}) : {};
+    var list = lib.projects || [], p = null;
+    for (var i = 0; i < list.length; i++) if (list[i].name === lib.current) p = list[i];
+    return p || list[0] || null;
+  }
+
+  // 单个作品包：剧本原文 + 它用到的素材，一个文件。两端（手机 / 电脑）都按这个格式认。
+  function exportProj() {
+    var p = currentProj();
+    if (!p) { if (window.toast) window.toast("还没有作品可导出"); return; }
+    var sp = (window.MYONLAssets && window.MYONLAssets.allSplit)
+      ? window.MYONLAssets.allSplit() : Promise.resolve({ assets: {}, audio: {}, movies: {} });
+    if (window.toast) window.toast("正在把剧本和素材打成一个文件…");
+    sp.then(function (s) {
+      var bag = pickAssets(p.text, s || {});
+      var out = {
+        myonl: "proj", v: 1, name: p.name, text: String(p.text || ""),
+        ctime: p.ctime || 0, mtime: p.mtime || 0,
+        assets: bag.assets, audio: bag.audio, movies: bag.movies, kinds: bag.kinds
+      };
+      var na = Object.keys(bag.assets).length, nu = Object.keys(bag.audio).length,
+          nv = Object.keys(bag.movies).length;
+      saveText(JSON.stringify(out), String(p.name).replace(/[\\/:*?"<>|]/g, "_") + ".myonl",
+        "application/json;charset=utf-8");
+      var parts = ["剧本"];
+      if (na) parts.push(na + " 张图");
+      if (nv) parts.push(nv + " 段视频");
+      if (nu) parts.push(nu + " 段音频");
+      if (window.toast) window.toast("已导出「" + p.name + "」：" + parts.join("、"));
+    }).catch(function (e) {
+      if (window.toast) window.toast("素材没读出来：" + (e && e.message ? e.message : e), true);
+    });
+  }
+
+  // 单作品包导入：素材先按原名进库，再建一条作品；同名不覆盖，改成「名字（2）」
+  function importProj(obj) {
+    var text = String(obj.text || "");
+    if (!text.trim()) { if (window.toast) window.toast("这个包里没有剧本内容"); return; }
+    var cur = localLib(), taken = {};
+    (cur.projects || []).forEach(function (p) { if (p) taken[p.name] = 1; });
+    var name = String(obj.name || "").trim() || "导入的作品", base = name, i = 2;
+    while (taken[name]) { name = base + "（" + i + "）"; i++; }
+    var now = Math.round(Date.now() / 1000);
+    var proj = { name: name, folder: "imp" + Date.now().toString(36),
+      text: text, ctime: obj.ctime || now, mtime: now };
+    finishImport({
+      projects: [proj].concat(cur.projects || []).slice(0, 200),
+      current: name,
+      assets: obj.assets, audio: obj.audio, movies: obj.movies, kinds: obj.kinds
+    }, 1);
+  }
 
   // 手机上弹不出系统文件选择器（实测），粘贴是唯一真能走通的导入路。
   // P210：以前只认 {projects:[...]}，用户把之前导出的 .gal 贴进来只会看到「不是完整 JSON」。
@@ -45,6 +156,7 @@
       if (window.toast) window.toast("这不是完整的 JSON，看下是不是没复制全");
       return;
     }
+    if (obj && obj.myonl === "proj") return importProj(obj);
     if (obj && Array.isArray(obj.projects)) return mergeLib(obj);
     if (obj && (obj.title || obj.scenes || obj.lines)) return importOne(obj.title || null, JSON.stringify(obj, null, 1));
     // 剩下的当剧本文本：@bg 教室 / 小明：你好 这种，就是 .gal 里的内容
@@ -185,7 +297,7 @@
     }
     var inp = document.createElement("input");
     inp.type = "file";
-    inp.accept = ".json,.gal,.html,.txt,application/json,text/plain";
+    inp.accept = ".json,.myonl,.gal,.html,.txt,application/json,text/plain";
     inp.style.display = "none";
     document.body.appendChild(inp);
     inp.addEventListener("change", function () {
@@ -229,7 +341,7 @@
         '<div class="m-exp-sec">三种来源，用能走通的那个</div>' +
         '<button type="button" class="m-exp-row" data-src="paste">' +
           '<span class="m-exp-ic">⤒</span>' +
-          '<span class="m-exp-b"><b>粘贴内容</b><span>.gal 全文、作品库 .json，整段贴，自动认</span></span>' +
+          '<span class="m-exp-b"><b>粘贴内容</b><span>.myonl 作品文件、.gal 全文、作品库 .json，整段贴，自动认</span></span>' +
           '<em>›</em></button>' +
         '<button type="button" class="m-exp-row" data-src="file">' +
           '<span class="m-exp-ic">📄</span>' +
@@ -251,6 +363,7 @@
   function call(id) {
     if (id === "pack" && window.__myonlExportPack) window.__myonlExportPack();
     else if (id === "apk" && window.__myonlExportApk) window.__myonlExportApk();
+    else if (id === "proj") exportProj();
     else if (id === "gal" && window.__myonlExportGal) window.__myonlExportGal();
     else if (id === "lib" && window.__myonlExportLib) window.__myonlExportLib();
     else if (id === "hist") {
