@@ -1,0 +1,109 @@
+name: 桌面 exe
+
+# P214：以前 workflows 里一条打 exe 的都没有 —— 桌面版只能本机手搓 build_editor.bat，
+# 于是 APK 一路 v1.2.x 自动发，exe 停在 v1.0.0-rc19，两端版本号对不上。
+# 这条与 android-apk.yml 并列，同一个 tag 推上来两边一起出包，落到同一个 Release。
+#
+# 触发：推 v* tag（与 APK 同步），或 Actions 手动跑一条探路包。
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  exe:
+    runs-on: windows-latest
+    timeout-minutes: 40
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # 3.11 是 pygame-ce / pyinstaller / pywebview 三方都稳的一档。
+      # 用 3.13 会踩「pythonnet 还没跟上」那类包不可装的问题，不值得赌。
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      # 先拦版本不一致的 tag，再花 10 分钟编译 —— 顺序反了就是白等。
+      # 真源只有一个：engine/_version.py 的 VERSION。tag 必须与它完全一致。
+      - name: 校验 tag 与 engine/_version.py 一致
+        shell: pwsh
+        run: |
+          $ver = python -c "from engine._version import VERSION; print(VERSION)"
+          $tag = "${{ github.ref_name }}"
+          if ("$env:GITHUB_REF".StartsWith("refs/tags/")) {
+            $expect = $tag -replace '^v', ''
+            if ($ver -ne $expect) {
+              Write-Host "::error::tag $tag 与 engine/_version.py 的 VERSION=$ver 不一致"
+              Write-Host "::error::exe 与 APK 会拿到两个不同的版本号，这一版不能发。"
+              Write-Host "::error::改 engine/_version.py 为 $expect 后重新打 tag。"
+              exit 1
+            }
+            Write-Host "版本一致：$ver"
+          } else {
+            Write-Host "非 tag 构建，跳过比对（版本 $ver）"
+          }
+
+      - name: 装打包依赖
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install pyinstaller pywebview pygame-ce pillow
+
+      # 发行版 editor.exe 里没有 PyInstaller，编辑器内「打包游戏」靠这份预构建模板。
+      # 漏了它，用户点打包就报错 —— 而且编译本身不会提醒。
+      - name: 构建玩家模板
+        run: python tools/build_player_template.py
+
+      - name: 打编辑器（PyInstaller onedir，用仓库 editor.spec）
+        run: python -m PyInstaller --noconfirm --clean editor.spec
+
+      # 冒烟：exe 存在且不是 0 字节；onedir 的关键运行时文件也都在。
+      # 只看「编译成功」不够 —— 少了 _internal 里某个 dll，编译也是绿的，双击才崩。
+      - name: 产物自检
+        shell: pwsh
+        run: |
+          $exe = "dist\editor\editor.exe"
+          if (-not (Test-Path $exe)) { Write-Host "::error::没生成 $exe"; exit 1 }
+          $size = (Get-Item $exe).Length
+          if ($size -lt 100000) { Write-Host "::error::editor.exe 只有 $size 字节，明显不对"; exit 1 }
+          Write-Host "editor.exe $size 字节"
+          $internal = Get-ChildItem "dist\editor\_internal" -Recurse -File | Measure-Object -Property Length -Sum
+          Write-Host "_internal $($internal.Count) 个文件 / $([math]::Round($internal.Sum/1MB,1)) MB"
+          if ($internal.Count -lt 50) { Write-Host "::error::_internal 文件太少，运行时没打进去"; exit 1 }
+          # 玩家模板必须躺在 exe 同级的 engine/templates/player 里
+          $plt = "dist\editor\_internal\engine\templates\player\MYONLPlayer.exe"
+          if (-not (Test-Path $plt)) { Write-Host "::warning::玩家模板没进包，编辑器内「打包游戏」会坏" }
+
+      - name: 压成 zip
+        shell: pwsh
+        run: |
+          $name = "MYONL-${{ github.ref_name }}-editor-win.zip"
+          Compress-Archive -Path "dist\editor\*" -DestinationPath "out\$name" -CompressionLevel Optimal
+          Get-ChildItem out | ForEach-Object { Write-Host "$($_.Name) $($_.Length) 字节" }
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: myonl-exe
+          path: out/*.zip
+          if-no-files-found: error
+
+      # 同一个 tag 的 Release 由 android-apk.yml 先建或先建都行：
+      # softprops 是按 tag 找 Release 再追加资产，幂等，不会互相覆盖。
+      - name: 把 exe 挂到同一个 Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          name: "MYONL 安卓包 ${{ github.ref_name }}"
+          body: |
+            这一版同时出两个包，版本号一致（${{ github.ref_name }}）：
+
+            - `MYONL-${{ github.ref_name }}.apk` —— 安卓手机装，装上就是编辑器
+            - `MYONL-${{ github.ref_name }}-editor-win.zip` —— Windows 解压后双击 `editor.exe`
+
+            两个包里的版本号、作品格式（`.myonl`）都对齐，作品能在两端来回带。
+          files: out/*.zip
+          fail_on_unmatched_files: true

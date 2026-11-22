@@ -95,8 +95,182 @@
     return p || list[0] || null;
   }
 
+  // ---------- 电脑端：同一份作品、同一个包，只是料从后端拿 ----------
+  // 桌面上没有 IndexedDB 素材库（gal_offline.js 一开局就 return 了），
+  // 剧本在 games/、素材在 images|audio，只能问后端。这里不新增后端路由：
+  // /api/script 给正文与路径，/api/assets 给清单，/api/asset/<类别>/<名字> 给字节。
+  function deskOn() { return !window.__MYONL_OFFLINE; }
+
+  function toDataURL(blob) {
+    return new Promise(function (res, rej) {
+      var fr = new FileReader();
+      fr.onload = function () { res(String(fr.result || "")); };
+      fr.onerror = function () { rej(new Error("读不出字节")); };
+      fr.readAsDataURL(blob);
+    });
+  }
+
+  function deskExport() {
+    if (window.toast) window.toast("正在把剧本和素材打成一个文件…");
+    var skipped = [];
+    return fetch("/api/script", { cache: "no-store" }).then(function (r) {
+      if (!r.ok) throw new Error("读剧本失败");
+      return r.json();
+    }).then(function (sc) {
+      var text = String((sc && sc.text) || ""), path = String((sc && sc.path) || "");
+      var name = bare((path.split(/[\\/]/).pop() || "作品"));
+      return fetch("/api/assets", { cache: "no-store" }).then(function (r) {
+        return r.ok ? r.json() : { assets: {} };
+      }).then(function (a) {
+        var as = (a && a.assets) || {}, want = refNames(text), named = Object.keys(want).length > 0;
+        var out = { assets: {}, audio: {}, movies: {}, kinds: {} }, jobs = [];
+        // 只取两类：图与音频。视频在桌面上是帧序列（images/videos/名字_001.png），
+        // 拿单帧塞进包会被当成一张图，播出来是静帧 —— 不如不带，坦白说清楚。
+        [["images", "assets", "image"], ["audio", "audio", "audio"]].forEach(function (t) {
+          (as[t[0]] || []).forEach(function (n) {
+            if (named && !want[bare(n)]) return;
+            jobs.push({ cat: t[0], key: t[1], kind: t[2], name: n });
+          });
+        });
+        return Promise.all(jobs.map(function (j) {
+          var url = "/api/asset/" + j.cat + "/" + encodeURIComponent(j.name);
+          return fetch(url, { cache: "no-store" }).then(function (r) {
+            if (!r.ok) throw new Error("缺 " + j.name);
+            return r.blob();
+          }).then(toDataURL).then(function (u) {
+            out[j.key][j.name] = u; out.kinds[j.name] = j.kind;
+          }).catch(function () { skipped.push(j.name); });
+        })).then(function () {
+          var now = Math.round(Date.now() / 1000);
+          var pack = {
+            myonl: "proj", v: 1, name: name, text: text, ctime: now, mtime: now,
+            assets: out.assets, audio: out.audio, movies: out.movies, kinds: out.kinds
+          };
+          saveText(JSON.stringify(pack), String(name).replace(/[\\/:*?"<>|]/g, "_") + ".myonl",
+            "application/json;charset=utf-8");
+          var na = Object.keys(out.assets).length, nu = Object.keys(out.audio).length;
+          var parts = ["剧本"];
+          if (na) parts.push(na + " 张图");
+          if (nu) parts.push(nu + " 段音频");
+          var tail = skipped.length ? ("；缺 " + skipped.length + " 个没能读出来：" + skipped.slice(0, 3).join("、")) : "";
+          if (window.toast) window.toast("已导出「" + name + "」：" + parts.join("、") + tail, !!skipped.length);
+        });
+      });
+    }).catch(function (e) {
+      if (window.toast) window.toast("导出失败：" + (e && e.message ? e.message : e), true);
+    });
+  }
+
+  // 电脑端导入 .myonl：不走 localStorage 库（那是离线内核的东西，桌面上写了等于没写）。
+  // 桌面真正的库是磁盘：games/<名字>/script.gal + images|audio。所以落盘要问后端。
+  // 复用三条现成路由，不新增后端接口：/api/new 建工程、/api/script 存正文、/api/import 存素材。
+  function mimeExt(u, key) {
+    if (/\.[A-Za-z0-9]{2,5}$/.test(String(key))) return "";
+    // FileReader 给的是 `data:image/png;base64`，split 出来的头部带 `;base64` ——
+    // 忘了剥它，整张表一个都对不上，扩展名推成空，后端直接 400「要加扩展名」。
+    var m = String(u || "").split(",")[0].toLowerCase().replace(/;base64$/, "");
+    var map = {
+      "data:image/png": ".png", "data:image/jpeg": ".jpg", "data:image/webp": ".webp",
+      "data:image/gif": ".gif",
+      "data:audio/mpeg": ".mp3", "data:audio/mp3": ".mp3", "data:audio/ogg": ".ogg",
+      "data:audio/wav": ".wav", "data:audio/x-wav": ".wav", "data:audio/webm": ".webm"
+    };
+    return map[m] || "";
+  }
+
+  function postJSON(url, body) {
+    return fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body)
+    }).then(function (r) { return r.json().catch(function () { return {}; }); });
+  }
+
+  // 桌面工程名要过 engine/newgame.py 的白名单：只许中文/字母/数字/下划线、最长 20。
+  // 手机端能叫「我的作品 v1.0（2）」，桌面目录不行 —— 不洗一遍就是连点 9 次 400。
+  function safeName(n) {
+    var s = String(n || "").replace(/[^0-9A-Za-z_\u4e00-\u9fff]/g, "_").replace(/^_+|_+$/g, "");
+    return s.slice(0, 18) || "导入的作品";
+  }
+
+  function importProjDesk(obj) {
+    var text = String(obj.text || "");
+    if (!text.trim()) { if (window.toast) window.toast("这个包里没有剧本内容"); return; }
+    var base = safeName(obj.name || "导入的作品");
+    if (window.toast) window.toast("正在把作品放到本机工程里…");
+
+    // 建新工程要落在「放所有作品的那个 games 目录」。
+    // 不显式给 base_dir 的话，/api/new 会按当前工程推 —— 而当前工程可能已经是
+    // games/xxx（上一步刚切过去），于是新工程被建成 games/xxx/games/yyy 这种套娃。
+    var gamesDir = fetch("/api/config", { cache: "no-store" })
+      .then(function (r) { return r.ok ? r.json() : {}; })
+      .then(function (c) {
+        var pr = String((c && c.project_root) || "");
+        var m = pr.match(/^(.+?[\\/]games)[\\/]+/i);
+        return m ? m[1] : "";
+      }).catch(function () { return ""; });
+
+    // 重名时 /api/new 会 400。换「名字_2」重试，不覆盖已有工程。
+    // 这里用下划线而不是手机端的「（2）」：工程名要过 newgame 的白名单，全角括号不合法。
+    var tries = [base].concat([2, 3, 4, 5, 6, 7, 8, 9].map(function (i) { return base + "_" + i; }));
+    var name = "", root = "";
+    function mk(gdir, i) {
+      if (i >= tries.length) return Promise.resolve(null);
+      var body = { name: tries[i] };
+      if (gdir) body.base_dir = gdir;
+      return postJSON("/api/new", body).then(function (r) {
+        if (r && r.ok && r.path) { name = tries[i]; root = r.path; return r; }
+        return mk(gdir, i + 1);
+      });
+    }
+    return gamesDir.then(function (gdir) {
+      return mk(gdir, 0);
+    }).then(function (r) {
+      if (!r) {
+        if (window.toast) window.toast("建不了新工程，名字可能不合法：" + base, true);
+        return;
+      }
+      var scriptPath = root.replace(/[\\/]+$/, "") + "/script.gal";
+      return postJSON("/api/script", { text: text, path: scriptPath }).then(function (s) {
+        if (!(s && s.ok)) throw new Error((s && s.message) || "剧本没写进去");
+        var sets = [["assets", "images", "images"], ["audio", "audio", "audio"]];
+        var jobs = [], why = [];
+        sets.forEach(function (t) {
+          Object.keys(obj[t[0]] || {}).forEach(function (k) {
+            var u = obj[t[0]][k];
+            if (!/^data:/.test(String(u)) || !String(u).includes(",")) { why.push(k + "：不是 dataURL"); return; }
+            jobs.push({
+              category: t[2],
+              filename: k + mimeExt(u, k),
+              data_b64: String(u).slice(String(u).indexOf(",") + 1),
+              _k: k
+            });
+          });
+        });
+        return Promise.all(jobs.map(function (j) {
+          return postJSON("/api/import", {
+            category: j.category, filename: j.filename, data_b64: j.data_b64
+          }).then(function (x) {
+            if (!(x && x.ok)) why.push(j._k + "：" + ((x && x.message) || "后端没收"));
+            return !!(x && x.ok);
+          }).catch(function (e) { why.push(j._k + "：" + (e && e.message)); return false; });
+        })).then(function (rs) {
+          var okn = rs.filter(Boolean).length;
+          var msg = "已导入「" + name + "」：" +
+            (okn ? okn + " 个素材放进工程" : "剧本已就位（包里没有素材）") + "，刷新后可编辑";
+          if (why.length) msg += "；" + why.length + " 个没进去：" + why.slice(0, 2).join("，");
+          if (window.toast) window.toast(msg, !!why.length);
+        });
+      });
+    }).catch(function (e) {
+      if (window.toast) window.toast("导入失败：" + (e && e.message ? e.message : e), true);
+    });
+  }
+
   // 单个作品包：剧本原文 + 它用到的素材，一个文件。两端（手机 / 电脑）都按这个格式认。
+  // P214：电脑端也能导出 —— 同一个格式，料从后端拿（deskExport）。
   function exportProj() {
+    if (deskOn()) return deskExport();
     var p = currentProj();
     if (!p) { if (window.toast) window.toast("还没有作品可导出"); return; }
     var sp = (window.MYONLAssets && window.MYONLAssets.allSplit)
@@ -156,7 +330,7 @@
       if (window.toast) window.toast("这不是完整的 JSON，看下是不是没复制全");
       return;
     }
-    if (obj && obj.myonl === "proj") return importProj(obj);
+    if (obj && obj.myonl === "proj") return deskOn() ? importProjDesk(obj) : importProj(obj);
     if (obj && Array.isArray(obj.projects)) return mergeLib(obj);
     if (obj && (obj.title || obj.scenes || obj.lines)) return importOne(obj.title || null, JSON.stringify(obj, null, 1));
     // 剩下的当剧本文本：@bg 教室 / 小明：你好 这种，就是 .gal 里的内容

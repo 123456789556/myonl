@@ -27,7 +27,12 @@ import zipfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-DEFAULT_VERSION = "v1.0.0-rc19"
+# 版本号只有一个真源（engine/_version.py），这里不再自己写一个。
+# 直接读文件而不是 import engine：本脚本要在只装 PyInstaller 的干净环境里跑。
+sys.path.insert(0, str(ROOT))
+from engine._version import VERSION as _VER  # noqa: E402
+
+DEFAULT_VERSION = "v" + _VER
 
 # 发行包专用 README：只讲双击即用的五步，绝不出现源码/ Python 指令，
 # 避免新用户照着源码版 README 去 pip install 而误以为包坏了。

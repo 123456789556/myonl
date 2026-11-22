@@ -31,7 +31,10 @@ from .data import (
     resolve_image, resolve_audio, data_root, game_root
 )
 
-__version__ = "1.0.0rc24"
+# 版本号只住在 engine/_version.py 一处，这里只是把它挂成 __version__（对外 API 名不变）。
+# 以前这里写死 "1.0.0rc24"，与 git tag、与发行 zip 的名字三处互不相干，见 _version.py 注释。
+from ._version import VERSION as __version__
+
 __all__ = [
     # Parser
     "GalSyntaxError", "parse_text", "parse_file", "dump_text", "dumps", "loads",

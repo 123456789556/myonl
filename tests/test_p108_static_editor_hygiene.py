@@ -27,9 +27,14 @@ def test_静态打开不再报素材清单失败():
 
 
 def test_版本号只有一个来源():
+    # 真源已收口到 engine/_version.py（P214）。这里只守「别在别处再写死一个」。
+    ver = _read("engine", "_version.py")
+    m = re.search(r'^VERSION\s*=\s*"([0-9]+\.[0-9]+\.[0-9]+)"', ver, re.M)
+    assert m, "_version.py 里的 VERSION 必须是 x.y.z 三段，不带 rc/beta 后缀"
     init = _read("engine", "__init__.py")
-    m = re.search(r'__version__\s*=\s*"([0-9]+)\.([0-9]+)\.([0-9]+)(rc([0-9]+))?"', init)
-    assert m, "__version__ 丢了"
+    assert "from ._version import VERSION as __version__" in init, \
+        "__version__ 必须从 _version.py 转挂，不许再写死一个数字"
+    assert not re.search(r'__version__\s*=\s*"[0-9]', init), "__init__.py 里还有写死的版本号"
     html = _read("editor", "index.html")
     assert not re.search(r"v1\.0\.0-rc\d+", html), "index.html 不许再写死版本号"
     ed = _read("engine", "editor.py")
@@ -40,8 +45,17 @@ def test_版本号只有一个来源():
     assert "MYONL · 本地" in shell, "没有后端时要老实说本地，不能瞎报一个 rcNN"
 
 
+def test_发行包版本不再自己写一个():
+    """tools/build_release_zip.py 以前写死 v1.0.0-rc19，与 tag 无关。"""
+    src = _read("tools", "build_release_zip.py")
+    assert "from engine._version import VERSION" in src
+    assert not re.search(r'DEFAULT_VERSION\s*=\s*"v1\.0\.0', src), "又写死了一个版本号"
+
+
 def test_版本号不落后于已发布的包():
-    """rcN 至少要追平 README 里挂的 apk 代次之后的那一版，别又漂回去。"""
-    init = _read("engine", "__init__.py")
-    m = re.search(r"rc([0-9]+)", init)
-    assert m and int(m.group(1)) >= 20, "版本号停在 rc1x 说明又忘了跟着发版走"
+    """版本号必须真的往前走，别又漂回 1.0.0。"""
+    ver = _read("engine", "_version.py")
+    m = re.search(r'^VERSION\s*=\s*"([0-9]+)\.([0-9]+)\.([0-9]+)"', ver, re.M)
+    assert m, "找不到 VERSION"
+    ma, mi, pa = (int(x) for x in m.groups())
+    assert (ma, mi, pa) >= (1, 1, 0), "版本号停在 1.0.x 说明又忘了跟着发版走"
