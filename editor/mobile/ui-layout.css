@@ -115,10 +115,24 @@ html.m-shell .m-home-hid { flex: 1 1 auto; min-width: 0; }
 }
 .m-bin-x { color: #e05555; border-color: rgba(224, 85, 85, .35); }
 .m-bin-empty { padding: 8px 0 28px; text-align: center; font-size: 13.5px; line-height: 1.7; color: var(--subtext0); }
+/* 素材页空的时候，那句「还没有图片」落在 tab 和速查之间居中，别贴死在 tab 底下 */
+html.m-shell .m-lib-body > .m-bin-empty { margin: auto 0; }
 .m-lib-sec { display: flex; align-items: baseline; gap: 7px; margin: 18px 0 6px; font-size: 13px; font-weight: 600; color: var(--subtext0); }
 .m-lib-sec i { font-style: normal; font-weight: 400; font-size: 11.5px; color: var(--overlay0); }
-.m-lib-row { display: flex; align-items: center; gap: 10px; padding: 11px 0; border-bottom: 1px solid var(--surface0); }
+.m-lib-row { display: flex; align-items: center; gap: 10px; padding: 11px 12px; margin-bottom: 8px;
+  border-radius: 12px; background: var(--mantle); border-bottom: 0; }
 .m-lib-n { flex: 1 1 auto; min-width: 0; font-size: 14px; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* P209：图片用相册那种两列方格，画面自己说话；音频视频给一个类型方块，行高抬起来不再像薄条 */
+.m-lib-ic { width: 38px; height: 38px; flex: 0 0 auto; border-radius: 10px; background: var(--surface0);
+  color: var(--blue); font-size: 16px; display: flex; align-items: center; justify-content: center; }
+.m-lib-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px 12px; margin-bottom: 6px; }
+.m-lib-cell { min-width: 0; display: flex; flex-direction: column; gap: 7px; }
+.m-lib-th { position: relative; aspect-ratio: 1 / 1; border-radius: 12px; overflow: hidden;
+  background: linear-gradient(150deg, #3b3f6b, #1d2038); }
+.m-lib-th img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.m-lib-x { position: absolute; right: 6px; top: 6px; width: 24px; height: 24px; border: 0; cursor: pointer;
+  border-radius: 50%; background: rgba(0, 0, 0, .55); color: #fff; font-size: 15px; line-height: 1; }
+.m-lib-nm { font-size: 12.5px; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 /* 教程两版：读一遍是一篇连续文字，不要再摆六张卡片 */
 .m-tut-seg { margin: 2px 0 14px; }
@@ -246,9 +260,9 @@ html.m-shell .m-home-card.m-card-sel::after {
 }
 
 /* ===== P205 素材页 tab：图片 / 音频 / 视频（教程不占列，见下） ===== */
-.m-lib-tabs { flex: 0 0 auto; display: flex; gap: 8px; padding: 10px 14px 16px; }
+.m-lib-tabs { flex: 0 0 auto; display: flex; gap: 8px; padding: 14px 14px 18px; }
 .m-lib-tab {
-  flex: 1 1 0; min-width: 0; height: 44px; border-radius: 12px;
+  flex: 1 1 0; min-width: 0; height: 48px; border-radius: 12px;
   border: 1px solid var(--surface1); background: var(--mantle); color: var(--subtext0);
   font: inherit; font-size: 14.5px; cursor: pointer;
   display: inline-flex; align-items: center; justify-content: center; gap: 5px;
@@ -300,3 +314,20 @@ html.m-shell .m-home-card.m-card-sel::after {
 .m-exp-b span { font-size: 12px; color: var(--subtext0); line-height: 1.5; }
 .m-exp-row em { font-style: normal; color: var(--overlay0); font-size: 15px; }
 .m-exp-row:active { background: var(--surface0); }
+
+/* ===== P209 设置页「存储方式 / 数据位置」可点进去，子页左上 ‹ 回来 ===== */
+html.m-shell .m-set-row.m-set-link {
+  width: 100%; box-sizing: border-box; background: transparent; color: var(--text);
+  border: 0; border-bottom: 1px solid var(--surface0);
+  font: inherit; font-size: 14.5px; text-align: left; cursor: pointer;
+  padding: 17px 0 !important; height: auto !important;
+}
+html.m-shell .m-set-row.m-set-link:active { opacity: .72; }
+/* 右侧那句值贴到箭头边上，别浮在行中间 —— 主流 App 都这么摆 */
+.m-set-val { flex: 1 1 auto; text-align: right; font-size: 13.5px; color: var(--subtext0); }
+html.m-shell .m-set-row.m-set-link em {
+  font-style: normal; color: var(--overlay0); font-size: 16px; margin-left: 6px;
+}
+.m-sub-h { margin: 18px 0 6px; font-size: 15px; font-weight: 600; color: var(--text); }
+.m-sub-h:first-child { margin-top: 2px; }
+.m-sub-p { font-size: 14px; line-height: 1.75; color: var(--subtext1); }

@@ -26,8 +26,51 @@
     ["apk", "安装包 APK", "装到手机上像 App，图标点开就是游戏", "⬇"],
     ["gal", "项目备份 .gal", "把这一份连素材打包，换设备能接着改", "⤓"],
     ["lib", "全部作品 .json", "所有作品合成一份，当总备份", "⤓"],
-    ["hist", "版本历史", "改坏了退回上一版，不用重写", "↺"]
+    ["hist", "版本历史", "改坏了退回上一版，不用重写", "↺"],
+    ["imp", "粘贴导入", "把 .json / .gal 的内容整段贴进来，手机上也能导", "⤒"]
   ];
+
+  // 手机上弹不出系统文件选择器（实测），粘贴是唯一真能走通的导入路。
+  // 导入别人那份时先按名字合并，别把本机已有的作品盖掉。
+  function importPaste() {
+    var D = window.MYONLDialog;
+    if (!D || !D.paste) { if (window.toast) window.toast("导入面板没加载，刷新一下页面"); return; }
+    D.paste({
+      title: "粘贴导入",
+      msg: "用记事本打开 .json / .gal，全选复制，整段贴进来。同名作品不会覆盖。",
+      placeholder: '{"projects":[{"name":"..."}]}',
+      ok: "导入"
+    }).then(function (txt) {
+      if (!txt) return;
+      var lib;
+      try { lib = JSON.parse(txt); } catch (e) {
+        if (window.toast) window.toast("这段不是完整 JSON，可能少复制了尾巴");
+        return;
+      }
+      if (!lib || !lib.projects || !lib.projects.length) {
+        if (window.toast) window.toast("里面没有作品");
+        return;
+      }
+      var cur = window.__myonlLib && window.__myonlLib.read ? window.__myonlLib.read() : null;
+      if (cur && cur.projects && cur.projects.length) {
+        var have = {};
+        cur.projects.forEach(function (p) { have[p.name] = 1; });
+        var add = lib.projects.filter(function (p) { return !have[p.name]; });
+        if (!add.length) { if (window.toast) window.toast("这些作品本机都有了，没覆盖"); return; }
+        // __myonlImportLib 是整表替换，所以合并后的完整列表交给它，本机老作品才留得住
+        lib.projects = add.concat(cur.projects).slice(0, 200);
+      }
+      if (!window.__myonlImportLib) {
+        if (window.toast) window.toast("导入模块没加载，刷新一下页面");
+        return;
+      }
+      window.__myonlImportLib(lib).then(function (ok) {
+        if (!ok) return;
+        if (window.toast) window.toast("导入完成");
+        setTimeout(function () { location.reload(); }, 900);
+      });
+    });
+  }
 
   function call(id) {
     if (id === "pack" && window.__myonlExportPack) window.__myonlExportPack();
@@ -37,7 +80,8 @@
     else if (id === "hist") {
       if (window.MYONLSnapshotsUI && window.MYONLSnapshotsUI.open) window.MYONLSnapshotsUI.open();
       else if (window.toast) window.toast("版本历史没加载，刷新一下页面");
-    } else if (window.toast) window.toast("这一项还没准备好，刷新一下页面");
+    } else if (id === "imp") importPaste();
+    else if (window.toast) window.toast("这一项还没准备好，刷新一下页面");
   }
 
   function close() { if (el) { el.remove(); el = null; } }
@@ -50,6 +94,7 @@
       var sec = "";
       if (i === 0) sec = '<div class="m-exp-sec">发给别人</div>';
       if (i === 2) sec = '<div class="m-exp-sec">给自己留后路</div>';
+      if (i === 5) sec = '<div class="m-exp-sec">从别处拿回来</div>';
       return sec +
         '<button type="button" class="m-exp-row" data-act="' + r[0] + '">' +
           '<span class="m-exp-ic">' + r[3] + '</span>' +
@@ -64,8 +109,8 @@
       '</div>' +
       '<div class="m-exp-size" id="mExpSize">' + sizeTxt + '</div>' +
       '<div class="m-lib-body">' + rows +
-        '<div class="m-set-note">导出的东西都在本机，不出网。给别人发的时候，' +
-        '网页版最省事：对方拿到一个 html，双击就玩。</div>' +
+        '<div class="m-set-note">导出的东西都在本机，不出网。网页版就是一份纯 html 文件，' +
+        '里面脚本没压缩，开发者可以打开直接改；发给别人双击就玩。</div>' +
       '</div>';
     el.querySelector("#mExpLeft").addEventListener("click", close);
     el.querySelectorAll("[data-act]").forEach(function (b) {

@@ -1970,7 +1970,7 @@ input[type="color"] {
   display: flex; flex-direction: column;
 }
 .m-home-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
-.m-home-title { font-size: 26px; font-weight: 600; letter-spacing: .3px; }
+.m-home-title { font-size: 24px; font-weight: 500; letter-spacing: .2px; }
 .m-home-gear {
   width: 40px; height: 40px; border-radius: 50%; border: 1px solid var(--surface0);
   background: var(--mantle); color: var(--subtext1); display: flex; align-items: center;
@@ -1985,7 +1985,7 @@ input[type="color"] {
   font-family: inherit; cursor: pointer;
 }
 .m-home-card:active { background: var(--surface0); transform: scale(.995); }
-.m-card-name { display: block; font-size: 16px; font-weight: 600; line-height: 1.4; }
+.m-card-name { display: block; font-size: 16px; font-weight: 500; line-height: 1.4; }
 .m-card-meta { display: block; font-size: 12px; color: var(--subtext0); line-height: 1.5; }
 .m-card-go { position: absolute; right: 16px; top: 50%; transform: translateY(-50%); color: var(--overlay0); font-size: 18px; }
 .m-home-new { border-style: dashed; border-color: var(--blue); }
@@ -2093,7 +2093,7 @@ input[type="color"] {
   flex: 0 0 auto; width: 46px; height: 46px; border-radius: 10px;
   background: var(--surface0) center/cover no-repeat;
   display: flex; align-items: center; justify-content: center;
-  color: var(--overlay0); font-size: 20px; font-weight: 600;
+  color: var(--overlay0); font-size: 18px; font-weight: 500;
   border: 1px solid var(--surface0); overflow: hidden;
 }
 .m-card-thumb.has { border-color: transparent; }

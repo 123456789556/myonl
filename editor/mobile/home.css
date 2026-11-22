@@ -8,7 +8,7 @@
    一屏能露五到六张。三个胶囊是表单元素，一叠起来像设置项，不像"我的作品"。 */
 .m-home-card { padding: 12px !important; gap: 12px !important; margin-bottom: 10px !important; }
 .m-card-thumb { width: 88px !important; height: 88px !important; border-radius: 14px !important; }
-.m-home-card .m-card-name { font-size: 17.5px; }
+.m-home-card .m-card-name { font-size: 17px; font-weight: 500; }
 .m-home-card .m-card-meta { font-size: 13px; color: var(--subtext0); }
 
 /* ---------------- 顶栏 + 搜索 ----------------

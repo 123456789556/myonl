@@ -15,6 +15,11 @@
 
   function libApi() { return window.__myonlLib || null; }
   function $(id) { return document.getElementById(id); }
+  // P209：统一弹窗（editor_dialog.js）。没加载成功就退回系统框，别让按钮哑掉。
+  function dlgConfirm(o) {
+    if (window.MYONLDialog) return window.MYONLDialog.confirm(o);
+    return Promise.resolve(!!window.confirm(((o && o.title) || "") + "\n" + ((o && o.msg) || "")));
+  }
   function esc(s) {
     return String(s == null ? "" : s).replace(/&/g, "&amp;")
       .replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
@@ -178,9 +183,15 @@
     moreEl.querySelector("#mMoreDel").addEventListener("click", function () {
       // 删完就 reload，来不及说"进垃圾箱了"，所以把归宿写进这句确认里；
       // 误触一下就要多点一次还原，问一句比事后道歉便宜。
-      if (!confirm("把「" + name + "」删掉？会先进垃圾箱，" + KEEP_DAYS + " 天内能还原。")) return;
-      closeMore();
-      del(name);
+      dlgConfirm({
+        title: "删除「" + name + "」？",
+        msg: "会先进垃圾箱，" + KEEP_DAYS + " 天内能还原。",
+        ok: "删除", danger: true
+      }).then(function (yes) {
+        if (!yes) return;
+        closeMore();
+        del(name);
+      });
     });
     var b = moreEl.querySelector("#mMoreBin");
     if (b) b.addEventListener("click", function () { closeMore(); openBin(); });
@@ -286,8 +297,14 @@
     if (pg) pg.addEventListener("click", function () {
       var picked = binPick();
       if (!picked.length) return;
-      if (!confirm("这 " + picked.length + " 个就彻底没了，不能还原。继续？")) return;
-      purgeMany(picked);
+      dlgConfirm({
+        title: "彻底删除 " + picked.length + " 个？",
+        msg: "删完就真的没了，没法还原。",
+        ok: "彻底删除", danger: true
+      }).then(function (yes) {
+        if (!yes) return;
+        purgeMany(picked);
+      });
     });
     paintBin();
   }
@@ -338,16 +355,30 @@
       // 想看就点开，不看就一直在那儿收着。
       var arr = names.filter(function (n) { return kindOf(n) === libTab; });
       var one = { image: "图片", audio: "音频", video: "视频" }[libTab];
-      var body = arr.length
-        ? arr.map(function (n) {
-            return '<div class="m-lib-row">' +
-              '<span class="m-lib-n">' + esc(n) + '</span>' +
-              '<button type="button" class="m-bin-x" data-un="' + esc(n) + '">删</button>' +
-              '</div>';
-          }).join("") +
-          '<div class="m-set-note">进作品 → 底部「素材」，把这些名字插进剧本就能用。' +
-          '删掉的素材，已经插进剧本的引用会变成断链，体检会提醒。</div>'
-        : '<div class="m-bin-empty">还没有' + one + '。<br>点右上「导入」，图片、音乐、视频都收在这里。</div>';
+      var note = '<div class="m-set-note">进作品 → 底部「素材」，把这些名字插进剧本就能用。' +
+        '删掉的素材，已经插进剧本的引用会变成断链，体检会提醒。</div>';
+      var body;
+      if (!arr.length) {
+        body = '<div class="m-bin-empty">还没有' + one + '。<br>点右上「导入」，图片、音乐、视频都收在这里。</div>';
+      } else if (libTab === "image") {
+        // P209：图片按相册那样两列铺 —— 一行一条太扁，图片本来就该先看见画面
+        body = '<div class="m-lib-grid">' + arr.map(function (n) {
+          return '<div class="m-lib-cell">' +
+            '<div class="m-lib-th"><img alt="" data-th="' + esc(n) + '">' +
+              '<button type="button" class="m-lib-x" data-un="' + esc(n) + '" aria-label="删">×</button>' +
+            '</div>' +
+            '<span class="m-lib-nm">' + esc(n) + '</span>' +
+          '</div>';
+        }).join("") + '</div>' + note;
+      } else {
+        body = arr.map(function (n) {
+          return '<div class="m-lib-row">' +
+            '<span class="m-lib-ic">' + (libTab === "audio" ? "♪" : "▶") + '</span>' +
+            '<span class="m-lib-n">' + esc(n) + '</span>' +
+            '<button type="button" class="m-bin-x" data-un="' + esc(n) + '">删</button>' +
+            '</div>';
+        }).join("") + note;
+      }
       asEl.innerHTML =
         '<div class="m-bin-top">' +
           '<button type="button" class="m-back" id="mLibLeft" aria-label="返回">‹</button>' +
@@ -380,9 +411,16 @@
       });
       asEl.querySelector("#mLibAdd").addEventListener("click", function () {
         // 安卓 WebView 里 <input type=file> 弹不出系统选择器（实测），点了会像没反应。
-        // 与其让人怀疑按钮坏了，不如明说这条路还没通。
+        // 与其让人怀疑按钮坏了，不如明说这条路还没通，并指出真能走的那条。
         if (/Android/i.test(navigator.userAgent || "") && !window.__myonlNativeImport) {
-          toast("安卓上还弹不出系统选择器，真导入要等原生那层做完");
+          if (window.MYONLDialog) {
+            window.MYONLDialog.info({
+              title: "这台手机导不了素材",
+              msg: "安卓里系统选文件的那个窗弹不出来，这是 WebView 的限制。\n要导入就走「导出」页的「粘贴导入」：把 .json / .gal 整段贴进去，作品和素材一起回来。"
+            });
+          } else {
+            toast("安卓上还弹不出系统选择器，真导入要等原生那层做完");
+          }
           return;
         }
         var inp = document.createElement("input");
@@ -401,14 +439,26 @@
         });
         inp.click();
       });
-      asEl.querySelectorAll("[data-un]").forEach(function (b) {
-        b.addEventListener("click", function () {
+      // 缩略图异步取：先摆好方块，谁先到谁先亮，别让整页等图片
+      asEl.querySelectorAll("[data-th]").forEach(function (img) {
+        var nm = img.dataset.th;
+        Promise.resolve(A.thumbOf(nm)).then(function (u) {
+          if (u) img.src = u;
+        }).catch(function () {});
+      });
+      asEl.querySelectorAll("[data-un]").forEach(function (b) {        b.addEventListener("click", function () {
           var n = b.dataset.un;
-          if (!confirm("删掉素材「" + n + "」？已插进剧本的引用会变成断链。")) return;
-          Promise.resolve(A.remove(n)).then(function () {
-            toast("已删掉");
-            paint();
-          }).catch(function (e) { toast("删不掉：" + (e.message || e)); });
+          dlgConfirm({
+            title: "删掉素材「" + n + "」？",
+            msg: "已经插进剧本的地方会变成断链。",
+            ok: "删除", danger: true
+          }).then(function (yes) {
+            if (!yes) return;
+            Promise.resolve(A.remove(n)).then(function () {
+              toast("已删掉");
+              paint();
+            }).catch(function (e) { toast("删不掉：" + (e.message || e)); });
+          });
         });
       });
     }

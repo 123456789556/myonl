@@ -25,7 +25,7 @@ def test_卡片换成方图加一行灰字():
     assert '<span class="m-card-meta">' in HOME_JS
     # P208：卡片改成等分铺满一屏，缩略图与字号跟着提一档（用户：别又扁又贴顶）
     assert "width: 88px !important; height: 88px !important" in CSS
-    assert ".m-home-card .m-card-name { font-size: 17.5px; }" in CSS
+    assert ".m-home-card .m-card-name { font-size: 17px; font-weight: 500; }" in CSS
 
 
 def test_搜索是真过滤():

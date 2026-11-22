@@ -76,7 +76,10 @@ def test_垃圾箱自己有入口不怕作品删光():
 
 
 def test_点删除先问一句再进垃圾箱():
-    assert 'if (!confirm("把「" + name + "」删掉？会先进垃圾箱，" + KEEP_DAYS + " 天内能还原。")) return;' in TRASH_JS
+    # P209：换成自绘弹窗（系统 confirm 在手机上丑得没法看），动作仍是「先问一句再进箱」
+    assert "dlgConfirm({" in TRASH_JS
+    assert 'title: "删除「" + name + "」？"' in TRASH_JS
+    assert 'msg: "会先进垃圾箱，" + KEEP_DAYS + " 天内能还原。"' in TRASH_JS
 
 
 def test_新建入口常驻列表末尾():

@@ -7,6 +7,25 @@
   "use strict";
   var $ = function (id) { return document.getElementById(id); };
 
+  // P209：手机端默认用户名。用户要求别叫「我」，叫「用户」。
+  var DEF_NAME = "用户";
+  // 统一弹窗（P209 新文件 editor_dialog.js）。它没加载成功就退回系统框，别让界面直接哑掉。
+  var dlg = function () { return window.MYONLDialog || null; };
+  function dlgInfo(msg, title) {
+    if (dlg()) return dlg().info({ title: title || "提示", msg: msg });
+    try { window.alert(msg); } catch (e) {}
+    return Promise.resolve();
+  }
+  function dlgConfirm(o) {
+    if (dlg()) return dlg().confirm(o);
+    return Promise.resolve(!!window.confirm(((o && o.title) || "") + "\n" + ((o && o.msg) || "")));
+  }
+  function dlgPrompt(o) {
+    if (dlg()) return dlg().prompt(o);
+    var v = window.prompt((o && o.title) || "", (o && o.value) || "");
+    return Promise.resolve(v === null ? null : v);
+  }
+
   var EDIT_KEY = "myonl:editing";
   // 横屏「左列表 / 右详情」里当前选中的作品目录。竖屏用不到，但两种形态共用同一个渲染函数。
   var selFolder = null;
@@ -672,7 +691,7 @@
     if (hist) {
       hist.addEventListener("click", function () {
         if (window.MYONLSnapshotsUI) window.MYONLSnapshotsUI.open(folder);
-        else alert("这个设备上没有历史版本模块");
+        else dlgInfo("这个设备上没有历史版本模块");
       });
       if (window.MYONLSnapshots) {
         window.MYONLSnapshots.list(folder).then(function (rows) {
@@ -725,12 +744,45 @@
   }
   function writeProfile(p) { try { localStorage.setItem(PROFILE_KEY, JSON.stringify(p)); } catch (e) {} }
 
+  // P209：存储方式 / 数据位置开成子页 —— 用户要「有一个箭头点进去一个一个界面，能退回来」。
+  // 子页整页挂 <html>，返回就是删掉自己，设置页还在底下等着。
+  function openSetSub(title, html) {
+    var sub = document.createElement("div");
+    sub.className = "m-bin-page m-set-page";
+    sub.innerHTML =
+      '<div class="m-bin-top">' +
+        '<button type="button" class="m-back" id="mSubLeft" aria-label="返回">‹</button>' +
+        '<span class="m-bin-title">' + title + '</span>' +
+        '<span></span>' +
+      '</div>' +
+      '<div class="m-lib-body">' + html + '</div>';
+    document.documentElement.appendChild(sub);
+    sub.querySelector("#mSubLeft").addEventListener("click", function () { sub.remove(); });
+    return sub;
+  }
+
+  var SUB_STORAGE =
+    '<div class="m-sub-h">都存在哪</div>' +
+    '<div class="m-sub-p">剧本文字存在本机浏览器里（localStorage）；图片、音频、视频这些大块头存在 IndexedDB。</div>' +
+    '<div class="m-sub-h">什么时候会丢</div>' +
+    '<div class="m-sub-p">卸载 App、清浏览器数据、换手机 —— 这三件事都会让本机数据一次全没，恢复不了。</div>' +
+    '<div class="m-sub-h">怎么保住</div>' +
+    '<div class="m-sub-p">进作品 → 底部「导出」→「全部作品 .json」，存一份到网盘或电脑。要连素材一起带走就导 .gal。</div>';
+
+  var SUB_PLACE =
+    '<div class="m-sub-h">在哪台设备</div>' +
+    '<div class="m-sub-p">就在你手上这台。具体文件夹看不到 —— 安卓把它关在应用私有目录里，别的 App 读不到，所以数据只能靠导出带走。</div>' +
+    '<div class="m-sub-h">换手机怎么办</div>' +
+    '<div class="m-sub-p">旧手机导出 .json 或 .gal → 传到新手机 → 导出页「粘贴导入」整段贴进去。同名作品不会互相覆盖。</div>' +
+    '<div class="m-sub-h">建议</div>' +
+    '<div class="m-sub-p">改得多的时候一周导一次 .json，几十 KB，不占地方，也不用想存在哪。</div>';
+
   function openSettings() {
     if (sheet) { sheet.remove(); sheet = null; return; }
     var theme = "dark";
     try { theme = localStorage.getItem("gal_editor_theme") === "light" ? "light" : "dark"; } catch (e) {}
     var prof = readProfile();
-    var pname = prof.name || "我";
+    var pname = prof.name || DEF_NAME;
     sheet = document.createElement("div");
     // 整页，不是底部抽屉：用户要的是手机相册那种「左上 ‹ 回去」的层
     sheet.className = "m-bin-page m-set-page";
@@ -778,10 +830,10 @@
           '</span></div>' +
         '<div class="m-set-note">选中态、按钮、作品卡上的蓝都跟着换。深色浅色都生效。</div>' +
         '<div class="m-set-sec">软件详情</div>' +
-        '<div class="m-set-row"><span>存储方式</span><span class="m-set-val">本地，不上云</span></div>' +
-        '<div class="m-set-row"><span>数据位置</span><span class="m-set-val">这台设备</span></div>' +
-        '<div class="m-set-note">存储方式：本地存储，数据留在这台设备上，不联网也不上传。<br>' +
-        '需要转移或分享？→ 进作品 → 底部「导出」→ 选择导出格式。</div>' +
+        '<button type="button" class="m-set-row m-set-link" id="mSetStorage">' +
+          '<span>存储方式</span><span class="m-set-val">本地，不上云</span><em>›</em></button>' +
+        '<button type="button" class="m-set-row m-set-link" id="mSetPlace">' +
+          '<span>数据位置</span><span class="m-set-val">这台设备</span><em>›</em></button>' +
       '</div>';
     // 抽屉挂 <html> 而不是 <body>：body 上挂了编辑器各种档位类，fixed 定位在里面被算成流的位置
   // （实测顶边跑到 1007，正好是内容底部）。挂 html 之后 fixed 的包含块就是视口本身。
@@ -798,8 +850,8 @@
       var p = readProfile();
       var a = sheet && sheet.querySelector("#mSetAvatar");
       var n = sheet && sheet.querySelector("#mSetName");
-      if (a) a.innerHTML = p.avatar ? ('<img src="' + p.avatar + '" alt="头像">') : esc((p.name || "我").slice(0, 1));
-      if (n) n.textContent = p.name || "我";
+      if (a) a.innerHTML = p.avatar ? ('<img src="' + p.avatar + '" alt="头像">') : esc((p.name || DEF_NAME).slice(0, 1));
+      if (n) n.textContent = p.name || DEF_NAME;
     }
     function saveProf(patch) {
       var p = readProfile();
@@ -808,6 +860,16 @@
     }
     // 换头像：手机上相册里那张 → 裁成方形缩到 128px 存起来。原图绝不进 localStorage，不然几百 KB 就写满了。
     sheet.querySelector("#mSetAvatar").addEventListener("click", function () {
+      // 安卓 WebView 里相册选择器弹不出来（和素材导入同一个坑），点了会像死键 —— 先说明
+      if (/Android/i.test(navigator.userAgent || "") && !window.__myonlNativeAvatar) {
+        if (window.MYONLDialog) {
+          window.MYONLDialog.info({
+            title: "这台手机换不了头像",
+            msg: "安卓里选相册的那个窗被 WebView 挡住了，是系统限制。名字随时能改；头像要等原生那层接上。"
+          });
+        } else { toast("安卓上还弹不出相册选择器"); }
+        return;
+      }
       var inp = document.createElement("input");
       inp.type = "file"; inp.accept = "image/*";
       inp.style.display = "none";
@@ -836,13 +898,15 @@
       inp.click();
     });
     sheet.querySelector("#mSetName").addEventListener("click", function () {
-      var cur = readProfile().name || "我";
-      var v = prompt("换个名字（只在这台设备上生效）", cur);
-      if (v === null) return;
-      v = String(v).trim().slice(0, 12);
-      if (!v) { toast("名字不能是空的"); return; }
-      saveProf({ name: v });
-      paintProf();
+      var cur = readProfile().name || DEF_NAME;
+      dlgPrompt({ title: "换个名字", msg: "只在这台设备上生效", value: cur, maxlength: 12, ok: "保存" })
+        .then(function (v) {
+          if (v === null) return;
+          v = String(v).trim().slice(0, 12);
+          if (!v) { toast("名字不能是空的"); return; }
+          saveProf({ name: v });
+          paintProf();
+        });
     });
 
     var seg = sheet.querySelector("#mSetTheme");
@@ -854,6 +918,11 @@
       document.documentElement.setAttribute("data-theme", v);
       seg.querySelectorAll("button").forEach(function (x) { x.classList.toggle("on", x === b); });
     });
+
+    var subStorage = sheet.querySelector("#mSetStorage");
+    if (subStorage) subStorage.addEventListener("click", function () { openSetSub("存储方式", SUB_STORAGE); });
+    var subPlace = sheet.querySelector("#mSetPlace");
+    if (subPlace) subPlace.addEventListener("click", function () { openSetSub("数据位置", SUB_PLACE); });
 
     // 「返回」那一行删了：抽屉点遮罩本来就能关，多一行「作品列表 / 返回」反而像在问"要回哪去"。
     // 现在只有一个入口——标题栏的「完成」，点它关抽屉，回哪儿去不用想。
@@ -1051,9 +1120,15 @@
     var names = selNames();
     if (!names.length) return;
     // 批量删除只问一次：问三次就是把人当小孩，进垃圾箱还能还原
-    if (!confirm("删掉这 " + names.length + " 个作品？会先进垃圾箱，30 天内能还原。")) return;
-    if (!window.MYONLTrash || !window.MYONLTrash.delMany) { toast("删不了，刷新一下页面"); return; }
-    window.MYONLTrash.delMany(names);
+    dlgConfirm({
+      title: "删除 " + names.length + " 个作品？",
+      msg: "会先进垃圾箱，30 天内能还原。",
+      ok: "删除", danger: true
+    }).then(function (yes) {
+      if (!yes) return;
+      if (!window.MYONLTrash || !window.MYONLTrash.delMany) { toast("删不了，刷新一下页面"); return; }
+      window.MYONLTrash.delMany(names);
+    });
   });
   if (fin) fin.addEventListener("input", function () { findQ = fin.value; render(allProjects); });
   var findClr = $("mHomeFindClear");
