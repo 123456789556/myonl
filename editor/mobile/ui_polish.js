@@ -140,8 +140,8 @@
     }, 0);
   }
   function fixModeBar() {
+    // P221：不再把「源码」改写成「源码（高级）」——同一份剧本的另一种写法，跟难度无关
     var code = document.querySelector('.m-mode[data-mode="code"]');
-    if (code && code.textContent === "源码") code.textContent = "源码（高级）";
     var bar = document.querySelector(".m-modebar");
     if (!bar) return;
     var hint = document.querySelector(".m-codehint");
