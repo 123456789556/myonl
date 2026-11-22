@@ -64,3 +64,75 @@ html.m-shell.m-wide .center-page {
 }
 .p202-cancel { border: 1px solid var(--surface1); background: var(--mantle); color: var(--subtext0); }
 .p202-ok { border: none; background: var(--blue); color: #fff; font-weight: 600; }
+
+/* ===== P203 作品卡「⋯」/ 垃圾箱 / 素材库 / 教程两版 =====
+   卡从 <button> 改成 <div>（button 里不能再套 button），所以这里把原来靠
+   button 默认样式撑着的那几项（宽、flex、光标）显式给回来。 */
+html.m-shell .m-home-card {
+  display: flex; align-items: center; gap: 12px; position: relative;
+  width: 100%; box-sizing: border-box; padding-right: 46px; cursor: pointer;
+}
+/* 右边 46px 让给「⋯」，原来那个 › 收掉：两个箭头挤一起，人会点错 */
+html.m-shell .m-home-card .m-card-go { display: none; }
+html.m-shell .m-card-more {
+  position: absolute; top: 50%; right: 2px; transform: translateY(-50%);
+  width: 44px; height: 44px; border: 0; border-radius: 10px;
+  background: transparent; color: var(--overlay1);
+  font-size: 19px; line-height: 1; font-family: inherit; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+}
+html.m-shell .m-card-more:active { background: var(--surface0); }
+/* 页头垃圾桶：home.css 给 .m-home-find 定了 display:flex，会把 hidden 属性顶掉 */
+html.m-shell .m-home-find[hidden] { display: none; }
+html.m-shell .m-home-bin { margin-left: 8px; }
+/* 页头是 space-between：标题块不撑开，放大镜就被平摊到屏幕正中间（真机截图里
+   两颗圆钮一左一中，右边空一半）。让标题块吃满，两个按钮才贴着右边成一组。 */
+html.m-shell .m-home-hid { flex: 1 1 auto; min-width: 0; }
+
+/* 更多菜单：一行一个 50px 的动作，删除单独一色 —— 这是唯一会丢东西的按钮。
+   每行给一圈细边：白底 + 浅灰底在浅色主题里几乎看不出是哪一格，点起来像点文字。 */
+.m-more-body { padding-bottom: calc(10px + env(safe-area-inset-bottom, 0px)) !important; }
+.m-more-name {
+  padding: 2px 16px 8px; font-size: 13px; color: var(--subtext0); text-align: center;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.m-more-row {
+  display: block; width: 100%; height: 50px; border: 1px solid var(--surface0); border-radius: 12px;
+  margin-bottom: 6px; background: var(--mantle); color: var(--text); text-align: center;
+  font-size: 15.5px; font-family: inherit; cursor: pointer;
+}
+.m-more-row:active { filter: brightness(.95); }
+.m-more-danger { color: #e05555; border-color: rgba(224, 85, 85, .35); }
+.m-more-plain { background: transparent; border-color: transparent; color: var(--subtext0); }
+
+/* 垃圾箱 / 素材库：一行一项，名字过长省略但不断行 */
+.m-bin-row { display: flex; align-items: center; gap: 8px; padding: 8px 0; border-bottom: 1px solid var(--surface0); }
+.m-bin-t { flex: 1 1 auto; min-width: 0; font-size: 14px; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.m-bin-a, .m-bin-x {
+  flex: 0 0 auto; height: 34px; padding: 0 12px; border-radius: 9px;
+  border: 1px solid var(--surface1); background: var(--mantle);
+  color: var(--subtext0); font-size: 12.5px; font-family: inherit; cursor: pointer;
+}
+.m-bin-x { color: #e05555; border-color: rgba(224, 85, 85, .35); }
+.m-bin-empty { padding: 26px 0; text-align: center; font-size: 13px; color: var(--subtext0); }
+.m-lib-sec { display: flex; align-items: baseline; gap: 7px; margin: 12px 0 4px; font-size: 12.5px; font-weight: 600; color: var(--subtext0); }
+.m-lib-sec i { font-style: normal; font-weight: 400; font-size: 11px; color: var(--overlay0); }
+.m-lib-row { display: flex; align-items: center; gap: 8px; padding: 6px 0; border-bottom: 1px solid var(--surface0); }
+.m-lib-n { flex: 1 1 auto; min-width: 0; font-size: 13px; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* 教程两版：读一遍是一篇连续文字，不要再摆六张卡片 */
+.m-tut-seg { margin: 2px 0 12px; }
+.m-tut-read { display: flex; flex-direction: column; gap: 7px; }
+.m-tut-h { margin-top: 6px; font-size: 14.5px; font-weight: 600; color: var(--text); }
+.m-tut-h:first-child { margin-top: 0; }
+.m-tut-p { font-size: 13px; line-height: 1.65; color: var(--subtext0); }
+.m-tut-c {
+  padding: 8px 10px; border-radius: 9px; background: var(--mantle); border: 1px solid var(--surface0);
+  font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 12.5px; color: var(--text);
+  overflow-x: auto; white-space: nowrap;
+}
+.m-tut-make { padding-top: 4px; }
+
+/* 横屏首页：最后一张卡不许被底栏切一半（截图里那张「我的第一个游戏」只剩上半） */
+html.m-shell.m-wide .m-home { padding-bottom: calc(58px + env(safe-area-inset-bottom, 0px)) !important; }
+html.m-shell.m-wide .m-home-list { padding-bottom: 6px; }

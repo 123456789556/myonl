@@ -117,6 +117,7 @@
     lib.projects = kept;
     return dropped;
   }
+  window.__myonlLib = { read: readLib, write: writeLib };   // P203：作品「⋯」与垃圾箱在 editor_trash.js，库只有这一份
   function writeLib(lib) {
     memLib = lib;
     try { localStorage.setItem(LIB_KEY, JSON.stringify(lib)); return; }
@@ -809,8 +810,8 @@
   ROUTES["POST /api/new"] = function (input, init) {
     var b = bodyOf(init);
     var lib = readLib(); var name = String(b.name || "").trim();
-    // P202 先建后名：空名不再报错，按时间给个默认名（之后点顶栏作品名就能改）
-    if (!name) { var d0 = new Date(), p2 = function (n) { return (n < 10 ? "0" : "") + n; }; name = "未命名 · " + p2(d0.getMonth() + 1) + p2(d0.getDate()) + "-" + p2(d0.getHours()) + p2(d0.getMinutes()); while (findProject(lib, name)) name += "·"; }
+    // P202 先建后名：空名不报错，按时间给默认名（之后点顶栏作品名就能改）；P203 改「未命名 N」，时间戳名字前 12 字全一样，卡片上分不清
+    if (!name) { name = (window.MYONLTrash && window.MYONLTrash.nextName) ? window.MYONLTrash.nextName(lib) : "未命名"; }
     if (/[\/\\]/.test(name)) return jsonRes({ ok: false, message: "名字里不能有斜杠" }, 400);
     if (findProject(lib, name)) return jsonRes({ ok: false, message: "已经有同名作品了：" + name }, 400);
     // text 可选：底栏「教程」抽屉里那份练习要一次建成一份能读能改的短剧本，

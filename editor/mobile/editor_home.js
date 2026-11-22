@@ -109,6 +109,14 @@
           'stroke-width="1.5" stroke-linecap="round" aria-hidden="true">' +
           '<circle cx="6.8" cy="6.8" r="4.2"/><path d="M9.9 9.9L13.4 13.4"/></svg>' +
       '</button>' +
+      // P203：删掉的作品不能就此消失 —— 页头留一个垃圾桶，里面还有东西才显示。
+      // 只有卡片上的「⋯」一个入口的话，作品删光那天就再也打不开垃圾箱了。
+      '<button type="button" class="m-home-find m-home-bin" id="mHomeBin" aria-label="垃圾箱" hidden>' +
+        '<svg viewBox="0 0 16 16" width="18" height="18" fill="none" stroke="currentColor" ' +
+          'stroke-width="1.5" stroke-linecap="round" aria-hidden="true">' +
+          '<path d="M2.9 4.4h10.2M6.3 4.4V3h3.4v1.4M4.2 4.4l.6 8.4h6.4l.6-8.4M6.7 6.6v4.4M9.3 6.6v4.4"/>' +
+        '</svg>' +
+      '</button>' +
     '</div>' +
     // 搜索是真过滤：打字就把卡片筛掉，不是摆一个假框。作品多了才用得上。
     '<div class="m-home-findbox" id="mHomeFindBox" hidden>' +
@@ -128,9 +136,10 @@
       // P176：这里原本还有一块「三步上手」。删了 —— 编辑器菜单里已经有
       // 「帮助 → 新手引导」，同一套教程摆两处，首页就多占五六行高度。
     '</div>' +
-    // 底部导航：手机/平板拇指够得到的位置。P194 起五格，全是真动作，不留哑按钮：
-    // 作品 / 教程 / 新建 / 导入 / 设置。教程和设置原来散在首页卡片和页头右上角，
-    // 收进底栏后首页正文只剩作品列表，一屏一个主角。
+    // 底部导航：P203 起四格，全是真动作，不留哑按钮：
+    // 作品 / 教程 / 素材库 / 设置。原来中间那颗「＋新建」和「导入」都撤了 ——
+    // 新建在首页有虚线卡、空态里也有，摆三处同一个动作只会让人以为是三条路；
+    // 「导入」在真机上点了不弹选择器（WebView 里 <input type=file> 不生效），留着就是坏按钮。
     '<div class="m-home-nav" id="mHomeNav">' +
       '<button type="button" class="m-nav-item on" data-nav="home">' +
         ico('M2.6 4.2h10.8v8.2a.8.8 0 0 1-.8.8H3.4a.8.8 0 0 1-.8-.8V4.2zM2.6 6.6h10.8') +
@@ -138,17 +147,20 @@
       '<button type="button" class="m-nav-item" data-nav="tut" id="mHomeTut">' +
         ico('M3 2.8h7.2a2 2 0 0 1 2 2v8.4H5a2 2 0 0 1-2-2V2.8zM5.4 5.6h4.4M5.4 8h4.4') +
         '<span>教程</span></button>' +
-      '<button type="button" class="m-nav-item m-nav-main" data-nav="new">' +
-        '<span class="m-nav-main-ic">' + ico('M8 2.2v11.6M2.2 8h11.6') + '</span>' +
-        '<span>新建</span></button>' +
-      '<button type="button" class="m-nav-item" data-nav="import">' +
-        ico('M8 2.2v7.4M4.9 6.6l3.1 3.1 3.1-3.1M2.6 12.6h10.8') +
-        '<span>导入</span></button>' +
+      '<button type="button" class="m-nav-item" data-nav="lib" id="mHomeLib">' +
+        ico('M2.4 4.4h11.2v8.2H2.4zM5 4.4l1.8-2.2h4.4l1.8 2.2M6.2 9.2h3.6') +
+        '<span>素材库</span></button>' +
       '<button type="button" class="m-nav-item" data-nav="set">' +
         ico('M8 5.4a2.6 2.6 0 1 0 0 5.2 2.6 2.6 0 0 0 0-5.2zM8 2.4v1.4M8 12.2v1.4M2.4 8h1.4M12.2 8h1.4M4 4l1 1M11 11l1 1M12 4l-1 1M5 11l-1 1') +
         '<span>设置</span></button>' +
     '</div>';
   document.body.appendChild(layer);
+
+  // 首页不是编辑器，但底部那条「第 4 行 / ✓ 共 15 行」的编辑器状态栏还留在
+  // 页面里（真机截图里它压进底栏，像没加载完的残字）。首页期间先收起来；
+  // 进作品是整页 reload，编辑器那边自己会把它放回来。
+  var sbEl = document.getElementById("statusbar");
+  if (sbEl) sbEl.style.display = "none";
 
   // 一个图标：单色线条、16 网格、跟着父级颜色（currentColor），
   // 这样深色浅色两套主题都不用为图标写第二份样式。
@@ -173,8 +185,10 @@
     // 作品一多就变成"上面一大块、下面挤成一条"，而且没封面时那块空的
     // 蓝色渐变比什么都重。现在统一成横向小卡：一屏能看到五六个，
     // 「新建 / 导入」也不会被压到底。
-    return '<button type="button" class="m-home-card' + (old ? " m-card-old" : "") +
-      '" data-folder="' + folder + '">' +
+    // P203：卡从 <button> 改成 <div>，因为右上角那颗「⋯」是按钮，button 里套 button
+    // 在手机上是非法嵌套（点哪一半都可能被吞），只能改成同级绝对定位。
+    return '<div class="m-home-card' + (old ? " m-card-old" : "") +
+      '" data-folder="' + folder + '" role="button" tabindex="0">' +
       '<span class="m-card-thumb" data-folder="' + folder + '"></span>' +
       '<span class="m-card-body">' +
         '<span class="m-card-name">' + name + '</span>' +
@@ -182,12 +196,33 @@
         // 看着像设置项而不是"我的作品"。一行文字重量轻，也省 16px 高度。
         '<span class="m-card-meta">' + p.ins + ' 句 · ' + p.assets + ' 素材 · ' + ago(p.mtime) + '</span>' +
       '</span>' +
-      '<span class="m-card-go">›</span></button>';
+      '<span class="m-card-go">›</span>' +
+      '<button type="button" class="m-card-more" data-more="' + folder + '"' +
+        ' aria-label="更多操作">⋯</button></div>';
+  }
+
+  // P203：垃圾箱里还有东西才显示那颗垃圾桶 —— 空的摆着就是个假的家具。
+  function refreshBin() {
+    var b = $("mHomeBin");
+    if (!b) return;
+    var n = 0;
+    try { if (window.MYONLTrash) n = window.MYONLTrash.list().length; } catch (e) {}
+    b.hidden = !n;
+    b.setAttribute("aria-label", n ? "垃圾箱，里面有 " + n + " 个" : "垃圾箱");
+  }
+
+  // P203：新建的唯一样子。空着也摆一张 —— 空态下"点下面那张新建项目"得真有那张卡。
+  function ghostCard() {
+    return '<button type="button" class="m-home-card m-card-ghost" id="mHomeGhost">' +
+      '<span class="m-card-thumb m-card-thumb-new">＋</span>' +
+      '<span class="m-card-body"><span class="m-card-name">新建项目</span>' +
+      '</span></button>';
   }
 
   function render(projects) {
     var list = $("mHomeList");
     if (!list) return;
+    refreshBin();
     allProjects = projects;
     var q = findQ.trim().toLowerCase();
     var shown = q ? projects.filter(function (x) {
@@ -215,7 +250,7 @@
         '<div class="m-empty-t">还没有作品</div>' +
         '<div class="m-empty-d">建一份就自带一句台词，点开立刻能看到画面。</div>' +
         '<div class="m-empty-say">她推开门，雨顺着伞骨往下淌。</div>' +
-        '</div>';
+        '</div>' + ghostCard();
     } else if (!shown.length) {
       // 搜了但没命中：说清"搜的是什么"，别给一片空白
       list.innerHTML = '<div class="m-empty">' +
@@ -237,14 +272,10 @@
       } else {
         list.innerHTML = shown.map(function (p) { return card(p, false); }).join("");
       }
-      // 只有一个作品时补一张虚线卡：空白在列表末尾是正常的，但一整片白会让人
-      // 以为没加载完。QQ 的分组列表末尾也是这么放「创建」入口，动作就在需要它的位置。
-      if (projects.length === 1) {
-        list.innerHTML += '<button type="button" class="m-home-card m-card-ghost" id="mHomeGhost">' +
-          '<span class="m-card-thumb m-card-thumb-new">＋</span>' +
-          '<span class="m-card-body"><span class="m-card-name">新建项目</span>' +
-          '</span></button>';
-      }
+      // P203：底栏那颗「新建」撤了，这张虚线卡就是唯一的新建入口 —— 所以它必须常在。
+      // 原来只在「恰好一个作品」时补，等于两个以上就没路新建（真机回归抓到）。
+      // 放在列表末尾而不是页头：动作就在需要它的位置，QQ 的分组列表也这么收尾。
+      list.innerHTML += ghostCard();
     }
     // 缩略图单独请求：拿不到就留个空底，不阻塞列表
     list.querySelectorAll(".m-card-thumb[data-folder], .m-hero-cover[data-folder]").forEach(function (th) {
@@ -260,11 +291,20 @@
       img.src = "/api/thumb?folder=" + encodeURIComponent(f);
     });
     list.querySelectorAll(".m-home-card[data-folder], .m-home-hero[data-folder]").forEach(function (b) {
-      b.addEventListener("click", function () {
+      b.addEventListener("click", function (e) {
+        // 「⋯」是按钮，点它不能顺带进作品
+        if (e.target.closest && e.target.closest("[data-more]")) return;
         // 横屏走「先选中、右侧看详情、点继续编辑才进」；
         // 竖屏保持一点就进 —— 一屏只有一个主角，多一步反而累。
         if (splitMode()) { selFolder = b.dataset.folder; paintDetail(projects); return; }
         openWork(b.dataset.folder);
+      });
+    });
+    list.querySelectorAll("[data-more]").forEach(function (m) {
+      m.addEventListener("click", function (e) {
+        e.stopPropagation();
+        if (window.MYONLTrash) window.MYONLTrash.more(m.dataset.more, true);
+        else toast("更多操作没加载，刷新一下页面");
       });
     });
     var gh = $("mHomeGhost");
@@ -276,6 +316,10 @@
         !projects.some(function (p) { return p.folder === selFolder; }))) {
       selFolder = projects[0].folder;
     }
+    // 右栏显示的是哪一张，左栏得说清楚 —— 不标的话，横屏就是"右栏凭空有张详情"。
+    list.querySelectorAll(".m-home-card").forEach(function (c) {
+      c.classList.toggle("on", !!c.dataset.folder && c.dataset.folder === selFolder);
+    });
     paintDetail(projects);
   }
 
@@ -294,9 +338,9 @@
     if (!box) return;
     var p = projects.filter(function (x) { return x.folder === selFolder; })[0] || projects[0];
     if (!p) {
-      // 空列表：右栏只说"去哪儿开始"。入口都在底栏，不再重复画按钮
+      // 空列表：右栏只说"去哪儿开始"。入口都在首页正文，不再重复画按钮
       box.innerHTML = '<div class="m-det-empty">还没有作品。<br>' +
-        '点底部「教程」照着走一遍，或「新建」直接开写。</div>';
+        '点下面那张「新建项目」，或去「教程」看两版再动手。</div>';
       return;
     }
     var f = p.folder.replace(/"/g, "&quot;");
@@ -755,33 +799,50 @@
         '<div class="m-sheet-grab"></div>' +
         '<div class="m-sheet-title">教程' +
           '<button type="button" class="m-set-done" id="mTutDone">完成</button></div>' +
-        // 主操作放在最上面：点开教程的人下一步就是"动手"，不该先滚一屏说明才看到按钮。
-        // 练习是普通作品，建在自己列表里，能改也能删。
-        '<button type="button" class="m-tut-start" id="mTutStart">' +
-          '建一份练习（可删）' +
-          '<span>21 句话的短作品，改两句就懂</span></button>' +
-        '<div class="m-tut-doc">' +
-          tutItem("M3.6 3.4h8.8M3.6 6.4h8.8M3.6 9.4h5.2", "一行一句话",
-            "剧本里一行就是游戏里的一屏，直接写。", "") +
-          tutItem("M2.6 3.2h10.8v9.6H2.6zM4.8 1.6v2M11.2 1.6v2", "角色台词",
-            "方括号里写说话人，不用先去角色库建人。", "@[小满] 你终于来了。") +
-          tutItem("M3.2 2.6h9.6v10.4H3.2z", "旁白",
-            "括号里写「旁白」，就是画外音。", "@[旁白] 雨还在下。") +
-          tutItem("M3.4 8.2h3.6M9 8.2h3.6M3.4 5.4h9.2M8 2.2v11.6", "分支",
-            "@choice 下面每行一个选项，箭头后面是跳到哪一页。", "> 追上去 -> 第一章") +
-          tutItem("M2.6 3.4h10.8v9.2H2.6zM5.6 3.4v9.2", "画面",
-            "底部「素材」放图，点一下插成背景；音乐、视频同一个入口。", "") +
-          tutItem("M8 2.2v7.4M4.9 6.6l3.1 3.1 3.1-3.1M2.6 12.6h10.8", "导出",
-            "成品是一个 html，发给谁都能双击玩；也能打成安卓安装包。", "") +
+        // P203 教程出两版：「读一遍」是一篇能顺着读完的文字，「动手建」是一个最小示例。
+        // 原来六张图标卡是速查表 —— 看着齐，读完还是不知道从哪下笔。
+        '<span class="m-seg m-tut-seg" id="mTutSeg">' +
+          '<button type="button" data-v="read" class="on">读一遍</button>' +
+          '<button type="button" data-v="make">动手建</button>' +
+        '</span>' +
+        '<div class="m-tut-read" id="mTutRead">' +
+          '<div class="m-tut-h">一行就是一屏</div>' +
+          '<div class="m-tut-p">剧本里写的每一行，就是玩家看到的一屏。方括号里写谁在说，后面是说出来的话。</div>' +
+          '<div class="m-tut-c">@[小满] 你终于来了。</div>' +
+          '<div class="m-tut-h">旁白是画外音</div>' +
+          '<div class="m-tut-p">不想让某个角色说话，名字就写「旁白」。</div>' +
+          '<div class="m-tut-c">@[旁白] 雨还在下。</div>' +
+          '<div class="m-tut-h">分叉只要两行</div>' +
+          '<div class="m-tut-p">@choice 下面一行一个选项，箭头后面是跳到哪一幕。</div>' +
+          '<div class="m-tut-c">&gt; 追上去 -&gt; 第一章<br>&gt; 转身走 -&gt; 回家</div>' +
+          '<div class="m-tut-h">画面与声音</div>' +
+          '<div class="m-tut-p">底部「素材库」放图和音乐，名字对上就能插进剧本。</div>' +
+          '<div class="m-tut-h">导出</div>' +
+          '<div class="m-tut-p">成品是一个网页，发给谁都能双击玩；也能打成安卓安装包。</div>' +
         '</div>' +
-        '<div class="m-set-note">练习就是一份普通作品，建在你自己的列表里；不想要就删掉，不影响别的。</div>' +
-      '</div>';
+        '<div class="m-tut-make" id="mTutMake" hidden>' +
+          '<button type="button" class="m-tut-start" id="mTutStart">' +
+            '建一个最小示例' +
+            '<span>一份短作品，能玩也能改</span></button>' +
+          '<div class="m-set-note">它是一份普通作品，建在你自己的列表里。不想要就在卡片右上「⋯」删掉。</div>' +
+        '</div>';
     document.documentElement.appendChild(tutSheet);
     tutSheet.querySelector(".m-sheet-mask").addEventListener("click", function () {
       tutSheet.remove(); tutSheet = null;
     });
     tutSheet.querySelector("#mTutDone").addEventListener("click", function () {
       tutSheet.remove(); tutSheet = null;
+    });
+    // 两版切换：只改显示，不重建元素（mTutStart 的绑定挂在元素上，重建就丢了）
+    var seg = tutSheet.querySelector("#mTutSeg");
+    if (seg) seg.addEventListener("click", function (e) {
+      var b = e.target.closest ? e.target.closest("button[data-v]") : null;
+      if (!b) return;
+      var v = b.dataset.v;
+      seg.querySelectorAll("button").forEach(function (x) { x.classList.toggle("on", x === b); });
+      var rd = tutSheet.querySelector("#mTutRead"), mk = tutSheet.querySelector("#mTutMake");
+      if (rd) rd.hidden = v !== "read";
+      if (mk) mk.hidden = v !== "make";
     });
     tutSheet.querySelector("#mTutStart").addEventListener("click", function () {
       tutSheet.remove(); tutSheet = null;
@@ -812,6 +873,11 @@
   }
   var findBtn = $("mHomeFind");
   if (findBtn) findBtn.addEventListener("click", function () { setFind(foldbox.hidden); });
+  var binBtn = $("mHomeBin");
+  if (binBtn) binBtn.addEventListener("click", function () {
+    if (window.MYONLTrash) window.MYONLTrash.openBin();
+    else toast("垃圾箱没加载，刷新一下页面");
+  });
   if (fin) fin.addEventListener("input", function () { findQ = fin.value; render(allProjects); });
   var findClr = $("mHomeFindClear");
   if (findClr) findClr.addEventListener("click", function () { setFind(false); });
@@ -822,8 +888,12 @@
       var item = e.target.closest(".m-nav-item");
       if (!item) return;
       var kind = item.getAttribute("data-nav");
-      if (kind === "new") newProject();
-      else if (kind === "import") importProject();
+      // P203：底栏四格。新建与导入撤掉了 —— 新建在首页有虚线卡，导入在 WebView 里
+      // 根本弹不出选择器（用户原话「导入根本用不了」），留着就是一颗坏按钮。
+      if (kind === "lib") {
+        if (window.MYONLAssetLib) window.MYONLAssetLib.open();
+        else toast("素材库没加载，刷新一下页面");
+      }
       else if (kind === "set") openSettings();
       else if (kind === "tut") openTutorialSheet();
       else layer.scrollTo({ top: 0, behavior: "smooth" });

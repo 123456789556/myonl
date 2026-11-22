@@ -51,9 +51,10 @@ def test_详情面板有唯一主操作():
 
 
 def test_横屏空列表右栏只给一句指路():
-    # 入口都在底栏（教程 / 新建 / 导入），右栏画按钮就是重复；但空列表不能什么都不画
+    # 入口都在底栏（教程 / 素材库 / 设置），右栏画按钮就是重复；但空列表不能什么都不画
+    # P203：底栏没有「新建」了，指路改成指首页那张虚线卡
     assert "box.innerHTML = '<div class=\"m-det-empty\">" in HOME_JS
-    assert "点底部「教程」照着走一遍，或「新建」直接开写。" in HOME_JS
+    assert "点下面那张「新建项目」，或去「教程」看两版再动手。" in HOME_JS
     assert "paintDetail(projects);\n  }" in HOME_JS
 
 

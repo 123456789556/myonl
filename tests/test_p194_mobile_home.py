@@ -1,14 +1,14 @@
 # -*- coding: utf-8 -*-
-"""P194 手机端首页收口：底栏五格 + 教程抽屉 + 详情横排 + 按端分目录。
+"""P194 手机端首页收口，P203 改成四格 + 两版教程。
 
 用户这轮的原话：「下面那栏明明可以加入」「专门放教程」「这个部分可以删掉」
 「比例不对」「引擎拆分要做的移动端和 window 两个文件夹」。
 
 守五件事：
-1. 底栏五格（作品 / 教程 / 新建 / 导入 / 设置），每格都是真动作；
+1. 底栏四格（作品 / 教程 / 素材库 / 设置），每格都是真动作，没有哑按钮；
 2. 首页正文里那两块重复的东西收干净：新手教程引导卡、页头设置按钮、
-   「开始新的」两格（与底栏新建/导入同一件事）；
-3. 教程是「语法速查 + 建一份可删练习」抽屉，不是只读文档，也不塞进 games/；
+   「开始新的」两格；P203 再把底栏中间那颗「新建」也撤掉（首页已有虚线卡）；
+3. 教程分两版：读一遍（一篇连续文字）/ 动手建（一份可删的最小示例）；
 4. 横屏详情第一行是正方形缩略图 + 名字 + 主操作，不再是铺满整列的扁封条；
 5. 手机端专属前端住 editor/mobile/，路由要能从 mobile/ 取到。
 """
@@ -24,14 +24,16 @@ CSS = (ROOT / "editor" / "mobile" / "home.css").read_text(encoding="utf-8")
 EDITOR_PY = (ROOT / "engine" / "editor.py").read_text(encoding="utf-8")
 
 
-def test_底栏五格都是真动作():
-    for kind in ("home", "tut", "new", "import", "set"):
+def test_底栏四格都是真动作():
+    for kind in ("home", "tut", "lib", "set"):
         assert f'data-nav="{kind}"' in HOME_JS, f"底栏少了 {kind} 这一格"
-    # 五格共用一个委托，不许某格没接上
-    assert 'if (kind === "new") newProject();' in HOME_JS
-    assert 'else if (kind === "import") importProject();' in HOME_JS
+    # 四格共用一个委托，不许某格没接上
+    assert 'if (kind === "lib") {' in HOME_JS
     assert 'else if (kind === "set") openSettings();' in HOME_JS
     assert 'else if (kind === "tut") openTutorialSheet();' in HOME_JS
+    # P203：新建与导入撤掉 —— 新建首页有虚线卡，导入在 WebView 里弹不出选择器
+    assert 'data-nav="new"' not in HOME_JS
+    assert 'data-nav="import"' not in HOME_JS
 
 
 def test_首页正文不再重复摆同一件事():
@@ -47,15 +49,19 @@ def test_首页正文不再重复摆同一件事():
     assert "没图没音乐也能先写台词" not in HOME_JS
 
 
-def test_教程是速查加可删练习():
+def test_教程分两版():
     assert "function openTutorialSheet()" in HOME_JS
-    # 语法速查讲的是真能用的指令，不是空话
-    for line in ("@[小满]", "@[旁白]", "@choice:", "「素材」"):
-        assert line in HOME_JS, f"教程速查里少了 {line}"
-    # 按钮建的是真作品，且能删：走既有的 openTutorial（同一份 TUT_TEXT）
+    # 读一遍那版讲的是真能用的指令，不是空话
+    for line in ("@[小满]", "@[旁白]", "@choice:", "「素材库」"):
+        assert line in HOME_JS, f"教程正文里少了 {line}"
+    # 两版切换：读一遍 / 动手建
+    assert 'id="mTutSeg"' in HOME_JS
+    assert 'data-v="read"' in HOME_JS and 'data-v="make"' in HOME_JS
+    assert 'id="mTutRead"' in HOME_JS and 'id="mTutMake"' in HOME_JS
+    # 动手建的是真作品，且告诉人去哪儿删：走既有的 openTutorial（同一份 TUT_TEXT）
     assert 'id="mTutStart"' in HOME_JS
     assert "openTutorial();" in HOME_JS
-    assert "不想要就删掉" in HOME_JS
+    assert "不想要就在卡片右上「⋯」删掉" in HOME_JS
 
 
 def test_横屏详情不再用扁封条():

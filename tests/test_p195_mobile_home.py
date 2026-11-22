@@ -1,12 +1,12 @@
 # -*- coding: utf-8 -*-
-"""P195 手机端首页 v4：卡片规格、真搜索、浮起的新建键、卡片化教程。
+"""P195 手机端首页 v4：卡片规格、真搜索、教程两版。
 
 用户这两轮只给了感受，不给方向：「很奇怪就是体验下来不大好」「我不知道」。
 所以这一版按可验证的四件事收口，不靠形容词：
 1. 卡片从「46px 缩略 + 三个胶囊」换成「72px 方图 + 一行灰字」，卡高 110 → 92；
 2. 顶栏放大镜是真过滤（打字就筛卡片，副标题给命中数），不是摆个假框；
-3. 底栏中间的「新建」浮起成蓝圆键 —— 这一屏唯一"往前推"的动作；
-4. 教程抽屉一条一块卡（图标 + 标题 + 一句人话 + 一行能照抄的写法），主按钮置顶。
+3. 底栏四格平铺，「新建」不再浮起成圆键（P203 用户：中间的新建多余）；
+4. 教程分两版：先读一遍（连续文字），再动手建（最小示例）。
 """
 from pathlib import Path
 
@@ -39,13 +39,12 @@ def test_搜索是真过滤():
     assert "findQ = fin.value; render(allProjects);" in HOME_JS
 
 
-def test_底栏新建成浮起圆键():
-    assert 'class="m-nav-item m-nav-main" data-nav="new"' in HOME_JS
-    assert 'class="m-nav-main-ic"' in HOME_JS
-    assert ".m-nav-main-ic {" in CSS
-    assert "margin-top: -18px" in CSS
-    # 蓝底白加号：这是这一屏唯一的主推进动作
-    assert "background: var(--blue); color: #fff;" in CSS
+def test_底栏平铺不再有浮起圆键():
+    # P203 用户原话「中间的新建有些多余」：首页已有「新建项目」虚线卡，
+    # 底栏再摆一颗蓝色＋ 就是同一个动作的第三条路。
+    assert "m-nav-main" not in HOME_JS
+    assert 'data-nav="new"' not in HOME_JS
+    assert 'data-nav="lib"' in HOME_JS
 
 
 def test_横屏详情填满右栏():
@@ -55,11 +54,13 @@ def test_横屏详情填满右栏():
     assert "width: 100%; height: 44px" in CSS
 
 
-def test_教程一条一块卡且主按钮置顶():
-    assert "m-tut-item" in HOME_JS
-    assert "m-tut-ic2" in HOME_JS
-    assert "'<code>'" in HOME_JS
-    # 主按钮必须在条目之前：点开教程下一步就是动手，不该先滚一屏
-    i_start = HOME_JS.index('id="mTutStart"')
-    i_doc = HOME_JS.index('<div class="m-tut-doc">')
-    assert i_start < i_doc, "「建一份练习」被排到教程条目下面了"
+def test_教程两版且读的版本在前():
+    # 读一遍是一篇能顺着读完的文字；动手建是一个按钮。顺序：先说是什么，再给动手。
+    assert "m-tut-seg" in HOME_JS
+    i_read = HOME_JS.index('id="mTutRead"')
+    i_make = HOME_JS.index('id="mTutMake"')
+    assert i_read < i_make, "「读一遍」应该排在「动手建」前面"
+    # 读的版本是连续文字（小标题 + 段落 + 代码块），不是六张卡
+    assert 'class="m-tut-h"' in HOME_JS
+    assert 'class="m-tut-p"' in HOME_JS
+    assert 'class="m-tut-c"' in HOME_JS

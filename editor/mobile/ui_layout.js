@@ -61,16 +61,20 @@
     });
   }
   function renameProject(oldName, newName) {
-    var lib = readLib();
+    // P203：离线内核把作品库缓存在 memLib 里，直接改 localStorage 会被下一次 writeLib
+    // 用旧对象整体覆盖回去（名字看着改了，刷新又变回来）。有 __myonlLib 就只走它。
+    var api = window.__myonlLib;
+    var lib = api ? api.read() : readLib();
     if (!lib || !lib.projects) return "这本机上还没有作品库";
     if (lib.projects.some(function (p) { return p.name === newName; })) return "已经有同名作品了";
     var hit = null;
     lib.projects.forEach(function (p) { if (p.name === oldName) hit = p; });
     if (!hit) return "找不到「" + oldName + "」";
     hit.name = newName;
-    hit.mtime = Date.now();
+    hit.mtime = Math.round(Date.now() / 1000);
     if (lib.current === oldName) lib.current = newName;
-    try { localStorage.setItem(LIB, JSON.stringify(lib)); } catch (e) { return "写不进去，存储可能满了"; }
+    if (api) api.write(lib);
+    else try { localStorage.setItem(LIB, JSON.stringify(lib)); } catch (e) { return "写不进去，存储可能满了"; }
     renameDrafts(oldName, newName);
     try { if (sessionStorage.getItem("myonl:projName") === oldName) sessionStorage.setItem("myonl:projName", newName); } catch (e) {}
     var t = document.querySelector(".m-title2");
@@ -79,6 +83,8 @@
     if (fp && fp.textContent.trim() === oldName) fp.textContent = newName;
     return "";
   }
+  // 作品卡的「⋯ → 改名」在 editor_trash.js，它没有自己去改库的权限，只能调这一个
+  window.MYONLRenameProject = renameProject;
 
   function openRename() {
     if (!shell() || document.getElementById("p202Mask")) return;
