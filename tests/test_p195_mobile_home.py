@@ -23,8 +23,9 @@ def test_卡片换成方图加一行灰字():
     # 三个胶囊是表单元素，一叠起来像设置项；换成一行灰字，重量轻、也省高度
     assert "m-card-chips" not in HOME_JS
     assert '<span class="m-card-meta">' in HOME_JS
-    assert "width: 72px !important; height: 72px !important" in CSS
-    assert ".m-home-card .m-card-name { font-size: 16.5px; }" in CSS
+    # P208：卡片改成等分铺满一屏，缩略图与字号跟着提一档（用户：别又扁又贴顶）
+    assert "width: 88px !important; height: 88px !important" in CSS
+    assert ".m-home-card .m-card-name { font-size: 17.5px; }" in CSS
 
 
 def test_搜索是真过滤():

@@ -7,9 +7,9 @@
    这里改成 72px 方图、名字一行、下面一行灰字（句 / 素材 / 时间），卡高从 110 掉到 92，
    一屏能露五到六张。三个胶囊是表单元素，一叠起来像设置项，不像"我的作品"。 */
 .m-home-card { padding: 12px !important; gap: 12px !important; margin-bottom: 10px !important; }
-.m-card-thumb { width: 72px !important; height: 72px !important; border-radius: 12px !important; }
-.m-home-card .m-card-name { font-size: 16.5px; }
-.m-home-card .m-card-meta { font-size: 12.5px; color: var(--subtext0); }
+.m-card-thumb { width: 88px !important; height: 88px !important; border-radius: 14px !important; }
+.m-home-card .m-card-name { font-size: 17.5px; }
+.m-home-card .m-card-meta { font-size: 13px; color: var(--subtext0); }
 
 /* ---------------- 顶栏 + 搜索 ----------------
    放大镜是真的：打字就把卡片筛掉，作品一多第一个会用到的功能。 */
@@ -41,7 +41,7 @@
    那两格删了，说明再吸底就是一句话吊在半空。 */
 .m-home-side { margin-top: 0 !important; }
 /* 有作品时列表不该被 flex 拉满整屏；空态才需要撑满（.m-empty 自己 flex:1） */
-body.m-has-projects .m-home-list { flex: 0 0 auto !important; }
+body.m-has-projects .m-home-list { flex: 1 1 auto !important; }
 
 /* 分组标题：最近在改 / 更早。只在两段都有内容时出现（JS 控制） */
 .m-home-grp { flex: 0 0 auto; display: flex; align-items: baseline; gap: 7px; margin: 12px 2px 7px; }
@@ -96,9 +96,9 @@ body.m-has-projects .m-home-list { flex: 0 0 auto !important; }
     mask-image: linear-gradient(180deg, #000 calc(100% - 20px), transparent);
   }
   /* 底栏在底部占 46px + 安全区：不给它留位置，第三张卡会被压掉半截 */
-  .m-home { padding-bottom: calc(52px + env(safe-area-inset-bottom)) !important; }
+  .m-home { padding-bottom: calc(56px + env(safe-area-inset-bottom)) !important; }
   /* 横屏左列要一屏露完四张卡：卡内压成一行 —— 名字在左、数字在右 */
-  .m-home-card { padding: 7px 11px !important; gap: 9px !important; margin-bottom: 0 !important; }
+  .m-home-card { padding: 7px 11px !important; gap: 9px !important; margin-bottom: 0 !important; flex: 0 0 auto !important; }
   .m-card-thumb { width: 34px !important; height: 34px !important; }
   .m-home-card .m-card-body { flex-direction: row; align-items: center; gap: 10px; }
   .m-home-card .m-card-name { flex: 0 1 auto; max-width: 42%; font-size: 15px; }

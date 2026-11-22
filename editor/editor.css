@@ -1966,22 +1966,22 @@ input[type="color"] {
    Material 3 的 8dp 网格、Apple HIG 的 8pt 取值都指向同一套数字。 */
 .m-home {
   position: fixed; inset: 0; z-index: 500; background: var(--base); color: var(--text);
-  padding: calc(16px + env(safe-area-inset-top)) 16px 16px; overflow-y: auto;
+  padding: calc(24px + env(safe-area-inset-top)) 16px 16px; overflow-y: auto;
   display: flex; flex-direction: column;
 }
-.m-home-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
-.m-home-title { font-size: 24px; font-weight: 600; letter-spacing: .3px; }
+.m-home-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+.m-home-title { font-size: 26px; font-weight: 600; letter-spacing: .3px; }
 .m-home-gear {
   width: 40px; height: 40px; border-radius: 50%; border: 1px solid var(--surface0);
   background: var(--mantle); color: var(--subtext1); display: flex; align-items: center;
   justify-content: center; padding: 0; cursor: pointer;
 }
 .m-home-gear:active { background: var(--surface0); color: var(--text); }
-.m-home-list { flex: 1; }
+.m-home-list { flex: 1 1 auto; display: flex; flex-direction: column; gap: 14px; overflow-y: auto; }
 .m-home-card {
   display: flex; flex-direction: column; gap: 8px; line-height: 1.45; width: 100%; text-align: left;
   background: var(--mantle); border: 1px solid var(--surface0); border-radius: 16px;
-  padding: 16px; margin-bottom: 12px; color: var(--text); position: relative;
+  padding: 18px; margin-bottom: 0; color: var(--text); position: relative;
   font-family: inherit; cursor: pointer;
 }
 .m-home-card:active { background: var(--surface0); transform: scale(.995); }
@@ -2005,7 +2005,7 @@ input[type="color"] {
 .m-home-nav {
   position: fixed; left: 0; right: 0; bottom: 0; z-index: 505;
   display: flex; align-items: stretch;
-  height: calc(56px + env(safe-area-inset-bottom));
+  height: calc(58px + env(safe-area-inset-bottom));
   padding-bottom: env(safe-area-inset-bottom);
   background: var(--mantle);
   border-top: 1px solid var(--surface0);
@@ -2013,8 +2013,8 @@ input[type="color"] {
 }
 .m-nav-item {
   flex: 1; border: 0; background: transparent; color: var(--subtext0);
-  font-family: inherit; font-size: 11px; font-weight: 500; letter-spacing: .3px;
-  display: flex; flex-direction: column; gap: 2px; align-items: center; justify-content: center;
+  font-family: inherit; font-size: 12px; font-weight: 500; letter-spacing: .3px;
+  display: flex; flex-direction: column; gap: 3px; align-items: center; justify-content: center;
   position: relative; cursor: pointer;
 }
 .m-nav-item.on { color: var(--blue); font-weight: 600; }
@@ -2023,7 +2023,7 @@ input[type="color"] {
   width: 18px; height: 2px; border-radius: 1px; background: var(--blue);
 }
 .m-nav-item:active { background: var(--surface0); }
-.m-home { padding-bottom: calc(64px + env(safe-area-inset-bottom)); }
+.m-home { padding-bottom: calc(70px + env(safe-area-inset-bottom)); }
 
 /* 横屏：导航仍留在底部。
    曾经把它转成左侧竖条省高度，实测 64px 的竖条还是压住了「我的作品」标题，
@@ -2055,8 +2055,8 @@ input[type="color"] {
 }
 .m-set-row {
   display: flex; align-items: center; justify-content: space-between;
-  padding: 16px 0; border-bottom: 1px solid var(--surface0); font-size: 14px;
-  min-height: 48px;
+  padding: 17px 0; border-bottom: 1px solid var(--surface0); font-size: 14.5px;
+  min-height: 52px;
 }
 .m-seg { display: inline-flex; border: 1px solid var(--surface0); border-radius: 999px; overflow: hidden; }
 /* 触摸目标至少 40 高：原来 6px 上下留白只有 30，手指按不准 */
@@ -2069,11 +2069,11 @@ input[type="color"] {
   border: 1px solid var(--surface0); background: var(--base); color: var(--text);
   border-radius: 8px; padding: 10px 16px; font-size: 13px; font-family: inherit; cursor: pointer;
 }
-.m-set-note { font-size: 11px; color: var(--overlay0); line-height: 1.7; padding: 12px 0 0; }
+.m-set-note { font-size: 12.5px; color: var(--overlay0); line-height: 1.7; padding: 12px 0 0; }
 
 /* 编辑器的全局 button 规则把高度钉成 28px / 蓝底（给工具条用的），
    工作台的卡片是 button，必须把高度和配色抢回来，否则被压扁成一坨。 */
-.m-home-card { height: auto; min-height: 64px; background: var(--mantle) !important; color: var(--text); }
+.m-home-card { height: auto; min-height: 92px; flex: 1 1 0; background: var(--mantle) !important; color: var(--text); }
 .m-home-gear { height: 40px; background: var(--mantle); color: var(--subtext1); }
 .m-seg button { height: auto; border-radius: 0; }
 .m-set-btn { height: auto; background: var(--base); color: var(--text); }
@@ -2399,7 +2399,7 @@ input[type="color"] {
 .m-home-hero {
   display: block; width: 100%; height: 176px; padding: 0; margin-bottom: 16px;
   position: relative; overflow: hidden; border: none; cursor: pointer;
-  border-radius: 16px; background: var(--surface0);
+  border-radius: 18px; background: var(--surface0);
 }
 .m-home-hero:active { transform: scale(.994); }
 .m-hero-cover {
@@ -3136,12 +3136,12 @@ body.m-home-open .m-tabbar { display: none !important; }
    改成 1 1 auto，唯一的作品卡才有地方长高（多作品时照旧滚动）。 */
 .m-home-list {
   flex: 1 1 auto !important; min-height: 0; display: flex;
-  flex-direction: column; gap: 10px; overflow-y: auto;
+  flex-direction: column; gap: 14px; overflow-y: auto;
 }
-.m-home-list .m-home-card { flex: 0 0 auto; }
+.m-home-list .m-home-card { flex: 1 1 0; }
 /* 作品少时不撑满：P179 之前是唯一作品长高吃掉空白，现在统一成横向小卡，
    长高的前提没了，撑满反而空出大半屏。0 0 auto 让列表收到内容高度。 */
-body.m-few-projects .m-home-list { flex: 0 0 auto !important; }
+body.m-few-projects .m-home-list { flex: 1 1 auto !important; }
 /* 作品少时「开始新的」不要被 margin-top:auto 顶到屏幕尽头，
    一张小卡下面隔着一整屏空白才看到它，中间那块是纯浪费。 */
 body.m-few-projects .m-home-side { margin-top: 0 !important; }

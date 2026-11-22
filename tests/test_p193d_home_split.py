@@ -31,7 +31,7 @@ def test_横屏打开详情并收起重复入口():
     assert ".m-home-detail { display: flex;" in CSS
     assert ".m-home-side { display: none !important; }" in CSS
     # 底栏在横屏底部占 46px + 安全区，不留位置第三张卡会被压掉半截
-    assert "padding-bottom: calc(52px + env(safe-area-inset-bottom))" in CSS
+    assert "padding-bottom: calc(56px + env(safe-area-inset-bottom))" in CSS
 
 
 def test_横屏点卡片先选中不直接进():
