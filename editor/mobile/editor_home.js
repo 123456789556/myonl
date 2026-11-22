@@ -813,6 +813,25 @@
     '<div class="m-sub-h">建议</div>' +
     '<div class="m-sub-p">改得多的时候一周导一次 .json，几十 KB，不占地方，也不用想存在哪。</div>';
 
+  // 这一版是哪一版：打包脚本把版本号烙进 <meta name="myonl-version">；
+  // 直接开 index.html（没打包）时那里还是占位符，就写"开发版"。
+  function appVersion() {
+    var m = document.querySelector('meta[name="myonl-version"]');
+    var v = m ? String(m.content || "").trim() : "";
+    if (!v || v.indexOf("__") === 0) return "开发版";
+    return v;
+  }
+  function aboutHtml() {
+    return '<div class="m-sub-h">这一版</div>' +
+      '<div class="m-sub-p">v' + esc(appVersion()) + ' —— 这台设备上装的就是它。设置页所有开关都按它算。</div>' +
+      '<div class="m-sub-h">怎么更新</div>' +
+      '<div class="m-sub-p">去项目的 Releases 页下最新的 apk / zip。手机上直接装新 apk（覆盖安装，别先卸载）；电脑上解压覆盖原来那个文件夹。</div>' +
+      '<div class="m-sub-h">更新会不会丢作品</div>' +
+      '<div class="m-sub-p">不会。作品、素材、笔记都存在这台设备里，覆盖安装动不到它们。会一次全没的只有两件事：卸载 App、清浏览器数据。</div>' +
+      '<div class="m-sub-h">为什么手机上不自己提醒有新版</div>' +
+      '<div class="m-sub-p">安装包按设计不申联网权限（离线也能编），它不会自己去问服务器，所以这里只显示版本号。电脑端有网，在那边「设置中心 → 关于」能查。</div>';
+  }
+
   function openSettings() {
     if (sheet) { sheet.remove(); sheet = null; return; }
     var theme = "dark";
@@ -875,6 +894,8 @@
           '<span>存储方式</span><em>›</em></button>' +
         '<button type="button" class="m-set-row m-set-link" id="mSetPlace">' +
           '<span>数据位置</span><em>›</em></button>' +
+        '<button type="button" class="m-set-row m-set-link" id="mSetAbout">' +
+          '<span>关于 MYONL</span><em>›</em></button>' +
       '</div>';
     // 抽屉挂 <html> 而不是 <body>：body 上挂了编辑器各种档位类，fixed 定位在里面被算成流的位置
   // （实测顶边跑到 1007，正好是内容底部）。挂 html 之后 fixed 的包含块就是视口本身。
@@ -896,6 +917,12 @@
       if (sheet) { sheet.remove(); sheet = null; }
       if (window.MYONLExport) window.MYONLExport.open();
       else toast("这个版本还没接导出");
+    });
+    // 关于页：只讲三件事——这一版是哪版、怎么更新、更新会不会丢数据。
+    // 手机上不联网（安装包没申网络权限），所以这里没有"检查更新"按钮，只说去哪看。
+    sheet.querySelector("#mSetAbout").addEventListener("click", function () {
+      if (sheet) { sheet.remove(); sheet = null; }
+      openSetSub("关于 MYONL", aboutHtml());
     });
 
     function paintProf() {

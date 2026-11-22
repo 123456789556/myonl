@@ -65,6 +65,16 @@ def build(out_file: Path) -> dict:
     # 去掉它们，免得手机上每次打开都刷一串 404。
     html = re.sub(r'<link[^>]*href="/(?:icon-\d+\.png|manifest\.webmanifest)"[^>]*>', "", html)
 
+    # 版本号写进单文件：手机上没有后端，拿不到 /api/version，
+    # 设置页要显示"这台设备上是哪一版"就只能靠这里烙进去。
+    ver = "dev"
+    vfile = ROOT / "engine" / "_version.py"
+    if vfile.is_file():
+        mv = re.search(r'^VERSION\s*=\s*"([^"]+)"', vfile.read_text(encoding="utf-8"), re.M)
+        if mv:
+            ver = mv.group(1)
+    html = html.replace("__MYONL_VERSION__", ver)
+
     title = "MYONL 编辑器"
     m = re.search(r"<title>(.*?)</title>", html, re.S)
     if m:

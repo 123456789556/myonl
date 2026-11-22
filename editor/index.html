@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no,maximum-scale=1">
 <meta name="theme-color" content="#f4f5f7"><link rel="manifest" href="/manifest.webmanifest">
 <title>MYONL 编辑器</title>
+<meta name="myonl-version" content="__MYONL_VERSION__">
 <link rel="stylesheet" href="/editor.css?v=p98"><link rel="stylesheet" href="/strip.css?v=p183"><link rel="stylesheet" href="/ui-fix.css?v=p187"><link rel="stylesheet" href="/mobile/home.css?v=p193c"><link rel="stylesheet" href="/mobile/ui-layout.css?v=p202">
 <script>/* P249：手机壳首帧就定形态，别先露出编辑器三栏再跳回工作台（快机 60ms、慢机 1-2 帧，肉眼就是"闪一下"）。首页一挂上 m-home-open 就摘掉遮挡，最多等 1.8s 兜底。 */(function(){try{if(window.matchMedia&&window.matchMedia("(max-width:860px), (max-height:520px), (pointer:coarse) and (hover:none) and (max-width:1400px)").matches){var d=document.documentElement;d.classList.add("m-shell","m-boot");var n=0;(function t(){var b=document.body;if(b&&b.classList.contains("m-home-open")){d.classList.remove("m-boot");return;}if(++n<60)setTimeout(t,30);else d.classList.remove("m-boot");})();}}catch(e){}})();</script>
 </head>

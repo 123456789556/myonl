@@ -110,3 +110,70 @@
     init();
   }
 })();
+
+/* 设置中心「关于」页：这一版是哪版 + 有没有新版。
+   只在电脑端：桌面有网，能真去问 GitHub。手机安装包按设计不申网络权限，那边只显示版本号。 */
+(function () {
+  function verMeta() {
+    var m = document.querySelector('meta[name="myonl-version"]');
+    var v = m ? String(m.content || "").trim() : "";
+    return (v && v.indexOf("__") !== 0) ? v : "";
+  }
+  function newer(a, b) {
+    var x = String(a).split("."), y = String(b).split(".");
+    for (var i = 0; i < Math.max(x.length, y.length); i++) {
+      var p = parseInt(x[i], 10) || 0, q = parseInt(y[i], 10) || 0;
+      if (p !== q) return p > q;
+    }
+    return false;
+  }
+  function pane() {
+    var ps = document.querySelectorAll(".set-pane");
+    for (var i = 0; i < ps.length; i++) if (/关于/.test(ps[i].textContent || "")) return ps[i];
+    return null;
+  }
+  function mount() {
+    var p = pane();
+    if (!p || p.querySelector("#myonlVer")) return;
+    var box = document.createElement("div");
+    box.innerHTML =
+      '<p class="set-p">这一版：v<b id="myonlVer">…</b></p>' +
+      '<button type="button" class="icon-btn" id="myonlUpd">检查更新</button>' +
+      '<p class="set-hint">覆盖安装、解压覆盖都不会动作品和素材；会一次全没的只有卸载和清数据。</p>';
+    p.appendChild(box);
+    var cur = verMeta();
+    fetch("/api/version").then(function (r) { return r.json(); }).then(function (j) {
+      cur = (j && (j.version || j.VERSION)) || cur;
+      box.querySelector("#myonlVer").textContent = cur || "开发版";
+    }).catch(function () {
+      box.querySelector("#myonlVer").textContent = cur || "开发版";
+    });
+    var btn = box.querySelector("#myonlUpd");
+    btn.addEventListener("click", function () {
+      if (btn.dataset.url) { try { window.open(btn.dataset.url, "_blank"); } catch (e) {} return; }
+      btn.disabled = true;
+      btn.textContent = "正在问…";
+      fetch("https://api.github.com/repos/123456789556/myonl/releases/latest")
+        .then(function (r) { return r.json(); })
+        .then(function (j) {
+          var tag = String((j && j.tag_name) || "").replace(/^v/, "");
+          btn.disabled = false;
+          if (!tag) { btn.textContent = "没问到，稍后再试"; return; }
+          if (cur && newer(tag, cur)) {
+            btn.dataset.url = (j && j.html_url) || "";
+            btn.textContent = "有新版 v" + tag + " · 点这里去下载";
+          } else {
+            btn.textContent = "已是最新（v" + (cur || tag) + "）";
+          }
+        })
+        .catch(function () { btn.disabled = false; btn.textContent = "连不上网，稍后再试"; });
+    });
+  }
+  function boot() {
+    mount();
+    var mo = new MutationObserver(function () { if (!document.querySelector("#myonlVer")) mount(); });
+    mo.observe(document.body, { childList: true, subtree: true });
+  }
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot);
+  else boot();
+})();
