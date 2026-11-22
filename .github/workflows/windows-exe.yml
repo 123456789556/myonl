@@ -19,6 +19,13 @@ jobs:
     runs-on: windows-latest
     timeout-minutes: 40
 
+    # Windows runner 的控制台代码页不是 UTF-8，Python 默认按 cp1252 写 stdout，
+    # 脚本里任何一句中文 print 都会 UnicodeEncodeError 把构建搞红。
+    # 脚本自己 reconfigure 是第一道，这里再兜一层 —— 别让打印毁掉打包。
+    env:
+      PYTHONIOENCODING: utf-8
+      PYTHONUTF8: "1"
+
     steps:
       - uses: actions/checkout@v4
 

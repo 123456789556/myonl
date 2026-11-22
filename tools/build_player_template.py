@@ -26,6 +26,17 @@ import sys
 import tempfile
 from pathlib import Path
 
+# 控制台编码不等于 UTF-8 时（Windows 上 GitHub Actions runner 就是 cp1252，
+# cmd 里 PYTHONIOENCODING 没设也是），下面那些中文 print 会直接抛
+# UnicodeEncodeError: 'charmap' codec can't encode characters —— 一个纯打印就
+# 把整个构建搞红（v1.2.34 / v1.2.35 两轮 exe CI 就是这么死的，不是 PyInstaller 的错）。
+# 自己把 stdout/stderr 拉回 UTF-8，别指望外部环境。
+for _stream in (sys.stdout, sys.stderr):
+    try:
+        _stream.reconfigure(encoding="utf-8", errors="replace")
+    except (AttributeError, ValueError):
+        pass
+
 ROOT = Path(__file__).resolve().parent.parent
 TARGET = ROOT / "engine" / "templates" / "player"
 EXE_NAME = "MYONLPlayer.exe"
