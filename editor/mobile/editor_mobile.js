@@ -285,7 +285,7 @@
     scnBack = document.createElement("button");
     scnBack.type = "button";
     scnBack.className = "cp-btn scn-back";
-    scnBack.innerHTML = "&#8249; 场景列表";
+    scnBack.innerHTML = "场景列表";   // P249：左边已经有那颗「‹」了，这里再带一个箭头就是两个箭头并排
     scnBack.addEventListener("click", function () { wantDetail = false; exitDetail(); });
     head.insertBefore(scnBack, head.firstChild);
 

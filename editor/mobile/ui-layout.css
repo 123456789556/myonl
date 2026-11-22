@@ -520,3 +520,36 @@ html.m-shell .scene-page .scene-item.active::before { background: var(--blue); }
    同时它已不在安全区里，自己那 40px 安全带就不需要了，改成 6px 常规内边距。 */
 html.m-shell .center-page.scene-page { top: calc(50px + var(--safe-pad-top)) !important; }
 html.m-shell .scene-page .cp-head { padding-top: 6px !important; }
+
+/* ===== P249 手机上「✕ 关闭」不再是关闭，统一成「‹」 ====
+   实测（probe_p249 C 段）：#sceneClose x=316 宽 64，文案仍是「✕ 关闭」。
+   同一套 cp-head 里 #cpClose（页面编辑）、#charClose（角色库）也是「✕ 关闭」。
+   手机上这些键的实际语义就是「退回上一层」，用箭头比叉号省字、也少一个方块。
+   做法：字号归零藏掉中文，用 ::before 画一个箭头；DOM 文案保留给读屏与 i18n。 */
+html.m-shell #sceneClose, html.m-shell #cpClose, html.m-shell #charClose {
+  font-size: 0 !important; padding: 0 11px !important; min-width: 34px;
+}
+html.m-shell #sceneClose::before, html.m-shell #cpClose::before, html.m-shell #charClose::before {
+  content: "‹"; font-size: 17px; line-height: 1; font-weight: 600;
+}
+@media (hover: none) and (pointer: coarse) {
+  html.m-shell #sceneClose:active, html.m-shell #cpClose:active, html.m-shell #charClose:active {
+    background: var(--surface0) !important;
+  }
+}
+
+/* ===== P249 改名弹窗别被键盘顶出屏 =====
+   实测（用户截图）：点「换个名字」弹窗 + 键盘，标题栏「设置 / 完成」被挤到页面最上面一截。
+   WebView 里软键盘只缩视觉视口，fixed 居中的弹窗不会自己上移；这里把弹窗对齐到视口上部，
+   并给输入框留出可见位置，键盘再高也不压住正文。 */
+html.m-shell .m-dlg { align-items: flex-start !important; padding-top: 9vh !important; }
+html.m-shell .m-dlg-in { scroll-margin-top: 9vh; }
+
+
+/* ===== P249（2026-11-22 夜）：手机壳这四件 —— 关闭键箭头 / 首帧不露编辑器 / 点底栏不起灰块 / 头像不跟主题色 ===== */
+html.m-boot body { visibility: hidden; }
+html.m-shell #sceneClose, html.m-shell #cpClose, html.m-shell #charClose { order: -1; }
+html.m-shell .m-nav-item:active { opacity: 1; background: transparent; }
+html.m-shell .m-nav-item.on::after { display: none; content: none; }
+html.m-shell .m-nav-item.on { box-shadow: inset 0 -2px 0 var(--blue); }
+html.m-shell .m-avatar { background: #2f6bd6; }

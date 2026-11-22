@@ -263,9 +263,9 @@
       saveCurrent();
     }
   });
-  window.addEventListener("beforeunload", (e) => {
+  if (!document.documentElement.classList.contains("m-shell")) window.addEventListener("beforeunload", (e) => {   // P249：手机壳不挂，否则 Android WebView 把它变成系统「确认离开」弹窗，页面同时撕裂
     if (curPath) buffers[curPath] = E.getText();
-    if (files.some(dirtyOf)) { e.preventDefault(); e.returnValue = ""; }
+    if (!document.documentElement.classList.contains("m-shell") && files.some(dirtyOf)) { e.preventDefault(); e.returnValue = ""; }
   });
 
   // 源码区输入 → 同步当前文件缓冲 + 脏标记
@@ -1934,7 +1934,7 @@
     '<span class="cp-hint">调整后点保存即可，随时可关掉</span>' +
     '<span class="cp-spacer"></span>' +
     '<button type="button" class="cp-btn" id="cpSplit" title="并排：页面放右侧，左边继续写剧本">并排</button>' +
-    '<button type="button" class="cp-btn" id="cpClose" title="关闭页面（Esc）">✕ 关闭</button>' +
+    '<button type="button" class="cp-btn" id="cpClose" title="关闭页面（Esc）">' + (document.documentElement.classList.contains("m-shell") ? "‹" : "✕ 关闭") + '</button>' +
     "</div>" +
     '<div class="cp-body" id="cpBody"></div>';
   pane.appendChild(page);

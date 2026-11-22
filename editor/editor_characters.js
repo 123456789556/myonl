@@ -22,7 +22,7 @@
     '<span class="cp-spacer"></span>' +
     '<button type="button" class="cp-btn" id="charAssets" title="打开素材库（角色和素材是同一套文件）">素材库</button><button type="button" class="cp-btn" id="charImport" title="扫描 images/ 里的「角色_表情」素材自动建角色">从素材导入</button>' +
     '<button type="button" class="cp-btn" id="charSave" title="保存到项目 characters.json">保存</button>' +
-    '<button type="button" class="cp-btn" id="charClose" title="关闭（Esc）">✕ 关闭</button>' +
+    '<button type="button" class="cp-btn" id="charClose" title="关闭（Esc）">' + (document.documentElement.classList.contains("m-shell") ? "‹" : "✕ 关闭") + '</button>' +
     '</div><div class="scene-body"><div class="scene-list"><input class="set-search" id="charSearch" placeholder="搜索角色…"><div id="charList"></div></div><div class="scene-form" id="charForm"></div></div>';
   pane.appendChild(page);
 
