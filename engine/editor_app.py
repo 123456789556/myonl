@@ -169,12 +169,105 @@ def make_closing_handler(window, bridge: _EditorBridge):
     return _on_closing
 
 
+def _route_pythonnet_runtime() -> str:
+    """让 pythonnet 从 ASCII 路径初始化（中文目录装 exe 时唯一能开窗的办法）。
+
+    真因：pywebview 的 Windows 后端要 pythonnet，它把 `Python.Runtime.dll` 的路径
+    交给 .NET Framework 加载；clr_loader 传的是 UTF-8 字节，.NET 按系统 ANSI 代码页
+    解释，路径里有中文就变成一个不存在的路径 —— 于是 `Failed to resolve
+    Python.Runtime.Loader.Initialize from ...\\娱乐工作区\\...`，窗口根本出不来。
+    实测：同一个 exe，放 `C:\\myonl_test_ascii\\` 能开，放 `D:\\娱乐工作区\\...` 报上面这条。
+
+    做法：把 runtime 目录（3 个 dll，约 630KB）复制到 LOCALAPPDATA 下的纯英文路径，
+    用复制品完成 `Python.Runtime.Loader.Initialize`，再把 pythonnet 标记成已加载，
+    后面的 `import clr` 直接复用，不再走它自己那条中文路径。
+
+    返回一句人类可读的说明，供启动日志用；路径本来就全是英文时直接跳过。
+    """
+    if sys.platform != "win32":
+        return "skip:not-win32"
+    try:
+        import pythonnet
+    except Exception:  # noqa: BLE001 — 没装 pythonnet 交给上层报错
+        return "skip:no-pythonnet"
+    dll = os.path.join(os.path.dirname(pythonnet.__file__), "runtime", "Python.Runtime.dll")
+    if not os.path.isdir(os.path.dirname(dll)) or _is_ascii(os.path.abspath(dll)):
+        return "skip:ascii-path"
+    if getattr(pythonnet, "_LOADED", False):
+        return "skip:already-loaded"
+    try:
+        import clr_loader
+        import shutil
+        import tempfile
+
+        # 候选目录挨个试：杀软会拦「刚下载的 exe 往 AppData 写文件」（WinError 5），
+        # 所以不能只认 LOCALAPPDATA 一处；这里挑第一个真能建、能复制的纯英文目录。
+        cands = []
+        for base in (os.environ.get("LOCALAPPDATA"), tempfile.gettempdir(), "C:\\", "D:\\"):
+            if base:
+                cands.append(os.path.join(base, "myonl_pyrt"))
+        dst_dir, last_err = "", "no-candidate"
+        for c in cands:
+            if not _is_ascii(c):
+                continue
+            try:
+                os.makedirs(c, exist_ok=True)
+                for name in os.listdir(os.path.dirname(dll)):
+                    src = os.path.join(os.path.dirname(dll), name)
+                    tgt = os.path.join(c, name)
+                    # 已经拷过、大小一样就跳过：杀软会拦「重复覆盖已存在文件」
+                    if os.path.isfile(src) and not (
+                            os.path.exists(tgt) and os.path.getsize(tgt) == os.path.getsize(src)):
+                        shutil.copy2(src, tgt)
+                if os.path.isfile(os.path.join(c, "Python.Runtime.dll")):
+                    dst_dir = c
+                    break
+            except OSError as e:
+                last_err = f"{c}: {e}"
+                if os.path.isfile(os.path.join(c, "Python.Runtime.dll")):
+                    dst_dir = c
+                    break
+        if not dst_dir:
+            return f"fail:{last_err}"
+        dst = os.path.join(dst_dir, "Python.Runtime.dll")
+        if not _is_ascii(dst):
+            return f"fail:no-ascii-home {dst}"
+        rt = clr_loader.get_netfx()
+        asm = rt.get_assembly(dst)
+        if asm.get_function("Python.Runtime.Loader.Initialize")(b"") != 0:
+            return "fail:initialize-nonzero"
+        pythonnet.set_runtime(rt)
+        pythonnet._LOADER_ASSEMBLY = asm  # noqa: SLF001 — 官方没有其它登记方式
+        pythonnet._LOADED = True  # noqa: SLF001
+        # 少了这一步，退出解释器时 .NET 会在 finalize 里抛 E0434352（窗口关掉后弹个莫名错误）。
+        # 正常路径下 pythonnet.load() 自己会注册，我们绕过了它，所以补上。
+        import atexit
+
+        atexit.register(pythonnet.unload)
+        return f"ok:routed-to-{dst_dir}"
+    except Exception as e:  # noqa: BLE001 — 路由失败就按原样试，别挡住启动
+        return f"fail:{e}"
+
+
+def _is_ascii(path: str) -> bool:
+    """路径能否纯 ASCII 表示；不能就说明里面有中文/全角字符。"""
+    try:
+        path.encode("ascii")
+        return True
+    except UnicodeEncodeError:
+        return False
+
+
 def main(argv=None) -> int:
     argv = list(sys.argv[1:] if argv is None else argv)
     ap = argparse.ArgumentParser(prog="engine.editor_app", description="MYONL 编辑器桌面窗口")
     ap.add_argument("--project", default=None, help="项目根目录（默认：当前目录/配置记录）")
     ap.add_argument("--script", default=None, help="默认打开的剧本路径（必须在项目目录内）")
     args = ap.parse_args(argv)
+
+    _route_note = _route_pythonnet_runtime()
+    if _route_note.startswith("fail"):
+        print(f"[pyrt] {_route_note}", file=sys.stderr)
 
     try:
         import webview
@@ -183,6 +276,13 @@ def main(argv=None) -> int:
                             "请执行 py -m pip install pywebview 安装，或改用命令行模式：\n"
                             "  py -m engine.editor --project 工程目录 --port 8000")
         return 1
+    except Exception as e:  # noqa: BLE001 — pythonnet 初始化失败也算「窗口没开成」
+        _show_startup_error(f"编辑器窗口启动失败：{e}\n\n"
+                            f"[安装路径] {sys.executable}\n"
+                            "[pyrt] " + _route_note + "\n\n"
+                            "如果路径里有中文，请把整包挪到纯英文目录再试（如 D:\\MYONL）；\n"
+                            "或者把上面 [pyrt] 一行发给我们。")
+        return 3
 
     if not _webview2_installed():
         _show_startup_error(
@@ -212,9 +312,10 @@ def main(argv=None) -> int:
         webview.start()
     except Exception as e:  # noqa: BLE001 — 发行版无控制台，必须弹窗说明
         _show_startup_error(f"编辑器窗口启动失败：{e}\n\n"
-                            "常见原因：WebView2 Runtime 缺失/损坏，或安全软件拦截。\n"
-                            "可安装 WebView2 后重试：\n"
-                            "https://developer.microsoft.com/microsoft-edge/webview2/")
+                            f"[安装路径] {sys.executable}\n"
+                            f"[pyrt] {_route_note}\n\n"
+                            "WebView2 装好了还报这句时，多半是安装路径里有中文 —— 整包挪到\n"
+                            "纯英文目录（如 D:\\MYONL）再双击；已经挪了还不行，把这几行发回来。")
         return 3
     finally:
         srv.shutdown()

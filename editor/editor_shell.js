@@ -253,6 +253,9 @@
       { label: "打包发布", shortcut: "Ctrl+P", action: () => $("btnPack").click() },
       { label: "导出一个 HTML（手机能直接打开）", action: exportSingleHtml },
       { label: "打成 APK（能直接装到手机上）", action: exportApk },
+      // 手机顶栏一格宽裕都没有（390 宽实测最右 404），全屏与工具条挪进「菜单」
+      { label: "全屏（隐藏浏览器工具栏）", action: () => { var fb = $("mFullscreen"); if (fb) fb.click(); } },
+      { label: "展开 / 收起工具条", action: () => $("mToolsToggle").click() },
     ],
     edit: [
       { label: "撤销", shortcut: "Ctrl+Z", action: undo },

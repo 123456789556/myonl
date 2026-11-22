@@ -221,7 +221,7 @@
   }
 
   var sceneFilter = "all";
-  var CH_H = 30;                  // 章节分组头行高（见 editor.css .scene-chapter）
+  var CH_H = 40;                  // 章节分组头行高（见 editor.css .scene-chapter）
   // V3：章节分组折叠状态（标题 → 1），按工程记忆
   var collapsedChapters = {};
   try { collapsedChapters = JSON.parse(localStorage.getItem("gal_scene_chapters") || "{}") || {}; } catch (e) { collapsedChapters = {}; }

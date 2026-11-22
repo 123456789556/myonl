@@ -2719,6 +2719,7 @@
   // ---------- 启动 ----------
   loadPrefs();
   bgmVolume = PREF.vol;
+  audioOn = PREF.vol > 0;        // 上次选了「静音」档，这次进来也别出声
   fit();
   requestAnimationFrame(frame);
 
@@ -3843,7 +3844,9 @@
   const SETTINGS_GROUPS = [
     ["文字速度", "speed", ["慢", "中", "快"], [0.6, 1, 1.6], PREF.speed],
     ["字号", "text", ["小", "中", "大"], [0.9, 1, 1.15], PREF.text],
-    ["音量", "vol", ["小", "中", "大"], [0.4, 0.7, 1], PREF.vol],
+    // 音量四档：静音 = 总开关，一键全哑（BGM/音效/语音/视频一起哑，且喇叭图标同步成静音）；
+    // 另外三档是「跟随系统」——这里的数只是乘在系统音量上，玩家把手机调小声，作品也跟着小。
+    ["音量", "vol", ["静音", "小", "中", "大"], [0, 0.4, 0.7, 1], PREF.vol],
     ["自动翻页", "auto", ["关", "3 秒", "6 秒"], [0, 3, 6], PREF.auto],
     // 弱机自救：降渲染分辨率，字和图会软一点，但帧率能上来
     ["画面质量", "quality", ["流畅", "标准", "清晰"], [0.62, 0.82, 1], PREF.quality],
@@ -3884,14 +3887,14 @@
 
       const segW = Math.round(colW * (cols === 2 ? 0.54 : 0.44));
       const sx = gx + colW - segW;
-      const bw = segW / 3;
+      const bw = segW / labels.length;
       const bh = Math.round(L.fs * 1.5);
       const sy = yy + (rowH - bh) / 2;
       // P97：三个独立小盒 -> 一条分段控件。
       // 三个各带圆角底和描边的小盒并排，是"三个按钮"，玩家每次都要认一遍哪个是选中的；
       // 一条胶囊底 + 里面一块实心滑块，位置本身就说清了"三选一、当前在哪个"。
       roundRect(sx, sy, segW, bh, bh / 2, "rgba(255,255,255,.055)");
-      for (let i = 0; i < 3; i++) {
+      for (let i = 0; i < labels.length; i++) {
         const on = typeof cur === "string"
           ? cur === vals[i]
           : Math.abs(cur - vals[i]) < 0.001;
@@ -4063,9 +4066,11 @@
     if (key === "speed") PREF.speed = [0.6, 1, 1.6][i];
     else if (key === "text") { PREF.text = [0.9, 1, 1.15][i]; savePrefs(); fit(); return; }
     else if (key === "vol") {
-      PREF.vol = [0.4, 0.7, 1][i];
+      PREF.vol = [0, 0.4, 0.7, 1][i];
       bgmVolume = PREF.vol;
-      if (bgm) bgm.volume = PREF.vol;
+      audioOn = PREF.vol > 0;          // 「静音」档等于总静音，右上角喇叭同步显示成静音
+      if (bgm) { bgm.volume = PREF.vol; bgm.muted = !audioOn; }
+      savePrefs();
     } else if (key === "auto") PREF.auto = [0, 3, 6][i];
     else if (key === "quality") { PREF.quality = [0.62, 0.82, 1][i]; savePrefs(); fit(); return; }
     else if (key === "orient") {

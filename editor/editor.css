@@ -1587,11 +1587,11 @@ input[type="text"], input[type="search"], select { background: var(--input-bg); 
 .scene-page .scene-rows { position: relative; }
 .scene-page .scene-item { position: absolute; left: 0; right: 0; height: 54px; box-sizing: border-box; margin-bottom: 0; overflow: hidden; }
 .scene-page .sc-name, .scene-page .sc-meta { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-/* V3：章节分组头（高 30px，与 editor_scene.js 的 CH_H 一致） */
+/* V3：章节分组头（高 40px，与 editor_scene.js 的 CH_H 一致；整行都能点，手指不用去戳小箭头） */
 .scene-page .scene-chapter {
-  position: absolute; left: 0; right: 0; height: 30px; box-sizing: border-box;
-  display: flex; align-items: center; gap: 6px; padding: 0 6px;
-  font-size: 11.5px; color: var(--subtext0); cursor: pointer; user-select: none;
+  position: absolute; left: 0; right: 0; height: 40px; box-sizing: border-box;
+  display: flex; align-items: center; gap: 8px; padding: 0 8px;
+  font-size: 12.5px; color: var(--subtext0); cursor: pointer; user-select: none;
   border-radius: var(--r-md);
 }
 .scene-page .scene-chapter:hover { background: var(--surface0); color: var(--text); }

@@ -12,6 +12,12 @@ html.m-shell .menubar > *, html.m-shell .menubar .menu-item,
 html.m-shell .m-top-preview, html.m-shell #mHomeBack, html.m-shell #mFullscreen {
   flex: 0 0 auto !important; white-space: nowrap !important;
 }
+/* 竖屏顶栏实测溢出：390 宽时全屏按钮右边界 405、工具按钮 445，都被切掉。
+   全屏改到「菜单」里（file 菜单已有该项），顶栏只留 6 个够用。 */
+html.m-shell #mFullscreen, html.m-shell #mToolsToggle { display: none !important; }
+/* 收完还是超（作品名一长就顶出去：390 宽实测最右到 435）：间距 8→4，作品名限宽省略 */
+html.m-shell .menubar { gap: 4px !important; padding-left: 6px !important; padding-right: 6px !important; }
+html.m-shell .menubar .m-title2 { max-width: 84px; overflow: hidden; text-overflow: ellipsis; }
 /* 横屏只留「返回 / 作品名 / 预览 / 菜单」四个，编辑/视图/运行/帮助收进「菜单」 */
 html.m-shell.m-wide .menubar .menu-item:not([data-menu="file"]),
 html.m-shell.m-wide #mFullscreen { display: none !important; }
