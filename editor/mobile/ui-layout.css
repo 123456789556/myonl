@@ -434,19 +434,41 @@ html.m-shell .m-var-entry-t { flex: 1; font-size: 13px; color: var(--subtext1); 
 html.m-shell .m-var-entry-b { flex: 0 0 auto; height: 30px; padding: 0 12px; border: 0; border-radius: 8px;
   background: var(--blue); color: #fff; font-size: 13px; cursor: pointer; }
 
-/* ---- P220 刘海/挖孔避让（实测：--safe-top:47 时 menubar 高 50 定死，内边距吃进 47 后
-   内容只剩 3px，被裁在刘海底下 —— 「示范案例」实测 top=17，正落在中央挖孔竖条 148–242 内）。
-   修法：顶栏高度放开；场景页顶栏本来 height:auto 但要补 safe-top。孔只占顶部那条带，
-   内容整体下移后中间自然镂空。 */
-html.m-shell .menubar { height: auto !important; min-height: 50px !important; }
-html.m-shell .cp-head {
-  height: auto !important;
-  padding-top: max(var(--safe-top, 0px), env(safe-area-inset-top, 0px)) !important;
+/* ===== P220 顶部安全带（一处定义，三处引用） =====
+   量出来的事实（probe_p220，390×844，注入 47px 安全区）：
+   1) 顶栏高度定死 50px，安全区被当内边距吃进去，内容只剩 3px —— 「示范案例」top=17、cx=193，
+      正落在中央挖孔竖条 148–242 里；场景页 .cp-head top=1，同样堵在孔里。
+   2) 网页版路径吃不到 env()：给 :root 注入 --safe-top:47px 后，读回的计算值仍是 0px。
+      所以 max(var(--safe-top), env(safe-area-inset-top)) 这种写法在网页版等于没写。
+   3) height:auto 在这一层算不出高度（计算值仍是 50px），定死的高会把内边距吃掉，
+      标题会溢出条子外面 —— 顶栏高度必须显式相加。
+   收敛方式：安全区高度只留一个变量 --safe-pad-top。原生壳置 0（MainActivity 已按
+   systemBars + displayCutout + systemGestures 让过位，再叠加就是双倍空白），
+   其余壳取 40px 底线。改这一处，顶栏 / 场景页头 / 首页同时跟着走。 */
+html.m-shell { --safe-pad-top: 40px; }
+html.m-shell.native-shell { --safe-pad-top: 0px; }
+/* 横屏时挖孔在侧边不在顶部，顶部那 40px 是白扔的 */
+@media (orientation: landscape) { html.m-shell { --safe-pad-top: 0px; } }
+
+/* 手机壳里「贴顶」的表面清单 —— 只有一个地方，新增贴顶层就往这里加一行，
+   别再各自写一份硬编码内边距。清单里每一项都是 position:fixed/absolute 贴 top:0 的，
+   给它们统一让出安全区。 */
+html.m-shell .menubar,
+html.m-shell .cp-head,
+html.m-shell .center-page,
+html.m-shell .asset-pane,
+html.m-shell .file-pane { padding-top: var(--safe-pad-top) !important; }
+
+html.m-shell .menubar {
+  height: calc(50px + var(--safe-pad-top)) !important;
 }
-/* ---- P220 查找改成放大镜图标：那颗浮球原来写「查」两个字（46px 里三个字挤），
-   改成图形后字号归零、图标 20×20 居中；文案仍在 DOM 里，读屏和 i18n 不受影响。
-   位置一起抬到状态栏上方 20px（实测查球 bottom=748、状态栏「共 15 行」top=772，
-   本来不重叠，但只差 24px，手指按下去容易误触）。 */
+/* 首页原本自带 24px 上留白，抬到 14px + 安全带 = 54（实测标题落在 top=54，正好出孔带） */
+html.m-shell .m-home { padding-top: calc(14px + var(--safe-pad-top)) !important; }
+
+/* ---- P220 查找改成放大镜图标：那颗浮球原来写「查」字（46px 里挤），改成图形后
+   字号归零、图标 20×20 居中；文案仍留在 DOM，读屏与 i18n 不受影响。
+   位置抬到状态栏上方（实测查球 bottom=748、状态栏「共 15 行」top=772，本来不重叠，
+   但只差 24px，手指按下去容易误触）。 */
 html.m-shell #mlFab {
   font-size: 0 !important;
   display: flex !important; align-items: center !important; justify-content: center !important;
@@ -458,16 +480,8 @@ html.m-shell #mlFab::after {
   background-repeat: no-repeat; background-size: 20px 20px; background-position: center;
 }
 
-/* ---- P220 顶部安全带（第二条）：实测 :root 的 --safe-top 被应用层覆盖成 0px（
-   注入 :root{--safe-top:47px} 读回来仍是 "0px"），说明光靠变量在浏览器/网页版路径上
-   根本吃不到 inset。这里改成给「非原生壳」（网页版、桌面浏览器预览）直接压一条底线：
-   顶栏与场景页头各让出 34px，首页让出 46px（它原本自带 24px）。原生壳 html.native-shell
-   已由 MainActivity 按 systemBars + displayCutout 让过位，这里不再叠加，免得双倍空白。 */
-html.m-shell:not(.native-shell) .menubar,
-html.m-shell:not(.native-shell) .cp-head { padding-top: 40px !important; }
-html.m-shell:not(.native-shell) .m-home { padding-top: 54px !important; }
-
-/* ---- P220 顶部安全带（第三条）：height:auto 在这一层算不出高度（实测计算值仍是 50px），
-   定死的高会把 40px 内边距吃掉，标题虽然到 y=49 却溢在条子外面。改成显式加高：
-   50px 内容区 + 40px 安全带 = 90px。原生壳不加。 */
-html.m-shell:not(.native-shell) .menubar { height: 90px !important; }
+/* 顶栏在 390 宽上塞了 6 个入口，实测第 6 个被切在屏幕外（源码模式截图可见）。
+   先给一条兜底：允许横滑、不显示滚动条，宁可滑也不要把按钮切掉。
+   真正收敛成几个入口属于产品取舍，等拍板。 */
+html.m-shell .menubar { overflow-x: auto; scrollbar-width: none; }
+html.m-shell .menubar::-webkit-scrollbar { display: none; }
