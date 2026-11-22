@@ -23,11 +23,13 @@ datas += [
     for name in ("parser.js", "pack.js")
 ]
 # M1.5：内嵌教程（编辑器「帮助 → 教程 / 说明书」在发行包里也要能看）
-datas += [
-    (os.path.join(ROOT, "docs", name), "docs")
-    for name in ("快速上手.md", "开发者使用指南.md", "素材导入指南.md",
-                 "engine_spec.md", "插件开发指南.md", "打包使用指南.md")
-]
+#
+# 这里原先是一个个列文件名，而且列的是 docs/ 根下的「开发者使用指南.md」等 ——
+# 那三份早就搬到 docs/desktop/ 了，spec 没跟着改。后果不是「帮助里少一篇」，
+# 而是 PyInstaller 直接拿不到文件、整个打包以 ERROR 退出（v1.2.36 的 exe CI 就死在这）。
+# 同 editor/ 一样改成目录整体带：文档改名、加一篇、挪子目录都不用再动 spec。
+# 整个 docs 也才 1.2 MB（大头是配图），不值当为这点体积再赌一次漏带。
+datas += [(os.path.join(ROOT, "docs"), "docs")]
 # 引擎自带素材与空包模板：缺了它，发行包里「新建游戏」拿不到内置背景/立绘/音效，
 # 新建出来的工程就是白板（用户反馈：素材只在别的示例工程里）。
 datas += [(os.path.join(ROOT, "engine", "templates"), "engine/templates")]

@@ -112,8 +112,10 @@ jobs:
           Write-Host "_internal $($internal.Count) 个文件 / $([math]::Round($internal.Sum/1MB,1)) MB"
           if ($internal.Count -lt 50) { Write-Host "::error::_internal 文件太少，运行时没打进去"; exit 1 }
           # 玩家模板必须躺在 exe 同级的 engine/templates/player 里
+          # 没有它，发行版里「打包游戏」按钮必然报错 —— 那种包发出去等于发了个残废。
           $plt = "dist\editor\_internal\engine\templates\player\MYONLPlayer.exe"
-          if (-not (Test-Path $plt)) { Write-Host "::warning::玩家模板没进包，编辑器内「打包游戏」会坏" }
+          if (-not (Test-Path $plt)) { Write-Host "::error::玩家模板没进包，编辑器内「打包游戏」会坏"; exit 1 }
+          Write-Host "玩家模板已进包"
 
       - name: 压成 zip
         shell: pwsh
