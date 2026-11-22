@@ -1,7 +1,7 @@
 # MYONL · 手机上的视觉小说编辑器
 
 [![tests](https://github.com/123456789556/myonl/actions/workflows/tests.yml/badge.svg?branch=main)](https://github.com/123456789556/myonl/actions/workflows/tests.yml)
-![Release](https://img.shields.io/badge/release-v1.2.46-blue)
+![Release](https://img.shields.io/badge/release-v1.2.47-blue)
 ![License](https://img.shields.io/badge/License-MIT-green)
 ![Platform](https://img.shields.io/badge/platform-Android%207.0%2B%20%C2%B7%20Windows%20%C2%B7%20Web-19b6a3)
 ![Offline](https://img.shields.io/badge/offline-100%25-2ea44f)
@@ -37,6 +37,25 @@
 
   手机端能走完 ①②；电脑端负责 ③，以及批量导素材、从网址抓图。
 ```
+
+## 指令只有一份，两端用同一张表
+
+我们自造了一套 `@` 指令。写一条，**电脑端和手机端都必须能解析** —— 不是靠人记名单，有机器对拍守着：
+
+```
+python tools/check_directive_parity.py
+```
+
+31 条样例、同一条指令分别喂给两端的解析器，比 op 序列。当前实测：
+
+| 结论 | 条数 | 含义 |
+|---|---|---|
+| 两端都能写、解析结果一致 | **28** | 手机做完的剧本电脑端能接着改，反过来也行 |
+| 只有电脑端能写 | **2**（`@anim`、`@plug`） | 手机端会给明确的中文提示「这条暂时写不了」，不会崩；其中 `@anim` 的成品在手机上**能演**，`@plug` 连成品也不演（播放器没有插件实现） |
+| 真差异 | **0** | — |
+
+新增一条指令时，这条对拍会自动红，提醒你补另一端；确实只能一端写，就写进
+`tests/test_directive_parity.py` 的 `KNOWN_ONE_SIDED`，并在文档里把边界说清楚。
 
 ## 它是什么，不是什么
 
@@ -229,9 +248,9 @@ python tools/pack_apk.py --game dist/single/你的作品.html
 
 ## 装它
 
-**[⬇ 下载 MYONL-v1.2.46.apk](https://github.com/123456789556/myonl/releases/download/v1.2.46/MYONL-v1.2.46.apk)** · 安卓 7.0 以上 · 手机 / 折叠屏 / 平板都能用，横竖屏自适应
+**[⬇ 下载 MYONL-v1.2.47.apk](https://github.com/123456789556/myonl/releases/download/v1.2.47/MYONL-v1.2.47.apk)** · 安卓 7.0 以上 · 手机 / 折叠屏 / 平板都能用，横竖屏自适应
 
-**[⬇ 下载 MYONL-v1.2.46-editor-win.zip](https://github.com/123456789556/myonl/releases/download/v1.2.46/MYONL-v1.2.46-editor-win.zip)** · Windows 10/11 · 解压双击 `editor.exe`，不用装 Python
+**[⬇ 下载 MYONL-v1.2.47-editor-win.zip](https://github.com/123456789556/myonl/releases/download/v1.2.47/MYONL-v1.2.47-editor-win.zip)** · Windows 10/11 · 解压双击 `editor.exe`，不用装 Python
 
 装好打开就是书架，点「新建作品」开始。底部「导出」有两条出口：
 自包含 `.html`（发微信对方就能玩）和 APK（装到手机上就是一个独立 App）。
