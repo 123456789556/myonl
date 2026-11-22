@@ -350,6 +350,175 @@
     if (t && t.closest && t.closest("#sceneClose")) markMode("code");
   });
 
+  /* ==================== 变量与条件（P219） ====================
+   * 内核与播放器早就会跑 @set / @if（web/myonl-core.js 的 state.vars + execSet，
+   * 导出的成品里真执行），电脑端逐句页也能把这两条指令点出来。唯独手机端一个字都没有：
+   * 想加个好感度只能自己手打「@set 好感 +1」，跟「手机是主场」正好反着。
+   * 这里补的是**点选**，不是代码框 —— 只做两件事：记一笔数、按数走另一条路。
+   * 复杂表达式（@if 里塞好几个条件）仍然留给源码，不在手机上硬造。
+   */
+  var varSheet = null, varMask = null;
+
+  function sceneNameNow() {
+    var b = document.querySelector("#scenePage .sf-scene b");
+    return b ? String(b.textContent || "").trim() : "";
+  }
+  function linesNow() {
+    var E = window.__editor;
+    return String(E && E.getText ? E.getText() : "").split("\n");
+  }
+  function collectRe(lines, re) {
+    var out = [];
+    lines.forEach(function (l) {
+      var m = l.trim().match(re);
+      if (m && out.indexOf(m[1]) < 0) out.push(m[1]);
+    });
+    return out;
+  }
+  // 插入点：本幕 @end 之前（插在 @end 后面这幕就永远走不到）；没有 @end 就插到下一条 @label 之前
+  function insertAtOfScene(lines, name) {
+    var at = -1, i, j, k;
+    for (i = 0; i < lines.length; i++) {
+      var m = lines[i].trim().match(/^@label\s+(\S+)/);
+      if (m && m[1] === name) { at = i; break; }
+    }
+    if (at < 0) return -1;
+    var end = lines.length;
+    for (j = at + 1; j < lines.length; j++) {
+      if (/^@label\s/.test(lines[j].trim())) { end = j; break; }
+    }
+    for (k = end - 1; k > at; k--) {
+      if (lines[k].trim() === "@end") return k;
+    }
+    return end;
+  }
+  function writeBlock(at, block) {
+    var lines = linesNow();
+    var out = lines.slice(0, at).concat(block, lines.slice(at));
+    var E = window.__editor, text = out.join("\n");
+    if (E && E.setSourceValue) E.setSourceValue(text, 0, 0);
+    else if (E && E.setText) E.setText(text);
+    try { var b = document.getElementById("btnSave"); if (b) b.click(); } catch (e) {}
+    try { var r = document.getElementById("sceneRefresh"); if (r) r.click(); } catch (e) {}
+  }
+
+  function ensureVarSheet() {
+    if (varSheet) return varSheet;
+    varMask = document.createElement("div");
+    varMask.className = "m-varmask";
+    varMask.addEventListener("click", closeVarSheet);
+    document.body.appendChild(varMask);
+
+    varSheet = document.createElement("div");
+    varSheet.className = "m-varsheet";
+    varSheet.innerHTML =
+      '<div class="m-var-head"><b>变量与条件</b>' +
+        '<button type="button" class="m-var-x">×</button></div>' +
+      '<div class="m-var-tip">在这幕里记一笔数，或者按这个数走另一条路。写错不影响播放，删掉那行就没了。</div>' +
+      '<div class="m-var-sec">记一笔数</div>' +
+      '<div class="m-var-row">' +
+        '<input class="m-var-name" list="mVarNames" placeholder="变量名，如 好感">' +
+        '<select class="m-var-op">' +
+          '<option value="+=">加</option><option value="-=">减</option><option value="=">设为</option>' +
+        '</select>' +
+        '<input class="m-var-val" type="number" value="1">' +
+      '</div>' +
+      '<button type="button" class="m-var-do" data-act="set">写进这幕</button>' +
+      '<div class="m-var-sec">按数走另一条路</div>' +
+      '<div class="m-var-row">' +
+        '<input class="m-var-cname" list="mVarNames" placeholder="变量名">' +
+        '<select class="m-var-cmp">' +
+          '<option value="&gt;=">到了</option><option value="&gt;">超过</option>' +
+          '<option value="&lt;=">不到</option><option value="&lt;">低过</option>' +
+          '<option value="=">正好是</option><option value="!=">不是</option>' +
+        '</select>' +
+        '<input class="m-var-cval" type="number" value="1">' +
+      '</div>' +
+      '<div class="m-var-row m-var-row-1">' +
+        '<span class="m-var-lb">满足就跳到</span><select class="m-var-target"></select>' +
+      '</div>' +
+      '<button type="button" class="m-var-do" data-act="if">加这条分支</button>' +
+      '<div class="m-var-known"></div>' +
+      '<datalist id="mVarNames"></datalist>';
+    document.body.appendChild(varSheet);
+    varSheet.querySelector(".m-var-x").addEventListener("click", closeVarSheet);
+    varSheet.querySelector('[data-act="set"]').addEventListener("click", doSet);
+    varSheet.querySelector('[data-act="if"]').addEventListener("click", doIf);
+    return varSheet;
+  }
+
+  function closeVarSheet() {
+    if (varSheet) varSheet.classList.remove("on");
+    if (varMask) varMask.classList.remove("on");
+  }
+
+  function openVarSheet() {
+    if (!sceneNameNow()) { toast("先在场景列表里点开一幕"); return; }
+    ensureVarSheet();
+    var lines = linesNow();
+    var names = collectRe(lines, /^@label\s+(\S+)/), vars = collectRe(lines, /^@set\s+(\S+)/);
+    var dl = varSheet.querySelector("#mVarNames");
+    if (dl) dl.innerHTML = vars.map(function (v) { return '<option value="' + v + '">'; }).join("");
+    var sel = varSheet.querySelector(".m-var-target");
+    sel.innerHTML = names.map(function (n) { return '<option value="' + n + '">' + n + "</option>"; }).join("");
+    var known = varSheet.querySelector(".m-var-known");
+    known.textContent = vars.length ? ("已经用过的变量：" + vars.join(" · ")) : "还没有任何变量，第一条随便起个名字就行。";
+    varMask.classList.add("on");
+    varSheet.classList.add("on");
+  }
+
+  function varName(v) { return String(v || "").trim().replace(/[\s/\\]/g, ""); }
+  function varNum(v) {
+    var n = Number(String(v || "").trim());
+    return isNaN(n) ? null : n;
+  }
+
+  function doSet() {
+    var name = varName(varSheet.querySelector(".m-var-name").value);
+    var op = varSheet.querySelector(".m-var-op").value;
+    var val = varNum(varSheet.querySelector(".m-var-val").value);
+    if (!name) { toast("先写个变量名，比如「好感」"); return; }
+    if (val === null) { toast("数值得是数字"); return; }
+    var scene = sceneNameNow(), at = insertAtOfScene(linesNow(), scene);
+    if (at < 0) { toast("这一幕找不到了，退回列表重进一次"); return; }
+    writeBlock(at, ["@set " + name + " " + op + " " + val]);
+    closeVarSheet();
+    toast("已写进这幕：@set " + name + " " + op + " " + val);
+  }
+
+  function doIf() {
+    var name = varName(varSheet.querySelector(".m-var-cname").value);
+    var cmp = varSheet.querySelector(".m-var-cmp").value.replace(/&gt;/g, ">").replace(/&lt;/g, "<");
+    var val = varNum(varSheet.querySelector(".m-var-cval").value);
+    var target = varSheet.querySelector(".m-var-target").value;
+    if (!name) { toast("先写个变量名"); return; }
+    if (val === null) { toast("数值得是数字"); return; }
+    if (!target) { toast("还没选跳去哪一幕"); return; }
+    var scene = sceneNameNow();
+    if (target === scene) { toast("不能跳到自己这一幕，会原地打转"); return; }
+    var at = insertAtOfScene(linesNow(), scene);
+    if (at < 0) { toast("这一幕找不到了，退回列表重进一次"); return; }
+    writeBlock(at, ["@if " + name + " " + cmp + " " + val + ":", "    @jump " + target]);
+    closeVarSheet();
+    toast("已加分支：" + name + " " + cmp + " " + val + " → " + target);
+  }
+
+  // 入口挂在属性面板末尾（这一幕怎么收尾，就在那儿加条件）。
+  // 不挂顶栏那颗 ⋯：它只在「场景列表」态可见 —— ui-layout.css:2961
+  // `.scene-page.m-detail .scn-more{display:none}` —— 而详情态才是写这一幕的地方，
+  // 挂上去等于把它藏起来（这个坑实测踩到过：探针点 ⋯ 直接超时）。
+  function hookVarEntry() {
+    var form = document.getElementById("sceneForm");
+    if (!form || !narrow() || form.querySelector("#mVarEntry")) return;
+    var box = document.createElement("div");
+    box.id = "mVarEntry";
+    box.className = "m-var-entry";
+    box.innerHTML = '<span class="m-var-entry-t">变量与条件</span>' +
+      '<button type="button" class="m-var-entry-b">加一条</button>';
+    box.querySelector(".m-var-entry-b").addEventListener("click", function () { openVarSheet(); });
+    form.appendChild(box);
+  }
+
   /* ============================ 启动与重入 ============================ */
 
   function boot() {
@@ -358,6 +527,13 @@
       refreshSummaries();
       buildScriptModes();
       buildSceneMobile();
+      hookVarEntry();
+      // 属性面板每次换幕、每敲一个字都会整块重画（renderForm），入口得跟着补回去
+      var formNode = document.getElementById("sceneForm");
+      if (formNode && !formNode.dataset.mVarHook && window.MutationObserver) {
+        formNode.dataset.mVarHook = "1";
+        new MutationObserver(function () { hookVarEntry(); }).observe(formNode, { childList: true });
+      }
       // 按钮默认就高亮「逐句」，但以前只建了按钮、没真的打开场景页，
       // 结果用户看到「逐句编辑」是选中的、界面却还是源码 + 一片空白。
       // 但点「外观」会 80ms 后再 boot 一次，那时 UI 设计区已经开了，

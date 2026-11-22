@@ -395,3 +395,41 @@ html.m-shell .m-bin-sel .m-bin-top .m-back {
 html.m-shell .m-bin-grid > .m-bin-empty {
   grid-column: 1 / -1; max-width: 300px; margin: 10px auto 0; line-height: 1.75;
 }
+
+/* ---- P219 变量与条件面板（手机端独有；桌面走逐句页属性检查器那套）----
+   色全部取 :root 变量，浅色主题自动跟着变；内边距吃 --safe-bottom，手势条不压按钮。 */
+.m-varmask { position: fixed; inset: 0; z-index: 8800; background: rgba(8, 12, 20, .5);
+  opacity: 0; pointer-events: none; transition: opacity .16s; }
+.m-varmask.on { opacity: 1; pointer-events: auto; }
+.m-varsheet { position: fixed; left: 0; right: 0; bottom: 0; z-index: 8900; max-height: 84vh;
+  overflow: auto; background: var(--mantle); color: var(--text);
+  border-radius: 14px 14px 0 0; border-top: 1px solid var(--surface0);
+  padding: 14px 16px calc(18px + var(--safe-bottom, 0px));
+  transform: translateY(100%); transition: transform .18s; box-shadow: 0 -10px 28px rgba(0, 0, 0, .3); }
+.m-varsheet.on { transform: translateY(0); }
+.m-var-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+.m-var-head b { font-size: 16px; }
+.m-var-x { width: 32px; height: 32px; padding: 0; border: 0; border-radius: 8px; background: transparent;
+  color: var(--subtext1); font-size: 18px; line-height: 1; cursor: pointer; }
+.m-var-tip { font-size: 12px; line-height: 1.6; color: var(--subtext1); margin-bottom: 12px; }
+.m-var-sec { font-size: 13px; font-weight: 600; margin: 14px 0 6px; }
+.m-var-row { display: flex; gap: 8px; align-items: center; }
+.m-var-row-1 { margin-top: 8px; }
+.m-var-row input, .m-var-row select { flex: 1; min-width: 0; height: 34px; padding: 0 10px; border-radius: 8px;
+  border: 1px solid var(--surface1); background: var(--base); color: var(--text); font-size: 14px; }
+.m-var-row .m-var-name, .m-var-row .m-var-cname { flex: 1.4; }
+.m-var-row .m-var-op, .m-var-row .m-var-cmp { flex: 0 0 76px; }
+.m-var-row .m-var-val, .m-var-row .m-var-cval { flex: 0 0 64px; text-align: center; }
+.m-var-row .m-var-target { flex: 1; }
+.m-var-lb { flex: 0 0 auto; font-size: 13px; color: var(--subtext1); }
+.m-var-do { margin-top: 10px; width: 100%; height: 38px; border: 0; border-radius: 10px;
+  background: var(--blue); color: #fff; font-size: 14px; cursor: pointer; }
+.m-var-known { margin-top: 12px; font-size: 12px; line-height: 1.6; color: var(--subtext1); }
+
+/* P219：属性面板末尾的「变量与条件」入口。一行，右对齐，不抢台词的注意力。 */
+html.m-shell .m-var-entry { display: flex; align-items: center; gap: 10px;
+  margin: 10px 0 6px; padding: 10px 12px; border-radius: 10px;
+  border: 1px dashed var(--surface1); background: transparent; }
+html.m-shell .m-var-entry-t { flex: 1; font-size: 13px; color: var(--subtext1); }
+html.m-shell .m-var-entry-b { flex: 0 0 auto; height: 30px; padding: 0 12px; border: 0; border-radius: 8px;
+  background: var(--blue); color: #fff; font-size: 13px; cursor: pointer; }

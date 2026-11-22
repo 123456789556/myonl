@@ -656,10 +656,9 @@
     return out;
   }
 
-  // 指令数（跟电脑端 _home 同口径：以 @ 开头的行）
-  function countIns(text) {
-    return String(text || "").split("\n").filter(function (l) { return l.trim().charAt(0) === "@"; }).length;
-  }
+  // 指令数（跟电脑端 _home 同口径：以 @ 开头的行，但不含 @label）。P219：@label 是分幕用的，
+  // 不是"一句内容" —— 零台词的新作品卡片上原来写着「1 句」，点进去一句话都没有。
+  function countIns(text) { return String(text || "").split("\n").filter(function (l) { var t = l.trim(); return t.charAt(0) === "@" && !/^@label(?:\s|$)/.test(t); }).length; }
 
   // ---------- 4. 路由表 ----------
   var ROUTES = {};

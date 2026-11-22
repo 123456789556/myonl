@@ -247,6 +247,7 @@
   const MENUS = {
     file: [
       { label: "新建游戏", shortcut: "Ctrl+N", action: () => $("btnNew").click() },
+      { label: "换作品（切到另一部工程）", action: () => window.__openProjectSwitch && window.__openProjectSwitch() },
       { label: "保存", shortcut: "Ctrl+S", action: () => $("btnSave").click() },
       { label: "新建章节", action: () => $("btnNewChapter").click() },
       { label: "打包发布", shortcut: "Ctrl+P", action: () => $("btnPack").click() },

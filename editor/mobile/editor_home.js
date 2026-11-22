@@ -490,16 +490,22 @@
   }
 
   function newProject() {
-    // P202 先建后名：别先 enterEditor 打开上一个作品、再弹「起名」框 —— 用户看到的就是
-    // 「点了新建，里面还是我上一部」。手机上直接建一条默认名的空作品并切过去，
-    // 名字之后点顶栏那一行就能改。
+    // P219：先给名字再建。P202 那轮是「先建后名」（名字留给顶栏点开改），
+    // 但点一次就多一张「未命名 2」，连点三下首页三张一模一样的卡，谁也认不出谁。
+    // 名字留空仍走默认名，不强迫；点「取消」就一条都不建。
     if (window.__MYONL_OFFLINE) {
-      fetch("/api/new", { method: "POST", headers: { "Content-Type": "application/json" }, body: '{"name":""}' })
-        .then(function (r) { return r.json(); })
-        .then(function (r) {
-          if (!r.ok) { toast(r.message || "新建失败"); return; }
-          try { sessionStorage.setItem("myonl:projName", r.path); sessionStorage.setItem(EDIT_KEY, "1"); } catch (e) {}
-          location.reload();
+      dlgPrompt({ title: "新作品叫什么", msg: "之后点顶栏那行还能改。留空就叫「未命名」。",
+                  value: "", placeholder: "比如：雨夜末班车" })
+        .then(function (name) {
+          if (name === null) return;              // 取消 = 不建
+          return fetch("/api/new", {
+            method: "POST", headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ name: String(name || "").trim() })
+          }).then(function (r) { return r.json(); }).then(function (r) {
+            if (!r.ok) { toast(r.message || "新建失败"); return; }
+            try { sessionStorage.setItem("myonl:projName", r.path); sessionStorage.setItem(EDIT_KEY, "1"); } catch (e) {}
+            location.reload();
+          });
         })
         .catch(function (e) { toast("新建失败：" + (e.message || e)); });
       return;
