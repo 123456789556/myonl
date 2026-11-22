@@ -815,9 +815,8 @@
     if (!name) { name = (window.MYONLTrash && window.MYONLTrash.nextName) ? window.MYONLTrash.nextName(lib) : "未命名"; }
     if (/[\/\\]/.test(name)) return jsonRes({ ok: false, message: "名字里不能有斜杠" }, 400);
     if (findProject(lib, name)) return jsonRes({ ok: false, message: "已经有同名作品了：" + name }, 400);
-    // text 可选：底栏「教程」抽屉里那份练习要一次建成一份能读能改的短剧本，
-    // 不是「hello world」那种空壳。为空仍走老的空项目模板。
-    var seed = typeof b.text === "string" && b.text ? b.text : starterText();
+    // P217：新建给真空白（一幕零台词）。示范内容只在默认那一份「示范案例」里 —— 每建一个都塞 15 句别人的台词，等于逼人先删干净。
+    var seed = typeof b.text === "string" && b.text ? b.text : "@label start\n";
     lib.projects.push({ name: name, text: seed, ctime: now(), mtime: now() });
     lib.current = name;
     writeLib(lib);

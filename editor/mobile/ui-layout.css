@@ -223,7 +223,7 @@ html.m-shell .m-home-tutlink {
 /* ===== P204 首页选择模式（长按进）：顶栏「取消 / 已选 N / 全选」+ 底部一条删除 ===== */
 html.m-shell .m-sel-top {
   position: fixed; left: 0; right: 0; top: 0; z-index: 520;
-  display: grid; grid-template-columns: 76px 1fr 76px; align-items: end;
+  display: grid; grid-template-columns: 76px 1fr 88px; align-items: end;
   height: calc(52px + env(safe-area-inset-top, 0px));
   padding: 0 6px env(safe-area-inset-top, 0px);
   background: var(--base);
@@ -233,7 +233,9 @@ html.m-shell .m-sel-x, html.m-shell .m-sel-all {
   font: inherit; font-size: 14.5px; cursor: pointer;
 }
 html.m-shell .m-sel-x { text-align: left; padding-left: 8px; }
-html.m-shell .m-sel-all { text-align: right; padding-right: 8px; }
+/* P217：「取消全选」四个字在 76px 格里折成两行 —— 全局 button{padding:0 14px} 先吃掉 14px，
+   右边又留 8px，只剩 54px 装不下 58px 的字。左内边距归零 + 不许折行 + 格子加宽到 88。 */
+html.m-shell .m-sel-all { text-align: right; padding-left: 0; padding-right: 8px; white-space: nowrap; }
 html.m-shell .m-sel-n { text-align: center; font-size: 15px; font-weight: 600; color: var(--text); }
 /* display:grid 会顶掉 hidden 属性 —— 不加这条，非选择态顶上会一直挂着「取消 已选0 全选」 */
 html.m-shell .m-sel-top[hidden], html.m-shell .m-sel-bar[hidden] { display: none !important; }
@@ -251,7 +253,9 @@ html.m-shell .m-sel-del:disabled { opacity: .5; }
 html.m-shell body.m-selecting .m-home-head,
 html.m-shell body.m-selecting .m-home-nav { display: none !important; }
 html.m-shell body.m-selecting .m-card-more { display: none !important; }
-html.m-shell body.m-selecting .m-home { padding-top: calc(62px + env(safe-area-inset-top, 0px)); }
+/* P217：这条原来没有 !important，被 editor.css:3139 的 `.m-home{padding:… !important}` 整条压掉 ——
+   实测选择态 paddingTop 仍是 14px，第一张卡被固定顶栏压掉 38px。让位必须同样 important。 */
+html.m-shell body.m-selecting .m-home { padding-top: calc(62px + env(safe-area-inset-top, 0px)) !important; }
 html.m-shell .m-home-card.m-card-sel { outline: 2px solid var(--blue); outline-offset: -2px; }
 html.m-shell .m-home-card.m-card-sel::after {
   content: "✓"; position: absolute; right: 12px; top: 50%; transform: translateY(-50%);

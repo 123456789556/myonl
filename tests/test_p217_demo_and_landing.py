@@ -44,8 +44,35 @@ def test_教程不再另建一份作品():
 def test_速查里能直接打开示范案例():
     assert 'id="mLibTutDemo"' in TRASH
     assert "window.MYONLOpenDemo()" in TRASH
-    # 原来那句「点新建项目会给你一份能玩的短作品」是错的：新建给的是空白作品
+    # 速查不许再把人指向「新建项目」当示例入口：示例只有示范案例那一份
     assert "它会给你一份能玩的短作品" not in TRASH
+
+
+def test_新建项目给的是空白不是又一份示范():
+    m = re.search(r'ROUTES\["POST /api/new"\][\s\S]*?\n  \};', OFF)
+    assert m, "找不到 /api/new"
+    body = _code(m.group(0))
+    assert '"@label start\\n"' in body, "新建要给一幕零台词的空白"
+    assert "starterText()" not in body, "每建一个都塞 15 句示范台词，等于逼用户先删干净"
+    # 默认那一份仍然用完整示范正文
+    assert "var t = starterText();" in OFF
+
+
+def test_选择态顶栏不许压住第一张卡():
+    css = (ROOT / "editor" / "mobile" / "ui-layout.css").read_text(encoding="utf-8")
+    m = re.search(r"html\.m-shell body\.m-selecting \.m-home \{[^}]*\}", css)
+    assert m, "选择态没有给固定顶栏让位"
+    # editor.css 那条 .m-home{padding:… !important} 会整条压掉非 important 的 padding-top
+    assert "!important" in m.group(0)
+
+
+def test_取消全选不许折成两行():
+    css = (ROOT / "editor" / "mobile" / "ui-layout.css").read_text(encoding="utf-8")
+    m = re.search(r"^html\.m-shell \.m-sel-all \{[^}]*\}", css, re.M)
+    assert m
+    assert "white-space: nowrap" in m.group(0)
+    assert "padding-left: 0" in m.group(0)
+    assert "76px 1fr 88px" in css, "右上格子要装得下四个字"
 
 
 def test_头像写两个字不是一个字():
