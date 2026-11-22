@@ -117,12 +117,19 @@ jobs:
           if (-not (Test-Path $plt)) { Write-Host "::error::玩家模板没进包，编辑器内「打包游戏」会坏"; exit 1 }
           Write-Host "玩家模板已进包"
 
+      # Compress-Archive **不会**替你建目标目录：out\ 不存在时它直接报
+      # 「path ... does not exist or is not a valid file system path」。
+      # v1.2.37 的 exe 已经编译成功、自检也过了，就死在这一行没建目录（本地复现过）。
       - name: 压成 zip
         shell: pwsh
         run: |
+          New-Item -ItemType Directory -Force -Path out | Out-Null
           $name = "MYONL-${{ github.ref_name }}-editor-win.zip"
-          Compress-Archive -Path "dist\editor\*" -DestinationPath "out\$name" -CompressionLevel Optimal
-          Get-ChildItem out | ForEach-Object { Write-Host "$($_.Name) $($_.Length) 字节" }
+          Compress-Archive -Path "dist\editor\*" -DestinationPath "out\$name" -CompressionLevel Optimal -ErrorAction Stop
+          $zip = Get-Item "out\$name"
+          Write-Host "$($zip.Name) $($zip.Length) 字节"
+          # 100MB 级的 onedir 压完至少几十 MB；小于 5MB 说明只压进了个空壳。
+          if ($zip.Length -lt 5000000) { Write-Host "::error::zip 只有 $($zip.Length) 字节，明显没打全"; exit 1 }
 
       - uses: actions/upload-artifact@v4
         with:
