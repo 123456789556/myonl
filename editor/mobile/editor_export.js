@@ -261,7 +261,7 @@
     if (window.toast) window.toast("正在把 " + na + " 个素材放回去…");
     window.MYONLAssets.restore(all, kinds).then(function (r) {
       var ok = (r && r.ok) || 0;
-      if (window.toast) window.toast("素材回来 " + ok + " 个（网页版里没有剧本原文，文字请用 .gal 导）", true);
+      if (window.toast) window.toast("素材回来 " + ok + " 个（网页版里没有剧本原文，文字请用 .myonl 导）", true);
     });
   }
 
@@ -270,7 +270,7 @@
     if (!D || !D.paste) { if (window.toast) window.toast("导入面板没加载，刷新一下页面"); return; }
     D.paste({
       title: "粘贴导入",
-      msg: ".gal 全文、作品库 .json、网页版 html 都能贴，会自动认出是哪种。同名作品不会覆盖。",
+      msg: ".myonl 作品文件、.gal 全文、作品库 .json、网页版 html 都能贴，会自动认出是哪种。同名作品不会覆盖。",
       placeholder: "@bg 教室\n小明：你好\n—— 或者贴 {\"projects\":[...]}",
       ok: "导入"
     }).then(function (txt) {
@@ -341,7 +341,7 @@
         '<div class="m-exp-sec">三种来源，用能走通的那个</div>' +
         '<button type="button" class="m-exp-row" data-src="paste">' +
           '<span class="m-exp-ic">⤒</span>' +
-          '<span class="m-exp-b"><b>粘贴内容</b><span>.myonl 作品文件、.gal 全文、作品库 .json，整段贴，自动认</span></span>' +
+          '<span class="m-exp-b"><b>粘贴内容</b><span>.myonl、.gal、作品库 .json，整段贴，自动认</span></span>' +
           '<em>›</em></button>' +
         '<button type="button" class="m-exp-row" data-src="file">' +
           '<span class="m-exp-ic">📄</span>' +
@@ -351,7 +351,7 @@
           '<span class="m-exp-ic">🌐</span>' +
           '<span class="m-exp-b"><b>从网页版 html 取素材</b><span>图画声音放回素材库；剧本取不回</span></span>' +
           '<em>›</em></button>' +
-        '<div class="m-set-note">同一份东西贴两遍不会重复：名字一样就跳过，本机已有的作品不会被盖掉。</div>' +
+        '<div class="m-set-note">同名不重复，本机已有的作品不会被盖掉。</div>' +
       '</div>';
     document.documentElement.appendChild(impEl);
     impEl.querySelector("#mImpLeft").addEventListener("click", closeImport);
@@ -398,8 +398,7 @@
       '</div>' +
       '<div class="m-exp-size" id="mExpSize">' + sizeTxt + '</div>' +
       '<div class="m-lib-body">' + rows +
-        '<div class="m-set-note">导出的东西都在本机，不出网。网页版就是一份纯 html 文件，' +
-        '里面脚本没压缩，开发者可以打开直接改；发给别人双击就玩。</div>' +
+        '<div class="m-set-note">导出的东西都在本机，不上网。</div>' +
       '</div>';
     el.querySelector("#mExpLeft").addEventListener("click", close);
     el.querySelectorAll("[data-act]").forEach(function (b) {
