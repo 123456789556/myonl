@@ -388,3 +388,10 @@ html.m-shell .m-bin-sel .m-bin-top .m-back {
   width: auto; min-width: 44px; padding: 0 6px;
   font-size: 15px; white-space: nowrap; justify-content: flex-start;
 }
+
+/* P218：空垃圾箱那句话原来被当成三列网格里的**一格**（1fr = 114px），
+   390 宽的屏只用了 114，折成五行（实测 w=114 / h=128，行高 22.95）。
+   空态不是卡片，它要占满整行。 */
+html.m-shell .m-bin-grid > .m-bin-empty {
+  grid-column: 1 / -1; max-width: 300px; margin: 10px auto 0; line-height: 1.75;
+}
