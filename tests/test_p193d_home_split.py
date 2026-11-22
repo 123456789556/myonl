@@ -54,8 +54,8 @@ def test_横屏空列表右栏只给一句指路():
     # 入口都在底栏（教程 / 素材库 / 设置），右栏画按钮就是重复；但空列表不能什么都不画
     # P203：底栏没有「新建」了，指路改成指首页那张虚线卡
     assert "box.innerHTML = '<div class=\"m-det-empty\">" in HOME_JS
-    assert "点下面那张「新建项目」，或去「教程」看两版再动手。" in HOME_JS
-    assert "paintDetail(projects);\n  }" in HOME_JS
+    assert "点下面那张「新建项目」；语法看不清就到底部「素材」→「教程」翻两页。" in HOME_JS
+    assert "paintDetail(projects);" in HOME_JS
 
 
 def test_空态类不与旧空态卡同名():

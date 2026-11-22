@@ -136,3 +136,156 @@ html.m-shell .m-home-hid { flex: 1 1 auto; min-width: 0; }
 /* 横屏首页：最后一张卡不许被底栏切一半（截图里那张「我的第一个游戏」只剩上半） */
 html.m-shell.m-wide .m-home { padding-bottom: calc(58px + env(safe-area-inset-bottom, 0px)) !important; }
 html.m-shell.m-wide .m-home-list { padding-bottom: 6px; }
+
+/* ===== P204 相册式二级页：整页 + 左上返回箭头 + 标题居中 + 右上动作 =====
+   用户原话「很少有这种回去的箭头」「不喜欢把很多东西都放在最上面那行的中间」。
+   所以二级页不再用底部抽屉，改成和手机相册「最近删除」同一套骨架。 */
+.m-bin-page, .m-lib-page {
+  position: fixed; inset: 0; z-index: 600; background: var(--base); color: var(--text);
+  display: flex; flex-direction: column; overflow: hidden;
+  padding-top: env(safe-area-inset-top, 0px);
+}
+.m-bin-top {
+  flex: 0 0 auto; display: grid; grid-template-columns: 76px 1fr 76px;
+  align-items: center; height: 52px; padding: 0 6px;
+}
+.m-back {
+  width: 44px; height: 44px; border: 0; background: transparent; color: var(--text);
+  font-size: 27px; line-height: 1; font-family: inherit; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+}
+.m-bin-title { text-align: center; font-size: 17px; font-weight: 600; color: var(--text); }
+.m-bin-act {
+  height: 36px; padding: 0 8px; border: 0; background: transparent; color: var(--blue);
+  font-size: 14.5px; font-family: inherit; cursor: pointer; text-align: right;
+}
+.m-bin-act:disabled { color: var(--overlay0); }
+.m-bin-note { flex: 0 0 auto; padding: 2px 16px 12px; font-size: 12.5px; color: var(--subtext0); }
+.m-bin-grid {
+  flex: 1 1 auto; overflow-y: auto; display: grid; grid-template-columns: repeat(3, 1fr);
+  gap: 10px 8px; padding: 0 12px calc(16px + env(safe-area-inset-bottom, 0px));
+  align-content: start;
+}
+.m-bin-cell { position: relative; display: flex; flex-direction: column; gap: 4px; cursor: pointer; min-width: 0; }
+.m-bin-th {
+  aspect-ratio: 1 / 1; border-radius: 10px; background: linear-gradient(150deg, #3b3f6b, #1d2038);
+  color: #fff; font-size: 22px; font-weight: 600;
+  display: flex; align-items: center; justify-content: center;
+}
+.m-bin-nm { font-size: 12.5px; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.m-bin-lt { font-size: 11.5px; color: var(--overlay0); }
+.m-bin-cell.on .m-bin-th { outline: 2px solid var(--blue); outline-offset: -2px; }
+.m-bin-cell.on::after {
+  content: "✓"; position: absolute; right: 6px; top: 6px; width: 22px; height: 22px;
+  border-radius: 50%; background: var(--blue); color: #fff; font-size: 13px;
+  display: flex; align-items: center; justify-content: center;
+}
+.m-bin-bar {
+  flex: 0 0 auto; display: flex; gap: 10px;
+  padding: 10px 12px calc(12px + env(safe-area-inset-bottom, 0px));
+}
+.m-bin-b {
+  flex: 1 1 0; height: 46px; border-radius: 12px; border: 1px solid var(--surface1);
+  background: var(--mantle); color: var(--subtext0); font-size: 15px; font-family: inherit; cursor: pointer;
+}
+.m-bin-b:disabled { opacity: .45; }
+.m-bin-bp { color: #e05555; border-color: rgba(224, 85, 85, .3); }
+.m-lib-body { flex: 1 1 auto; overflow-y: auto; padding: 0 16px calc(16px + env(safe-area-inset-bottom, 0px)); }
+/* 底栏顶上那条 1px 横线，用户连着说丑 —— 去掉，靠背景色差分界就够 */
+html.m-shell .m-home-nav { border-top: 0 !important; }
+/* 教程入口挪到列表下面那行小字，贴着右边 */
+html.m-shell .m-home-tip { display: flex; align-items: center; justify-content: space-between; }
+html.m-shell .m-home-tutlink {
+  border: 0; background: transparent; color: var(--blue);
+  font: inherit; font-size: 12px; padding: 2px 0; cursor: pointer;
+}
+
+/* ===== P204 首页选择模式（长按进）：顶栏「取消 / 已选 N / 全选」+ 底部一条删除 ===== */
+html.m-shell .m-sel-top {
+  position: fixed; left: 0; right: 0; top: 0; z-index: 520;
+  display: grid; grid-template-columns: 76px 1fr 76px; align-items: end;
+  height: calc(52px + env(safe-area-inset-top, 0px));
+  padding: 0 6px env(safe-area-inset-top, 0px);
+  background: var(--base);
+}
+html.m-shell .m-sel-x, html.m-shell .m-sel-all {
+  height: 44px; border: 0; background: transparent; color: var(--blue);
+  font: inherit; font-size: 14.5px; cursor: pointer;
+}
+html.m-shell .m-sel-x { text-align: left; padding-left: 8px; }
+html.m-shell .m-sel-all { text-align: right; padding-right: 8px; }
+html.m-shell .m-sel-n { text-align: center; font-size: 15px; font-weight: 600; color: var(--text); }
+/* display:grid 会顶掉 hidden 属性 —— 不加这条，非选择态顶上会一直挂着「取消 已选0 全选」 */
+html.m-shell .m-sel-top[hidden], html.m-shell .m-sel-bar[hidden] { display: none !important; }
+html.m-shell .m-sel-bar {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 520;
+  padding: 10px 16px calc(10px + env(safe-area-inset-bottom, 0px));
+  background: var(--base);
+}
+html.m-shell .m-sel-del {
+  width: 100%; height: 48px; border: 0; border-radius: 12px; background: #e05555; color: #fff;
+  font: inherit; font-size: 16px; font-weight: 600; cursor: pointer;
+}
+html.m-shell .m-sel-del:disabled { opacity: .5; }
+/* 选择模式下标题栏与底栏让位，卡片右上「⋯」收掉，免得跟勾选圈打架 */
+html.m-shell body.m-selecting .m-home-head,
+html.m-shell body.m-selecting .m-home-nav { display: none !important; }
+html.m-shell body.m-selecting .m-card-more { display: none !important; }
+html.m-shell body.m-selecting .m-home { padding-top: calc(62px + env(safe-area-inset-top, 0px)); }
+html.m-shell .m-home-card.m-card-sel { outline: 2px solid var(--blue); outline-offset: -2px; }
+html.m-shell .m-home-card.m-card-sel::after {
+  content: "✓"; position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
+  width: 24px; height: 24px; border-radius: 50%; background: var(--blue); color: #fff;
+  font-size: 14px; display: flex; align-items: center; justify-content: center;
+}
+
+/* ===== P205 素材页四个 tab：图片 / 音频 / 视频 / 教程（用户：教程放素材库里） ===== */
+.m-lib-tabs { flex: 0 0 auto; display: flex; gap: 6px; padding: 0 12px 10px; }
+.m-lib-tab {
+  flex: 1 1 0; min-width: 0; height: 34px; border-radius: 9px;
+  border: 1px solid var(--surface1); background: var(--mantle); color: var(--subtext0);
+  font: inherit; font-size: 13.5px; cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center; gap: 4px;
+}
+.m-lib-tab.on { background: var(--blue); border-color: var(--blue); color: #fff; font-weight: 600; }
+.m-lib-tab i { font-style: normal; font-size: 11.5px; opacity: .8; }
+.m-lib-tut { padding-bottom: 10px; }
+/* ===== P205 设置页顶部头像：圆形，点一下换图，点名字改 ===== */
+.m-set-profile {
+  flex: 0 0 auto; display: flex; align-items: center; gap: 14px;
+  padding: 6px 16px 16px;
+}
+.m-avatar {
+  width: 64px; height: 64px; border-radius: 50%; overflow: hidden; padding: 0;
+  border: 1px solid var(--surface1); background: var(--blue);
+  color: #fff; font: inherit; font-size: 26px; font-weight: 600;
+  display: flex; align-items: center; justify-content: center; cursor: pointer;
+  flex: 0 0 auto;
+}
+.m-avatar img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.m-profile-side { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.m-profile-nm {
+  border: 0; background: transparent; padding: 0; text-align: left;
+  color: var(--text); font: inherit; font-size: 17px; font-weight: 600; cursor: pointer;
+}
+.m-profile-tip { font-size: 12px; color: var(--overlay0); }
+/* ===== P206 导出页：体积先摆出来，两条路一条条排（发给别人 / 留后路） ===== */
+.m-exp-size { flex: 0 0 auto; padding: 2px 16px 12px; font-size: 12.5px; color: var(--subtext0); }
+.m-exp-sec { margin: 14px 0 6px; font-size: 12px; color: var(--overlay0); }
+.m-exp-row {
+  display: flex; align-items: center; gap: 10px; width: 100%;
+  padding: 12px; margin: 0 0 8px; border-radius: 12px;
+  border: 1px solid var(--surface1); background: var(--mantle); color: var(--text);
+  font: inherit; text-align: left; cursor: pointer; box-sizing: border-box;
+  height: auto !important; min-height: 62px;
+}
+.m-exp-ic {
+  width: 34px; height: 34px; border-radius: 10px; flex: 0 0 auto;
+  background: rgba(79, 140, 255, .16); color: var(--blue);
+  display: flex; align-items: center; justify-content: center; font-size: 16px;
+}
+.m-exp-b { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.m-exp-b b { font-size: 14.5px; font-weight: 600; }
+.m-exp-b span { font-size: 12px; color: var(--subtext0); line-height: 1.5; }
+.m-exp-row em { font-style: normal; color: var(--overlay0); font-size: 15px; }
+.m-exp-row:active { background: var(--surface0); }

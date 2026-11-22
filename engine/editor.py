@@ -774,7 +774,7 @@ class _EditorHandler(BaseHTTPRequestHandler):
         ("GET", "/editor_uidesign.js"): "_serve_uidesign_js",
         ("GET", "/editor_shell.js"): "_serve_shell_js",
         # P65：手机端工作台（P203 起卡片带「⋯」更多菜单，回收站与素材库同住）
-        ("GET", "/editor_home.js"): "_serve_home_js", ("GET", "/editor_trash.js"): "_serve_js",
+        ("GET", "/editor_home.js"): "_serve_home_js", ("GET", "/editor_trash.js"): "_serve_js", ("GET", "/editor_export.js"): "_serve_js",
         # 设置里的「插线推送到手机」面板（P88 砍扫码、P89 砍 AI）
         ("GET", "/editor_link.js"): "_serve_link_js",
         # P171：浏览器里的 v2 签名（手机端出 APK 靠它）

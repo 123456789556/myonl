@@ -24,16 +24,18 @@ CSS = (ROOT / "editor" / "mobile" / "home.css").read_text(encoding="utf-8")
 EDITOR_PY = (ROOT / "engine" / "editor.py").read_text(encoding="utf-8")
 
 
-def test_底栏四格都是真动作():
-    for kind in ("home", "tut", "lib", "set"):
+def test_底栏三格都是真动作():
+    for kind in ("home", "lib", "set"):
         assert f'data-nav="{kind}"' in HOME_JS, f"底栏少了 {kind} 这一格"
-    # 四格共用一个委托，不许某格没接上
+    # 三格共用一个委托，不许某格没接上
     assert 'if (kind === "lib") {' in HOME_JS
     assert 'else if (kind === "set") openSettings();' in HOME_JS
-    assert 'else if (kind === "tut") openTutorialSheet();' in HOME_JS
-    # P203：新建与导入撤掉 —— 新建首页有虚线卡，导入在 WebView 里弹不出选择器
+    # P204 用户连着两轮说「删掉下面的教程换成素材」：底栏不放教程
+    assert 'data-nav="tut"' not in HOME_JS
     assert 'data-nav="new"' not in HOME_JS
     assert 'data-nav="import"' not in HOME_JS
+    # P205：教程不再单独出（用户：放素材库里），首页那行小字入口也撤掉
+    assert 'id="mHomeTutLink"' not in HOME_JS
 
 
 def test_首页正文不再重复摆同一件事():

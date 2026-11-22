@@ -136,23 +136,29 @@
       // P176：这里原本还有一块「三步上手」。删了 —— 编辑器菜单里已经有
       // 「帮助 → 新手引导」，同一套教程摆两处，首页就多占五六行高度。
     '</div>' +
-    // 底部导航：P203 起四格，全是真动作，不留哑按钮：
-    // 作品 / 教程 / 素材库 / 设置。原来中间那颗「＋新建」和「导入」都撤了 ——
-    // 新建在首页有虚线卡、空态里也有，摆三处同一个动作只会让人以为是三条路；
-    // 「导入」在真机上点了不弹选择器（WebView 里 <input type=file> 不生效），留着就是坏按钮。
+    // 底部导航：P204 起三格 —— 作品 / 素材 / 设置。
+    // 用户连着两轮说「教程别占底栏」，P205 又说「教程放素材库里就行」：
+    // 教程不再单独出，进素材页第四个 tab；底栏只留天天用的三格。
     '<div class="m-home-nav" id="mHomeNav">' +
       '<button type="button" class="m-nav-item on" data-nav="home">' +
         ico('M2.6 4.2h10.8v8.2a.8.8 0 0 1-.8.8H3.4a.8.8 0 0 1-.8-.8V4.2zM2.6 6.6h10.8') +
         '<span>作品</span></button>' +
-      '<button type="button" class="m-nav-item" data-nav="tut" id="mHomeTut">' +
-        ico('M3 2.8h7.2a2 2 0 0 1 2 2v8.4H5a2 2 0 0 1-2-2V2.8zM5.4 5.6h4.4M5.4 8h4.4') +
-        '<span>教程</span></button>' +
       '<button type="button" class="m-nav-item" data-nav="lib" id="mHomeLib">' +
         ico('M2.4 4.4h11.2v8.2H2.4zM5 4.4l1.8-2.2h4.4l1.8 2.2M6.2 9.2h3.6') +
-        '<span>素材库</span></button>' +
+        '<span>素材</span></button>' +
       '<button type="button" class="m-nav-item" data-nav="set">' +
         ico('M8 5.4a2.6 2.6 0 1 0 0 5.2 2.6 2.6 0 0 0 0-5.2zM8 2.4v1.4M8 12.2v1.4M2.4 8h1.4M12.2 8h1.4M4 4l1 1M11 11l1 1M12 4l-1 1M5 11l-1 1') +
         '<span>设置</span></button>' +
+    '</div>' +
+    // P204：选择模式 —— 照手机相册那套。长按卡片进来，顶栏换成「取消 / 已选 2 / 全选」，
+    // 底栏让位给一条「删除（2）」。单选对一两张够用，多选才是真的会用到的那次。
+    '<div class="m-sel-top" id="mSelTop" hidden>' +
+      '<button type="button" class="m-sel-x" id="mSelCancel">取消</button>' +
+      '<span class="m-sel-n" id="mSelCount">已选 0</span>' +
+      '<button type="button" class="m-sel-all" id="mSelAll">全选</button>' +
+    '</div>' +
+    '<div class="m-sel-bar" id="mSelBar" hidden>' +
+      '<button type="button" class="m-sel-del" id="mSelDel">删除</button>' +
     '</div>';
   document.body.appendChild(layer);
 
@@ -209,6 +215,53 @@
     try { if (window.MYONLTrash) n = window.MYONLTrash.list().length; } catch (e) {}
     b.hidden = !n;
     b.setAttribute("aria-label", n ? "垃圾箱，里面有 " + n + " 个" : "垃圾箱");
+  }
+
+  // P204：选择模式照手机相册那套做 —— 长按一张卡进来，顶栏变「取消 / 已选 N / 全选」，
+  // 底栏让位给一条「删除（N）」。为什么不是"每张卡一个复选框"：一屏五个勾选框天天挂着，
+  // 比误删更烦；相册也是平时干净、长按才进选择。
+  var selMode = false, selSet = {}, pressTimer = null, pressFired = false, pressAt = 0;
+
+  function selNames() {
+    var out = [];
+    for (var i = 0; i < allProjects.length; i++) {
+      if (selSet[allProjects[i].folder]) out.push(allProjects[i].name);
+    }
+    return out;
+  }
+
+  function paintSel() {
+    var top = $("mSelTop"), bar = $("mSelBar");
+    if (!top || !bar) return;
+    top.hidden = !selMode;
+    bar.hidden = !selMode;
+    document.body.classList.toggle("m-selecting", selMode);
+    var n = selNames().length, total = allProjects.length;
+    var cnt = $("mSelCount");
+    if (cnt) cnt.textContent = "已选 " + n;
+    var del = $("mSelDel");
+    if (del) { del.textContent = n ? ("删除（" + n + "）") : "删除"; del.disabled = !n; }
+    var all = $("mSelAll");
+    if (all) all.textContent = (total > 0 && n >= total) ? "取消全选" : "全选";
+    var list = $("mHomeList");
+    if (list) {
+      list.querySelectorAll(".m-home-card[data-folder]").forEach(function (c) {
+        c.classList.toggle("m-card-sel", !!selSet[c.dataset.folder]);
+      });
+    }
+  }
+
+  function setSel(on, first) {
+    selMode = !!on;
+    selSet = {};
+    if (on && first) selSet[first] = 1;
+    paintSel();
+  }
+
+  function toggleSel(folder) {
+    if (!folder) return;
+    if (selSet[folder]) delete selSet[folder]; else selSet[folder] = 1;
+    paintSel();
   }
 
   // P203：新建的唯一样子。空着也摆一张 —— 空态下"点下面那张新建项目"得真有那张卡。
@@ -294,10 +347,28 @@
       b.addEventListener("click", function (e) {
         // 「⋯」是按钮，点它不能顺带进作品
         if (e.target.closest && e.target.closest("[data-more]")) return;
+        // 长按已经进了选择模式，这一下抬起手别再当成点击
+        // 只吞长按抬手那一下（500ms 内）；再晚就是用户真点击，不能吞
+        if (pressFired && Date.now() - pressAt < 500) { pressFired = false; return; }
+        // 选择模式下点卡片 = 勾选 / 取消，不进作品
+        if (selMode) { toggleSel(b.dataset.folder); return; }
         // 横屏走「先选中、右侧看详情、点继续编辑才进」；
         // 竖屏保持一点就进 —— 一屏只有一个主角，多一步反而累。
         if (splitMode()) { selFolder = b.dataset.folder; paintDetail(projects); return; }
         openWork(b.dataset.folder);
+      });
+      // 长按 480ms 进选择（相册的手感）；按住就滑走/抬起都要取消，不能误进
+      b.addEventListener("pointerdown", function () {
+        if (!b.dataset.folder || selMode) return;
+        pressFired = false;
+        clearTimeout(pressTimer);
+        pressTimer = setTimeout(function () {
+          pressFired = true; pressAt = Date.now();
+          setSel(true, b.dataset.folder);
+        }, 480);
+      });
+      ["pointerup", "pointercancel", "pointerleave"].forEach(function (ev) {
+        b.addEventListener(ev, function () { clearTimeout(pressTimer); });
       });
     });
     list.querySelectorAll("[data-more]").forEach(function (m) {
@@ -321,6 +392,8 @@
       c.classList.toggle("on", !!c.dataset.folder && c.dataset.folder === selFolder);
     });
     paintDetail(projects);
+    // 列表重建过，选择模式的勾选态要重新贴回卡片上（搜索过滤后也一样）
+    if (selMode) paintSel();
   }
 
   // 横屏（平板 / 横过来的手机）：宽度够、高度矮。竖屏那套竖着堆五段在这里会全挤成条。
@@ -340,7 +413,7 @@
     if (!p) {
       // 空列表：右栏只说"去哪儿开始"。入口都在首页正文，不再重复画按钮
       box.innerHTML = '<div class="m-det-empty">还没有作品。<br>' +
-        '点下面那张「新建项目」，或去「教程」看两版再动手。</div>';
+        '点下面那张「新建项目」；语法看不清就到底部「素材」→「教程」翻两页。</div>';
       return;
     }
     var f = p.folder.replace(/"/g, "&quot;");
@@ -638,20 +711,45 @@
       document.documentElement.style.setProperty("--lavender", _ac);
     }
   } catch (e) {}
+  // P205：设置页也做成整页 + 左上 ‹；顶上给一个圆形头像（可换、可改名）。
+  // 头像只在本机 localStorage 留一张 128px 的缩略图，不上传、不联网。
+  var PROFILE_KEY = "myonl:off:profile:v1";
+  // 名字是用户自己填的，拼进 HTML 必须转义 —— 输入一个 "<b>" 不能把页面撑坏
+  function esc(s) {
+    return String(s).replace(/[&<>"]/g, function (c) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c];
+    });
+  }
+  function readProfile() {
+    try { return JSON.parse(localStorage.getItem(PROFILE_KEY) || "{}") || {}; } catch (e) { return {}; }
+  }
+  function writeProfile(p) { try { localStorage.setItem(PROFILE_KEY, JSON.stringify(p)); } catch (e) {} }
+
   function openSettings() {
     if (sheet) { sheet.remove(); sheet = null; return; }
     var theme = "dark";
     try { theme = localStorage.getItem("gal_editor_theme") === "light" ? "light" : "dark"; } catch (e) {}
+    var prof = readProfile();
+    var pname = prof.name || "我";
     sheet = document.createElement("div");
-    // 必须带 on：.m-sheet 默认是 translateY(100%) 藏在视口下方的抽屉，只有 .on 才归位。
-    // 上一版少了它，于是「设置」点开时抽屉其实一直在屏幕外面 —— 看着就像没反应。
-    sheet.className = "m-sheet m-set-sheet on";
+    // 整页，不是底部抽屉：用户要的是手机相册那种「左上 ‹ 回去」的层
+    sheet.className = "m-bin-page m-set-page";
     sheet.innerHTML =
-      '<div class="m-sheet-mask"></div>' +
-      '<div class="m-sheet-body">' +
-        '<div class="m-sheet-grab"></div>' +
-        '<div class="m-sheet-title">设置' +
-          '<button type="button" class="m-set-done" id="mSetDone">完成</button></div>' +
+      '<div class="m-bin-top">' +
+        '<button type="button" class="m-back" id="mSetLeft" aria-label="返回">‹</button>' +
+        '<span class="m-bin-title">设置</span>' +
+        '<button type="button" class="m-bin-act" id="mSetDone">完成</button>' +
+      '</div>' +
+      '<div class="m-set-profile">' +
+        '<button type="button" class="m-avatar" id="mSetAvatar">' +
+          (prof.avatar ? '<img src="' + prof.avatar + '" alt="头像">' : esc(pname.slice(0, 1))) +
+        '</button>' +
+        '<span class="m-profile-side">' +
+          '<button type="button" class="m-profile-nm" id="mSetName">' + esc(pname) + '</button>' +
+          '<span class="m-profile-tip">点头像换一张，点名字改</span>' +
+        '</span>' +
+      '</div>' +
+      '<div class="m-lib-body">' +
         '<div class="m-set-row"><span>界面</span>' +
           '<span class="m-seg" id="mSetTheme">' +
             '<button type="button" data-v="dark" class="' + (theme === "dark" ? "on" : "") + '">深色</button>' +
@@ -689,8 +787,62 @@
   // （实测顶边跑到 1007，正好是内容底部）。挂 html 之后 fixed 的包含块就是视口本身。
   document.documentElement.appendChild(sheet);
 
-    sheet.querySelector(".m-sheet-mask").addEventListener("click", function () {
-      sheet.remove(); sheet = null;
+    sheet.querySelector("#mSetLeft").addEventListener("click", function () {
+      if (sheet) { sheet.remove(); sheet = null; }
+    });
+    sheet.querySelector("#mSetDone").addEventListener("click", function () {
+      if (sheet) { sheet.remove(); sheet = null; }
+    });
+
+    function paintProf() {
+      var p = readProfile();
+      var a = sheet && sheet.querySelector("#mSetAvatar");
+      var n = sheet && sheet.querySelector("#mSetName");
+      if (a) a.innerHTML = p.avatar ? ('<img src="' + p.avatar + '" alt="头像">') : esc((p.name || "我").slice(0, 1));
+      if (n) n.textContent = p.name || "我";
+    }
+    function saveProf(patch) {
+      var p = readProfile();
+      for (var k in patch) if (Object.prototype.hasOwnProperty.call(patch, k)) p[k] = patch[k];
+      writeProfile(p);
+    }
+    // 换头像：手机上相册里那张 → 裁成方形缩到 128px 存起来。原图绝不进 localStorage，不然几百 KB 就写满了。
+    sheet.querySelector("#mSetAvatar").addEventListener("click", function () {
+      var inp = document.createElement("input");
+      inp.type = "file"; inp.accept = "image/*";
+      inp.style.display = "none";
+      document.body.appendChild(inp);
+      inp.addEventListener("change", function () {
+        var f = (inp.files || [])[0];
+        inp.remove();
+        if (!f) return;
+        var rd = new FileReader();
+        rd.onload = function () {
+          var im = new Image();
+          im.onload = function () {
+            var w = Math.min(im.width, im.height);
+            var c = document.createElement("canvas");
+            c.width = c.height = 128;
+            c.getContext("2d").drawImage(im, (im.width - w) / 2, (im.height - w) / 2, w, w, 0, 0, 128, 128);
+            saveProf({ avatar: c.toDataURL("image/jpeg", 0.85) });
+            paintProf();
+            toast("头像换了");
+          };
+          im.onerror = function () { toast("这张图读不出来"); };
+          im.src = rd.result;
+        };
+        rd.readAsDataURL(f);
+      });
+      inp.click();
+    });
+    sheet.querySelector("#mSetName").addEventListener("click", function () {
+      var cur = readProfile().name || "我";
+      var v = prompt("换个名字（只在这台设备上生效）", cur);
+      if (v === null) return;
+      v = String(v).trim().slice(0, 12);
+      if (!v) { toast("名字不能是空的"); return; }
+      saveProf({ name: v });
+      paintProf();
     });
 
     var seg = sheet.querySelector("#mSetTheme");
@@ -877,6 +1029,31 @@
   if (binBtn) binBtn.addEventListener("click", function () {
     if (window.MYONLTrash) window.MYONLTrash.openBin();
     else toast("垃圾箱没加载，刷新一下页面");
+  });
+  // P205：教程不再单独出（用户：「教程放素材库里」）—— 素材页第四个 tab 就是它。
+  // 空列表右栏那句指路也跟着改，不然还让人「去教程看两版」，那扇门已经没了。
+  var tutLink = $("mHomeTutLink");
+  if (tutLink) tutLink.addEventListener("click", function () { openTutorialSheet(); });
+  // P204 选择模式的三颗按钮：取消 / 全选 / 删除
+  var selCancel = $("mSelCancel");
+  if (selCancel) selCancel.addEventListener("click", function () { setSel(false); });
+  var selAll = $("mSelAll");
+  if (selAll) selAll.addEventListener("click", function () {
+    var n = selNames().length, total = allProjects.length;
+    selSet = {};
+    if (total > 0 && n < total) {
+      allProjects.forEach(function (p) { selSet[p.folder] = 1; });
+    }
+    paintSel();
+  });
+  var selDel = $("mSelDel");
+  if (selDel) selDel.addEventListener("click", function () {
+    var names = selNames();
+    if (!names.length) return;
+    // 批量删除只问一次：问三次就是把人当小孩，进垃圾箱还能还原
+    if (!confirm("删掉这 " + names.length + " 个作品？会先进垃圾箱，30 天内能还原。")) return;
+    if (!window.MYONLTrash || !window.MYONLTrash.delMany) { toast("删不了，刷新一下页面"); return; }
+    window.MYONLTrash.delMany(names);
   });
   if (fin) fin.addEventListener("input", function () { findQ = fin.value; render(allProjects); });
   var findClr = $("mHomeFindClear");

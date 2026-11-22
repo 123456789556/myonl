@@ -93,9 +93,12 @@ def test_素材面板层级抬到详情页之上():
     assert ".main.mobile-asset-open .asset-pane { z-index: 460" in CSS
 
 
-def test_设置抽屉的_on_与兜底都在():
-    seg = HOME_JS.split("openSettings")[1][:700]
-    assert "m-set-sheet on" in seg
+def test_设置页是整页二级页不是抽屉():
+    # P205：用户要「左上 ‹ 回去」那一层，设置也改成整页；抽屉的 on 类不再用
+    seg = HOME_JS.split("openSettings")[1][:900]
+    assert 'm-bin-page m-set-page' in seg
+    assert 'id="mSetLeft"' in seg
+    assert "m-set-sheet on" not in seg
     assert "transform: none !important" in CSS
 
 

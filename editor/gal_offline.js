@@ -71,7 +71,7 @@
       if (raw) {
         try {
           var lib = JSON.parse(raw);
-          if (lib && lib.projects && lib.projects.length) return lib;
+          if (lib && Array.isArray(lib.projects)) return lib;  // 空数组也算数：作品被删进垃圾箱，不许再造一个「我的第一个游戏」
         } catch (pe) {
           // P130：坏 JSON 原来直接落进下面的"重建空白并覆写"——
           // 用户的作品就在那一瞬间被顶掉了，而且他看到的只是"我的作品变空了"。
@@ -1561,7 +1561,7 @@
     var row = e.target && e.target.closest ? e.target.closest(".m-group-row, .uid-tab, .m-tab, button") : null;
     if (!row) return;
     if (/导出/.test(row.textContent || "")) {
-      // 打开中心页有 260/760 两次动画修补，跟着补两次
+      if (window.MYONLExport) { window.MYONLExport.open(); return; }  // P206：导出开自己的整页，不再插进参数页
       setTimeout(injectExportBar, 320);
       setTimeout(injectExportBar, 820);
     }

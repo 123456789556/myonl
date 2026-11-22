@@ -10,6 +10,7 @@ import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
 HOME = (ROOT / "editor" / "mobile" / "editor_home.js").read_text(encoding="utf-8")
+TRASH = (ROOT / "editor" / "mobile" / "editor_trash.js").read_text(encoding="utf-8")
 OFF = (ROOT / "editor" / "gal_offline.js").read_text(encoding="utf-8")
 CI = (ROOT / ".github" / "workflows" / "android-apk.yml").read_text(encoding="utf-8")
 
@@ -31,8 +32,9 @@ def test_demo_entry_is_gone():
 
 
 def test_home_has_tutorial_entry():
-    assert 'id="mHomeTut"' in HOME
-    assert "新手教程" in HOME
+    # P205：教程不再单独出，进素材页第四个 tab；首页不再挂教程入口
+    assert 'id="mHomeTut"' not in HOME
+    assert '["tut", "教程"]' in TRASH
 
 
 def test_tutorial_creates_a_real_project():

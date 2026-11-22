@@ -57,55 +57,71 @@
     try { localStorage.setItem(TRASH_KEY, JSON.stringify(rows)); } catch (e) {}
   }
 
-  function del(name) {
+  // 批量删除：一次搬 N 个进垃圾箱，只 reload 一次。
+  // 一个个删会连续 reload N 次，选五个就像卡死了。
+  function delMany(names) {
     var api = libApi();
     if (!api) { toast("这台设备没有离线内核"); return; }
-    var lib = api.read();
-    var at = -1;
-    for (var i = 0; i < lib.projects.length; i++) {
-      if (lib.projects[i].name === name) { at = i; break; }
-    }
-    if (at < 0) { toast("没有这个作品"); return; }
-    var p = lib.projects.splice(at, 1)[0];
-    var rows = readTrash();
-    rows.push({
-      name: p.name, text: p.text, ctime: p.ctime, mtime: p.mtime, delAt: Date.now()
+    var lib = api.read(), rows = readTrash(), gone = [];
+    names.forEach(function (nm) {
+      for (var i = 0; i < lib.projects.length; i++) {
+        if (lib.projects[i].name === nm) {
+          var p = lib.projects.splice(i, 1)[0];
+          rows.push({ name: p.name, text: p.text, ctime: p.ctime, mtime: p.mtime, delAt: Date.now() });
+          gone.push(p.name);
+          break;
+        }
+      }
     });
+    if (!gone.length) { toast("没有可删的"); return; }
     writeTrash(rows);
-    if (lib.current === p.name) lib.current = lib.projects[0] ? lib.projects[0].name : "";
+    if (gone.indexOf(lib.current) >= 0) lib.current = lib.projects[0] ? lib.projects[0].name : "";
     api.write(lib);
     // 草稿跟着走，否则同名新建会把旧草稿接上去
-    try {
-      if (window.MYONLDraft && window.MYONLDraft.drop) window.MYONLDraft.drop(p.name);
-    } catch (e) {}
+    gone.forEach(function (nm) {
+      try { if (window.MYONLDraft && window.MYONLDraft.drop) window.MYONLDraft.drop(nm); } catch (e) {}
+    });
     location.reload();
   }
 
-  function restore(name) {
+  function del(name) { delMany([name]); }
+
+  function restoreMany(names) {
     var api = libApi();
-    if (!api) return;
-    var rows = readTrash(), at = -1;
-    for (var i = 0; i < rows.length; i++) if (rows[i].name === name) { at = i; break; }
-    if (at < 0) { toast("垃圾箱里没有它"); return; }
-    var lib = api.read();
-    if (lib.projects.some(function (p) { return p.name === name; })) {
-      toast("已经有同名作品，先改个名再还原");
-      return;
-    }
-    var r = rows.splice(at, 1)[0];
-    lib.projects.push({ name: r.name, text: r.text, ctime: r.ctime, mtime: r.mtime });
+    if (!api || !names || !names.length) return;
+    var rows = readTrash(), lib = api.read(), done = 0, dup = 0;
+    names.forEach(function (nm) {
+      var at = -1;
+      for (var i = 0; i < rows.length; i++) if (rows[i].name === nm) { at = i; break; }
+      if (at < 0) return;
+      // 库里有同名就跳过：硬塞进去会出现两个同名的，之后改名/删除都会挑错
+      if (lib.projects.some(function (p) { return p.name === nm; })) { dup++; return; }
+      var r = rows.splice(at, 1)[0];
+      lib.projects.push({ name: r.name, text: r.text, ctime: r.ctime, mtime: r.mtime });
+      done++;
+    });
     api.write(lib);
     writeTrash(rows);
-    toast("已还原「" + r.name + "」");
+    if (!done) {
+      toast(dup ? "都有同名作品，先改个名再还原" : "垃圾箱里没有它们");
+      return;
+    }
+    if (dup) toast("还原 " + done + " 个，另有 " + dup + " 个同名跳过");
     location.reload();
   }
 
-  function purge(name) {
-    var rows = readTrash().filter(function (r) { return r.name !== name; });
+  function restore(name) { restoreMany([name]); }
+
+  function purgeMany(names) {
+    if (!names || !names.length) return;
+    var rows = readTrash().filter(function (r) { return names.indexOf(r.name) < 0; });
     writeTrash(rows);
-    toast("已彻底删除");
+    binSel = {};
+    toast("已彻底删除 " + names.length + " 个");
     if (binEl) openBin(true);
   }
+
+  function purge(name) { purgeMany([name]); }
 
   // ---- 「⋯」更多菜单：底部三行，够大够厚，不弹键盘
   var moreEl = null;
@@ -170,87 +186,188 @@
     if (b) b.addEventListener("click", function () { closeMore(); openBin(); });
   }
 
-  // ---- 垃圾箱页
-  var binEl = null;
+  // ---- 垃圾箱：照相册「最近删除」——整页、左上返回箭头、标题居中、右上「选择」
+  var binEl = null, binSel = {}, binSelOn = false;
+
+  function binPick() {
+    var out = [];
+    for (var k in binSel) if (binSel[k]) out.push(k);
+    return out;
+  }
+
+  function binLeft(delAt) {
+    var days = KEEP_DAYS - Math.floor((Date.now() - (delAt || 0)) / DAY);
+    if (days < 0) days = 0;
+    return days + " 天";
+  }
+
+  function paintBin() {
+    if (!binEl) return;
+    var picked = binPick(), cells = binEl.querySelectorAll("[data-row]");
+    var total = cells.length;
+    cells.forEach(function (c) {
+      c.classList.toggle("pick", binSelOn);
+      c.classList.toggle("on", !!binSel[c.dataset.row]);
+    });
+    var l = binEl.querySelector("#mBinLeft");
+    var t = binEl.querySelector("#mBinTitle");
+    var r = binEl.querySelector("#mBinRight");
+    var bar = binEl.querySelector("#mBinBar");
+    if (binSelOn) {
+      if (l) l.textContent = "取消";
+      if (t) t.textContent = "已选 " + picked.length;
+      if (r) { r.textContent = (total && picked.length >= total) ? "取消全选" : "全选"; r.disabled = !total; }
+      if (bar) bar.hidden = false;
+      var rs = binEl.querySelector("#mBinRestore"), pg = binEl.querySelector("#mBinPurge");
+      if (rs) { rs.disabled = !picked.length; rs.textContent = picked.length ? ("还原（" + picked.length + "）") : "还原"; }
+      if (pg) { pg.disabled = !picked.length; pg.textContent = picked.length ? ("彻底删除（" + picked.length + "）") : "彻底删除"; }
+    } else {
+      if (l) l.textContent = "‹";
+      if (t) t.textContent = "已删除";
+      if (r) { r.textContent = "选择"; r.disabled = !total; }
+      if (bar) bar.hidden = true;
+    }
+  }
+
   function openBin(redraw) {
     if (binEl && !redraw) { binEl.remove(); binEl = null; return; }
     if (binEl) { binEl.remove(); binEl = null; }
     var rows = readTrash();
-    var body = rows.length
+    if (!rows.length) { binSel = {}; binSelOn = false; }
+    var grid = rows.length
       ? rows.map(function (r) {
-          return '<div class="m-bin-row">' +
-            '<span class="m-bin-t">' + esc(r.name) + '</span>' +
-            '<button type="button" class="m-bin-a" data-back="' + esc(r.name) + '">还原</button>' +
-            '<button type="button" class="m-bin-x" data-drop="' + esc(r.name) + '">彻底删</button>' +
+          return '<div class="m-bin-cell" data-row="' + esc(r.name) + '">' +
+            '<span class="m-bin-th">' + esc(String(r.name).slice(0, 1)) + '</span>' +
+            '<span class="m-bin-nm">' + esc(r.name) + '</span>' +
+            '<span class="m-bin-lt">' + binLeft(r.delAt) + '</span>' +
             '</div>';
         }).join("")
-      : '<div class="m-bin-empty">垃圾箱是空的</div>';
+      : '<div class="m-bin-empty">这里还是空的。<br>删掉的作品会先来这里，' +
+        KEEP_DAYS + ' 天内随时能还原。</div>';
     binEl = document.createElement("div");
-    binEl.className = "m-sheet m-set-sheet on";
+    binEl.className = "m-bin-page";
     binEl.innerHTML =
-      '<div class="m-sheet-mask"></div>' +
-      '<div class="m-sheet-body">' +
-        '<div class="m-sheet-grab"></div>' +
-        '<div class="m-sheet-title">垃圾箱' +
-          '<button type="button" class="m-set-done" id="mBinDone">完成</button></div>' +
-        '<div class="m-set-note">删掉的作品在这里留 ' + KEEP_DAYS + ' 天，随时能还原；到期自动清掉。</div>' +
-        body +
+      '<div class="m-bin-top">' +
+        '<button type="button" class="m-back" id="mBinLeft" aria-label="返回">‹</button>' +
+        '<span class="m-bin-title" id="mBinTitle">已删除</span>' +
+        '<button type="button" class="m-bin-act" id="mBinRight">选择</button>' +
+      '</div>' +
+      '<div class="m-bin-note">已删除的作品仅保留 ' + KEEP_DAYS + ' 天，逾期永久删掉。</div>' +
+      '<div class="m-bin-grid">' + grid + '</div>' +
+      '<div class="m-bin-bar" id="mBinBar" hidden>' +
+        '<button type="button" class="m-bin-b" id="mBinRestore" disabled>还原</button>' +
+        '<button type="button" class="m-bin-b m-bin-bp" id="mBinPurge" disabled>彻底删除</button>' +
       '</div>';
     document.documentElement.appendChild(binEl);
-    binEl.querySelector(".m-sheet-mask").addEventListener("click", function () { binEl.remove(); binEl = null; });
-    binEl.querySelector("#mBinDone").addEventListener("click", function () { binEl.remove(); binEl = null; });
-    binEl.querySelectorAll("[data-back]").forEach(function (b) {
-      b.addEventListener("click", function () { restore(b.dataset.back); });
+
+    binEl.querySelector("#mBinLeft").addEventListener("click", function () {
+      if (binSelOn) { binSelOn = false; binSel = {}; paintBin(); return; }
+      binEl.remove(); binEl = null;
     });
-    binEl.querySelectorAll("[data-drop]").forEach(function (b) {
-      b.addEventListener("click", function () { purge(b.dataset.drop); });
+    binEl.querySelector("#mBinRight").addEventListener("click", function () {
+      if (!binSelOn) { binSelOn = true; paintBin(); return; }
+      var all = binEl.querySelectorAll("[data-row]").length, on = binPick().length;
+      binSel = {};
+      if (on < all) binEl.querySelectorAll("[data-row]").forEach(function (c) { binSel[c.dataset.row] = 1; });
+      paintBin();
     });
+    binEl.querySelectorAll("[data-row]").forEach(function (c) {
+      c.addEventListener("click", function () {
+        // 普通态点一下：直接进选择并选上它，少按一次「选择」
+        if (!binSelOn) binSelOn = true;
+        var nm = c.dataset.row;
+        if (binSel[nm]) delete binSel[nm]; else binSel[nm] = 1;
+        paintBin();
+      });
+    });
+    var rs = binEl.querySelector("#mBinRestore");
+    if (rs) rs.addEventListener("click", function () { restoreMany(binPick()); });
+    var pg = binEl.querySelector("#mBinPurge");
+    if (pg) pg.addEventListener("click", function () {
+      var picked = binPick();
+      if (!picked.length) return;
+      if (!confirm("这 " + picked.length + " 个就彻底没了，不能还原。继续？")) return;
+      purgeMany(picked);
+    });
+    paintBin();
   }
 
-  // ---- 素材库页：手机上的素材本来就全在 IndexedDB，这里只是给它一张脸
-  var asEl = null;
+  // ---- 素材库页：手机上的素材全在 IndexedDB，这里给它一张脸；
+  // 教程也收进来（用户：教程不要单独出，放素材库里），于是这一页下面有四个 tab。
+  var asEl = null, libTab = "image";
+  var LIB_TABS = [["image", "图片"], ["audio", "音频"], ["video", "视频"], ["tut", "教程"]];
   function openAssets() {
     if (asEl) { asEl.remove(); asEl = null; return; }
     var A = window.MYONLAssets;
     if (!A) { toast("素材库没加载，刷新一下页面"); return; }
     asEl = document.createElement("div");
-    asEl.className = "m-sheet m-set-sheet on";
+    asEl.className = "m-lib-page";
     document.documentElement.appendChild(asEl);
 
-    // 每次删完 / 加完只重画内容，不重建整层 —— 重建会把刚点的那一下连同遮罩一起拆掉
+    function kindOf(n) { return (A.kindOf || function () { return "image"; })(n); }
+
+    // 教程：跟首页那份同一套说法，只是不再单独弹一个抽屉
+    function tutBody() {
+      return '<div class="m-lib-tut">' +
+        '<div class="m-tut-h">一行就是一屏</div>' +
+        '<div class="m-tut-p">剧本里写的每一行，就是玩家看到的一屏。方括号里写谁在说，后面是说出来的话。</div>' +
+        '<div class="m-tut-c">@[小满] 你终于来了。</div>' +
+        '<div class="m-tut-h">旁白是画外音</div>' +
+        '<div class="m-tut-p">不想让某个角色说话，名字就写「旁白」。</div>' +
+        '<div class="m-tut-c">@[旁白] 雨还在下。</div>' +
+        '<div class="m-tut-h">分叉只要两行</div>' +
+        '<div class="m-tut-p">@choice 下面一行一个选项，箭头后面是跳到哪一幕。</div>' +
+        '<div class="m-tut-c">&gt; 追上去 -&gt; 第一章<br>&gt; 转身走 -&gt; 回家</div>' +
+        '<div class="m-tut-h">画面与声音</div>' +
+        '<div class="m-tut-p">上面三个 tab 放图和音乐，名字对上就能插进剧本。</div>' +
+        '<div class="m-tut-h">想动手</div>' +
+        '<div class="m-tut-p">回「作品」页点那张虚线「新建项目」，它会给你一份能玩的短作品。</div>' +
+        '</div>';
+    }
+
     function paint() {
       var names = A.list ? A.list() : [];
-      var kindOf = A.kindOf || function () { return "image"; };
-      function rowsOf(k, label) {
-        var arr = names.filter(function (n) { return kindOf(n) === k; });
-        if (!arr.length) return "";
-        return '<div class="m-lib-sec">' + label + '<i>' + arr.length + '</i></div>' +
-          arr.map(function (n) {
-            return '<div class="m-lib-row">' +
-              '<span class="m-lib-n">' + esc(n) + '</span>' +
-              '<button type="button" class="m-bin-x" data-un="' + esc(n) + '">删</button>' +
-              '</div>';
-          }).join("");
+      var cnt = {};
+      names.forEach(function (n) { var k = kindOf(n); cnt[k] = (cnt[k] || 0) + 1; });
+      var tabs = LIB_TABS.map(function (t) {
+        var k = t[0];
+        var num = (k === "tut") ? "" : '<i>' + (cnt[k] || 0) + '</i>';
+        return '<button type="button" class="m-lib-tab' + (libTab === k ? " on" : "") +
+          '" data-tab="' + k + '">' + t[1] + num + '</button>';
+      }).join("");
+      var body;
+      if (libTab === "tut") {
+        body = tutBody();
+      } else {
+        var arr = names.filter(function (n) { return kindOf(n) === libTab; });
+        var one = { image: "图片", audio: "音频", video: "视频" }[libTab];
+        body = arr.length
+          ? arr.map(function (n) {
+              return '<div class="m-lib-row">' +
+                '<span class="m-lib-n">' + esc(n) + '</span>' +
+                '<button type="button" class="m-bin-x" data-un="' + esc(n) + '">删</button>' +
+                '</div>';
+            }).join("") +
+            '<div class="m-set-note">进作品 → 底部「素材」，把这些名字插进剧本就能用。' +
+            '删掉的素材，已经插进剧本的引用会变成断链，体检会提醒。</div>'
+          : '<div class="m-bin-empty">还没有' + one + '。<br>点右上「导入」，图片、音乐、视频都收在这里。</div>';
       }
       asEl.innerHTML =
-        '<div class="m-sheet-mask"></div>' +
-        '<div class="m-sheet-body">' +
-          '<div class="m-sheet-grab"></div>' +
-          '<div class="m-sheet-title">素材库' +
-            '<button type="button" class="m-set-done" id="mLibDone">完成</button></div>' +
-          '<button type="button" class="m-tut-start" id="mLibAdd">' +
-            '＋ 导入素材<span>图片、音乐、视频都收在这里</span></button>' +
-          (names.length
-            ? rowsOf("image", "图片") + rowsOf("audio", "音频") + rowsOf("video", "视频") +
-              '<div class="m-set-note">进作品 → 底部「素材」，把这些名字插进剧本就能用。' +
-              '删掉的素材，已经插进剧本的引用会变成断链，体检会提醒。</div>'
-            : '<div class="m-bin-empty">还没有素材</div>') +
-        '</div>';
-      asEl.querySelector(".m-sheet-mask").addEventListener("click", function () {
+        '<div class="m-bin-top">' +
+          '<button type="button" class="m-back" id="mLibLeft" aria-label="返回">‹</button>' +
+          '<span class="m-bin-title" id="mLibTitle">素材</span>' +
+          '<button type="button" class="m-bin-act" id="mLibAdd">导入</button>' +
+        '</div>' +
+        '<div class="m-lib-tabs" id="mLibTabs">' + tabs + '</div>' +
+        '<div class="m-lib-body">' + body + '</div>';
+      asEl.querySelector("#mLibLeft").addEventListener("click", function () {
         asEl.remove(); asEl = null;
       });
-      asEl.querySelector("#mLibDone").addEventListener("click", function () {
-        asEl.remove(); asEl = null;
+      asEl.querySelector("#mLibTabs").addEventListener("click", function (e) {
+        var b = e.target.closest ? e.target.closest("[data-tab]") : null;
+        if (!b || b.dataset.tab === libTab) return;
+        libTab = b.dataset.tab;
+        paint();
       });
       asEl.querySelector("#mLibAdd").addEventListener("click", function () {
         var inp = document.createElement("input");
@@ -284,8 +401,9 @@
   }
 
   window.MYONLTrash = {
-    nextName: nextName, more: more, del: del, openBin: openBin,
-    list: readTrash, restore: restore, purge: purge
+    nextName: nextName, more: more, del: del, delMany: delMany, openBin: openBin,
+    list: readTrash, restore: restore, restoreMany: restoreMany,
+    purge: purge, purgeMany: purgeMany
   };
   window.MYONLAssetLib = { open: openAssets };
 })();
