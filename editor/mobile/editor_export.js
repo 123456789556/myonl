@@ -595,5 +595,6 @@
     });
   }
 
-  window.MYONLExport = { open: open, close: close };
+  // P249：设置页要一个能直接调「导入」的入口，把 openImport 也放出去。
+  window.MYONLExport = { open: open, close: close, import: openImport };
 })();

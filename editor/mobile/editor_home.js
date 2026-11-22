@@ -103,7 +103,15 @@
   }
   firePendingTab();
 
-  try { if (sessionStorage.getItem(EDIT_KEY) === "1") return; } catch (e) {}
+  // P249：只有「刷新」才算继续编辑。冷启动（App 重新打开、切回前台重建页面）一律回首页——
+  // 原来只看 sessionStorage 的 EDIT_KEY，安卓把页面留在会话里时重开 App 会直接落到编辑器，
+  // 用户看到的就是「先弹编辑器、再跳回去」。可见的证据：probe A 段 60ms 起 body 就带 editor-level-2。
+  var navType = "";
+  try { navType = ((performance.getEntriesByType("navigation")[0] || {}).type) || ""; } catch (e2) {}
+  try {
+    if (sessionStorage.getItem(EDIT_KEY) === "1" && navType === "reload") return;
+    sessionStorage.removeItem(EDIT_KEY);
+  } catch (e) {}
 
   // 编辑器自己的层先别渲染，等用户从工作台点进去
   function hideEditor(on) {
@@ -857,6 +865,11 @@
             '<button type="button" data-c="#22c1c3" style="background:#22c1c3"></button>' +
             '<button type="button" data-c="#3ecf8e" style="background:#3ecf8e"></button>' +
           '</span></div>' +
+        '<div class="m-set-sec">导入 / 导出</div>' +
+        '<button type="button" class="m-set-row m-set-link" id="mSetImport">' +
+          '<span>导入作品</span><em>›</em></button>' +
+        '<button type="button" class="m-set-row m-set-link" id="mSetExport">' +
+          '<span>导出当前作品</span><em>›</em></button>' +
         '<div class="m-set-sec">软件详情</div>' +
         '<button type="button" class="m-set-row m-set-link" id="mSetStorage">' +
           '<span>存储方式</span><em>›</em></button>' +
@@ -872,6 +885,17 @@
     });
     sheet.querySelector("#mSetDone").addEventListener("click", function () {
       if (sheet) { sheet.remove(); sheet = null; }
+    });
+    // P249：导入 / 导出原来只在「作品 → 底部 tab」里有，用户找不到。设置页给两个明入口。
+    sheet.querySelector("#mSetImport").addEventListener("click", function () {
+      if (sheet) { sheet.remove(); sheet = null; }
+      if (window.MYONLExport && window.MYONLExport.import) window.MYONLExport.import();
+      else toast("这个版本还没接导入");
+    });
+    sheet.querySelector("#mSetExport").addEventListener("click", function () {
+      if (sheet) { sheet.remove(); sheet = null; }
+      if (window.MYONLExport) window.MYONLExport.open();
+      else toast("这个版本还没接导出");
     });
 
     function paintProf() {

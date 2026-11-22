@@ -2033,7 +2033,7 @@ input[type="color"] {
   content: ""; position: absolute; left: 50%; bottom: 7px; transform: translateX(-50%);
   width: 18px; height: 2px; border-radius: 1px; background: var(--blue);
 }
-.m-nav-item:active { background: var(--surface0); }
+.m-nav-item:active { background: transparent; opacity: .68; }
 .m-home { padding-bottom: calc(70px + env(safe-area-inset-bottom)); }
 
 /* 横屏：导航仍留在底部。

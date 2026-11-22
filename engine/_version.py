@@ -22,4 +22,4 @@ from __future__ import annotations
 # 与 git tag 完全一致（tag 去掉前缀 v）。三段的 x.y.z，不许带 rc/beta 后缀：
 # Android 的 versionName 与 exe 安装包名都直接拿它，带后缀会导致两台设备显示的
 # 版本号对不上，也违背「exe 与 apk 匹配接轨」。
-VERSION = "1.2.49"
+VERSION = "1.2.50"
