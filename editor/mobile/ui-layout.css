@@ -553,3 +553,18 @@ html.m-shell .m-nav-item:active { opacity: 1; background: transparent; }
 html.m-shell .m-nav-item.on::after { display: none; content: none; }
 html.m-shell .m-nav-item.on { box-shadow: inset 0 -2px 0 var(--blue); }
 html.m-shell .m-avatar { background: #2f6bd6; }
+
+/* ===== P250：场景页左上那一排别是"两个方块并排" =====
+   实测截图（C-scene.png）：最左一颗灰底「‹」方块、紧挨着又一颗灰底「场景列表」方块，
+   看着像两个按钮抢一个位置。返回键不该有底色——它只要是箭头就行，文字直接跟在后面。
+   保存键贴右边缘 6px，是因为 cp-head 右边距被挤掉，这里补回来。 */
+html.m-shell #sceneClose, html.m-shell .scn-back {
+  background: transparent; box-shadow: none; border: 0;
+}
+html.m-shell #sceneClose { min-width: 22px; padding: 0 2px; }
+html.m-shell .scn-back { padding: 0 2px; }
+html.m-shell .cp-head { padding-right: 12px !important; }
+/* 手指按下/抬起时不要残留高亮块（安卓 WebView 的 tap-hi） */
+html.m-shell #sceneClose, html.m-shell .scn-back, html.m-shell .m-nav-item {
+  -webkit-tap-highlight-color: transparent;
+}
