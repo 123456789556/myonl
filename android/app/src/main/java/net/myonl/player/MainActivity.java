@@ -134,9 +134,58 @@ public class MainActivity extends Activity {
         return new android.app.AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert);
     }
 
+    private static final int REQ_PICK = 1002;
+    private android.webkit.ValueCallback<android.net.Uri[]> pendingPick;
+
+    /**
+     * 网页里的 {@code <input type=file>} 点了要能弹出系统选择器。
+     *
+     * WebView 默认不实现这个回调：页面 `.click()` 之后既不弹窗也不报错，就是"点了没反应"。
+     * 网页那边以前因此对安卓用户直接说"这台手机换不了"，其实缺的就是这里。
+     */
+    private boolean showPicker(android.webkit.ValueCallback<android.net.Uri[]> cb,
+                               android.webkit.WebChromeClient.FileChooserParams params) {
+        if (pendingPick != null) { pendingPick.onReceiveValue(null); pendingPick = null; }
+        pendingPick = cb;
+        android.content.Intent i = null;
+        try {
+            if (params != null) i = params.createIntent();
+        } catch (Throwable ignored) { }
+        if (i == null) {
+            i = new android.content.Intent(android.content.Intent.ACTION_GET_CONTENT);
+            i.addCategory(android.content.Intent.CATEGORY_OPENABLE);
+            i.setType("*/*");
+        }
+        try {
+            startActivityForResult(i, REQ_PICK);
+            return true;
+        } catch (Throwable t) {
+            pendingPick = null;
+            say("手机上没有能选文件的 App");
+            return false;
+        }
+    }
+
     @Override
     protected void onActivityResult(int req, int res, android.content.Intent data) {
         super.onActivityResult(req, res, data);
+        if (req == REQ_PICK) {
+            android.net.Uri[] out = null;
+            if (res == RESULT_OK && data != null) {
+                android.content.ClipData clip = data.getClipData();
+                if (clip != null && clip.getItemCount() > 0) {
+                    out = new android.net.Uri[clip.getItemCount()];
+                    for (int k = 0; k < clip.getItemCount(); k++) out[k] = clip.getItemAt(k).getUri();
+                } else if (data.getData() != null) {
+                    out = new android.net.Uri[]{data.getData()};
+                }
+            }
+            android.webkit.ValueCallback<android.net.Uri[]> cb = pendingPick;
+            pendingPick = null;
+            if (cb != null) cb.onReceiveValue(out);
+            if (out == null) say("没有选文件");
+            return;
+        }
         if (req != REQ_SAVE) return;
         if (res != RESULT_OK || data == null || data.getData() == null) {
             say("没有保存");
@@ -223,7 +272,8 @@ public class MainActivity extends Activity {
                 // WebView 本体已经按挖孔让过位（见 setOnApplyWindowInsetsListener），
                 // 告诉页面别再自己加一遍顶部安全带，否则顶出双倍空白。
                 view.evaluateJavascript(
-                        "document.documentElement.classList.add('native-shell')", null);
+                        "document.documentElement.classList.add('native-shell');"
+                                + "window.__MYONL_CAN_PICK=true;", null);
             }
 
             @Override
@@ -276,6 +326,13 @@ public class MainActivity extends Activity {
                         .setOnCancelListener(d -> result.cancel())
                         .show();
                 return true;
+            }
+
+            @Override
+            public boolean onShowFileChooser(WebView view,
+                                            android.webkit.ValueCallback<android.net.Uri[]> cb,
+                                            android.webkit.WebChromeClient.FileChooserParams params) {
+                return showPicker(cb, params);
             }
         });
 

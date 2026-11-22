@@ -460,18 +460,23 @@
   function closeImport() { if (impEl) { impEl.remove(); impEl = null; } }
 
   function pickFile() {
-    if (/Android/i.test(navigator.userAgent || "")) {
+    // 安卓壳从 v1.2.52 起补了 onShowFileChooser，系统选择器能弹了，壳会打 __MYONL_CAN_PICK。
+    // 老壳没有这个标记：那就别假装能选，直接说清楚怎么走。
+    if (/Android/i.test(navigator.userAgent || "") && !window.__MYONL_CAN_PICK) {
       if (window.MYONLDialog) {
         window.MYONLDialog.info({
-          title: "安卓选不了文件",
-          msg: "系统选文件的那个窗被 WebView 挡住了。走「粘贴内容」：文件用记事本打开，全选复制再贴进来。"
+          title: "这个安装包还选不了文件",
+          msg: "装的还是旧包，壳里少了「打开系统选择器」那一步。换成新包就能选；现在可以先走「粘贴内容」。"
         });
-      } else if (window.toast) window.toast("安卓上选不了文件，用粘贴");
+      } else if (window.toast) window.toast("旧包选不了文件，先用粘贴");
       return;
     }
     var inp = document.createElement("input");
     inp.type = "file";
-    inp.accept = ".json,.myonl,.gal,.html,.txt,application/json,text/plain";
+    // 安卓的系统选择器按 MIME 过滤，按扩展名过滤会把 .gal/.myonl 全部灰掉；
+    // 内容本来就靠 importText 自己认，这里放宽成 */*。
+    inp.accept = /Android/i.test(navigator.userAgent || "") ? "*/*"
+      : ".json,.myonl,.gal,.html,.txt,application/json,text/plain";
     inp.style.display = "none";
     document.body.appendChild(inp);
     inp.addEventListener("change", function () {
