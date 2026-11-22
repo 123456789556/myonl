@@ -37,7 +37,9 @@ def test_底栏三格且没有横线():
 def test_教程不占列而是列表下的一行速查tab():
     # P205 用户：「教程不要单独出，最好放在素材库里」；P206 又加一句「教程不要单独开一列」
     assert 'id="mHomeTutLink"' not in HOME_JS
-    assert '["image", "图片"], ["audio", "音频"], ["video", "视频"]]' in TRASH_JS
+    # v1.2.53 用户：「素材内有笔记」—— 三个素材格之后加第四格「笔记」，
+    # 教程仍然只是一行速查，不占格。
+    assert '["image", "图片"], ["audio", "音频"], ["video", "视频"], ["note", "笔记"]]' in TRASH_JS
     assert '"tut"' not in TRASH_JS.split("LIB_TABS")[1].split(";")[0]
     assert 'id="mLibTut"' in TRASH_JS and "写法速查" in TRASH_JS
     assert "一行就是一屏" in TRASH_JS

@@ -565,6 +565,44 @@ html.m-shell #sceneClose { min-width: 22px; padding: 0 2px; }
 html.m-shell .scn-back { padding: 0 2px; }
 html.m-shell .cp-head { padding-right: 12px !important; }
 /* 手指按下/抬起时不要残留高亮块（安卓 WebView 的 tap-hi） */
-html.m-shell #sceneClose, html.m-shell .scn-back, html.m-shell .m-nav-item {
+html.m-shell #sceneClose, html.m-shell .scn-back, html.m-shell .m-nav-item,
+html.m-shell .m-bin-act, html.m-shell .m-bin-x, html.m-shell .m-back {
   -webkit-tap-highlight-color: transparent;
+}
+/* 右上「新写 / 导入」那颗：实测截图里会留下一次蓝底（点完手指抬起后没消），
+   这里把 hover 与 active 的底色都钉成透明，只留蓝字。 */
+html.m-shell .m-bin-act:hover,
+html.m-shell .m-bin-act:active,
+html.m-shell .m-bin-act:focus {
+  background: transparent !important;
+}
+
+/* ===== P251：素材页第四个 tab「笔记」 =====
+   笔记跟图片/音乐/视频放同一页：都是做东西要用的料。列表照笔记 App 的样子——
+   标题取正文第一行，下面一行是"多久以前 + 几个字"，整行可点，右侧一个「删」。 */
+html.m-shell .m-note-row {
+  display: flex; align-items: center; gap: 10px;
+  padding: 12px 14px; border-bottom: 1px solid var(--surface0);
+}
+html.m-shell .m-note-row:active { background: var(--surface0); }
+html.m-shell .m-note-b { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+html.m-shell .m-note-b b {
+  font-size: 14px; font-weight: 600; color: var(--text);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+html.m-shell .m-note-b span { font-size: 12px; color: var(--subtext0); }
+/* 右上「存」：m-bin-act 的原定义就是透明底 + 蓝字，这里钉住它 ——
+   实测截图里它被染成了一块蓝底、蓝字，等于看不见。 */
+html.m-shell .m-note-page .m-bin-act {
+  background: transparent !important;
+  color: var(--blue) !important;
+  font-weight: 600;
+}
+/* 写的那页：顶栏照素材页，正文铺满，键盘弹起也不会被挡（整页不是 fixed 居中） */
+html.m-shell .m-note-ta {
+  display: block; width: 100%; min-height: calc(100vh - 52px);
+  border: 0; outline: 0; resize: none;
+  padding: 14px 16px calc(24px + env(safe-area-inset-bottom));
+  font: inherit; font-size: 15px; line-height: 1.75;
+  color: var(--text); background: var(--base);
 }

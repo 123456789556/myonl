@@ -315,7 +315,82 @@
   // ---- 素材库页：手机上的素材全在 IndexedDB，这里给它一张脸；
   // 教程也收进来（用户：教程不要单独出，放素材库里），于是这一页下面有四个 tab。
   var asEl = null, libTab = "image";
-  var LIB_TABS = [["image", "图片"], ["audio", "音频"], ["video", "视频"]];
+  // 笔记：素材页里第四个 tab。素材是图/音/视频，笔记是自己写的字——
+  // 都算"做东西要用的料"，所以跟素材放一页，不进作品里。
+  // 存 localStorage，一条一个对象；标题取正文第一行，跟笔记 App 一个习惯。
+  var LIB_TABS = [["image", "图片"], ["audio", "音频"], ["video", "视频"], ["note", "笔记"]];
+  var NOTES_KEY = "myonl:off:notes:v1";
+  function readNotes() {
+    try {
+      var a = JSON.parse(localStorage.getItem(NOTES_KEY) || "[]");
+      return Array.isArray(a) ? a : [];
+    } catch (e) { return []; }
+  }
+  function writeNotes(a) {
+    try { localStorage.setItem(NOTES_KEY, JSON.stringify(a)); }
+    catch (e) { toast("本机存不下，笔记太长了"); }
+  }
+  function noteTitle(n) {
+    var first = String((n && n.body) || "").split("\n")[0].trim();
+    return first ? (first.length > 18 ? first.slice(0, 18) + "…" : first) : "空白笔记";
+  }
+  function noteAgo(t) {
+    var s = Math.max(0, Math.floor((Date.now() - (t || 0)) / 1000));
+    if (s < 60) return "刚刚";
+    if (s < 3600) return Math.floor(s / 60) + " 分钟前";
+    if (s < 86400) return Math.floor(s / 3600) + " 小时前";
+    return Math.floor(s / 86400) + " 天前";
+  }
+  // 笔记编辑页：整页，顶上只有返回和「存」，正文占满——写的时候不需要看别的。
+  // 给外部（将来的备份导出、以及自动化验收）留一个读写口，别让笔记只能靠点界面改
+  window.__MYONLNotes = { list: readNotes, save: writeNotes };
+  function openNoteEditor(idx, onDone) {
+    var notes = readNotes();
+    var item = idx >= 0 ? notes[idx] : { body: "", at: Date.now() };
+    var ed = document.createElement("div");
+    ed.className = "m-bin-page m-note-page";
+    ed.innerHTML =
+      '<div class="m-bin-top">' +
+        '<button type="button" class="m-back" id="mNoteLeft" aria-label="返回">‹</button>' +
+        '<span class="m-bin-title">笔记</span>' +
+        '<button type="button" class="m-bin-act" id="mNoteDone">存</button>' +
+      '</div>' +
+      '<textarea class="m-note-ta" id="mNoteTa" placeholder="第一行当标题，后面随便写。"></textarea>';
+    document.documentElement.appendChild(ed);
+    var ta = ed.querySelector("#mNoteTa");
+    ta.value = String(item.body || "");
+    var saved = ta.value;
+    function commit() {
+      var body = ta.value;
+      if (body === saved && idx >= 0) return;
+      var arr = readNotes();
+      if (idx >= 0) {
+        if (!arr[idx]) return;
+        arr[idx].body = body;
+        arr[idx].at = Date.now();
+        writeNotes(arr);
+      } else {
+        // 新建：先落盘再改 idx —— 顺序反了就会"看着存了、其实没存"
+        arr.unshift({ body: body, at: Date.now() });
+        writeNotes(arr);
+        idx = 0;
+      }
+      saved = body;
+    }
+    ta.addEventListener("input", function () {
+      clearTimeout(ta._t);
+      ta._t = setTimeout(commit, 800);     // 边写边存，不给"忘了保存"留坑
+    });
+    function close() {
+      commit();
+      ed.remove();
+      if (onDone) onDone();
+    }
+    ed.querySelector("#mNoteLeft").addEventListener("click", close);
+    ed.querySelector("#mNoteDone").addEventListener("click", close);
+    setTimeout(function () { ta.focus(); }, 200);
+  }
+
   var tutOpen = false;
   function openAssets() {
     if (asEl) { asEl.remove(); asEl = null; return; }
@@ -353,18 +428,32 @@
       var names = A.list ? A.list() : [];
       var cnt = {};
       names.forEach(function (n) { var k = kindOf(n); cnt[k] = (cnt[k] || 0) + 1; });
+      var notes = readNotes();
       var tabs = LIB_TABS.map(function (t) {
+        var num = t[0] === "note" ? notes.length : (cnt[t[0]] || 0);
         return '<button type="button" class="m-lib-tab' + (libTab === t[0] ? " on" : "") +
-          '" data-tab="' + t[0] + '">' + t[1] + '<i>' + (cnt[t[0]] || 0) + '</i></button>';
+          '" data-tab="' + t[0] + '">' + t[1] + '<i>' + num + '</i></button>';
       }).join("");
       // 教程不占一列（用户：「教程不要单独开一列」）—— 它变成列表底下的一行速查，
       // 想看就点开，不看就一直在那儿收着。
       var arr = names.filter(function (n) { return kindOf(n) === libTab; });
-      var one = { image: "图片", audio: "音频", video: "视频" }[libTab];
+      var one = { image: "图片", audio: "音频", video: "视频", note: "笔记" }[libTab];
       var note = '<div class="m-set-note">进作品 → 底部「素材」，把这些名字插进剧本就能用。' +
         '删掉的素材，已经插进剧本的引用会变成断链，体检会提醒。</div>';
       var body;
-      if (!arr.length) {
+      if (libTab === "note") {
+        // 笔记不跟素材混：它没有"名字插进剧本"这回事，列表就按最近写的在上面。
+        body = notes.length
+          ? '<div class="m-note-list">' + notes.map(function (n, i) {
+              return '<div class="m-note-row" data-note="' + i + '">' +
+                '<div class="m-note-b"><b>' + esc(noteTitle(n)) + '</b>' +
+                  '<span>' + noteAgo(n.at) + ' · ' + ((String(n.body || "").length) || 0) + ' 字</span></div>' +
+                '<button type="button" class="m-bin-x" data-note-del="' + i + '">删</button>' +
+              '</div>';
+            }).join("") + '</div>' +
+            '<div class="m-set-note">笔记只存在这台设备上：卸载 App 或清浏览器数据就一起没了，重要的话另存一份。</div>'
+          : '<div class="m-bin-empty">还没有笔记。<br>点右上「新写」，想到什么写什么，第一行自动当标题。</div>';
+      } else if (!arr.length) {
         body = '<div class="m-bin-empty">还没有' + one + '。<br>点右上「导入」，图片、音乐、视频都收在这里。</div>';
       } else if (libTab === "image") {
         // P209：图片按相册那样两列铺 —— 一行一条太扁，图片本来就该先看见画面
@@ -389,7 +478,8 @@
         '<div class="m-bin-top">' +
           '<button type="button" class="m-back" id="mLibLeft" aria-label="返回">‹</button>' +
           '<span class="m-bin-title" id="mLibTitle">素材</span>' +
-          '<button type="button" class="m-bin-act" id="mLibAdd">导入</button>' +
+          '<button type="button" class="m-bin-act" id="mLibAdd">' +
+            (libTab === "note" ? "新写" : "导入") + '</button>' +
         '</div>' +
         '<div class="m-lib-tabs" id="mLibTabs">' + tabs + '</div>' +
         '<div class="m-lib-body">' + body +
@@ -422,16 +512,17 @@
         else toast("回「作品」页点「示范案例」");
       });
       asEl.querySelector("#mLibAdd").addEventListener("click", function () {
-        // 安卓 WebView 里 <input type=file> 弹不出系统选择器（实测），点了会像没反应。
-        // 与其让人怀疑按钮坏了，不如明说这条路还没通，并指出真能走的那条。
-        if (/Android/i.test(navigator.userAgent || "") && !window.__myonlNativeImport) {
+        if (libTab === "note") { openNoteEditor(-1, paint); return; }
+        // 安卓壳从 v1.2.52 起补了 onShowFileChooser，会打 __MYONL_CAN_PICK；老壳没有这个标记。
+        // 老壳点下去等于"没反应"，那就别装能选，直接告诉人怎么走。
+        if (/Android/i.test(navigator.userAgent || "") && !window.__MYONL_CAN_PICK) {
           if (window.MYONLDialog) {
             window.MYONLDialog.info({
-              title: "这台手机导不了素材",
-              msg: "安卓里系统选文件的那个窗弹不出来，这是 WebView 的限制。\n要导入就走「导出」页的「粘贴导入」：把 .json / .gal 整段贴进去，作品和素材一起回来。"
+              title: "这个安装包还选不了文件",
+              msg: "装的还是旧包，壳里少了「打开系统选择器」那一步。换成新包就能选；现在可以先走「导出」页的「粘贴导入」。"
             });
           } else {
-            toast("安卓上还弹不出系统选择器，真导入要等原生那层做完");
+            toast("旧包选不了文件，先用粘贴导入");
           }
           return;
         }
@@ -450,6 +541,32 @@
           }).catch(function (e) { toast("加不进去：" + (e.message || e)); });
         });
         inp.click();
+      });
+      // 笔记：点一行进去写，点「删」问一次再删
+      asEl.querySelectorAll("[data-note]").forEach(function (row) {
+        row.addEventListener("click", function (e) {
+          if (e.target.closest && e.target.closest("[data-note-del]")) return;
+          openNoteEditor(parseInt(row.dataset.note, 10), paint);
+        });
+      });
+      asEl.querySelectorAll("[data-note-del]").forEach(function (b) {
+        b.addEventListener("click", function (e) {
+          e.stopPropagation();
+          var i = parseInt(b.dataset.noteDel, 10);
+          var notes = readNotes();
+          if (!notes[i]) return;
+          dlgConfirm({
+            title: "删掉这条笔记？",
+            msg: noteTitle(notes[i]) + " · 删了就找不回来。",
+            ok: "删除", danger: true
+          }).then(function (yes) {
+            if (!yes) return;
+            var n2 = readNotes();
+            n2.splice(i, 1);
+            writeNotes(n2);
+            paint();
+          });
+        });
       });
       // 缩略图异步取：先摆好方块，谁先到谁先亮，别让整页等图片
       asEl.querySelectorAll("[data-th]").forEach(function (img) {
