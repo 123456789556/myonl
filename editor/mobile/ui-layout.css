@@ -485,3 +485,32 @@ html.m-shell #mlFab::after {
    真正收敛成几个入口属于产品取舍，等拍板。 */
 html.m-shell .menubar { overflow-x: auto; scrollbar-width: none; }
 html.m-shell .menubar::-webkit-scrollbar { display: none; }
+
+/* ===== P222 手机端场景列表 = 文件夹树 =====
+   数据来源：剧本里的 @chapter（editor_scene.js 已经在生成 .scene-chapter 行）。
+   这里只改观感，不许改高度 —— 列表是虚拟滚动，行高由 JS 定死（幕 54px / 章节 30px），
+   改高度会让点击区域和滚动位置全错。
+   章节行：实心底色 + 圆角，读起来像一个文件夹。
+   幕行：左缩进 18px + 一条竖线挂到所属章节，当前幕那条竖线变蓝。 */
+html.m-shell .scene-page .scene-chapter {
+  background: var(--mantle) !important; border-radius: 8px;
+  padding: 0 10px !important; color: var(--text) !important; font-size: 12.5px !important;
+}
+html.m-shell .scene-page .sc-chev { width: 14px !important; font-size: 12px; opacity: .9 !important; }
+html.m-shell .scene-page .sc-ch-name { font-weight: 600; letter-spacing: .02em; }
+html.m-shell .scene-page .sc-ch-count {
+  background: var(--surface0); border-radius: 9px; padding: 1px 7px; opacity: .85 !important;
+}
+html.m-shell .scene-page .scene-item { padding-left: 20px !important; }
+html.m-shell .scene-page .scene-item::before {
+  content: ""; position: absolute; left: 7px; top: 7px; bottom: 7px; width: 2px;
+  background: var(--surface1); border-radius: 1px;
+}
+html.m-shell .scene-page .scene-item.active::before { background: var(--blue); }
+
+/* ===== P222b 场景页别再叠在顶栏上 =====
+   实测：手机壳里 .center-page 是 fixed top:0，而 .menubar 也在 top:0（90px 高），
+   于是「场景编辑」那一条被顶栏压掉一半（截图里字被切）。场景页应该从顶栏下面开始。
+   同时它已不在安全区里，自己那 40px 安全带就不需要了，改成 6px 常规内边距。 */
+html.m-shell .center-page.scene-page { top: calc(50px + var(--safe-pad-top)) !important; }
+html.m-shell .scene-page .cp-head { padding-top: 6px !important; }

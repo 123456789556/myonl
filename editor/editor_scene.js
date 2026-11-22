@@ -233,7 +233,7 @@
   function chapterOf(sc, chapters) {
     var name = "";
     for (var k = 0; k < chapters.length; k++) {
-      if (chapters[k].line < sc.start) name = chapters[k].title; else break;
+      if (chapters[k].line <= sc.start) name = chapters[k].title; else break;  // P222：<= 而非 <（@chapter 在第一行时与「开场设置」同行号，会多一个「未分章」空文件夹）
     }
     return name;
   }
