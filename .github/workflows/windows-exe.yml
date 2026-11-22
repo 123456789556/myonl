@@ -30,12 +30,22 @@ jobs:
 
       # 先拦版本不一致的 tag，再花 10 分钟编译 —— 顺序反了就是白等。
       # 真源只有一个：engine/_version.py 的 VERSION。tag 必须与它完全一致。
+      #
+      # 注意：这里**不要**用 `python -c "import engine._version"` 取版本。
+      # `import engine._version` 会先执行包初始化 engine/__init__.py，它 import 了
+      # pygame，pygame 启动时打印一行 banner —— stdout 变成两行，比对必挂。
+      # （v1.2.33 首次跑这条就是这么红的。）直接读文件里的那一行最稳。
       - name: 校验 tag 与 engine/_version.py 一致
         shell: pwsh
         run: |
-          $ver = python -c "from engine._version import VERSION; print(VERSION)"
-          $tag = "${{ github.ref_name }}"
+          # 注意 `Select-Object -First 1`：Where-Object 返回的是字符串数组，
+          # 对数组直接取 [0] 在 pwsh 里拿的是「第一个字符」（'V'），不是第一行。
+          # 本地实测过一次，版本号被读成 "V"，白红一次。
+          $line = (Get-Content 'engine/_version.py' | Where-Object { $_ -match '^VERSION\s*=' } | Select-Object -First 1)
+          $ver = [regex]::Match($line, '"([^"]+)"').Groups[1].Value
+          if (-not $ver) { Write-Host "::error::读不出 engine/_version.py 的 VERSION"; exit 1 }
           if ("$env:GITHUB_REF".StartsWith("refs/tags/")) {
+            $tag = "${{ github.ref_name }}"
             $expect = $tag -replace '^v', ''
             if ($ver -ne $expect) {
               Write-Host "::error::tag $tag 与 engine/_version.py 的 VERSION=$ver 不一致"
