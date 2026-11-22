@@ -381,3 +381,10 @@ html.m-shell .m-tut-open {
    窄条又是 fixed 常驻不重绘，只靠 JS 会把它永久留在屏上（实测过）。
    草稿 / 未保存 / 失败 / 别的作品压着草稿这几种状态栏不说，照旧出。 */
 html.m-shell #mDraftBar[data-state="saved"] { display: none !important; }
+
+/* P217c：垃圾箱选择态左上「取消」是两个字，箭头按钮 44px + 26px 字号会折成两行。
+   只在选择态改排法，平时的「‹」仍是 26px 大箭头，不动它的样子。 */
+html.m-shell .m-bin-sel .m-bin-top .m-back {
+  width: auto; min-width: 44px; padding: 0 6px;
+  font-size: 15px; white-space: nowrap; justify-content: flex-start;
+}

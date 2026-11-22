@@ -75,6 +75,16 @@ def test_取消全选不许折成两行():
     assert "76px 1fr 88px" in css, "右上格子要装得下四个字"
 
 
+def test_垃圾箱选择态取消也不许折行():
+    # 左上那颗平时是 26px 的「‹」，选择态变成「取消」两个字，44px 装不下
+    assert 'binEl.classList.toggle("m-bin-sel", binSelOn)' in TRASH
+    css = (ROOT / "editor" / "mobile" / "ui-layout.css").read_text(encoding="utf-8")
+    m = re.search(r"html\.m-shell \.m-bin-sel \.m-bin-top \.m-back \{[^}]*\}", css)
+    assert m, "选择态没有把箭头按钮改排成文字按钮"
+    assert "white-space: nowrap" in m.group(0)
+    assert "width: auto" in m.group(0)
+
+
 def test_头像写两个字不是一个字():
     assert "function avatarText(name)" in HOME
     assert "s.slice(0, 2)" in HOME

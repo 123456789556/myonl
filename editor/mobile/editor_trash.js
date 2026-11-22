@@ -224,6 +224,9 @@
     var t = binEl.querySelector("#mBinTitle");
     var r = binEl.querySelector("#mBinRight");
     var bar = binEl.querySelector("#mBinBar");
+    // P217c：选择态左上那颗从「‹」变成「取消」两个字，44px 的箭头按钮装不下会折行。
+    // 打个类让 CSS 把它按文字按钮排（见 ui-layout.css .m-bin-sel）。
+    binEl.classList.toggle("m-bin-sel", binSelOn);
     if (binSelOn) {
       if (l) l.textContent = "取消";
       if (t) t.textContent = "已选 " + picked.length;
