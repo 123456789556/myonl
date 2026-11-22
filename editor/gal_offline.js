@@ -59,7 +59,8 @@
 
   function blankLib() {
     var t = starterText();
-    return { current: "我的第一个游戏", projects: [{ name: "我的第一个游戏", text: t, ctime: now(), mtime: now() }] };
+    // P217：默认只给这一份「示范案例」，教程与它是同一个东西，不再另建「新手教程」。想写自己的点「新建项目」。
+    return { current: "示范案例", projects: [{ name: "示范案例", text: t, ctime: now(), mtime: now() }] };
   }
   function now() { return Math.round(Date.now() / 1000); }
 
@@ -71,7 +72,7 @@
       if (raw) {
         try {
           var lib = JSON.parse(raw);
-          if (lib && Array.isArray(lib.projects)) return lib;  // 空数组也算数：作品被删进垃圾箱，不许再造一个「我的第一个游戏」
+          if (lib && Array.isArray(lib.projects)) return lib;  // 空数组也算数：作品被删进垃圾箱，不许再造一个「示范案例」
         } catch (pe) {
           // P130：坏 JSON 原来直接落进下面的"重建空白并覆写"——
           // 用户的作品就在那一瞬间被顶掉了，而且他看到的只是"我的作品变空了"。
@@ -161,7 +162,7 @@
   // 新作品不再给「hello world」三行白屏：直接给一份 14 句能跑、能改、带分支的开场。
   // 打开就能点「预览」看到画面，改两句就变成自己的故事。
   function starterText() {
-    return "# 这份开头已经能玩：点右下「预览」先看一遍\n# 想改哪句就改哪句，一行就是游戏里的一屏\n\n@label start\n@[旁白] 末班车还有四分钟到站。\n@[小满] 你也在等这趟？\n@[我] 嗯。等一个人，等不到就走。\n@[小满] 那要是等到了呢？\n\n@choice:\n    > 跟她说实话 -> 坦白\n    > 说在等朋友 -> 岔开\n\n@label 坦白\n@[我] 其实是在等你。\n@[小满] 那你挺会等的。\n@[旁白] 车进站了。她先上去，回头朝你招手。\n@end\n\n@label 岔开\n@[我] 一个朋友，大概不来了。\n@[小满] 那我陪你等。\n@end\n";
+    return "# 这是「示范案例」：一份真能玩、真能改的作品。不想要就删掉，写自己的点「新建项目」\n# 以 # 开头的是注释，不上屏；一行就是游戏里的一屏。写法看不清就点底部「素材」→ 底下那条「写法速查」\n\n@label start\n@[旁白] 末班车还有四分钟到站。\n@[小满] 你也在等这趟？\n@[我] 嗯。等一个人，等不到就走。\n@[小满] 那要是等到了呢？\n\n@choice:\n    > 跟她说实话 -> 坦白\n    > 说在等朋友 -> 岔开\n\n@label 坦白\n@[我] 其实是在等你。\n@[小满] 那你挺会等的。\n@[旁白] 车进站了。她先上去，回头朝你招手。\n@end\n\n@label 岔开\n@[我] 一个朋友，大概不来了。\n@[小满] 那我陪你等。\n@end\n";
   }
 
   function toast(msg, isErr) {

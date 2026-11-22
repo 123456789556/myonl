@@ -334,12 +334,15 @@
         '<div class="m-tut-p">不想让某个角色说话，名字就写「旁白」。</div>' +
         '<div class="m-tut-c">@[旁白] 雨还在下。</div>' +
         '<div class="m-tut-h">分叉只要两行</div>' +
-        '<div class="m-tut-p">@choice 下面一行一个选项，箭头后面是跳到哪一幕。</div>' +
-        '<div class="m-tut-c">&gt; 追上去 -&gt; 第一章<br>&gt; 转身走 -&gt; 回家</div>' +
+        '<div class="m-tut-p">@choice: 下面一行一个选项，箭头后面是跳到哪一幕。</div>' +
+        '<div class="m-tut-c">@choice:<br>&gt; 追上去 -&gt; 第一章<br>&gt; 转身走 -&gt; 回家</div>' +
         '<div class="m-tut-h">画面与声音</div>' +
         '<div class="m-tut-p">上面三个 tab 放图和音乐，名字对上就能插进剧本。</div>' +
+        // P217：教程与示范案例绑定。原来这里写「点新建项目会给你一份能玩的短作品」——
+        // 新建项目给的是空白作品，这句话是错的。能玩的那份叫「示范案例」，首页就有。
         '<div class="m-tut-h">想动手</div>' +
-        '<div class="m-tut-p">回「作品」页点那张虚线「新建项目」，它会给你一份能玩的短作品。</div>' +
+        '<div class="m-tut-p">首页那份「示范案例」就是能玩能改的成品，点开照着改；写自己的再点「新建项目」。</div>' +
+        '<button type="button" class="m-tut-open" id="mLibTutDemo">打开示范案例</button>' +
         '</div>';
     }
 
@@ -408,6 +411,12 @@
         var tb = asEl.querySelector("#mLibTutBody"), lb = asEl.querySelector("#mLibTut");
         if (tb) tb.hidden = !tutOpen;
         if (lb) lb.textContent = "写法速查 " + (tutOpen ? "· 收起" : "· 展开");
+      });
+      // P217：速查里那颗按钮直接开首页那份示范案例，不再让人自己回首页找。
+      var td = asEl.querySelector("#mLibTutDemo");
+      if (td) td.addEventListener("click", function () {
+        if (window.MYONLOpenDemo) { asEl.remove(); asEl = null; window.MYONLOpenDemo(); }
+        else toast("回「作品」页点「示范案例」");
       });
       asEl.querySelector("#mLibAdd").addEventListener("click", function () {
         // 安卓 WebView 里 <input type=file> 弹不出系统选择器（实测），点了会像没反应。

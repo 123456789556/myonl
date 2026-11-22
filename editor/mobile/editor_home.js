@@ -9,6 +9,14 @@
 
   // P209：手机端默认用户名。用户要求别叫「我」，叫「用户」。
   var DEF_NAME = "用户";
+  // P217：没上传头像时圆里写什么。用户原话「他的头像应该是用户两字，而不是只有一个用」。
+  // 默认名整整两个字放得下；自己改的长名字取前两个字，英文/数字名取前两个字符并大写。
+  function avatarText(name) {
+    var s = String(name || DEF_NAME).trim();
+    if (!s) s = DEF_NAME;
+    var two = s.slice(0, 2);
+    return /^[A-Za-z0-9]/.test(two) ? two.toUpperCase() : two;
+  }
   // 统一弹窗（P209 新文件 editor_dialog.js）。它没加载成功就退回系统框，别让界面直接哑掉。
   var dlg = function () { return window.MYONLDialog || null; };
   function dlgInfo(msg, title) {
@@ -728,8 +736,10 @@
   var sheet = null;
   var orient = "any";
   // 预览框比例：设置里切，启动时按上次的选择恢复。
-  // 16:9 = 56.25% 高，20:9 全面屏 = 45%，4:3 老手机 = 75%。
-  var RATIO_PAD = { "16:9": "56.25%", "20:9": "45%", "4:3": "75%" };
+  // 16:9 = 56.25% 高，20:9 全面屏 = 45%，16:10 安卓平板 = 62.5%，4:3 老手机/平板 = 75%。
+  // P217：用户「它是安卓版的那种平板，什么屏幕比例也要去参考」——安卓平板主流是 16:10
+  // （1280×800 / 1920×1200 / 2560×1600 都是它），原来三档里一档都没有。
+  var RATIO_PAD = { "16:9": "56.25%", "20:9": "45%", "16:10": "62.5%", "4:3": "75%" };
   try {
     var _rp = RATIO_PAD[localStorage.getItem("myonl_preview_ratio")];
     if (_rp) document.documentElement.style.setProperty("--sf-pad", _rp);
@@ -806,7 +816,7 @@
       '</div>' +
       '<div class="m-set-profile">' +
         '<button type="button" class="m-avatar" id="mSetAvatar">' +
-          (prof.avatar ? '<img src="' + prof.avatar + '" alt="头像">' : esc(pname.slice(0, 1))) +
+          (prof.avatar ? '<img src="' + prof.avatar + '" alt="头像">' : esc(avatarText(pname))) +
         '</button>' +
         '<span class="m-profile-side">' +
           '<span class="m-profile-row">' +
@@ -827,14 +837,13 @@
             '<button type="button" data-v="portrait" class="' + (orient === "portrait" ? "on" : "") + '">竖屏</button>' +
             '<button type="button" data-v="landscape" class="' + (orient === "landscape" ? "on" : "") + '">横屏</button>' +
           '</span></div>' +
-        '<div class="m-set-note">拿不准就选「跟随」—— 横过来竖着都能玩，导出时不用再选。</div>' +
         '<div class="m-set-row"><span>预览比例</span>' +
           '<span class="m-seg" id="mSetRatio">' +
             '<button type="button" data-v="16:9" class="on">16:9</button>' +
             '<button type="button" data-v="20:9">20:9</button>' +
+            '<button type="button" data-v="16:10">16:10</button>' +
             '<button type="button" data-v="4:3">4:3</button>' +
           '</span></div>' +
-        '<div class="m-set-note">只改上面那块预览框的形状，不动导出结果。做的时候拿它对照自己手机的屏幕。</div>' +
         '<div class="m-set-row"><span>主题色</span>' +
           '<span class="m-swatches" id="mSetAccent">' +
             '<button type="button" data-c="#4f8cff" style="background:#4f8cff"></button>' +
@@ -842,7 +851,6 @@
             '<button type="button" data-c="#22c1c3" style="background:#22c1c3"></button>' +
             '<button type="button" data-c="#3ecf8e" style="background:#3ecf8e"></button>' +
           '</span></div>' +
-        '<div class="m-set-note">选中态、按钮、作品卡上的蓝都跟着换。深色浅色都生效。</div>' +
         '<div class="m-set-sec">软件详情</div>' +
         '<button type="button" class="m-set-row m-set-link" id="mSetStorage">' +
           '<span>存储方式</span><em>›</em></button>' +
@@ -864,7 +872,7 @@
       var p = readProfile();
       var a = sheet && sheet.querySelector("#mSetAvatar");
       var n = sheet && sheet.querySelector("#mSetName");
-      if (a) a.innerHTML = p.avatar ? ('<img src="' + p.avatar + '" alt="头像">') : esc((p.name || DEF_NAME).slice(0, 1));
+      if (a) a.innerHTML = p.avatar ? ('<img src="' + p.avatar + '" alt="头像">') : esc(avatarText(p.name || DEF_NAME));
       if (n) n.textContent = p.name || DEF_NAME;
     }
     function saveProf(patch) {
@@ -1041,7 +1049,7 @@
         // 原来六张图标卡是速查表 —— 看着齐，读完还是不知道从哪下笔。
         '<span class="m-seg m-tut-seg" id="mTutSeg">' +
           '<button type="button" data-v="read" class="on">读一遍</button>' +
-          '<button type="button" data-v="make">动手建</button>' +
+          '<button type="button" data-v="make">示范案例</button>' +
         '</span>' +
         '<div class="m-tut-read" id="mTutRead">' +
           '<div class="m-tut-h">一行就是一屏</div>' +
@@ -1052,7 +1060,7 @@
           '<div class="m-tut-c">@[旁白] 雨还在下。</div>' +
           '<div class="m-tut-h">分叉只要两行</div>' +
           '<div class="m-tut-p">@choice 下面一行一个选项，箭头后面是跳到哪一幕。</div>' +
-          '<div class="m-tut-c">&gt; 追上去 -&gt; 第一章<br>&gt; 转身走 -&gt; 回家</div>' +
+          '<div class="m-tut-c">@choice:<br>&gt; 追上去 -&gt; 第一章<br>&gt; 转身走 -&gt; 回家</div>' +
           '<div class="m-tut-h">画面与声音</div>' +
           '<div class="m-tut-p">底部「素材库」放图和音乐，名字对上就能插进剧本。</div>' +
           '<div class="m-tut-h">导出</div>' +
@@ -1060,9 +1068,9 @@
         '</div>' +
         '<div class="m-tut-make" id="mTutMake" hidden>' +
           '<button type="button" class="m-tut-start" id="mTutStart">' +
-            '建一个最小示例' +
-            '<span>一份短作品，能玩也能改</span></button>' +
-          '<div class="m-set-note">它是一份普通作品，建在你自己的列表里。不想要就在卡片右上「⋯」删掉。</div>' +
+            '打开示范案例' +
+            '<span>就是首页那一份，能玩也能改</span></button>' +
+          '<div class="m-set-note">不想要就在卡片右上「⋯」删掉，写自己的点「新建项目」。</div>' +
         '</div>';
     document.documentElement.appendChild(tutSheet);
     tutSheet.querySelector(".m-sheet-mask").addEventListener("click", function () {
@@ -1190,67 +1198,30 @@
   // 它放的是 game.html 里一份和编辑器无关的 demo，点开只看到"别人的游戏"，
   // 新手得不到任何关于"我这东西能做成什么"的信息。新手要看的是能改的东西。
 
-  // 「新手教程」= 建一份真作品，不是播一个内置 demo。
-  // 已经在库里就直开（用户可能自己改过它，别覆盖）；没有才建一次。
-  var TUT_NAME = "新手教程";
-  var TUT_TEXT = [
-    "# 这是「新手教程」：一份真能玩、真能改的作品",
-    "# 以 # 开头的是注释，不上屏；以 @ 开头的才是游戏里的一句话",
-    "",
-    "@label start",
-    "@[旁白] 这一句是旁白。想改就直接改。",
-    "@[小满] 这一句是角色台词，名字在方括号里。",
-    "@[小满] 写方括号就不用在角色库里先建人。",
-    "@[旁白] 一屏只说一句话，读起来才像游戏。",
-    "",
-    "@choice:",
-    "> 继续看写法 -> 怎么写",
-    "> 直接看素材 -> 素材",
-    "",
-    "@label 怎么写",
-    "@[旁白] 一行一句话，想加就加一行。",
-    "@[旁白] 想让角色说话，名字放进方括号。",
-    "@[旁白] 底部「素材」放图和音乐，点一下就插成背景。",
-    "",
-    "@choice:",
-    "> 下一步 -> 素材",
-    "> 回到开头 -> start",
-    "",
-    "@label 素材",
-    "@[旁白] 图片、音乐、视频都放这里。",
-    "@[旁白] 选中一个素材，会弹出「拿它做什么」。",
-    "@[旁白] 背景、立绘、CG 都在那一步定。",
-    "",
-    "@choice:",
-    "> 下一步 -> 导出",
-    "> 回到开头 -> start",
-    "",
-    "@label 导出",
-    "@[旁白] 写完去底部「导出」。",
-    "@[旁白] 第一个按钮出一个 html，发给谁都能双击玩。",
-    "@[旁白] 也可以出安卓安装包，装到手机上像 App。",
-    "",
-    "@choice:",
-    "> 从头再看一遍 -> start",
-    "> 开始写我自己的 -> start",
-    ""
-  ].join("\n");
+  // P217：教程 = 那唯一一份「示范案例」，不再是另建一份「新手教程」。
+  // 用户原话：「只要搞一个示范案例，然后你有个教程……示范案例跟教程绑在一起，名字叫示范案例」。
+  // 名字与 gal_offline.js 的 blankLib() 必须一致，否则点教程会凭空多出第二个作品。
+  var TUT_NAME = "示范案例";
 
   function openTutorial() {
     var lib = {};
     try { lib = JSON.parse(localStorage.getItem("myonl:off:lib:v1") || "{}"); } catch (e) { lib = {}; }
     var has = (lib.projects || []).some(function (p) { return p.name === TUT_NAME; });
     if (has) { openProject(TUT_NAME); return; }
+    // 兜底：用户把示范案例删了又从教程进来。不传 text，让内核用同一份 starterText，
+    // 免得这里再维护第二份示例正文（两份正文迟早会说法不一致）。
     fetch("/api/new", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: TUT_NAME, text: TUT_TEXT })
+      body: JSON.stringify({ name: TUT_NAME })
     }).then(function (r) { return r.json(); }).then(function (res) {
-      if (!res.ok) throw new Error(res.message || "建不了教程");
+      if (!res.ok) throw new Error(res.message || "打不开示范案例");
       openProject(TUT_NAME);
-    }).catch(function (e) { toast(e.message || "建不了教程"); });
+    }).catch(function (e) { toast(e.message || "打不开示范案例"); });
   }
 
   // 教程入口在底栏（id=mHomeTut），点击走 nav 委托 → openTutorialSheet，
   // 这里不再单独绑一次，否则同一下点击会既开抽屉又直接建工程。
+  // P217：素材页「写法速查」底下那颗「打开示范案例」要有真入口可调 —— 教程与示范案例绑定。
+  window.MYONLOpenDemo = openTutorial;
 })();

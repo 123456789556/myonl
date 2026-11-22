@@ -240,8 +240,15 @@
   function setScriptMode(m) {
     markMode(m);
     if (m === "sent") {
-      if (window.__openSceneEditor && !sceneOpen()) window.__openSceneEditor();
-      exitDetail();
+      // P217：只有「真的从源码切过来」才回列表。原来无条件 exitDetail()，
+      // 于是任何一次重入（底栏「剧本」tab 的 80ms 兜底会点一下「逐句」按钮）
+      // 都把正在读的那一幕踢回场景列表 —— 用户看到的就是「打开作品弹出个陌生界面」。
+      if (window.__openSceneEditor && !sceneOpen()) {
+        window.__openSceneEditor();
+        // 重开时回到用户上次待的那一态：正在读第一幕就还回第一幕，
+        // 自己点过「‹ 场景列表」的就留在列表。wantDetail 只由人的动作改。
+        if (wantDetail) setTimeout(enterDetail, 0); else exitDetail();
+      }
     } else if (sceneOpen()) {
       var c = document.getElementById("sceneClose");
       if (c) c.click();
@@ -250,6 +257,8 @@
 
   /* ==================== 场景页：手机上的「列表 → 单个场景」 ==================== */
   var scnBack = null, scnMore = null, scnPop = null;
+  var autoEnterDone = false;   // P217：本次进作品是否已自动落到第一幕（整页 reload 会重置）
+  var wantDetail = false;      // P217：用户此刻想待在「某一幕」还是「场景列表」，只由人的动作改
 
   function closePop() { if (scnPop) scnPop.classList.remove("on"); }
 
@@ -277,7 +286,7 @@
     scnBack.type = "button";
     scnBack.className = "cp-btn scn-back";
     scnBack.innerHTML = "&#8249; 场景列表";
-    scnBack.addEventListener("click", exitDetail);
+    scnBack.addEventListener("click", function () { wantDetail = false; exitDetail(); });
     head.insertBefore(scnBack, head.firstChild);
 
     // ⋯：复制/删除/刷新原来挤在顶栏，窄屏上根本点不准，收进一个弹层
@@ -327,6 +336,7 @@
     if (!narrow()) return;
     var t = e.target;
     if (t && t.closest && t.closest("#sceneList .scene-item")) {
+      wantDetail = true;
       buildSceneMobile();
       setTimeout(enterDetail, 0);
       return;
@@ -359,18 +369,33 @@
       // 80ms 后 boot 跑到这里，那些页还没重新出现，只看 otherPageOpen 拦不住。
       var curTab = document.querySelector(".m-tab.active");
       var onScript = !curTab || curTab.dataset.tab === "script";
-      if (onScript && !otherPageOpen && !document.body.classList.contains("m-home-open")) setScriptMode("sent");
-      // 只有一个场景（空剧本、单幕故事）时直接进那一幕。
-      // 否则第一眼是「一条列表 + 整屏空白」，手机上看就是没东西。
-      setTimeout(function () {
+      // P217：场景页已经开着就别再 setScriptMode("sent") —— 它里面有一句 exitDetail()，
+      // boot 每次重入都会把人从「正在读的那一幕」踢回场景列表。只补高亮即可。
+      if (onScript && !otherPageOpen && !document.body.classList.contains("m-home-open")) {
+        if (sceneOpen()) markMode("sent"); else setScriptMode("sent");
+      }
+      // P217：进作品第一眼必须是台词，不是「场景列表」。
+      // 原来只有「恰好一幕」才自动进详情，多幕（示范案例就有 start/坦白/岔开 三幕）
+      // 停在列表上：顶栏「＋新场景 / 搜索场景名 / 逐句编辑|源码（高级）」，下面三行幕名 + 整屏空白。
+      // 用户原话「我打开一个作品，它直接给我弹出一个莫名其妙的界面，那是肯定不可能允许的」。
+      // autoEnterDone 只在本模块生命周期内生效（进作品是整页 reload），
+      // 所以用户主动点「‹ 场景列表」退回列表后，后续 boot 不会把他再踢回详情。
+      // 场景列表是读完剧本后才渲染的，260ms 时可能还是空的 —— 一次不中就再等一会儿，
+      // 最多试 12 次（约 2.4s）。只试一次的话，慢一点的机器上永远停在列表。
+      var tries = 0;
+      (function autoEnter() {
+        if (autoEnterDone) return;
         var p = document.getElementById("scenePage");
         if (!p || p.classList.contains("m-detail") || document.body.classList.contains("m-home-open")) return;
+        var tab = document.querySelector(".m-tab.active");
+        if (tab && tab.dataset.tab !== "script") return;   // 从「预览/导出」进来的，别抢人家的页
         var items = document.querySelectorAll("#sceneList .scene-item");
-        if (items.length === 1) {
-          items[0].click();
-          enterDetail();
-        }
-      }, 260);
+        if (!items.length) { if (++tries < 12) setTimeout(autoEnter, 200); return; }
+        autoEnterDone = true;
+        wantDetail = true;
+        items[0].click();
+        enterDetail();
+      })();
     } else {
       // 回到桌面宽度：把面板还回去，别留在二级页里
       closeGroup();

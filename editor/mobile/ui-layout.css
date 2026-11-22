@@ -362,3 +362,18 @@ html.m-shell .m-swatches button::after {
   content: ""; position: absolute; left: 50%; top: 50%;
   width: 44px; height: 44px; transform: translate(-50%, -50%);
 }
+
+/* P217：写法速查底下那颗「打开示范案例」。教程与示范案例绑定，
+   看完写法立刻能跳到那份能玩能改的作品，不用再回首页自己找。 */
+html.m-shell .m-tut-open {
+  display: block; width: 100%; min-height: 44px; margin-top: 12px;
+  border: 1px solid var(--accent, #4f8cff); border-radius: 12px;
+  background: transparent; color: var(--accent, #4f8cff);
+  font-size: 15px; font-weight: 500;
+}
+
+/* P217：手机壳里状态栏那一格已经在说「✓ 已保存」，草稿窄条就别说第二遍。
+   写成 CSS 而不是只在 JS 里判一次：m-shell 类可能比那次 paint 晚一步打上，
+   窄条又是 fixed 常驻不重绘，只靠 JS 会把它永久留在屏上（实测过）。
+   草稿 / 未保存 / 失败 / 别的作品压着草稿这几种状态栏不说，照旧出。 */
+html.m-shell #mDraftBar[data-state="saved"] { display: none !important; }

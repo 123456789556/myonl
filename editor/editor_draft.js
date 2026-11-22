@@ -119,6 +119,9 @@
     var el = bar();
     if (!visible()) { el.style.display = "none"; return; }
     el.style.display = "block";
+    // 状态写到属性上：手机壳里 saved 态由 ui-layout.css 压掉（状态栏已经在说「已保存」）。
+    // 交给 CSS 是因为 m-shell 类可能比这次 paint 晚一步打上，窄条 fixed 常驻不重绘，JS 判一次会漏。
+    el.setAttribute("data-state", state);
     var text = "", color = "#9fb3d1";
     // 本作品已保存、但另一个作品还压着一份没恢复的草稿：窄条改成这条，
     // 让"在工作台漏看了提示"的人还有第二个地方能捞回来。
@@ -127,7 +130,9 @@
       var days = Math.max(1, Math.round((now() - (orp.at || 0)) / 86400000));
       text = "「" + orp.name + "」有未恢复草稿 · " + days + " 天前";
       color = "#e0c46a";
-    } else if (state === "saved") { text = "已保存 " + stamp; color = "#7fd6a0"; }
+    } else if (state === "saved") {
+      text = "已保存 " + stamp; color = "#7fd6a0";
+    }
     else if (state === "dirty") { text = "存草稿中…"; color = "#e0c46a"; }
     else if (state === "draft") { text = "草稿 " + stamp + " · 未保存"; color = "#8fb8e8"; }
     else if (state === "fail") { text = "自动保存失败 · 点这里重试"; color = "#e07a6a"; }

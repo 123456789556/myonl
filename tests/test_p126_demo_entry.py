@@ -41,11 +41,24 @@ def test_home_has_tutorial_entry():
 
 
 def test_tutorial_creates_a_real_project():
-    """不是播 demo，是 POST /api/new 建一份带剧本正文的作品。"""
+    """不是播 demo，是打开一份真作品；库里没有才 POST /api/new 兜底建。
+
+    P217 改口径：教程不再自带第二份正文（原 TUT_TEXT），示范案例的正文只有
+    gal_offline.js 的 starterText() 一处。两份正文迟早说法不一致。
+    """
     assert 'fetch("/api/new"' in HOME
-    assert "text: TUT_TEXT" in HOME
+    assert "TUT_TEXT" not in HOME, "教程不该再维护第二份示例正文"
     # 建完直接进编辑器
     assert 'openProject(TUT_NAME)' in HOME
+
+
+def test_教程与示范案例是同一个作品():
+    """P217：默认库只给一份「示范案例」，教程入口指向它，不许凭空多出第二个作品。"""
+    assert 'var TUT_NAME = "示范案例"' in HOME
+    assert 'current: "示范案例"' in OFF
+    assert 'name: "示范案例"' in OFF
+    assert "我的第一个游戏" not in _code(OFF), "默认作品名已改，旧名不许留在代码里"
+    assert '新手教程"' not in _code(HOME)
 
 
 def test_tutorial_is_not_recreated():
@@ -54,14 +67,17 @@ def test_tutorial_is_not_recreated():
 
 
 def test_tutorial_text_is_valid_script():
-    """教程正文必须自己就是合法剧本：@label / @choice: 后面紧跟 > 选项 -> 标签。"""
-    assert "@label start" in HOME
-    assert "@choice:" in HOME
-    assert "> 继续看写法 -> 怎么写" in HOME
+    """示范案例正文必须自己就是合法剧本：@label / @choice: 后面紧跟 > 选项 -> 标签。
+
+    P217：正文真源搬到 gal_offline.js 的 starterText()，这里跟着改指向。
+    """
+    assert "@label start" in OFF
+    assert "@choice:" in OFF
+    assert "> 跟她说实话 -> 坦白" in OFF
     # 角色台词用 @[名] 写法，不依赖角色库里先建人；
     # 旁白也写 @[旁白]：编辑器的逐句卡会把「@ 无空格中文整句」当成角色名（见 P190 备注）
-    assert "@[小满]" in HOME
-    assert "@[旁白]" in HOME
+    assert "@[小满]" in OFF
+    assert "@[旁白]" in OFF
 
 
 def test_new_api_accepts_seed_text():
