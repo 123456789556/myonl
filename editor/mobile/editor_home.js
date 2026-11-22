@@ -33,7 +33,13 @@
   var allProjects = [];
   var findQ = "";
 
-  var isMobile = function () { return window.matchMedia && window.matchMedia("(max-width:860px), (max-height:520px)").matches; };
+  // P215：这条判据必须与 editor_shell.js 的 MOBILE_MQ、CSS 那 21 处 @media 一字不差。
+  // 原来这里只有「窄屏 或 矮屏」两条，少了触屏那一条 —— 1280×800 的安卓平板横屏
+  // CSS 已经按手机壳排版、ui_layout 也打了 m-shell，唯独首页在这里 return 掉根本没建，
+  // 结果是个半手机半桌面的怪胎（实测 navCount=0）。首页存不存在都由它决定，不能各判一套。
+  var MOBILE_MQ = "(max-width:860px), (max-height:520px), "
+    + "(pointer:coarse) and (hover:none) and (max-width:1400px)";
+  var isMobile = function () { return window.matchMedia && window.matchMedia(MOBILE_MQ).matches; };
   if (!isMobile()) return;
 
   // 编辑器里的「‹ 作品」按钮调它：清掉「已在编辑」标记后重载回工作台

@@ -2022,6 +2022,11 @@ input[type="color"] {
   font-family: inherit; font-size: 12px; font-weight: 500; letter-spacing: .3px;
   display: flex; flex-direction: column; gap: 3px; align-items: center; justify-content: center;
   position: relative; cursor: pointer;
+  /* P215：上面第 1377 行有条桌面时代的全局 `button { height: 28px; padding: 0 14px }`。
+     它给每个按钮钉了死高，于是底栏这条 align-items:stretch 白写 —— 容器 58px，
+     四个格子实测只有 28px 高，上下各 15px 是点不到的空白。总纲第 4 节的 ≥44px
+     从来没真的成立过（六档尺寸实测 28px）。这里把死高解开，让它撑满整条。 */
+  height: auto; min-height: 44px; padding: 0;
 }
 .m-nav-item.on { color: var(--blue); font-weight: 600; }
 .m-nav-item.on::after {
@@ -2078,8 +2083,12 @@ input[type="color"] {
 .m-set-note { font-size: 12.5px; color: var(--overlay0); line-height: 1.7; padding: 12px 0 0; text-align: center; }
 
 /* 编辑器的全局 button 规则把高度钉成 28px / 蓝底（给工具条用的），
-   工作台的卡片是 button，必须把高度和配色抢回来，否则被压扁成一坨。 */
-.m-home-card { height: auto; min-height: 92px; flex: 1 1 0; background: var(--mantle) !important; color: var(--text); }
+   工作台的卡片是 button，必须把高度和配色抢回来，否则被压扁成一坨。
+   P215：这里原来写 flex: 1 1 0，等于让每张卡去分列表的剩余高度 —— 屏幕越高卡越胖。
+   实测 390×844 卡高 145px、800×1280 平板卡高 254px，而缩略图固定 88px，
+   多出来的全是空白。home.css 第 43 行的注释本来就写着「有作品时列表不该被 flex 拉满整屏」，
+   是这条把意图顶翻了。改成按内容取高，一屏能多看几个作品。 */
+.m-home-card { height: auto; min-height: 92px; flex: 0 0 auto; background: var(--mantle) !important; color: var(--text); }
 .m-home-gear { height: 40px; background: var(--mantle); color: var(--subtext1); }
 .m-seg button { height: auto; border-radius: 0; }
 .m-set-btn { height: auto; background: var(--base); color: var(--text); }
@@ -3144,7 +3153,11 @@ body.m-home-open .m-tabbar { display: none !important; }
   flex: 1 1 auto !important; min-height: 0; display: flex;
   flex-direction: column; gap: 14px; overflow-y: auto;
 }
-.m-home-list .m-home-card { flex: 1 1 0; }
+/* P215：这条 specificity 比上面第 2087 行高，真正生效的是它。原来 flex:1 1 0
+   让每张卡去分列表剩余高度 —— 缩略图固定 88px，多出来的全是空白：
+   实测 390×844 卡高 145、430×932 卡高 167、800×1280 平板卡高 254。
+   紧邻下面那段注释本来就写着「长高的前提没了，撑满反而空出大半屏」，这条没跟着改。 */
+.m-home-list .m-home-card { flex: 0 0 auto; }
 /* 作品少时不撑满：P179 之前是唯一作品长高吃掉空白，现在统一成横向小卡，
    长高的前提没了，撑满反而空出大半屏。0 0 auto 让列表收到内容高度。 */
 body.m-few-projects .m-home-list { flex: 1 1 auto !important; }

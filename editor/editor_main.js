@@ -622,7 +622,7 @@
     }
     lastError = null;
     // 手机状态栏只有一格宽：长文案会把自己挤成半行，窄屏用短的
-    const narrow = window.matchMedia && window.matchMedia("(max-width:860px), (max-height:520px)").matches;
+    const narrow = window.matchMedia && window.matchMedia("(max-width:860px), (max-height:520px), (pointer:coarse) and (hover:none) and (max-width:1400px)").matches;
     setStatus(true, narrow
       ? `检查无误 · ${checkResp.count} 条`
       : `语法检查通过 · ${checkResp.count} 条指令`);
@@ -2455,7 +2455,7 @@
   // 相册里全是图、还常常想现场拍一张。所以窄屏多给一个「拍照」入口，
   // 走 capture=environment 直接开相机，拍完当素材导入。
   (function setupCaptureImport() {
-    if (!window.matchMedia("(max-width:860px), (max-height:520px)").matches) return;
+    if (!window.matchMedia("(max-width:860px), (max-height:520px), (pointer:coarse) and (hover:none) and (max-width:1400px)").matches) return;
     const cam = document.createElement("input");
     cam.type = "file";
     cam.accept = "image/*";
@@ -3232,7 +3232,7 @@
       target: "m-tabbar" },
   ];
   const obSteps = () => (
-    window.matchMedia && window.matchMedia("(max-width:860px), (max-height:520px)").matches
+    window.matchMedia && window.matchMedia("(max-width:860px), (max-height:520px), (pointer:coarse) and (hover:none) and (max-width:1400px)").matches
       ? OB_STEPS_MOBILE : OB_STEPS
   );
 
