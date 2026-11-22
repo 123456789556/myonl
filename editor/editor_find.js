@@ -42,6 +42,7 @@
     "height:46px;padding:0 12px;border-radius:23px;border:0;background:#2b6cf6;color:#fff;font-size:13px;",
     "z-index:600;box-shadow:0 6px 18px rgba(0,0,0,.38)}",
     "#mlFab.hide{display:none}",
+    "#mTopFind.hide{display:none}",
     "body.m-home-open #mlFab{display:none !important}",
     ".ml-head{display:flex;gap:6px;align-items:center;padding-bottom:6px}",
     ".ml-in{flex:1;min-width:0;height:34px;border-radius:9px;border:1px solid #2c3444;background:#0f141c;",
@@ -435,12 +436,22 @@
       var fab = document.createElement("button");
       fab.type = "button";
       fab.id = "mlFab";
-      fab.className = isMobile() ? "" : "hide";
       fab.title = T("find.top");
       fab.textContent = T("find.fab");
       fab.addEventListener("click", open);
       document.body.appendChild(fab);
     }
+    syncEntry();
+  }
+
+  // P211：顶栏那颗蓝色「查找」以前无条件插进 menubar，电脑端也顶着，把「文件」菜单往右挤。
+  // 电脑上本来就有 menubar 搜索框 + Ctrl+F / Ctrl+Shift+F，这颗是手机才需要的，跟浮钮一个口径。
+  function syncEntry() {
+    var m = isMobile();
+    var top = document.getElementById("mTopFind");
+    var fab = document.getElementById("mlFab");
+    if (top) top.classList.toggle("hide", !m);
+    if (fab) fab.classList.toggle("hide", !m);
   }
 
   document.addEventListener("keydown", function (e) {
@@ -459,6 +470,7 @@
 
   function boot() {
     mountEntry();
+    window.addEventListener("resize", syncEntry);
     if (window.MYONLLint && source()) build();
   }
 

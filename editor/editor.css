@@ -78,7 +78,9 @@ body { display: flex; flex-direction: column; overflow: hidden; }
 .editor-tab { display: inline-flex; align-items: center; gap: var(--sp-2); background: var(--mantle); color: var(--subtext1); font-size: 13px; padding: 0 14px; height: 32px; border-right: 1px solid var(--crust); border-top: 2px solid transparent; cursor: pointer; user-select: none; white-space: nowrap; }
 .editor-tab:hover { background: var(--surface0); }
 .editor-tab.active { background: var(--base); border-top: 2px solid var(--blue); color: var(--text); }
-.editor-tab.active .tab-name { color: #ffffff; font-weight: 600; }
+/* P211：这里原来写死 #ffffff（照着深色主题写的），浅色主题下 --base 是 #ffffff →
+   白底白字，当前文件的标签名整个看不见（实测 fg/bg 都是 255,255,255）。改成跟主题走。 */
+.editor-tab.active .tab-name { color: var(--text); font-weight: 600; }
 .editor-tab.tab-empty { color: var(--surface2); font-style: italic; cursor: default; }
 .editor-tab.tab-empty:hover { background: var(--mantle); }
 .editor-tab .tab-name { color: var(--text); }
@@ -968,6 +970,10 @@ body.col-resizing { cursor: col-resize; user-select: none; }
    =================================================================== */
 .act-btn svg { display: block; pointer-events: none; }
 .act-btn.has-svg-icon { color: var(--overlay0); }
+/* P211：mountIcon 只删裸文本节点，删不掉 <span class="act-ic">文</span>，
+   于是 SVG 和汉字并排挤在 40px 格子里（实测 svg x=7 w=18、字 x=25 w=16），看着像乱码。
+   有 SVG 就以 SVG 为准，单字退场。 */
+.act-btn.has-svg-icon .act-ic { display: none; }
 .act-btn.has-svg-icon:hover { color: var(--text); background: var(--base); }
 .act-btn.active { color: var(--lavender); border-left-color: var(--blue); background: var(--base); }
 
