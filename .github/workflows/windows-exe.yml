@@ -61,12 +61,32 @@ jobs:
       - name: 装打包依赖
         run: |
           python -m pip install --upgrade pip
-          python -m pip install pyinstaller pywebview pygame-ce pillow
+          # PyInstaller 锁版本：本地验过的是 6.22.3。不锁的话上游发新版就可能
+          # 在 CI 上手搓出一份本地没验过的包 —— 那种包能编译、双击才崩。
+          python -m pip install pyinstaller==6.22.3 pywebview pygame-ce pillow
 
       # 发行版 editor.exe 里没有 PyInstaller，编辑器内「打包游戏」靠这份预构建模板。
       # 漏了它，用户点打包就报错 —— 而且编译本身不会提醒。
+      #
+      # 这一步在 CI 上第一次跑就红过（v1.2.34），而本地 3.13 能过，说明是环境差异。
+      # 所以这里把环境与失败尾巴都灌进 ::error:: —— Actions 日志要 admin 权限才读得到，
+      # 但 annotation 是公开能取的，失败原因必须留在 annotation 里，否则下一轮还是瞎猜。
       - name: 构建玩家模板
-        run: python tools/build_player_template.py
+        shell: pwsh
+        run: |
+          Write-Host "python: $(python -V 2>&1)"
+          Write-Host "pyinstaller: $(python -m PyInstaller --version 2>&1)"
+          Write-Host "pygame: $(python -c 'import pygame; print(pygame.version.ver)' 2>&1)"
+          $out = (& python tools/build_player_template.py *>&1 | Out-String)
+          Write-Host $out
+          if ($LASTEXITCODE -ne 0) {
+            $tail = ($out -split "`r?`n" | Where-Object { $_.Trim() } | Select-Object -Last 6) -join ' ⏎ '
+            if ($tail.Length -gt 800) { $tail = $tail.Substring($tail.Length - 800) }
+            Write-Host "::error::玩家模板构建失败，退出码 $LASTEXITCODE。尾巴：$tail"
+            exit 1
+          }
+          $tpl = "engine\templates\player"
+          if (-not (Test-Path "$tpl\MYONLPlayer.exe")) { Write-Host "::error::模板里没有 MYONLPlayer.exe"; exit 1 }
 
       - name: 打编辑器（PyInstaller onedir，用仓库 editor.spec）
         run: python -m PyInstaller --noconfirm --clean editor.spec
