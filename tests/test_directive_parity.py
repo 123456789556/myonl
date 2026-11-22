@@ -14,6 +14,7 @@
 from __future__ import annotations
 
 import json
+import os
 import shutil
 import subprocess
 import sys
@@ -34,8 +35,9 @@ KNOWN_ONE_SIDED = {"anim", "plug"}
 def _run():
     if not shutil.which("node"):
         pytest.skip("没装 node，跳过多端对拍")
+    env = dict(os.environ, PYTHONIOENCODING="utf-8", PYTHONUTF8="1")
     p = subprocess.run([sys.executable, str(TOOL)], capture_output=True, text=True,
-                       encoding="utf-8", cwd=str(ROOT), timeout=180)
+                       encoding="utf-8", cwd=str(ROOT), timeout=180, env=env)
     return p
 
 
