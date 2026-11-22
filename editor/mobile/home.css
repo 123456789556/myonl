@@ -14,8 +14,11 @@
 /* ---------------- 顶栏 + 搜索 ----------------
    放大镜是真的：打字就把卡片筛掉，作品一多第一个会用到的功能。 */
 .m-home-title { font-size: 22px !important; }
+/* P216：原来 38×38，尺寸底板 11 档触屏全部报「触控目标不足 44」。
+   顶栏右上那颗放大镜和它旁边的垃圾箱入口共用这个类，两个都点不准。
+   总纲第 4 节的 44px 是硬线，不是建议值。 */
 .m-home-find {
-  flex: 0 0 auto; width: 38px; height: 38px; border-radius: 50%; cursor: pointer;
+  flex: 0 0 auto; width: 44px; height: 44px; border-radius: 50%; cursor: pointer;
   display: flex; align-items: center; justify-content: center;
   border: 1px solid var(--surface0); background: var(--mantle); color: var(--subtext1);
   -webkit-tap-highlight-color: transparent;
@@ -303,3 +306,43 @@ body.m-has-projects .m-home-list { flex: 1 1 auto !important; }
   height: calc(56px + env(safe-area-inset-bottom));
 }
 .m-work-tip { margin-top: 14px; padding-top: 0; font-size: 12px; color: var(--subtext0); line-height: 18px; }
+
+/* ================= P216 宽屏自适应（平板竖屏 / 平板横屏 / 大屏手机横过来） =================
+   问题：手机壳的列表一直是单列 flex，卡片 width:100%。到了 800×1280 平板竖屏，
+   一张卡宽 768px；1280×800 平板横屏更夸张，卡宽 1248px —— 缩略图固定 88px，
+   右边一千多像素全是空白，一屏只放得下三四个作品。用户原话「做好自适配」。
+
+   做法：不写死「平板就两列」，用 auto-fill + minmax 让列数由可用宽度自己算出来：
+     390 手机   → 1 列（这条媒体查询根本不进）
+     690 折叠展开 → 2 列
+     800 平板竖 → 2 列
+     1280 平板横 → 3 列
+     以后出更宽的屏 → 自动更多列，不用再改代码
+   同时给内容列封顶 1080px 并居中：再宽的屏也不把卡片拉成通屏长带。
+
+   门槛为什么是 600 而不是 700：尺寸底板实测 690×840（折叠屏展开竖屏）卡宽 658px，
+   仍是通屏长带 —— 700 那道门把它漏在外面了。600 起 + minmax(280px) 能保证
+   600 宽就切两列（每列 278），不会再出现「宽度 600~700 之间一张卡横贯全屏」。
+
+   为什么条件里带 min-height:521px：矮横屏（844×390 这类）已经有「左列表 + 右详情」
+   两栏布局（上面第 88 行起），两套不能同时生效。这里只管「高度够高」的宽屏。
+
+   为什么写在 home.css 而不是 editor.css：editor.css 已到 3379 = cap 3379，零余量。 */
+@media (min-width: 600px) and (min-height: 521px) {
+  /* 顶栏与列表用同一个封顶宽度，否则标题贴左、卡片居中，看着像两个页面拼起来的 */
+  html.m-shell .m-home-head,
+  html.m-shell .m-home-list,
+  html.m-shell .m-home-side {
+    width: 100%; max-width: 1080px; margin-left: auto; margin-right: auto;
+  }
+  html.m-shell .m-home-list {
+    display: grid !important;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    align-content: start; gap: 12px;
+  }
+  /* 分组标题与空态是「整行」的东西，不能挤进某一列 */
+  html.m-shell .m-home-list > .m-home-grp,
+  html.m-shell .m-home-list > .m-empty { grid-column: 1 / -1; }
+  /* grid 子项默认 min-height:auto，内容一高就顶出视口；给它可收缩 */
+  html.m-shell .m-home-list > .m-home-card { min-width: 0; margin-bottom: 0 !important; }
+}

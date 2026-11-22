@@ -1,7 +1,7 @@
 # MYONL · 手机上的视觉小说编辑器
 
 [![tests](https://github.com/123456789556/myonl/actions/workflows/tests.yml/badge.svg?branch=main)](https://github.com/123456789556/myonl/actions/workflows/tests.yml)
-![Release](https://img.shields.io/badge/release-v1.2.28-blue)
+![Release](https://img.shields.io/badge/release-v1.2.40-blue)
 ![License](https://img.shields.io/badge/License-MIT-green)
 ![Platform](https://img.shields.io/badge/platform-Android%207.0%2B%20%C2%B7%20Windows%20%C2%B7%20Web-19b6a3)
 ![Offline](https://img.shields.io/badge/offline-100%25-2ea44f)
@@ -11,6 +11,19 @@
 写台词、放图、放音乐，导出成一个文件，发给谁都能打开看。
 
 一个开源项目，免费，离线可用，没有账号也没有服务器。
+
+## 下载（两端同一个版本号，一起发）
+
+每个 [Release](https://github.com/123456789556/myonl/releases/latest) 里挂着两个包，版本号一致：
+
+| 包 | 装在哪 | 怎么用 |
+|---|---|---|
+| `MYONL-vX.Y.Z.apk` | 安卓 7.0+ 手机 / 平板 | 装上就是编辑器，不用电脑 |
+| `MYONL-vX.Y.Z-editor-win.zip` | Windows 10/11 | 解压后双击 `editor.exe`，不用装 Python |
+
+- 手机做的作品导出成 **`.myonl`**（剧本 + 它用到的素材，一个文件），电脑端能直接导入接着改；反过来也行。
+- 版本号只有一个来源（`engine/_version.py`），CI 会校验 git tag 与它一致，**不一致就发不出去** —— 所以不会再出现「APK 是 1.2.x、exe 还是 1.0.0-rc」这种情况。
+- 大屏手机、折叠屏展开、平板横竖屏都走同一套手机界面，列数随宽度自适应（手机 1 列 / 平板竖 2 列 / 平板横 3 列）。
 
 ```
   剧本 .gal + 素材
@@ -43,7 +56,8 @@
 python -m engine.editor
 ```
 
-想要双击就开的窗口程序，跑 `build_editor.bat`，产出 `dist/editor/editor.exe`。
+想要双击就开的窗口程序，**直接下 Release 里的 `-editor-win.zip`**（CI 每次打 tag 自动出，解压双击 `editor.exe`）。
+也可以本机跑 `build_editor.bat`，产出 `dist/editor/editor.exe`。
 它借系统自带的 WebView2，不带浏览器内核。
 
 ## 能做什么
@@ -215,10 +229,13 @@ python tools/pack_apk.py --game dist/single/你的作品.html
 
 ## 装它
 
-**[⬇ 下载 MYONL-v1.2.28.apk](https://github.com/123456789556/myonl/releases/download/v1.2.28/MYONL-v1.2.28.apk)** · 安卓 7.0 以上 · 只按手机屏幕做，平板能装但没专门适配
+**[⬇ 下载 MYONL-v1.2.40.apk](https://github.com/123456789556/myonl/releases/download/v1.2.40/MYONL-v1.2.40.apk)** · 安卓 7.0 以上 · 手机 / 折叠屏 / 平板都能用，横竖屏自适应
+
+**[⬇ 下载 MYONL-v1.2.40-editor-win.zip](https://github.com/123456789556/myonl/releases/download/v1.2.40/MYONL-v1.2.40-editor-win.zip)** · Windows 10/11 · 解压双击 `editor.exe`，不用装 Python
 
 装好打开就是书架，点「新建作品」开始。底部「导出」有两条出口：
 自包含 `.html`（发微信对方就能玩）和 APK（装到手机上就是一个独立 App）。
+想把作品换台设备接着改，导出 **`.myonl`**（剧本 + 用到的素材，一个文件），另一端导入即可。
 
 ## 从零到成品
 

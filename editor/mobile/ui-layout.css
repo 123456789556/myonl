@@ -338,3 +338,27 @@ html.m-shell .m-set-row.m-set-link em {
 .m-sub-h { margin: 18px 0 6px; font-size: 15px; font-weight: 600; color: var(--text); }
 .m-sub-h:first-child { margin-top: 2px; }
 .m-sub-p { font-size: 14px; line-height: 1.75; color: var(--subtext1); }
+
+/* ================= P216 二级页触控目标补齐 44px =================
+   尺寸底板（13 档 × 6 页）实测：首页已经全过，但二级页还有一批点不准的：
+     .m-bin-act「选择 / 完成」   76×40
+     .m-profile-nm「用户」        36×28
+     .m-profile-pen「✎」          26×26
+     .m-seg button 主题/方向/比例  58×37
+     .m-swatches button 色板圆点   32×32
+   总纲第 4 节的 44px 是硬线。这里只补点击区，**不改视觉尺寸**：
+   色板圆点看着还是 32px，靠一个居中的 44×44 伪元素把可点范围撑开
+   （伪元素属于按钮本体，参与命中测试）。圆点之间 gap 14px，
+   44-32=12 两边各 6，撑完还剩 2px，不会互相盖住。
+
+   为什么写在这里：editor.css 已 3379 = cap 3379 零余量，
+   而这些规则的原定义就在 editor.css 里，只能用 html.m-shell 提特异性覆盖。 */
+html.m-shell .m-bin-act { height: 44px; }
+html.m-shell .m-profile-nm { min-height: 44px; display: inline-flex; align-items: center; }
+html.m-shell .m-profile-pen { width: 44px; height: 44px; font-size: 16px; }
+html.m-shell .m-seg button { min-height: 44px; }
+html.m-shell .m-swatches button { position: relative; }
+html.m-shell .m-swatches button::after {
+  content: ""; position: absolute; left: 50%; top: 50%;
+  width: 44px; height: 44px; transform: translate(-50%, -50%);
+}
