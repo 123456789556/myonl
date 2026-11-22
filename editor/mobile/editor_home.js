@@ -165,8 +165,14 @@
       '<button type="button" class="m-nav-item" data-nav="lib" id="mHomeLib">' +
         ico('M2.4 4.4h11.2v8.2H2.4zM5 4.4l1.8-2.2h4.4l1.8 2.2M6.2 9.2h3.6') +
         '<span>素材</span></button>' +
+      // P210：用户第四次说「我的作品下面最好四个 tab 最少四个」—— 加上垃圾箱。
+      // 不放教程（连着被否三次），第四个得是天天能点到的真实一页。
+      '<button type="button" class="m-nav-item" data-nav="bin">' +
+        ico('M3.4 4.8h9.2M4.8 4.8v7.6a1.2 1.2 0 0 0 1.2 1.2h4a1.2 1.2 0 0 0 1.2-1.2V4.8M6.4 4.8V3.4h3.2v1.4M6.6 7.8v3M9.4 7.8v3') +
+        '<span>垃圾箱</span></button>' +
       '<button type="button" class="m-nav-item" data-nav="set">' +
-        ico('M8 5.4a2.6 2.6 0 1 0 0 5.2 2.6 2.6 0 0 0 0-5.2zM8 2.4v1.4M8 12.2v1.4M2.4 8h1.4M12.2 8h1.4M4 4l1 1M11 11l1 1M12 4l-1 1M5 11l-1 1') +
+        // P210：原来那条是从圆心射 8 条短线，真机上看着像「太阳」。换成六角螺母 + 内圈，才是设置的样子。
+        ico('M8 2.6l4.7 2.7v5.4L8 13.4l-4.7-2.7V5.3zM8 6.2a1.8 1.8 0 1 0 .01 3.6 1.8 1.8 0 0 0-.01-3.6z') +
         '<span>设置</span></button>' +
     '</div>' +
     // P204：选择模式 —— 照手机相册那套。长按卡片进来，顶栏换成「取消 / 已选 2 / 全选」，
@@ -797,8 +803,10 @@
           (prof.avatar ? '<img src="' + prof.avatar + '" alt="头像">' : esc(pname.slice(0, 1))) +
         '</button>' +
         '<span class="m-profile-side">' +
-          '<button type="button" class="m-profile-nm" id="mSetName">' + esc(pname) + '</button>' +
-          '<span class="m-profile-tip">点头像换一张，点名字改</span>' +
+          '<span class="m-profile-row">' +
+            '<button type="button" class="m-profile-nm" id="mSetName">' + esc(pname) + '</button>' +
+            '<button type="button" class="m-profile-pen" id="mSetNameEdit" aria-label="改名字">✎</button>' +
+          '</span>' +
         '</span>' +
       '</div>' +
       '<div class="m-lib-body">' +
@@ -831,9 +839,9 @@
         '<div class="m-set-note">选中态、按钮、作品卡上的蓝都跟着换。深色浅色都生效。</div>' +
         '<div class="m-set-sec">软件详情</div>' +
         '<button type="button" class="m-set-row m-set-link" id="mSetStorage">' +
-          '<span>存储方式</span><span class="m-set-val">本地，不上云</span><em>›</em></button>' +
+          '<span>存储方式</span><em>›</em></button>' +
         '<button type="button" class="m-set-row m-set-link" id="mSetPlace">' +
-          '<span>数据位置</span><span class="m-set-val">这台设备</span><em>›</em></button>' +
+          '<span>数据位置</span><em>›</em></button>' +
       '</div>';
     // 抽屉挂 <html> 而不是 <body>：body 上挂了编辑器各种档位类，fixed 定位在里面被算成流的位置
   // （实测顶边跑到 1007，正好是内容底部）。挂 html 之后 fixed 的包含块就是视口本身。
@@ -897,7 +905,8 @@
       });
       inp.click();
     });
-    sheet.querySelector("#mSetName").addEventListener("click", function () {
+    // 照 QQ 那套：名字右边一支铅笔，点名字或点笔都进改名；不再写「点名字改」这种说明书
+    function askRename() {
       var cur = readProfile().name || DEF_NAME;
       dlgPrompt({ title: "换个名字", msg: "只在这台设备上生效", value: cur, maxlength: 12, ok: "保存" })
         .then(function (v) {
@@ -907,7 +916,9 @@
           saveProf({ name: v });
           paintProf();
         });
-    });
+    }
+    sheet.querySelector("#mSetName").addEventListener("click", askRename);
+    sheet.querySelector("#mSetNameEdit").addEventListener("click", askRename);
 
     var seg = sheet.querySelector("#mSetTheme");
     seg.addEventListener("click", function (e) {
@@ -1147,6 +1158,10 @@
         else toast("素材库没加载，刷新一下页面");
       }
       else if (kind === "set") openSettings();
+      else if (kind === "bin") {
+        if (window.MYONLTrash) window.MYONLTrash.openBin();
+        else toast("垃圾箱没加载，刷新一下页面");
+      }
       else if (kind === "tut") openTutorialSheet();
       else layer.scrollTo({ top: 0, behavior: "smooth" });
     });

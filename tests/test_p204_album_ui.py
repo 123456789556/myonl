@@ -26,8 +26,10 @@ CSS = (ROOT / "editor" / "mobile" / "ui-layout.css").read_text(encoding="utf-8")
 
 def test_底栏三格且没有横线():
     nav = HOME_JS.split('id="mHomeNav"')[1].split("</div>")[0]
-    assert nav.count("data-nav=") == 3
+    # P210：用户第四次要求「我的作品下面最好四个 tab 最少四个」→ 加回一格，放垃圾箱
+    assert nav.count("data-nav=") == 4
     assert 'data-nav="lib"' in nav and "<span>素材</span>" in nav
+    assert 'data-nav="bin"' in nav and "<span>垃圾箱</span>" in nav
     assert 'data-nav="tut"' not in nav
     assert "border-top: 0 !important" in CSS
 

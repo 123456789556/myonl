@@ -25,10 +25,11 @@ EDITOR_PY = (ROOT / "engine" / "editor.py").read_text(encoding="utf-8")
 
 
 def test_底栏三格都是真动作():
-    for kind in ("home", "lib", "set"):
+    for kind in ("home", "lib", "bin", "set"):
         assert f'data-nav="{kind}"' in HOME_JS, f"底栏少了 {kind} 这一格"
-    # 三格共用一个委托，不许某格没接上
+    # 几格共用一个委托，不许某格没接上
     assert 'if (kind === "lib") {' in HOME_JS
+    assert 'else if (kind === "bin") {' in HOME_JS
     assert 'else if (kind === "set") openSettings();' in HOME_JS
     # P204 用户连着两轮说「删掉下面的教程换成素材」：底栏不放教程
     assert 'data-nav="tut"' not in HOME_JS
