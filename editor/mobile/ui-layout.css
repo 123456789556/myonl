@@ -250,6 +250,11 @@ html.m-shell .m-home-card.m-card-sel::after {
 .m-lib-tab.on { background: var(--blue); border-color: var(--blue); color: #fff; font-weight: 600; }
 .m-lib-tab i { font-style: normal; font-size: 11.5px; opacity: .8; }
 .m-lib-tut { padding-bottom: 10px; }
+.m-lib-tutbox { margin-top: 14px; border-top: 1px solid var(--surface0); padding-top: 10px; }
+.m-lib-tutlink {
+  border: 0; background: transparent; padding: 6px 0; color: var(--blue);
+  font: inherit; font-size: 13px; cursor: pointer;
+}
 /* ===== P205 设置页顶部头像：圆形，点一下换图，点名字改 ===== */
 .m-set-profile {
   flex: 0 0 auto; display: flex; align-items: center; gap: 14px;

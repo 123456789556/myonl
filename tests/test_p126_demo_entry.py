@@ -32,9 +32,12 @@ def test_demo_entry_is_gone():
 
 
 def test_home_has_tutorial_entry():
-    # P205：教程不再单独出，进素材页第四个 tab；首页不再挂教程入口
+    # P205：教程不再单独出；P206：用户又说「教程不要单独开一列」→ 素材页只剩三 tab，
+    # 教程降级成素材列表下面的一行折叠速查。首页什么都不挂。
     assert 'id="mHomeTut"' not in HOME
-    assert '["tut", "教程"]' in TRASH
+    assert 'id="mHomeTutLink"' not in HOME
+    assert '["tut", "教程"]' not in TRASH
+    assert 'id="mLibTut"' in TRASH
 
 
 def test_tutorial_creates_a_real_project():

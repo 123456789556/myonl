@@ -295,7 +295,8 @@
   // ---- 素材库页：手机上的素材全在 IndexedDB，这里给它一张脸；
   // 教程也收进来（用户：教程不要单独出，放素材库里），于是这一页下面有四个 tab。
   var asEl = null, libTab = "image";
-  var LIB_TABS = [["image", "图片"], ["audio", "音频"], ["video", "视频"], ["tut", "教程"]];
+  var LIB_TABS = [["image", "图片"], ["audio", "音频"], ["video", "视频"]];
+  var tutOpen = false;
   function openAssets() {
     if (asEl) { asEl.remove(); asEl = null; return; }
     var A = window.MYONLAssets;
@@ -330,28 +331,23 @@
       var cnt = {};
       names.forEach(function (n) { var k = kindOf(n); cnt[k] = (cnt[k] || 0) + 1; });
       var tabs = LIB_TABS.map(function (t) {
-        var k = t[0];
-        var num = (k === "tut") ? "" : '<i>' + (cnt[k] || 0) + '</i>';
-        return '<button type="button" class="m-lib-tab' + (libTab === k ? " on" : "") +
-          '" data-tab="' + k + '">' + t[1] + num + '</button>';
+        return '<button type="button" class="m-lib-tab' + (libTab === t[0] ? " on" : "") +
+          '" data-tab="' + t[0] + '">' + t[1] + '<i>' + (cnt[t[0]] || 0) + '</i></button>';
       }).join("");
-      var body;
-      if (libTab === "tut") {
-        body = tutBody();
-      } else {
-        var arr = names.filter(function (n) { return kindOf(n) === libTab; });
-        var one = { image: "图片", audio: "音频", video: "视频" }[libTab];
-        body = arr.length
-          ? arr.map(function (n) {
-              return '<div class="m-lib-row">' +
-                '<span class="m-lib-n">' + esc(n) + '</span>' +
-                '<button type="button" class="m-bin-x" data-un="' + esc(n) + '">删</button>' +
-                '</div>';
-            }).join("") +
-            '<div class="m-set-note">进作品 → 底部「素材」，把这些名字插进剧本就能用。' +
-            '删掉的素材，已经插进剧本的引用会变成断链，体检会提醒。</div>'
-          : '<div class="m-bin-empty">还没有' + one + '。<br>点右上「导入」，图片、音乐、视频都收在这里。</div>';
-      }
+      // 教程不占一列（用户：「教程不要单独开一列」）—— 它变成列表底下的一行速查，
+      // 想看就点开，不看就一直在那儿收着。
+      var arr = names.filter(function (n) { return kindOf(n) === libTab; });
+      var one = { image: "图片", audio: "音频", video: "视频" }[libTab];
+      var body = arr.length
+        ? arr.map(function (n) {
+            return '<div class="m-lib-row">' +
+              '<span class="m-lib-n">' + esc(n) + '</span>' +
+              '<button type="button" class="m-bin-x" data-un="' + esc(n) + '">删</button>' +
+              '</div>';
+          }).join("") +
+          '<div class="m-set-note">进作品 → 底部「素材」，把这些名字插进剧本就能用。' +
+          '删掉的素材，已经插进剧本的引用会变成断链，体检会提醒。</div>'
+        : '<div class="m-bin-empty">还没有' + one + '。<br>点右上「导入」，图片、音乐、视频都收在这里。</div>';
       asEl.innerHTML =
         '<div class="m-bin-top">' +
           '<button type="button" class="m-back" id="mLibLeft" aria-label="返回">‹</button>' +
@@ -359,7 +355,14 @@
           '<button type="button" class="m-bin-act" id="mLibAdd">导入</button>' +
         '</div>' +
         '<div class="m-lib-tabs" id="mLibTabs">' + tabs + '</div>' +
-        '<div class="m-lib-body">' + body + '</div>';
+        '<div class="m-lib-body">' + body +
+          '<div class="m-lib-tutbox">' +
+            '<button type="button" class="m-lib-tutlink" id="mLibTut">写法速查 ' +
+              (tutOpen ? "· 收起" : "· 展开") + '</button>' +
+            '<div class="m-lib-tut" id="mLibTutBody"' + (tutOpen ? "" : " hidden") + '>' +
+              tutBody() + '</div>' +
+          '</div>' +
+        '</div>';
       asEl.querySelector("#mLibLeft").addEventListener("click", function () {
         asEl.remove(); asEl = null;
       });
@@ -369,7 +372,19 @@
         libTab = b.dataset.tab;
         paint();
       });
+      asEl.querySelector("#mLibTut").addEventListener("click", function () {
+        tutOpen = !tutOpen;
+        var tb = asEl.querySelector("#mLibTutBody"), lb = asEl.querySelector("#mLibTut");
+        if (tb) tb.hidden = !tutOpen;
+        if (lb) lb.textContent = "写法速查 " + (tutOpen ? "· 收起" : "· 展开");
+      });
       asEl.querySelector("#mLibAdd").addEventListener("click", function () {
+        // 安卓 WebView 里 <input type=file> 弹不出系统选择器（实测），点了会像没反应。
+        // 与其让人怀疑按钮坏了，不如明说这条路还没通。
+        if (/Android/i.test(navigator.userAgent || "") && !window.__myonlNativeImport) {
+          toast("安卓上还弹不出系统选择器，真导入要等原生那层做完");
+          return;
+        }
         var inp = document.createElement("input");
         inp.type = "file"; inp.accept = "image/*,audio/*,video/*"; inp.multiple = true;
         inp.style.display = "none";
