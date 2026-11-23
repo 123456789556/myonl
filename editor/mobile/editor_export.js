@@ -297,6 +297,54 @@
     });
   }
 
+  // P257：卡片「⋯」里那两项「导出这个作品 / 复制一份」。
+  // 导出以前只能导"当前作品"，而菜单点的可能是别的作品；这里按名字取，不切 current，
+  // 不动用户正在编辑的那一份，也不产生任何"打开/切换"的副作用。
+  function findProj(name) {
+    var lib = localLib(), list = lib.projects || [];
+    for (var i = 0; i < list.length; i++) if (list[i] && list[i].name === name) return list[i];
+    return null;
+  }
+
+  function exportOne(name) {
+    var p = findProj(name);
+    if (!p) { if (window.toast) window.toast("找不到这个作品，刷新一下"); return; }
+    var sp = (window.MYONLAssets && window.MYONLAssets.allSplit)
+      ? window.MYONLAssets.allSplit() : Promise.resolve({ assets: {}, audio: {}, movies: {} });
+    if (window.toast) window.toast("正在把「" + name + "」打成一个文件…");
+    Promise.resolve(sp).then(function (s) {
+      var bag = pickAssets(p.text, s || {});
+      var out = {
+        myonl: "proj", v: 1, name: p.name, text: String(p.text || ""),
+        ctime: p.ctime || 0, mtime: p.mtime || 0,
+        assets: bag.assets, audio: bag.audio, movies: bag.movies, kinds: bag.kinds
+      };
+      var na = Object.keys(bag.assets).length, nu = Object.keys(bag.audio).length,
+          nv = Object.keys(bag.movies).length;
+      saveText(JSON.stringify(out), String(p.name).replace(/[\\/:*?"<>|]/g, "_") + ".myonl",
+        "application/json;charset=utf-8");
+      var parts = ["剧本"];
+      if (na) parts.push(na + " 张图");
+      if (nv) parts.push(nv + " 段视频");
+      if (nu) parts.push(nu + " 段音频");
+      if (window.toast) window.toast("已导出「" + p.name + "」：" + parts.join("、"));
+    }).catch(function (e) {
+      if (window.toast) window.toast("素材没读出来：" + (e && e.message ? e.message : e), true);
+    });
+  }
+
+  function dupOne(name) {
+    var p = findProj(name);
+    if (!p) { if (window.toast) window.toast("找不到这个作品，刷新一下"); return; }
+    var cur = localLib(), taken = {};
+    (cur.projects || []).forEach(function (x) { if (x) taken[x.name] = 1; });
+    var base = name + " 副本", nm = base, i = 2;
+    while (taken[nm]) { nm = base + " " + i; i++; }
+    var now = Math.round(Date.now() / 1000);
+    mergeProj([{ name: nm, folder: "dup" + Date.now().toString(36), text: String(p.text || ""),
+                 ctime: now, mtime: now }]);
+  }
+
   // 单作品包导入：素材先按原名进库，再建一条作品；同名不覆盖，改成「名字（2）」
   function importProj(obj) {
     var text = String(obj.text || "");
@@ -601,5 +649,5 @@
   }
 
   // P249：设置页要一个能直接调「导入」的入口，把 openImport 也放出去。
-  window.MYONLExport = { open: open, close: close, import: openImport };
+  window.MYONLExport = { open: open, close: close, import: openImport, exportOne: exportOne, dupOne: dupOne };
 })();

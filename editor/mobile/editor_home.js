@@ -428,7 +428,7 @@
     list.querySelectorAll("[data-more]").forEach(function (m) {
       m.addEventListener("click", function (e) {
         e.stopPropagation();
-        if (window.MYONLTrash) window.MYONLTrash.more(m.dataset.more, true);
+        if (window.MYONLTrash) window.MYONLTrash.more(m.dataset.more, true, m);
         else toast("更多操作没加载，刷新一下页面");
       });
     });

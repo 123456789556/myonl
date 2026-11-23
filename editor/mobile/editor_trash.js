@@ -128,27 +128,79 @@
 
   function purge(name) { purgeMany([name]); }
 
-  // ---- 「⋯」更多菜单：底部三行，够大够厚，不弹键盘
-  var moreEl = null;
-  function closeMore() { if (moreEl) { moreEl.remove(); moreEl = null; } }
-  function more(name, hasBin) {
+  // ---- 「⋯」：贴着那颗按钮弹的小菜单（不是底部抽屉、不铺灰罩）
+  // P257 用户原话：「不要出现灰色」「弹窗会出现在省略号附近，不遮挡选中的卡片」
+  // 「不占全屏，只占少部分屏幕，而不是靠着屏幕边缘」。
+  var moreEl = null, moreOff = null, moreAnchor = null;
+  function closeMore() {
+    if (moreEl) { moreEl.remove(); moreEl = null; }
+    if (moreOff) { document.removeEventListener("pointerdown", moreOff, true); moreOff = null; }
+    moreAnchor = null;
+  }
+  var MOR_ICON = {
+    ren: '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><path d="M2.6 12.2l.5-2.5 6.6-6.6 2 2-6.6 6.6-2.5.5zM9.4 3.6l2 2"/></svg>',
+    exp: '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><path d="M8 2.2v7M5.5 6.8L8 9.3l2.5-2.5M3.2 11.4v1.6h9.6v-1.6"/></svg>',
+    imp: '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><path d="M8 9.3V2.3M5.5 4.8L8 2.3l2.5 2.5M3.2 11.4v1.6h9.6v-1.6"/></svg>',
+    dup: '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><rect x="5.6" y="5.6" width="7.8" height="7.8" rx="1.8"/><path d="M10.4 2.6H3.6a1 1 0 0 0-1 1v6.8"/></svg>',
+    hist: '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><circle cx="8" cy="8" r="5.6"/><path d="M8 5.1v3.2l2.1 1.3"/></svg>',
+    del: '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><path d="M2.9 4.4h10.2M6.3 4.4V2.9h3.4v1.5M4.5 4.4l.7 9h5.6l.7-9"/></svg>'
+  };
+
+  // 落点：先试卡片下方（不盖住正在看的那张卡），放不下挪到卡片上方，再不行才贴底；
+  // 左右右对齐到那颗 ⋯，四周至少留 12px —— 用户明确说「不要靠着屏幕边缘」。
+  function placeMore(anchor) {
+    var w = moreEl.offsetWidth, h = moreEl.offsetHeight;
+    var vw = window.innerWidth, vh = window.innerHeight, M = 12;
+    var top, left;
+    var ar = (anchor && anchor.getBoundingClientRect) ? anchor.getBoundingClientRect() : null;
+    // 垂直按「整张卡」算，不按那颗 ⋯ 算 —— 按按钮算会压住卡片下半截
+    var host = (anchor && anchor.closest) ? anchor.closest(".m-home-card, .m-home-hero") : null;
+    var r = (host && host.getBoundingClientRect && host.getBoundingClientRect().width) ? host.getBoundingClientRect() : ar;
+    if (r && r.width && r.height) {
+      left = Math.max(M, Math.min(vw - w - M, (ar ? ar.right : r.right) - w));
+      if (vh - r.bottom - M >= h + 8) top = r.bottom + 8;
+      else if (r.top - M >= h + 8) top = r.top - h - 8;
+      else top = Math.max(M, Math.min(vh - h - M, r.bottom + 8));
+    } else {
+      left = Math.max(M, Math.min(vw - w - M, (vw - w) / 2));
+      top = Math.max(M, vh - h - 96);
+    }
+    moreEl.style.left = Math.round(left) + "px";
+    moreEl.style.top = Math.round(top) + "px";
+  }
+
+  function more(name, hasBin, anchor) {
+    // 再点同一颗 ⋯ = 收起（不然点一下又重开，看着像没反应）
+    var hostCard = (anchor && anchor.closest) ? anchor.closest(".m-home-card") : null;
+    var folder = (hostCard && hostCard.dataset && hostCard.dataset.folder) ? hostCard.dataset.folder : null;
+    var same = moreEl && moreAnchor === anchor;
     closeMore();
+    if (same) return;
     moreEl = document.createElement("div");
-    moreEl.className = "m-sheet m-more-sheet on";
+    moreEl.className = "m-more-pop";
     moreEl.innerHTML =
-      '<div class="m-sheet-mask"></div>' +
-      '<div class="m-sheet-body m-more-body">' +
-        '<div class="m-sheet-grab"></div>' +
-        '<div class="m-more-name">' + esc(name) + '</div>' +
-        '<button type="button" class="m-more-row" id="mMoreRen">改名</button>' +
-        // 删除单独一色：这是唯一一个会让人丢东西的按钮，不能跟改名长得一样
-        '<button type="button" class="m-more-row m-more-danger" id="mMoreDel">删除</button>' +
-        (hasBin ? '<button type="button" class="m-more-row" id="mMoreBin">垃圾箱</button>' : '') +
-        '<button type="button" class="m-more-row m-more-plain" id="mMoreCancel">取消</button>' +
-      '</div>';
+      // 不再写一行作品名：卡片上就有，多一行灰字既重复又难看
+      '<button type="button" class="m-more-row2" id="mMoreRen">' + MOR_ICON.ren + '重命名</button>' +
+      '<button type="button" class="m-more-row2" id="mMoreExp">' + MOR_ICON.exp + '导出这个作品</button>' +
+      '<button type="button" class="m-more-row2" id="mMoreImp">' + MOR_ICON.imp + '导入文件</button>' +
+      '<button type="button" class="m-more-row2" id="mMoreDup">' + MOR_ICON.dup + '复制一份</button>' +
+      '<button type="button" class="m-more-row2" id="mMoreHist">' + MOR_ICON.hist + '版本历史</button>' +
+      // 删除单独一色：这是唯一会让人丢东西的那一项
+      '<button type="button" class="m-more-row2 danger" id="mMoreDel">' + MOR_ICON.del + '删除</button>';
     document.documentElement.appendChild(moreEl);
-    moreEl.querySelector(".m-sheet-mask").addEventListener("click", closeMore);
-    moreEl.querySelector("#mMoreCancel").addEventListener("click", closeMore);
+    moreAnchor = anchor || null;
+    placeMore(anchor);
+    moreOff = function (e) {
+      if (!moreEl) return;
+      if (moreEl.contains(e.target)) return;
+      if (anchor && anchor.contains && anchor.contains(e.target)) return; // 交给 click 去 toggle
+      closeMore();
+    };
+    document.addEventListener("pointerdown", moreOff, true);
+    // 滚动、转屏、窗口一变，浮层就停在旧坐标了 —— 直接收起，比追着挪干净
+    window.addEventListener("scroll", closeMore, { passive: true, once: true });
+    window.addEventListener("resize", closeMore, { passive: true, once: true });
+
     moreEl.querySelector("#mMoreRen").addEventListener("click", function () {
       closeMore();
       var box = document.createElement("div");
@@ -180,9 +232,32 @@
       inp.addEventListener("keydown", function (e) { if (e.key === "Enter") go(); });
       // 不自动 focus：手机上 focus 会立刻弹键盘，把弹窗下半截顶出屏（P202 的错）
     });
+
+    moreEl.querySelector("#mMoreExp").addEventListener("click", function () {
+      closeMore();
+      if (window.MYONLExport && MYONLExport.exportOne) MYONLExport.exportOne(name);
+      else toast("导出没加载，刷新一下页面");
+    });
+    moreEl.querySelector("#mMoreImp").addEventListener("click", function () {
+      closeMore();
+      if (window.MYONLExport && MYONLExport.import) MYONLExport.import();
+      else toast("导入没加载，刷新一下页面");
+    });
+    moreEl.querySelector("#mMoreDup").addEventListener("click", function () {
+      closeMore();
+      if (window.MYONLExport && MYONLExport.dupOne) MYONLExport.dupOne(name);
+      else toast("复制没加载，刷新一下页面");
+    });
+    moreEl.querySelector("#mMoreHist").addEventListener("click", function () {
+      closeMore();
+      // 历史版本本来就是按目录存的，手机上原来埋在导出页第三行，等于没有；搬进 ⋯ 里
+      if (window.MYONLSnapshotsUI && folder) window.MYONLSnapshotsUI.open(folder);
+      else toast("这个设备上没有历史版本模块");
+    });
     moreEl.querySelector("#mMoreDel").addEventListener("click", function () {
       // 删完就 reload，来不及说"进垃圾箱了"，所以把归宿写进这句确认里；
       // 误触一下就要多点一次还原，问一句比事后道歉便宜。
+      closeMore();  // 别让菜单留在确认框底下被压成灰片
       dlgConfirm({
         title: "删除「" + name + "」？",
         msg: "会先进垃圾箱，" + KEEP_DAYS + " 天内能还原。",
@@ -193,8 +268,6 @@
         del(name);
       });
     });
-    var b = moreEl.querySelector("#mMoreBin");
-    if (b) b.addEventListener("click", function () { closeMore(); openBin(); });
   }
 
   // ---- 垃圾箱：照相册「最近删除」——整页、左上返回箭头、标题居中、右上「选择」

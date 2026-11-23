@@ -25,8 +25,8 @@ def test_进编辑器不再等满兜底():
 
 
 def test_更多面板贴底不留整屏白():
-    assert ".m-more-sheet { top: auto; }" in CSS
-    # 遮罩要真的显示（否则 0×0、点不中）
-    assert ".m-more-sheet > .m-sheet-mask { display: block;" in CSS
-    # 正文必须压过遮罩，不然按钮点不到
-    assert ".m-more-sheet > .m-sheet-body" in CSS and "z-index: 2" in CSS
+    # P256 当时把面板钉在底部（top:auto）+ 加灰罩 + 正文压遮罩；P257 用户否掉了这套
+    # （「不要出现灰色」「不占全屏」「不要靠着屏幕边缘」），改成贴着 ⋯ 的小浮层。
+    # 这条只留一句：贴底抽屉那套规则不能再回来；细节断言交给 test_p257_more_menu.py。
+    assert ".m-more-sheet" not in CSS
+    assert ".m-more-pop" in CSS

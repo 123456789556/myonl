@@ -615,12 +615,33 @@ html.m-shell .m-note-ta {
    电脑端保持原样（那边右下角是空的）。 */
 html.m-shell .splash-badge { display: none !important; }
 
-/* P256：卡片「⋯」那块面板只给容器挂了 .on，遮罩自己没挂 —— 结果是 0×0、点不中，
-   用户点空白处关不掉（只能去点最下面的「取消」），看着也没有暗幕。
-   这是「多按键不能用」的同一种毛病：按键在、点了没反应。 */
-/* 这个面板实际铺满了整屏：容器还带着老规则 .m-sheet{inset:0}，于是点「⋯」整屏变白、
-   四行按钮挤在屏幕最上面，底下一大片空白。改成只贴底、高度由内容决定。 */
-html.m-shell .m-more-sheet { top: auto; }
-html.m-shell .m-more-sheet > .m-sheet-mask { display: block; background: rgba(0, 0, 0, .45); z-index: 1; }
-/* 遮罩有 z-index，面板正文没有就会反过来盖住按钮（修完遮罩第一版就是这样，点了删除没反应） */
-html.m-shell .m-more-sheet > .m-sheet-body { position: relative; z-index: 2; }
+/* P257：卡片「⋯」改成贴着按钮弹的小浮层。
+   上一版是底部抽屉：铺满整屏、四行按钮贴着屏幕边、还压一层灰罩 —— 用户一眼就否了
+   （「不要出现灰色，这样很难看」「不占全屏」「不要靠着屏幕边缘」）。
+   现在：白/深底、无边框无灰罩、圆角 14、只做投影；位置贴着那颗 ⋯，落在卡片外侧，
+   不盖住正在看的那张卡；点屏幕任何别的地方就收起。 */
+html.m-shell .m-more-pop {
+  position: fixed; z-index: 640; min-width: 178px; padding: 6px;
+  background: var(--base); border-radius: 14px; max-width: calc(100vw - 24px);
+  box-shadow: 0 14px 34px rgba(0, 0, 0, .20), 0 3px 8px rgba(0, 0, 0, .10);
+}
+html.m-shell .m-more-row2 {
+  display: flex; align-items: center; gap: 9px; width: 100%; box-sizing: border-box;
+  border: 0; background: transparent; color: var(--text);
+  font-size: 15px; line-height: 1.2; padding: 13px 11px; border-radius: 10px;
+  text-align: left; -webkit-tap-highlight-color: transparent;
+}
+/* 按压只给一点点缩放，不铺灰块 —— 静态画面里一个灰角都不能有 */
+html.m-shell .m-more-row2:active { transform: scale(.985); }
+html.m-shell .m-more-row2.danger { color: #e0454b; }
+html.m-shell .m-more-row2 svg { width: 17px; height: 17px; flex: 0 0 17px; opacity: .85; }
+/* 深色下浮层若还用页面底色就跟背景糊成一块：抬一档底、加重投影，不描灰线 */
+html.m-shell[data-theme="dark"] .m-more-pop {
+  background: #262626;
+  box-shadow: 0 18px 40px rgba(0, 0, 0, .55), 0 0 0 1px rgba(255, 255, 255, .07);
+}
+/* 历史版本原来是半透明全屏层，手机上首页的标题会透上来跟它叠字 —— 手机壳里改成实底 */
+html.m-shell .snap-panel {
+  background: #0c111a !important;
+  padding: calc(16px + env(safe-area-inset-top)) 16px calc(16px + env(safe-area-inset-bottom)) !important;
+}

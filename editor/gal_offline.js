@@ -1550,7 +1550,7 @@
   }
   document.addEventListener("click", function (e) {
     var row = e.target && e.target.closest ? e.target.closest(".m-group-row, .m-tab, .uid-tab, button") : null;
-    if (!row) return;
+    if (!row || row.closest(".m-more-pop")) return;
     if (/素材|图片|立绘/.test(row.textContent || "") && !/角色/.test(row.textContent || "")) {
       setTimeout(injectAssetBar, 320);
       setTimeout(injectAssetBar, 820);
@@ -1560,7 +1560,7 @@
 
   document.addEventListener("click", function (e) {
     var row = e.target && e.target.closest ? e.target.closest(".m-group-row, .uid-tab, .m-tab, button") : null;
-    if (!row) return;
+    if (!row || row.closest(".m-more-pop")) return;  // ⋯ 菜单的「导出这个作品」是单作品导出，别再开整页
     if (/导出/.test(row.textContent || "")) {
       if (window.MYONLExport) { window.MYONLExport.open(); return; }  // P206：导出开自己的整页，不再插进参数页
       setTimeout(injectExportBar, 320);

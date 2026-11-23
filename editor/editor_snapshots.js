@@ -168,7 +168,8 @@
   function render(rows, name) {
     closePanel();
     panelEl = document.createElement("div");
-    panelEl.style.cssText = "position:fixed;inset:0;z-index:9999;background:rgba(8,12,20,.78);" +
+    panelEl.className = "snap-panel";  // 手机壳要用它把半透明改成实底，不然首页字会透上来
+    panelEl.style.cssText = "position:fixed;inset:0;z-index:9999;background:rgba(8,12,20,.96);" +
       "display:flex;flex-direction:column;padding:16px 14px;box-sizing:border-box";
     var head = document.createElement("div");
     head.style.cssText = "display:flex;align-items:center;justify-content:space-between;margin-bottom:10px";
