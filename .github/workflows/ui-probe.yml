@@ -36,6 +36,10 @@ jobs:
     name: 界面探针（手机/横屏/桌面 · 19 条）
     runs-on: windows-latest
     timeout-minutes: 25
+    env:
+      # Windows runner 控制台默认 cp1252，脚本里打印中文（「已生成 …」）会直接抛
+      # UnicodeEncodeError 让这一步假红。整条工作流统一走 UTF-8。
+      PYTHONUTF8: "1"
     defaults:
       run:
         shell: pwsh
@@ -59,9 +63,9 @@ jobs:
       - name: 构建单文件并铺好离线导出所需的播放器脚本
         run: |
           python tools/build_editor_single.py
-          # 单文件里「导出成品」会 fetch 同目录的 myonl-core.js / myonl-layout.js / myonl-player.js，
-          # 不铺这三个，导出必然失败（探针第 18 条就是验「失败也要有提示，不许静默」）
+          if ($LASTEXITCODE -ne 0) { throw "build_editor_single.py 失败（exit $LASTEXITCODE）" }
           Copy-Item web\myonl-core.js, web\myonl-layout.js, web\myonl-player.js dist\web\ -Force
+          Get-ChildItem dist\web\*.html, dist\web\*.js | Select-Object Name, Length
 
       - name: 起静态服务（dist/web）
         run: |
