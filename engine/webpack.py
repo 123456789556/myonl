@@ -60,6 +60,53 @@ def _boot_html(title: str) -> str:
     safe = (title or "MYONL").replace("<", "&lt;").replace(">", "&gt;")
     return f'<div id="boot"><span class="dot"></span><span class="bt">{safe}</span></div>'
 
+# 画面方向的落地：工程 config 里的 orientation 一直只写进 meta / manifest，
+# 没有任何代码读它 —— 设置页那个开关等于存了个没人看的数（用户说的"多按键不能用"）。
+# 这里在成品页里真的读一次：作品定了竖屏就别横着看，否则整幅画面被缩成一条。
+# 只提示、不锁：WebView / 浏览器没有权限强制系统旋转，硬做只会失败；提示层
+# pointer-events:none，人照样能点，转正了自己消失。
+_ORIENT_GUARD = """
+  #orient { position: fixed; inset: 0; z-index: 8; pointer-events: none;
+    display: none; align-items: center; justify-content: center; }
+  /* 不做全屏暗幕：竖版作品横持时画面本来就是中间一条，全屏压暗会连那条也吃掉，
+     再把提示字横向铺满整屏 —— 字会飘在作品外面，看着像画错了。
+     改成一张居中的小卡片，卡片最宽跟着屏宽走，永远落在画面中间。 */
+  #orient .box { max-width: min(78vw, 380px); padding: 22px 26px 24px;
+    border-radius: 16px; background: rgba(10,13,20,.93);
+    border: 1px solid rgba(120,160,255,.22); text-align: center; color: #cfd6e4;
+    font: 500 17px/1.7 -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif; }
+  #orient .box b { display: block; margin-bottom: 8px; font-size: 15px;
+    font-weight: 600; color: #8a90a2; letter-spacing: .06em; }
+  #orient .rot { width: 42px; height: 42px; margin: 0 auto 16px; border: 2px solid #4f8cff;
+    border-radius: 9px; animation: rotturn 2.4s ease-in-out infinite; }
+  @keyframes rotturn {
+    0%, 32% { transform: rotate(0deg); }
+    50%, 82% { transform: rotate(90deg); }
+    100% { transform: rotate(360deg); }
+  }
+"""
+
+_ORIENT_JS = """<script>(function(){
+  var o=(document.querySelector('meta[name="myonl-orientation"]')||{}).content;
+  if(o!=="portrait"&&o!=="landscape")return;
+  var tip=null;
+  function chk(){
+    var w=window.innerWidth,h=window.innerHeight;
+    var bad=(o==="portrait")?(w>h):(w<h);
+    if(bad&&!tip){
+      tip=document.createElement("div"); tip.id="orient";
+      tip.innerHTML='<div class="box"><div class="rot"></div><b>'+
+        (o==="portrait"?"这个作品是竖屏的":"这个作品是横屏的")+
+        '</b>把设备'+ (o==="portrait"?"竖":"横") +'过来，画面才不会被缩成一条</div>';
+      document.body.appendChild(tip);
+      tip.style.display="flex";
+    } else if(!bad&&tip){ tip.remove(); tip=null; }
+  }
+  window.addEventListener("resize",chk);
+  window.addEventListener("orientationchange",chk);
+  chk();
+})();</script>"""
+
 def _web_src() -> str:
     """播放器源码目录：源码版在仓库 web/，打 exe 后在 PyInstaller 的 _MEIPASS/web。"""
     bundle = getattr(sys, "_MEIPASS", "")
@@ -781,11 +828,12 @@ def _render_single_html(title: str, pack_json: str, player_scripts: str,
   html, body {{ margin: 0; padding: 0; background: #0b0d12; overflow: hidden;
     -webkit-tap-highlight-color: transparent; user-select: none; }}
   #stage {{ position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; }}
-  #game {{ display: block; background: #000; box-shadow: 0 0 40px rgba(0,0,0,.6); }}{_BOOT_CSS}
+  #game {{ display: block; background: #000; box-shadow: 0 0 40px rgba(0,0,0,.6); }}{_BOOT_CSS}{_ORIENT_GUARD}
 </style>
 </head>
 <body>
 {_boot_html(title)}
+{_ORIENT_JS}
 <div id="stage"><canvas id="game"></canvas></div>
 <script>window.__MYONL_PACK__={pack_json};</script>
 {player_scripts}
@@ -828,11 +876,12 @@ def _render_html(title: str, orientation: str = "any") -> str:
   html, body {{ margin: 0; padding: 0; background: #0b0d12; overflow: hidden;
     -webkit-tap-highlight-color: transparent; user-select: none; }}
   #stage {{ position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; }}
-  #game {{ display: block; background: #000; box-shadow: 0 0 40px rgba(0,0,0,.6); }}{_BOOT_CSS}
+  #game {{ display: block; background: #000; box-shadow: 0 0 40px rgba(0,0,0,.6); }}{_BOOT_CSS}{_ORIENT_GUARD}
 </style>
 </head>
 <body>
 {_boot_html(title)}
+{_ORIENT_JS}
 <div id="stage"><canvas id="game"></canvas></div>
 <script src="myonl-core.js"></script>
 <script src="myonl-layout.js"></script>

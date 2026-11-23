@@ -30,6 +30,15 @@
   // 玩家设置（本机 localStorage，与游戏无关）：文字速度 / 字号 / 音量 / 自动翻页 / 画质 / 快进 /
   // 画面方向 / 对话框样式（P101：经典 · 悬浮 · 极简，见 dlgStyle()）
   const PREF = {speed: 1, text: 1, vol: 0.7, auto: 0, quality: 1, skip: 0, orient: "auto", dlg: 1};
+  // P255：作品自己定的画面方向（工程 config 的 orientation → 打包时写进 meta）。
+  // 这是「对游戏的限制」，玩家的「画面方向」偏好只能在它允许的范围里换：
+  // 作品说只竖屏，玩家选横屏就不该真的按横版布局画 —— 否则画面被压成一条，
+  // 同时又被"请竖过来"的提示盖着，两套说法打架。
+  const LOCK_ORIENT = (function () {
+    const m = document.querySelector('meta[name="myonl-orientation"]');
+    const v = m ? String(m.content || "").trim() : "";
+    return (v === "portrait" || v === "landscape") ? v : "auto";
+  })();
   const PREF_KEY = "myonl:v2:prefs";   // P85：带版本，旧键由 loadPrefs 迁移
   let helpSeen = false;                 // 首次引导标记：跟设置一起存（以前是裸键）
   let setupDone = false;                // 首启配置询问问过没有：问过就不再拦人
@@ -173,7 +182,8 @@
     // P84：方向可以手选（设置里「画面方向：自动 / 竖屏 / 横屏」）。
     // 强制横屏时把窗口宽高对调再算布局 —— 布局本身是等比 letterbox（#stage flex 居中），
     // 所以画布会自己变成竖持手机里的一段横屏画面，上下是黑边，跟播放器放横视频一样。
-    const force = PREF.orient || "auto";
+    // P255：作品限定了方向就认作品的，玩家偏好只在没限定时生效。
+    const force = LOCK_ORIENT !== "auto" ? LOCK_ORIENT : (PREF.orient || "auto");
     let lw = window.innerWidth;
     let lh = window.innerHeight;
     if (force === "landscape" && lw < lh) { const t = lw; lw = lh; lh = t; }
@@ -2335,6 +2345,33 @@
     return names.length ? getAsset(names[0]) : null;
   }
 
+  /* P255：标题页的封面柔化只做一次。
+     原来是每帧 ctx.filter = "blur(3px)" 再铺全屏 —— 那是一次全屏高斯，手机 GPU 上
+     很贵，而标题页恰恰是"最静止"的一屏（人停在那儿看标题，画面却在每帧糊一遍）。
+     现在先糊到一张离屏画布，之后每帧只 drawImage；画布尺寸变了（转屏 / 画质档位）才重做。 */
+  let _titleBlur = null;
+  function titleCoverBlur(img) {
+    if (_titleBlur && _titleBlur.img === img &&
+        _titleBlur.w === canvas.width && _titleBlur.h === canvas.height) {
+      return _titleBlur.cv;
+    }
+    const cv = document.createElement("canvas");
+    cv.width = canvas.width;
+    cv.height = canvas.height;
+    const c2 = cv.getContext("2d");
+    if (!c2) return null;
+    const k = cv.width / L.viewW;                    // 逻辑坐标 → 像素
+    const m = sceneMargin();
+    const scale = Math.max(L.viewW / img.width, L.viewH / img.height) * m;
+    const dw = img.width * scale * k;
+    const dh = img.height * scale * k;
+    // blur 半径跟像素走：低画质档 k 小，就少糊一点，视觉和以前等价
+    if (typeof c2.filter === "string") c2.filter = "blur(" + Math.max(1, 3 * k).toFixed(1) + "px)";
+    c2.drawImage(img, (cv.width - dw) / 2, (cv.height - dh) / 2, dw, dh);
+    _titleBlur = { img: img, w: canvas.width, h: canvas.height, cv: cv };
+    return cv;
+  }
+
   /* 字号自适应：长标题缩字号比换行更稳（换行会把底部卡片撑高） */
   function fitFont(text, maxW, fs, weight) {
     let f = fs;
@@ -2353,11 +2390,18 @@
     const cover = titleCover();
     if (cover) {
       // 不糊死：只轻微柔化，否则抽象背景整屏糊成一堵灰墙，什么也看不出来
-      ctx.save();
-      ctx.filter = "blur(3px)";
-      blitCover(cover, 1);
-      ctx.restore();
-      ctx.filter = "none";
+      // P255：糊在离屏画布上做一次（见 titleCoverBlur），这里只贴；
+      // 拿不到离屏上下文时退回老路，宁可多花一次也不空一屏。
+      const blurred = titleCoverBlur(cover);
+      if (blurred) {
+        ctx.drawImage(blurred, 0, 0, L.viewW, L.viewH);
+      } else {
+        ctx.save();
+        ctx.filter = "blur(3px)";
+        blitCover(cover, 1);
+        ctx.restore();
+        ctx.filter = "none";
+      }
       const rv = ctx.createRadialGradient(W / 2, H * 0.26, 0, W / 2, H * 0.26, Math.max(W, H) * 0.78);
       rv.addColorStop(0, "rgba(9,11,17,.12)");
       rv.addColorStop(.60, "rgba(9,11,17,.38)");
@@ -2672,7 +2716,11 @@
       // 内嵌试玩例外：玩家只是想看一眼，不该先被问三个问题；
       // 何况向导会盖满整屏，把「退出试玩」压在底下 —— 那就是"进得去出不来"。
       if (!setupDone && !state.setup && !isEmbedded()) {
-        state.setup = {step: 0, picks: {orient: PREF.orient, dlg: PREF.dlg}, t0: now};
+        // P255：作品限定了方向时，"用哪种画面"这一问没有意义（选了也不算），
+        // 直接从第二问开始，picks 先填作品的方向。
+        state.setup = {step: LOCK_ORIENT !== "auto" ? 1 : 0,
+                       picks: {orient: LOCK_ORIENT !== "auto" ? LOCK_ORIENT : PREF.orient, dlg: PREF.dlg},
+                       t0: now};
       }
       if (state.setup) drawSetup();
     } else if (state.scene === "ending") {
@@ -3154,7 +3202,7 @@
       bodyH = Math.round(L.fs * 0.35)
               + mrows * (menuRowH() + menuGap());
     } else if (UI.view === "settings") {
-      // 行数与列数从 SETTINGS_GROUPS 现算，不再写死。
+      // 行数与列数从 settingsGroups() 现算，不再写死（作品限定方向时那一条不出现）。
       // 写死 6 行 / 横屏 3 行的时候，列表已经长到 7 组，最后那组「对话框」被挤出面板底边。
       bodyH = Math.round(L.fs * 0.3)
               + settingsRows() * (setRowH() + settingsGap());
@@ -3235,8 +3283,10 @@
 
   // 画面方向的三档文字：菜单里直接点一次循环切换，不用再进「设置 → 画面方向」
   function orientLabel() {
-    return PREF.orient === "portrait" ? "竖屏"
-      : PREF.orient === "landscape" ? "横屏" : "自动";
+    // P255：作品限定了方向时，这里显示的就是那个"限定"，不是玩家的偏好
+    const v = LOCK_ORIENT !== "auto" ? LOCK_ORIENT : PREF.orient;
+    return v === "portrait" ? "竖屏"
+      : v === "landscape" ? "横屏" : "自动";
   }
 
   // 菜单项统一在这里出。被内嵌试玩时多一项「退出试玩」——
@@ -3255,7 +3305,8 @@
       ["orient", "画面方向 · " + orientLabel(), 1],
       ["toSet", "设置"],
       ["toTitle", "回到标题"],
-    ];
+      // P255：作品限定了方向时，这条不出现 —— 点了也只是原地空转（fit 只认作品定的那个）。
+    ].filter(it => !(it[0] === "orient" && LOCK_ORIENT !== "auto"));
     if (isEmbedded()) items.push(["exitDemo", "退出试玩"]);
     return items;
   }
@@ -3826,6 +3877,8 @@
   function finishSetup(skipped) {
     if (!skipped && state.setup) {
       PREF.orient = state.setup.picks.orient;
+      // 作品自己限定了方向时，玩家的选择不生效 —— 成品里那一问也已经被跳过
+      if (LOCK_ORIENT !== "auto") PREF.orient = LOCK_ORIENT;
       PREF.dlg = Math.max(0, Math.min(2, Math.trunc(state.setup.picks.dlg)));
     }
     state.setup = null;
@@ -3841,7 +3894,7 @@
 
   // 设置项统一在这里出。面板高度和绘制都必须数同一个列表：
   // 以前面板按 6 行预留、实际画 7 组，最后那组「对话框」被挤出面板底边。
-  const SETTINGS_GROUPS = [
+  const SETTINGS_ALL = [
     ["文字速度", "speed", ["慢", "中", "快"], [0.6, 1, 1.6], PREF.speed],
     ["字号", "text", ["小", "中", "大"], [0.9, 1, 1.15], PREF.text],
     // 音量四档：静音 = 总开关，一键全哑（BGM/音效/语音/视频一起哑，且喇叭图标同步成静音）；
@@ -3860,12 +3913,18 @@
     ["对话框", "dlg", ["经典", "幕", "字幕"], [0, 1, 2], PREF.dlg],
   ];
 
+  // P255：作品限定了画面方向时，「画面方向」整条不出现 —— 摆一个按不动的键，
+  // 比不摆更糟（用户原话："不要多按键不能用"）。面板行列数都从这里现算。
+  function settingsGroups() {
+    return LOCK_ORIENT === "auto" ? SETTINGS_ALL : SETTINGS_ALL.filter(g => g[1] !== "orient");
+  }
+
   function settingsCols() { return L.landscape ? 2 : 1; }
-  function settingsRows() { return Math.ceil(SETTINGS_GROUPS.length / settingsCols()); }
+  function settingsRows() { return Math.ceil(settingsGroups().length / settingsCols()); }
   function settingsGap() { return Math.round(L.fs * 0.5); }
 
   function drawSettings(x, y, w, p) {
-    const groups = SETTINGS_GROUPS;
+    const groups = settingsGroups();
     const rowH = setRowH();
     const gap = settingsGap();
     const cols = settingsCols();
@@ -4074,6 +4133,8 @@
     } else if (key === "auto") PREF.auto = [0, 3, 6][i];
     else if (key === "quality") { PREF.quality = [0.62, 0.82, 1][i]; savePrefs(); fit(); return; }
     else if (key === "orient") {
+      // P255：作品限定了方向时这一项是死的 —— 点了不生效比"点了变一下又弹回来"诚实
+      if (LOCK_ORIENT !== "auto") return;
       PREF.orient = ["auto", "portrait", "landscape"][i];
       savePrefs();
       fit();          // 立刻按新方向重算布局（画布 letterbox 自己居中；fit 内部会 rewrap 正文）

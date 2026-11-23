@@ -91,6 +91,9 @@ html.m-shell .m-card-more:active { background: var(--surface0); }
 /* 页头垃圾桶：home.css 给 .m-home-find 定了 display:flex，会把 hidden 属性顶掉 */
 html.m-shell .m-home-find[hidden] { display: none; }
 html.m-shell .m-home-bin { margin-left: 8px; }
+/* P255：页头从两颗钮变成三颗（搜索 / 导入 / 垃圾桶）。不补间距的话导入贴着放大镜，
+   三颗圆钮会连成一坨。垃圾桶的 margin-left 已经在上一条，这里只管中间那颗。 */
+html.m-shell #mHomeImport { margin-left: 8px; }
 /* 页头是 space-between：标题块不撑开，放大镜就被平摊到屏幕正中间（真机截图里
    两颗圆钮一左一中，右边空一半）。让标题块吃满，两个按钮才贴着右边成一组。 */
 html.m-shell .m-home-hid { flex: 1 1 auto; min-width: 0; }
@@ -606,3 +609,8 @@ html.m-shell .m-note-ta {
   font: inherit; font-size: 15px; line-height: 1.75;
   color: var(--text); background: var(--base);
 }
+
+/* P255：右下角那颗「MY 加载中」徽标在手机上正好压在底栏「设置」格上 ——
+   真机冷启动截图里就是「设置」上面浮着一块蓝字。手机只留顶部那条细进度条，
+   电脑端保持原样（那边右下角是空的）。 */
+html.m-shell .splash-badge { display: none !important; }

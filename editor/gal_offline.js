@@ -667,6 +667,9 @@
     return jsonRes({ ok: true, version: "offline" });
   };
 
+  function readOrient() { /* P255 离线内核存画面方向 */ try { var v = localStorage.getItem("myonl:off:orientation:v1"); return v === "portrait" || v === "landscape" ? v : "any"; } catch (e) { return "any"; } }
+  ROUTES["GET /api/orientation"] = function () { return jsonRes({ ok: true, orientation: readOrient() }); };
+  ROUTES["POST /api/orientation"] = function (input, init) { var v = String((bodyOf(init) || {}).orientation || ""); if (v !== "portrait" && v !== "landscape") v = "any"; try { localStorage.setItem("myonl:off:orientation:v1", v); } catch (e) {} return jsonRes({ ok: true, orientation: v }); };
   ROUTES["GET /api/config"] = function () {
     return jsonRes({
       ok: true,
@@ -680,8 +683,7 @@
   };
 
   ROUTES["GET /api/home"] = function () {
-    var lib = readLib();
-    var rows = lib.projects.map(function (p) {
+    var lib = readLib();    var rows = lib.projects.map(function (p) {
       return {
         folder: p.name,
         name: p.name,
@@ -692,7 +694,7 @@
       };
     });
     rows.sort(function (a, b) { return (b.mtime || 0) - (a.mtime || 0); });
-    return jsonRes({ ok: true, current: lib.current, games_dir: "", orientation: "any", projects: rows });
+    return jsonRes({ ok: true, current: lib.current, games_dir: "", orientation: readOrient(), projects: rows });
   };
 
   ROUTES["GET /api/files"] = function () {
@@ -1160,7 +1162,7 @@
       var r = window.MYONLPack.buildPack({
         title: p.name, scriptText: p.text,
         assets: assets, audio: audio, videos: {}, movies: moviesPack,
-        config: {}, orientation: "any",
+        config: {}, orientation: readOrient(),
       });
       if (!r.ok) { toast("剧本第 " + r.error.line + " 行：" + r.error.message, true); return; }
 
@@ -1216,7 +1218,7 @@
       var assets = sp.assets || {}, audio = sp.audio || {}, moviesPack = moviesOf(sp, assets);
       var r = window.MYONLPack.buildPack({
         title: p.name, scriptText: p.text, assets: assets, audio: audio,
-        videos: {}, movies: moviesPack, config: {}, orientation: "any",
+        videos: {}, movies: moviesPack, config: {}, orientation: readOrient(),
       });
       if (!r.ok) { var err = new Error(r.error.message || "剧本有问题"); err.line = r.error.line; throw err; }
       return {

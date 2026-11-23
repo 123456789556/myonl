@@ -1,7 +1,7 @@
 # MYONL · 手机上的视觉小说编辑器
 
 [![tests](https://github.com/123456789556/myonl/actions/workflows/tests.yml/badge.svg?branch=main)](https://github.com/123456789556/myonl/actions/workflows/tests.yml)
-![Release](https://img.shields.io/badge/release-v1.2.54-blue)
+![Release](https://img.shields.io/badge/release-v1.2.55-blue)
 ![License](https://img.shields.io/badge/License-MIT-green)
 ![Platform](https://img.shields.io/badge/platform-Android%207.0%2B%20%C2%B7%20Windows%20%C2%B7%20Web-19b6a3)
 ![Offline](https://img.shields.io/badge/offline-100%25-2ea44f)
@@ -24,6 +24,21 @@
 - 手机做的作品导出成 **`.myonl`**（剧本 + 它用到的素材，一个文件），电脑端能直接导入接着改；反过来也行。
 - 版本号只有一个来源（`engine/_version.py`），CI 会校验 git tag 与它一致，**不一致就发不出去** —— 所以不会再出现「APK 是 1.2.x、exe 还是 1.0.0-rc」这种情况。
 - 大屏手机、折叠屏展开、平板横竖屏都走同一套手机界面，列数随宽度自适应（手机 1 列 / 平板竖 2 列 / 平板横 3 列）。
+
+### 怎么知道装的是哪一版，怎么更新
+
+- **手机**：设置 → 软件详情 → **关于 MYONL**，第一行就是「这一版 v…」，下面写清怎么更新、更新会不会丢作品。
+  手机上不自动联网查新版 —— 安装包按设计不申网络权限，断网也能编，所以它只显示版本号。
+- **电脑**：设置中心 → **关于**，版本号旁边一颗「检查更新」，会去问 GitHub 最新 release，
+  直接给结论：「已是最新（v…）」或者「有新版 v… · 点这里去下载」。
+- **覆盖安装 apk、解压覆盖文件夹，都不会动作品、素材和笔记。** 会一次全没的只有两件事：卸载 App、清浏览器数据。
+
+### 画面方向是作品的限制，不是摆设
+
+作品可以定成「都行 / 只竖屏 / 只横屏」（手机：设置 → 画面方向；电脑：工程设置）。定成只竖屏之后：
+
+- 玩家横着拿手机打开成品，布局仍按竖版算（不会被压成一条），画面中间给一张「把设备竖过来」的提示；
+- 播放器菜单里的「画面方向」在限定作品里**不出现** —— 摆一个按不动的键，比不摆更糟。
 
 ```
   剧本 .gal + 素材
@@ -248,9 +263,9 @@ python tools/pack_apk.py --game dist/single/你的作品.html
 
 ## 装它
 
-**[⬇ 下载 MYONL-v1.2.54.apk](https://github.com/123456789556/myonl/releases/download/v1.2.54/MYONL-v1.2.54.apk)** · 安卓 7.0 以上 · 手机 / 折叠屏 / 平板都能用，横竖屏自适应
+**[⬇ 下载 MYONL-v1.2.55.apk](https://github.com/123456789556/myonl/releases/download/v1.2.55/MYONL-v1.2.55.apk)** · 安卓 7.0 以上 · 手机 / 折叠屏 / 平板都能用，横竖屏自适应
 
-**[⬇ 下载 MYONL-v1.2.54-editor-win.zip](https://github.com/123456789556/myonl/releases/download/v1.2.54/MYONL-v1.2.54-editor-win.zip)** · Windows 10/11 · 解压双击 `editor.exe`，不用装 Python
+**[⬇ 下载 MYONL-v1.2.55-editor-win.zip](https://github.com/123456789556/myonl/releases/download/v1.2.55/MYONL-v1.2.55-editor-win.zip)** · Windows 10/11 · 解压双击 `editor.exe`，不用装 Python
 
 装好打开就是书架，点「新建作品」开始。底部「导出」有两条出口：
 自包含 `.html`（发微信对方就能玩）和 APK（装到手机上就是一个独立 App）。

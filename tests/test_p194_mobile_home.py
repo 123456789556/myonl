@@ -44,7 +44,12 @@ def test_首页正文不再重复摆同一件事():
     assert "m-tut-card" not in HOME_JS
     assert 'id="mHomeSet"' not in HOME_JS
     assert 'id="mHomeNew"' not in HOME_JS
-    assert 'id="mHomeImport"' not in HOME_JS
+    # P255：用户说「导入导出不该在设置页那个位置」—— 设置页打开时不知道当前作品，
+    # 那里的「导出当前作品」点了只能导空气。导入搬回首页页头（跟搜索、垃圾桶同排），
+    # 导出留在作品里。所以：首页有导入钮、设置页没有导入导出行。
+    assert 'id="mHomeImport"' in HOME_JS
+    assert 'id="mSetImport"' not in HOME_JS
+    assert 'id="mSetExport"' not in HOME_JS
     assert "m-quick-item" not in HOME_JS
     # 那句说明留着（用户要的），但不再挂在被压到底部的动作区上
     # P202：按「界面上只留 ≤6 字标签」压成一行短标签，同一层意思不变

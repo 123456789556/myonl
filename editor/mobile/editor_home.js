@@ -150,6 +150,13 @@
           'stroke-width="1.5" stroke-linecap="round" aria-hidden="true">' +
           '<circle cx="6.8" cy="6.8" r="4.2"/><path d="M9.9 9.9L13.4 13.4"/></svg>' +
       '</button>' +
+      // P255：导入挪到首页头部 —— 它是"往这台设备里放一份作品"，动作发生地就是作品列表。
+      // 图标画成「箭头进托盘」，和搜索、垃圾桶同一排、同一尺寸。
+      '<button type="button" class="m-home-find" id="mHomeImport" aria-label="导入作品">' +
+        '<svg viewBox="0 0 16 16" width="18" height="18" fill="none" stroke="currentColor" ' +
+          'stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+          '<path d="M3 3v9.6h10M9.9 6.2v4.6M9.9 10.8l-2.2-2.2M9.9 10.8l2.2-2.2"/></svg>' +
+      '</button>' +
       // P203：删掉的作品不能就此消失 —— 页头留一个垃圾桶，里面还有东西才显示。
       // 只有卡片上的「⋯」一个入口的话，作品删光那天就再也打不开垃圾箱了。
       '<button type="button" class="m-home-find m-home-bin" id="mHomeBin" aria-label="垃圾箱" hidden>' +
@@ -864,11 +871,13 @@
             '<button type="button" data-v="dark" class="' + (theme === "dark" ? "on" : "") + '">深色</button>' +
             '<button type="button" data-v="light" class="' + (theme === "light" ? "on" : "") + '">浅色</button>' +
           '</span></div>' +
-        '<div class="m-set-row"><span>游戏画面</span>' +
+        // P255：原来叫「游戏画面」，三段是「跟随 / 竖屏 / 横屏」—— 看不出这是"给成品定的限制"，
+        // 还容易被读成"现在正在用哪个方向"。改成「画面方向」，三段说清限制本身。
+        '<div class="m-set-row"><span>画面方向</span>' +
           '<span class="m-seg" id="mSetOrient">' +
-            '<button type="button" data-v="any" class="' + (orient === "any" ? "on" : "") + '">跟随</button>' +
-            '<button type="button" data-v="portrait" class="' + (orient === "portrait" ? "on" : "") + '">竖屏</button>' +
-            '<button type="button" data-v="landscape" class="' + (orient === "landscape" ? "on" : "") + '">横屏</button>' +
+            '<button type="button" data-v="any" class="' + (orient === "any" ? "on" : "") + '">都行</button>' +
+            '<button type="button" data-v="portrait" class="' + (orient === "portrait" ? "on" : "") + '">只竖屏</button>' +
+            '<button type="button" data-v="landscape" class="' + (orient === "landscape" ? "on" : "") + '">只横屏</button>' +
           '</span></div>' +
         '<div class="m-set-row"><span>预览比例</span>' +
           '<span class="m-seg" id="mSetRatio">' +
@@ -884,11 +893,9 @@
             '<button type="button" data-c="#22c1c3" style="background:#22c1c3"></button>' +
             '<button type="button" data-c="#3ecf8e" style="background:#3ecf8e"></button>' +
           '</span></div>' +
-        '<div class="m-set-sec">导入 / 导出</div>' +
-        '<button type="button" class="m-set-row m-set-link" id="mSetImport">' +
-          '<span>导入作品</span><em>›</em></button>' +
-        '<button type="button" class="m-set-row m-set-link" id="mSetExport">' +
-          '<span>导出当前作品</span><em>›</em></button>' +
+        // P255：导入 / 导出整段从这里撤了。设置页打开时根本不知道"当前作品"是哪一个，
+        // 「导出当前作品」点了只能导空气 —— 那正是"按了没反应"的键。导入挪到首页头部那颗图标，
+        // 导出留在作品里（作品台「创作资源 → 导出」）。
         '<div class="m-set-sec">软件详情</div>' +
         '<button type="button" class="m-set-row m-set-link" id="mSetStorage">' +
           '<span>存储方式</span><em>›</em></button>' +
@@ -908,20 +915,14 @@
       if (sheet) { sheet.remove(); sheet = null; }
     });
     // P249：导入 / 导出原来只在「作品 → 底部 tab」里有，用户找不到。设置页给两个明入口。
-    sheet.querySelector("#mSetImport").addEventListener("click", function () {
-      if (sheet) { sheet.remove(); sheet = null; }
-      if (window.MYONLExport && window.MYONLExport.import) window.MYONLExport.import();
-      else toast("这个版本还没接导入");
-    });
-    sheet.querySelector("#mSetExport").addEventListener("click", function () {
-      if (sheet) { sheet.remove(); sheet = null; }
-      if (window.MYONLExport) window.MYONLExport.open();
-      else toast("这个版本还没接导出");
-    });
+    // P255：这两行撤了（设置页没有"当前作品"上下文，导出键是空按）。导入在首页头部，
+    // 导出在作品台的「创作资源」里 —— 各自回到自己该在哪的地方。
     // 关于页：只讲三件事——这一版是哪版、怎么更新、更新会不会丢数据。
     // 手机上不联网（安装包没申网络权限），所以这里没有"检查更新"按钮，只说去哪看。
+    // P255：点关于不再先把设置页删掉 —— 原来那样进子页再返回，人是回到首页，
+    // 设置页凭空没了（存储方式/数据位置这两行反而做得对，返回就回到设置页）。
+    // 现在三行子页一致：子页盖在设置页上，删掉子页就回来。
     sheet.querySelector("#mSetAbout").addEventListener("click", function () {
-      if (sheet) { sheet.remove(); sheet = null; }
       openSetSub("关于 MYONL", aboutHtml());
     });
 
@@ -939,14 +940,15 @@
     }
     // 换头像：手机上相册里那张 → 裁成方形缩到 128px 存起来。原图绝不进 localStorage，不然几百 KB 就写满了。
     sheet.querySelector("#mSetAvatar").addEventListener("click", function () {
-      // 安卓 WebView 里相册选择器弹不出来（和素材导入同一个坑），点了会像死键 —— 先说明
-      if (/Android/i.test(navigator.userAgent || "") && !window.__myonlNativeAvatar) {
+      // P255：以前这里是"安卓一律不给换"——那是 v1.2.52 之前的壳。壳补了 onShowFileChooser 之后
+      // 选择了会注入 __MYONL_CAN_PICK，所以现在只挡"确实没有这个能力"的旧包。
+      if (/Android/i.test(navigator.userAgent || "") && !window.__MYONL_CAN_PICK) {
         if (window.MYONLDialog) {
           window.MYONLDialog.info({
-            title: "这台手机换不了头像",
-            msg: "安卓里选相册的那个窗被 WebView 挡住了，是系统限制。名字随时能改；头像要等原生那层接上。"
+            title: "这台设备装的是旧包",
+            msg: "旧的安装包里没有「打开系统相册」这一步，所以点了没反应。换成新的 apk（覆盖安装）就能从相册挑图。"
           });
-        } else { toast("安卓上还弹不出相册选择器"); }
+        } else { toast("装的是旧包，换新 apk 就能选图"); }
         return;
       }
       var inp = document.createElement("input");
@@ -1180,6 +1182,14 @@
   if (binBtn) binBtn.addEventListener("click", function () {
     if (window.MYONLTrash) window.MYONLTrash.openBin();
     else toast("垃圾箱没加载，刷新一下页面");
+  });
+  // P255：导入从设置页搬到首页头部。两条路（选文件 / 整段粘贴）都在导出页里，
+  // 这里只负责把那一页叫起来；离线内核下没有 MYONLExport 时才回落到旧的读文件实现。
+  var impBtn = $("mHomeImport");
+  if (impBtn) impBtn.addEventListener("click", function () {
+    if (window.MYONLExport && window.MYONLExport.import) window.MYONLExport.import();
+    else if (window.__myonlImportLib) importProject();
+    else toast("导入没加载，刷新一下页面");
   });
   // P205：教程不再单独出（用户：「教程放素材库里」）—— 素材页第四个 tab 就是它。
   // 空列表右栏那句指路也跟着改，不然还让人「去教程看两版」，那扇门已经没了。
