@@ -11,9 +11,18 @@
   const dropdown = $("menuDropdown");
 
   // P61：菜单里也能导出单文件——不用先翻到「UI 设计」弹窗底部
+  // P258：单文件版里没有 mobile/editor_dialog.js（window.toast 只在手机壳那套里定义），
+  // 于是菜单里所有提示（导出成功/失败/体积告警）全都静默消失，用户点完什么都没发生。
+  // 这里补一个自己的兜底提示条：有 toast 就用 toast，没有就自己造一个。
   function say(msg) {
-    if (typeof window.toast === "function") window.toast(msg);
-    else if (window.__toast) window.__toast(msg);
+    if (typeof window.toast === "function") { window.toast(msg); return; }
+    if (window.__toast) { window.__toast(msg); return; }
+    const d = document.createElement("div");
+    d.textContent = msg;
+    d.style.cssText = "position:fixed;left:50%;bottom:64px;transform:translateX(-50%);z-index:9999;"
+      + "background:rgba(0,0,0,.86);color:#fff;padding:9px 14px;border-radius:10px;font:13px/1.4 system-ui;max-width:70vw";
+    document.body.appendChild(d);
+    setTimeout(() => d.remove(), 2800);
   }
 
   function exportSingleHtml() {
@@ -40,7 +49,7 @@
           say((d.file_warning_level === "hard" ? "⚠ 硬线：" : "体积提醒：") + d.file_warning);
         }
       })
-      .catch((e) => say("导出失败：" + e));
+      .catch((e) => say("导出失败：" + e + "（双击打开的单文件版没有后端，导成品请用手机版或桌面版）"));
   }
 
   // P171：打 APK —— 换壳 + 在浏览器里自己算 v2 签名，不需要 Java。

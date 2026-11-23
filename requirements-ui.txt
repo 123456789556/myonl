@@ -1,0 +1,3 @@
+# 界面探针专用依赖（tools/ui_probe/）：只给 .github/workflows/ui-probe.yml 用。
+# 不并进 requirements-dev.txt —— 那会把 Chromium 塞进 7 个 Python 版本的 pytest 矩阵里，纯属拖时间。
+playwright>=1.40

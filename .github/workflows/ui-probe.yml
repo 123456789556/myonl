@@ -1,0 +1,107 @@
+name: ui-probe
+
+# P258：把「手点界面」变成「机器每次点」。
+#
+# 为什么单独一个 workflow：pytest 那 1500+ 条是文本断言，证明的是「代码里的字没回退」，
+# 不证明用户看到的界面是对的。v1.2.55~v1.2.57 三轮里的界面硬伤（浮层压卡片 27px、
+# 遮罩铺满整屏、点「导出这个作品」连带弹出整页导出）全靠人在本机 Playwright 手点发现，
+# 脚本不在仓库、不进 CI —— 人一不在，红灯绿着界面塌了没人知道。
+#
+# 这条跑的是 dist 里的单文件（tools/build_editor_single.py 产），走 http，
+# 手机 390×844 / 横屏 844×390 / 桌面 1440×900 三态，19 条断言，任何一条不符 exit 1。
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "30 18 * * *"   # 每日 UTC 18:30（北京时间 02:30），排在 ui-walkthrough 之后
+  push:
+    branches: [main]
+    paths:
+      - "editor/**"
+      - "web/**"
+      - "engine/_version.py"
+      - "tools/build_editor_single.py"
+      - "tools/ui_probe/**"
+      - "requirements-ui.txt"
+      - ".github/workflows/ui-probe.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ui-probe-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  probe:
+    name: 界面探针（手机/横屏/桌面 · 19 条）
+    runs-on: windows-latest
+    timeout-minutes: 25
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: |
+            requirements.txt
+            requirements-ui.txt
+
+      - name: 安装依赖
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt -r requirements-ui.txt
+          python -m playwright install chromium
+
+      - name: 构建单文件并铺好离线导出所需的播放器脚本
+        run: |
+          python tools/build_editor_single.py
+          # 单文件里「导出成品」会 fetch 同目录的 myonl-core.js / myonl-layout.js / myonl-player.js，
+          # 不铺这三个，导出必然失败（探针第 18 条就是验「失败也要有提示，不许静默」）
+          Copy-Item web\myonl-core.js, web\myonl-layout.js, web\myonl-player.js dist\web\ -Force
+
+      - name: 起静态服务（dist/web）
+        run: |
+          $p = Start-Process python -ArgumentList "-m","http.server","8877","--directory","dist/web" -PassThru
+          Write-Host "http.server pid=$($p.Id)"
+          for ($i = 0; $i -lt 30; $i++) {
+            try {
+              $r = Invoke-WebRequest "http://127.0.0.1:8877/editor-single.html" -UseBasicParsing -TimeoutSec 3
+              if ($r.StatusCode -eq 200) { Write-Host "服务就绪"; break }
+            } catch { Start-Sleep -Seconds 1 }
+          }
+          "PROBE_SERVER_PID=$($p.Id)" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+
+      - name: 跑探针
+        env:
+          PYTHONUTF8: "1"
+        run: |
+          python tools/ui_probe/probe_shell.py --base http://127.0.0.1:8877 --out dist/_probe 2>&1 | Tee-Object -FilePath probe-out.txt
+          $code = $LASTEXITCODE
+          if ($code -ne 0) {
+            "## 界面探针不符（exit $code）" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
+            "" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
+            (Select-String -LiteralPath probe-out.txt -Pattern 'BAD' | Select-Object -First 20) |
+              ForEach-Object { "- $($_.Line.Trim())" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8 }
+            Select-String -LiteralPath probe-out.txt -Pattern '  BAD ' |
+              Select-Object -First 20 |
+              ForEach-Object { $m = $_.Line.Trim() -replace '%','%25'; Write-Host "::error title=界面探针::$m" }
+          }
+          exit $code
+
+      - name: 收掉静态服务
+        if: always()
+        run: |
+          if ($env:PROBE_SERVER_PID) { Stop-Process -Id $env:PROBE_SERVER_PID -Force -ErrorAction SilentlyContinue }
+
+      - name: 上传截图与报告
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ui-probe-${{ github.run_number }}
+          path: dist/_probe
+          if-no-files-found: warn
+          retention-days: 14

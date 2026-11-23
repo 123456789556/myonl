@@ -363,9 +363,7 @@
     }, 1);
   }
 
-  // 手机上弹不出系统文件选择器（实测），粘贴是唯一真能走通的导入路。
-  // P210：以前只认 {projects:[...]}，用户把之前导出的 .gal 贴进来只会看到「不是完整 JSON」。
-  // 现在按内容认三种：作品库 .json / 单个作品 JSON / .gal 纯剧本文本。
+  // 手机上弹不出系统文件选择器（实测），粘贴是唯一真走通的导入路；P210 起按内容认三种：作品库 .json / 单个作品 JSON / 纯剧本文本（.gal）。
   function importText(txt) {
     txt = String(txt || "").trim();
     if (!txt) return;
@@ -378,6 +376,8 @@
       if (window.toast) window.toast("这不是完整的 JSON，看下是不是没复制全");
       return;
     }
+    // P258 包版本门：现在只有 v1，但 v2 加字段后旧设备吞下去会静默丢 —— 认不出就明说，别装作导进来了
+    if (obj && obj.myonl === "proj" && Number(obj.v || 1) > 1) { if (window.toast) window.toast("这个 .myonl 是更新版本（v" + obj.v + "）导出的，先用同版本打开"); return; }
     if (obj && obj.myonl === "proj") return deskOn() ? importProjDesk(obj) : importProj(obj);
     if (obj && Array.isArray(obj.projects)) return mergeLib(obj);
     if (obj && (obj.title || obj.scenes || obj.lines)) return importOne(obj.title || null, JSON.stringify(obj, null, 1));
@@ -444,8 +444,7 @@
     }, list.length);
   }
 
-  // 网页版 html：里面只有播放用的数据（window.__MYONL_PACK__），剧本原文没存。
-  // 能做的是把图/音/视频按原名还回素材库，作品本身不假装能还原。
+  // 网页版 html：只有播放数据（window.__MYONL_PACK__），没有剧本原文 —— 把图/音/视频按原名还回素材库，作品本身不假装能还原。
   function importHtml(txt) {
     var i = txt.indexOf("__MYONL_PACK__");
     var start = i < 0 ? -1 : txt.indexOf("{", i);

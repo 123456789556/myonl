@@ -1,0 +1,425 @@
+# -*- coding: utf-8 -*-
+"""P258：把「手点界面」变成「机器每次点」——手机壳 / 桌面壳的最小必过探针。
+
+为什么入库：v1.2.55~v1.2.57 三轮里的界面硬伤（浮层压卡片 27px、遮罩铺满整屏、
+点「导出这个作品」连带弹出整页导出）都是靠人在 Playwright 里手动点出来的，
+那些脚本躺在工作区外的 `_tools` 目录里（不在 git、不进 CI）。结果是：pytest 1529 个绿灯
+只证明「文本断言没回退」，不证明用户看到的界面是对的。
+
+这份探针只做「看过就再也不会错」的那几件事，逐条断言，任何一条不符 exit 1。
+
+跑法（本地与 CI 同一条命令）：
+    python tools/build_editor_single.py
+    python -m http.server 8877 --directory dist/web        # 另开一个终端
+    python tools/ui_probe/probe_shell.py --base http://127.0.0.1:8877
+
+覆盖：
+    手机 390×844  10 条   浮层不压卡片/不出屏/六项齐/四路收起/导出不串整页/删除先关菜单
+    手机 844×390   2 条   横屏落点
+    桌面 1440×900  4 条   三栏起来/文件菜单条目/导出出 toast/零 JS 异常
+"""
+from __future__ import annotations
+
+import argparse
+import json
+import sys
+import traceback
+from pathlib import Path
+
+from playwright.sync_api import sync_playwright
+
+MOBILE_W, MOBILE_H = 390, 844
+LAND_W, LAND_H = 844, 390
+DESK_W, DESK_H = 1440, 900
+
+PAGE = "/editor-single.html"
+
+
+class Report:
+    def __init__(self) -> None:
+        self.rows: list[tuple[str, bool, str]] = []
+
+    def add(self, name: str, ok: bool, detail: str = "") -> bool:
+        self.rows.append((name, ok, detail))
+        print(("  OK   " if ok else "  BAD  ") + name + ("  | " + detail if detail else ""), flush=True)
+        return ok
+
+    def check(self, name: str, fn, shots: Path | None = None, page=None) -> bool:
+        try:
+            return fn()
+        except Exception as exc:  # 单条失败不中断整轮
+            print("  BAD  " + name + "  | " + type(exc).__name__ + ": " + str(exc)[:200], flush=True)
+            if shots is not None and page is not None:
+                try:
+                    page.screenshot(path=str(shots / (name + "-FAIL.png")))
+                except Exception:
+                    pass
+            self.rows.append((name, False, type(exc).__name__ + ": " + str(exc)[:200]))
+            return False
+
+    @property
+    def bad(self) -> int:
+        return sum(1 for _n, ok, _d in self.rows if not ok)
+
+
+def rect(pg, sel: str):
+    return pg.eval_on_selector(
+        sel, "el=>{const r=el.getBoundingClientRect();return [Math.round(r.left),Math.round(r.top),Math.round(r.width),Math.round(r.height)]}"
+    )
+
+
+def visible(pg, sel: str) -> bool:
+    return pg.eval_on_selector(
+        sel,
+        "el=>{const r=el.getBoundingClientRect();const s=getComputedStyle(el);"
+        "return r.width>0&&r.height>0&&s.visibility!=='hidden'&&s.display!=='none'&&s.opacity!=='0'}",
+    )
+
+
+def count(pg, sel: str) -> int:
+    return len(pg.query_selector_all(sel))
+
+
+def pop_open(pg, timeout: int = 1200) -> bool:
+    try:
+        pg.wait_for_selector(".m-more-pop", state="visible", timeout=timeout)
+        return True
+    except Exception:
+        return False
+
+
+def pop_gone(pg, timeout: int = 1200) -> bool:
+    try:
+        pg.wait_for_selector(".m-more-pop", state="detached", timeout=timeout)
+        return True
+    except Exception:
+        return False
+
+
+def open_pop(pg) -> bool:
+    pg.locator(".m-home-card .m-card-more").first.click()
+    return pop_open(pg)
+
+
+def overlap(a, b) -> int:
+    """两块矩形在屏幕上的相交面积（0 = 不压）。"""
+    ax, ay, aw, ah = a
+    bx, by, bw, bh = b
+    ox = min(ax + aw, bx + bw) - max(ax, bx)
+    oy = min(ay + ah, by + bh) - max(ay, by)
+    return max(0, ox) * max(0, oy)
+
+
+def probe_mobile(pg, rep: Report, shots: Path, base: str) -> None:
+    pg.set_viewport_size({"width": MOBILE_W, "height": MOBILE_H})
+    pg.goto(base + PAGE, wait_until="domcontentloaded", timeout=60000)
+    pg.wait_for_selector(".m-home-card", state="visible", timeout=20000)
+    pg.wait_for_timeout(400)
+    pg.screenshot(path=str(shots / "m01-home.png"))
+
+    def c_bars() -> bool:
+        nav = count(pg, "[data-nav]")
+        heads = count(pg, ".m-home-find")
+        return rep.add("手机 底栏 4 格 / 页头 3 钮", nav == 4 and heads == 3, "nav=%d heads=%d" % (nav, heads))
+
+    def c_no_splash() -> bool:
+        vis = pg.evaluate(
+            "()=>{const t=[...document.querySelectorAll('body *')].filter(e=>{"
+            "const s=getComputedStyle(e),r=e.getBoundingClientRect();"
+            "return r.height>0&&s.display!=='none'&&s.visibility!=='hidden'&&s.opacity!=='0'"
+            "&&/MY ?加载中|加载中/.test(e.textContent||'')&&e.children.length===0;});"
+            "return t.length}"
+        )
+        return rep.add("手机 冷启动后没有「加载中」徽标盖着", vis == 0, "残留 %d 个" % vis)
+
+    def c_pop_open() -> bool:
+        ok = open_pop(pg)
+        pg.wait_for_timeout(200)
+        pg.screenshot(path=str(shots / "m02-pop.png"))
+        return rep.add("「⋯」点开出现浮层", ok)
+
+    def c_rows() -> bool:
+        n = count(pg, ".m-more-pop [id^=mMore]")
+        ids = pg.eval_on_selector_all(".m-more-pop [id^=mMore]", "els=>els.map(e=>e.id)")
+        return rep.add("浮层六项齐", n == 6, "rows=%d ids=%s" % (n, ",".join(ids)))
+
+    def c_no_overlap() -> bool:
+        pop = rect(pg, ".m-more-pop")
+        card = rect(pg, ".m-home-card")
+        a = overlap(pop, card)
+        return rep.add("浮层不压被点的卡片", a == 0, "pop=%s card=%s 相交=%d px²" % (pop, card, a))
+
+    def c_inside() -> bool:
+        pop = rect(pg, ".m-more-pop")
+        l, t, w, h = pop
+        ok = l >= 6 and t >= 0 and l + w <= MOBILE_W - 6 and t + h <= MOBILE_H
+        return rep.add("浮层不出屏也不贴边（左右各留 ≥6px）", ok, "pop=%s 屏=%dx%d" % (pop, MOBILE_W, MOBILE_H))
+
+    def c_opaque() -> bool:
+        bg = pg.eval_on_selector(".m-more-pop", "el=>getComputedStyle(el).backgroundColor")
+        theme = pg.evaluate("()=>document.documentElement.dataset.theme||'light'")
+        opaque = "rgba" not in bg or ", 1)" in bg or bg.startswith("rgb(")
+        want_ok = bg in ("rgb(255, 255, 255)", "rgb(38, 38, 38)")
+        return rep.add("浮层是实底（白 #fff / 深 #262626 之外不算）", opaque and want_ok, "theme=%s bg=%s" % (theme, bg))
+
+    def c_outside() -> bool:
+        pg.mouse.click(30, MOBILE_H - 120)
+        return rep.add("点别处收起", pop_gone(pg))
+
+    def c_toggle() -> bool:
+        open_pop(pg)
+        pg.wait_for_timeout(150)
+        pg.locator(".m-home-card .m-card-more").first.click()
+        return rep.add("再点同一颗钮收起（不是只开不管）", pop_gone(pg))
+
+    def c_export_one() -> bool:
+        open_pop(pg)
+        pg.locator("#mMoreExp").click()
+        ok_toast = False
+        try:
+            pg.wait_for_selector("text=已导出", timeout=6000)
+            ok_toast = True
+        except Exception:
+            pass
+        page_exp = pg.evaluate(
+            "()=>{const e=document.querySelector('.m-exp-page,#m-exp-page');"
+            "if(!e)return 0;const r=e.getBoundingClientRect();return (r.width>8&&r.height>8)?1:0}"
+        )
+        pg.screenshot(path=str(shots / "m03-export.png"))
+        return rep.add(
+            "导出单个作品：有 toast、不串整页导出",
+            ok_toast and page_exp == 0,
+            "toast=%s 整页导出=%d" % (ok_toast, page_exp),
+        )
+
+    def c_delete() -> bool:
+        pg.wait_for_timeout(400)
+        open_pop(pg)
+        pg.locator("#mMoreDel").click()
+        try:
+            pg.wait_for_selector("text=删除「", timeout=6000)
+            has_title = True
+        except Exception:
+            has_title = False
+        menu_left = count(pg, ".m-more-pop")
+        pg.screenshot(path=str(shots / "m04-del.png"))
+        # 取消退出，别真删（后续条目还要用这张卡）
+        try:
+            pg.locator("text=取消").last.click(timeout=4000)
+        except Exception:
+            pass
+        pg.wait_for_timeout(200)
+        return rep.add(
+            "删除：确认层带作品名、菜单已先收起",
+            has_title and menu_left == 0,
+            "标题=%s 菜单残留=%d" % (has_title, menu_left),
+        )
+
+    def c_hist() -> bool:
+        pg.wait_for_timeout(300)
+        open_pop(pg)
+        pg.locator("#mMoreHist").click()
+        try:
+            pg.wait_for_selector(".snap-panel", state="visible", timeout=6000)
+        except Exception:
+            return rep.add("版本历史：面板出现", False)
+        bg = pg.eval_on_selector(".snap-panel", "el=>getComputedStyle(el).backgroundColor")
+        opaque = bg.startswith("rgb(") or ", 1)" in bg
+        pg.screenshot(path=str(shots / "m05-hist.png"))
+        try:
+            pg.keyboard.press("Escape")
+            pg.mouse.click(20, 60)
+        except Exception:
+            pass
+        pg.wait_for_timeout(300)
+        # 这条只验「面板是不透的实底」，关不关得掉不属于这条；
+        # 若它没被 ESC 收掉，直接摘掉，别让它挡住后面那条点卡片。
+        pg.evaluate("()=>{const p=document.querySelector('.snap-panel');if(p)p.remove();}")
+        return rep.add("版本历史：面板是实底（首页内容不透上来）", opaque, "bg=%s" % bg)
+
+    def c_workback() -> bool:
+        pg.wait_for_timeout(300)
+        # 卡片上的文字是 span（高度可能为 0），而且卡片带着常驻动画，Playwright 的
+        # 「等元素稳定」永远等不到；按坐标点封面区，事件照样冒泡到卡片自己的处理器。
+        card = rect(pg, ".m-home-card")
+        pg.mouse.click(card[0] + 24, card[1] + 24)
+        try:
+            pg.wait_for_selector(".m-work", state="visible", timeout=8000)
+        except Exception:
+            return rep.add("进作品台后「‹ 作品」可点回首页", False, "作品台没出现")
+        pg.wait_for_timeout(400)
+        pg.screenshot(path=str(shots / "m06-work.png"))
+        back = rect(pg, "#mWorkBack")
+        if back[2] < 20 or back[3] < 20:
+            return rep.add("进作品台后「‹ 作品」可点回首页", False, "返回键太小 rect=%s" % (back,))
+        pg.mouse.click(back[0] + back[2] / 2, back[1] + back[3] / 2)
+        pg.wait_for_timeout(600)
+        gone = pg.evaluate("()=>{const w=document.querySelector('.m-work');"
+                           "if(!w)return true;const r=w.getBoundingClientRect();return r.width===0||r.height===0}")
+        home = pg.evaluate("()=>{const h=document.querySelector('.m-home');"
+                           "if(!h)return 0;const r=h.getBoundingClientRect();return r.width}")
+        return rep.add("进作品台后「‹ 作品」可点回首页", gone and home > 0, "作品台已撤=%s 首页宽=%s" % (gone, home))
+
+    rep.check("底栏与页头", c_bars, shots, pg)
+    rep.check("冷启动无遮挡", c_no_splash, shots, pg)
+    rep.check("浮层出现", c_pop_open, shots, pg)
+    rep.check("浮层六项", c_rows, shots, pg)
+    rep.check("浮层不压卡", c_no_overlap, shots, pg)
+    rep.check("浮层不出屏", c_inside, shots, pg)
+    rep.check("浮层实底", c_opaque, shots, pg)
+    rep.check("点别处收起", c_outside, shots, pg)
+    rep.check("同钮收起", c_toggle, shots, pg)
+    rep.check("导出不串整页", c_export_one, shots, pg)
+    rep.check("删除确认", c_delete, shots, pg)
+    rep.check("历史面板实底", c_hist, shots, pg)
+    rep.check("‹ 作品可点", c_workback, shots, pg)
+
+
+def probe_landscape(pg, rep: Report, shots: Path, base: str) -> None:
+    pg.set_viewport_size({"width": LAND_W, "height": LAND_H})
+    pg.goto(base + PAGE, wait_until="domcontentloaded", timeout=60000)
+    pg.wait_for_selector(".m-home-card", state="visible", timeout=20000)
+    pg.wait_for_timeout(400)
+
+    def c_open() -> bool:
+        return rep.add("横屏 浮层能开", open_pop(pg))
+
+    def c_geo() -> bool:
+        pop = rect(pg, ".m-more-pop")
+        card = rect(pg, ".m-home-card")
+        l, t, w, h = pop
+        inside = l >= 6 and t >= 0 and l + w <= LAND_W - 6 and t + h <= LAND_H
+        a = overlap(pop, card)
+        pg.screenshot(path=str(shots / "m10-land.png"))
+        return rep.add("横屏 不压卡、不出屏", inside and a == 0, "pop=%s 相交=%d" % (pop, a))
+
+    rep.check("横屏 开浮层", c_open, shots, pg)
+    rep.check("横屏 落点", c_geo, shots, pg)
+
+
+def probe_desktop(pg, rep: Report, shots: Path, base: str) -> None:
+    errors: list[str] = []
+    badres: list[str] = []
+    pg.on("pageerror", lambda e: errors.append("pageerror: " + str(e)))
+    # 单文件离线形态下 /api/* 一律 404（没有后端），这是预期的，不算界面异常；
+    # 真正要抓的是脚本本身报错（pageerror）与非 api 资源的加载失败。
+    pg.on(
+        "response",
+        lambda r: badres.append("%d %s" % (r.status, r.url))
+        if r.status >= 400 and "/api/" not in r.url
+        else None,
+    )
+    pg.on(
+        "console",
+        lambda m: errors.append("console: " + m.text)
+        if m.type == "error"
+        and "Failed to load resource" not in m.text
+        and "fetching the script" not in m.text  # Service Worker 注册失败（dist 里没有 sw.js），与界面无关
+        else None,
+    )
+
+    pg.set_viewport_size({"width": DESK_W, "height": DESK_H})
+    pg.goto(base + PAGE, wait_until="domcontentloaded", timeout=60000)
+    pg.wait_for_timeout(1500)
+    pg.screenshot(path=str(shots / "d01-boot.png"))
+
+    def c_shell() -> bool:
+        body = pg.evaluate("()=>document.body.className")
+        status = pg.evaluate("()=>{const e=document.querySelector('#sbVersion');return e?e.textContent.trim():''}")
+        return rep.add("桌面 编辑器起来、状态栏带版本号", "MYONL v" in status, "body=%r #sbVersion=%r" % (body[:40], status[:40]))
+
+    def c_filemenu() -> bool:
+        try:
+            pg.locator("div.menu-item", has_text="文件").first.click(timeout=5000)
+        except Exception:
+            return rep.add("桌面 文件菜单能开", False, "没找到顶栏「文件」")
+        try:
+            pg.wait_for_selector(".menu-dropdown.open", state="visible", timeout=5000)
+        except Exception:
+            return rep.add("桌面 文件菜单能开", False, "菜单没展开")
+        n = len(pg.query_selector_all(".menu-dropdown.open > *"))
+        items = pg.eval_on_selector_all(".menu-dropdown.open > *", "els=>els.map(e=>e.textContent.trim())")
+        pg.screenshot(path=str(shots / "d02-filemenu.png"))
+        return rep.add("桌面 文件菜单条目 ≥9", n >= 9, "条目=%d %s" % (n, " | ".join(items)[:160]))
+
+    def c_export_toast() -> bool:
+        try:
+            pg.locator(".menu-dropdown.open > *", has_text="导出一个 HTML").first.click(timeout=5000)
+        except Exception:
+            return rep.add("桌面 导出入口点了有反馈", False, "没找到导出条目")
+        # toast 只活 2.2 秒，必须在它消失前抓，不能先 sleep 再看
+        msg = ""
+        try:
+            pg.wait_for_function(
+                "()=>{const e=document.querySelector('.m-tst');return !!e&&(e.textContent||'').trim().length>1}",
+                timeout=8000,
+            )
+            msg = pg.evaluate("()=>{const e=document.querySelector('.m-tst');return e?e.textContent.trim():''}")
+        except Exception:
+            msg = ""
+        pg.screenshot(path=str(shots / "d03-export.png"))
+        # 单文件版没有后端，导出必然失败——允许失败，但不许静默（P258 之前这里真的什么都没有）
+        return rep.add("桌面 导出入口点了有反馈（失败也行，静默不行）", bool(msg), "提示=%r" % msg[:120])
+
+    def c_no_errors() -> bool:
+        allbad = errors + badres
+        return rep.add("桌面 零 JS 异常、零资源 404", len(allbad) == 0, " | ".join(allbad)[:300])
+
+    rep.check("桌面 三栏", c_shell, shots, pg)
+    rep.check("桌面 文件菜单", c_filemenu, shots, pg)
+    rep.check("桌面 导出", c_export_toast, shots, pg)
+    rep.check("桌面 无异常", c_no_errors, shots, pg)
+
+
+def main() -> int:
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--base", default="http://127.0.0.1:8877", help="dist/web 的 http 根地址")
+    ap.add_argument("--out", default="dist/_probe", help="截图与报告目录")
+    ap.add_argument("--skip-desktop", action="store_true")
+    ap.add_argument("--skip-landscape", action="store_true")
+    args = ap.parse_args()
+
+    shots = Path(args.out).resolve()
+    shots.mkdir(parents=True, exist_ok=True)
+    rep = Report()
+
+    with sync_playwright() as p:
+        browser = p.chromium.launch(args=["--disable-dev-shm-usage"])
+        mobile = browser.new_context(
+            viewport={"width": MOBILE_W, "height": MOBILE_H},
+            device_scale_factor=2,
+            is_mobile=True,
+            has_touch=True,
+        )
+        pg = mobile.new_page()
+        probe_mobile(pg, rep, shots, args.base)
+        if not args.skip_landscape:
+            probe_landscape(pg, rep, shots, args.base)
+        mobile.close()
+
+        if not args.skip_desktop:
+            desk = browser.new_context(viewport={"width": DESK_W, "height": DESK_H})
+            dp = desk.new_page()
+            probe_desktop(dp, rep, shots, args.base)
+            desk.close()
+        browser.close()
+
+    passed = len(rep.rows) - rep.bad
+    print("")
+    print("探针结果：%d/%d 通过，%d 条不符" % (passed, len(rep.rows), rep.bad))
+    print("截图：%s" % shots)
+    (shots / "report.json").write_text(
+        json.dumps({"passed": passed, "total": len(rep.rows), "bad": rep.bad,
+                    "rows": [{"name": n, "ok": ok, "detail": d} for n, ok, d in rep.rows]},
+                   ensure_ascii=False, indent=1),
+        encoding="utf-8",
+    )
+    return 0 if rep.bad == 0 else 1
+
+
+if __name__ == "__main__":
+    try:
+        sys.exit(main())
+    except Exception:
+        traceback.print_exc()
+        sys.exit(2)
