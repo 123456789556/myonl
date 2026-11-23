@@ -371,6 +371,72 @@ def probe_desktop(pg, rep: Report, shots: Path, base: str) -> None:
     rep.check("桌面 无异常", c_no_errors, shots, pg)
 
 
+def probe_editor(pg, rep: Report, shots: Path, base: str) -> None:
+    """P259 手机残留：触控底线与两处量出来的版面硬伤。
+
+    这三类此前没人守，靠人看截图：
+      ① 顶栏四颗只有 34 高、场景页头 38 高、变量入口 30 高、删句 ✕ 38 高 —— 全在 44 以下；
+      ② 场景页从 top=50+safe 开始，却还被 .center-page 的 padding-top:40 再让一次安全区，
+         头顶一条 40px 白带（实测 cp-head.top - page.top = 41）；
+      ③ 垃圾箱「彻底删除」被全局 button:hover 染成浅色主题的 deep-blue 底 + 红字。
+    """
+    pg.set_viewport_size({"width": MOBILE_W, "height": MOBILE_H})
+    pg.goto(base + PAGE, wait_until="domcontentloaded", timeout=60000)
+    pg.wait_for_selector(".m-home-card", state="visible", timeout=20000)
+    pg.wait_for_timeout(400)
+    card = rect(pg, ".m-home-card")
+    pg.mouse.click(card[0] + 24, card[1] + 24)
+    pg.wait_for_selector(".m-work", state="visible", timeout=8000)
+    pg.wait_for_timeout(300)
+    pg.locator("#mWorkWrite").click(timeout=8000)
+    pg.wait_for_timeout(1200)
+
+    def c_topbar() -> bool:
+        hs = []
+        for sel in ("#mHomeBack", "#mTopFind", "#mTopPreview", ".menubar .menu-item"):
+            hs.append((sel, rect(pg, sel)[3] if count(pg, sel) else 0))
+        bad = [s for s, h in hs if h < 44]
+        return rep.add("顶栏四颗高 ≥44", not bad, "实测 %s" % hs)
+
+    def c_scene_gap() -> bool:
+        page = rect(pg, "#scenePage")
+        head = rect(pg, "#scenePage .cp-head")
+        gap = head[1] - page[1]
+        return rep.add("场景页头顶不留安全带空带（≤8px）", gap <= 8, "page.top=%d head.top=%d 空带=%d" % (page[1], head[1], gap))
+
+    def c_scene_btns() -> bool:
+        hs = [("cp-btn", rect(pg, "#sceneSave")[3]),
+              ("sceneClose", rect(pg, "#sceneClose")[3]),
+              ("sceneClose.w", rect(pg, "#sceneClose")[2])]
+        bad = [n for n, v in hs if v < 44]
+        return rep.add("场景页头：保存/关闭 高与宽 ≥44", not bad, "实测 %s" % hs)
+
+    def c_var_entry() -> bool:
+        h = rect(pg, ".m-var-entry-b")[3] if count(pg, ".m-var-entry-b") else 0
+        return rep.add("变量与条件入口「加一条」高 ≥44", h >= 44, "高=%d" % h)
+
+    def c_bin_purge() -> bool:
+        pg.locator("#mHomeBack").click(timeout=6000)
+        pg.wait_for_timeout(900)
+        if count(pg, "#scenePage.open"):
+            pg.keyboard.press("Escape")
+            pg.wait_for_timeout(400)
+        pg.click('[data-nav="bin"]', timeout=6000)
+        pg.wait_for_timeout(700)
+        pg.locator("#mBinPurge").hover(timeout=4000)
+        pg.wait_for_timeout(250)
+        bg = pg.eval_on_selector("#mBinPurge", "el=>getComputedStyle(el).backgroundColor")
+        bad = bg.startswith("rgb(0, 90, 158)") or bg.startswith("rgb(0, 102, 184)")
+        pg.screenshot(path=str(shots / "m07-bin.png"))
+        return rep.add("垃圾箱「彻底删除」底不是主色块（悬停后也一样）", not bad, "bg=%s" % bg)
+
+    rep.check("顶栏 44", c_topbar, shots, pg)
+    rep.check("场景页空带", c_scene_gap, shots, pg)
+    rep.check("场景页头按钮", c_scene_btns, shots, pg)
+    rep.check("变量入口高度", c_var_entry, shots, pg)
+    rep.check("垃圾箱危险键底色", c_bin_purge, shots, pg)
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--base", default="http://127.0.0.1:8877", help="dist/web 的 http 根地址")
@@ -393,6 +459,7 @@ def main() -> int:
         )
         pg = mobile.new_page()
         probe_mobile(pg, rep, shots, args.base)
+        probe_editor(pg, rep, shots, args.base)
         if not args.skip_landscape:
             probe_landscape(pg, rep, shots, args.base)
         mobile.close()

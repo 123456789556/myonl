@@ -2923,8 +2923,8 @@ input[type="color"] {
     padding: 10px 12px 6px; background: var(--base);
   }
   .m-modebar .m-mode {
-    flex: 1 1 0; height: 42px; border-radius: 11px; cursor: pointer;
-    border: 1px solid var(--surface1); background: var(--surface0);
+    flex: 1 1 0; height: 44px; border-radius: 11px; cursor: pointer;
+    border: 1px solid var(--surface1); background: var(--mantle);
     color: var(--subtext0); font-size: 14px; font-weight: 600;
     transition: background .16s, border-color .16s, color .16s;
   }
@@ -2951,7 +2951,7 @@ input[type="color"] {
   /* 顶栏：只留返回/新场景/⋯/保存/关闭，其余收进 ⋯ */
   .scene-page .cp-head { padding: 8px 10px; gap: 7px; min-height: 50px; align-items: center; flex-wrap: nowrap; overflow: hidden; }
   .scene-page .cp-title { font-size: 14.5px; }
-  .scene-page .cp-btn { height: 38px; padding: 0 11px; font-size: 13px; border-radius: 9px; flex-shrink: 0; }
+  .scene-page .cp-btn { height: 44px; padding: 0 11px; font-size: 13px; border-radius: 9px; flex-shrink: 0; }
   .scene-page #sceneFilter, .scene-page #sceneCopy, .scene-page #sceneDel, .scene-page #sceneRefresh { display: none !important; }
   /* 列表页：只要「＋新场景 / ⋯ / ✕」；详情页：只要「‹ 场景列表 / 保存修改 / ✕」 */
   .scene-page:not(.m-detail) .scn-extra,

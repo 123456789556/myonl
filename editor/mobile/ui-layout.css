@@ -10,8 +10,11 @@ html.m-shell .menubar {
 }
 html.m-shell .menubar > *, html.m-shell .menubar .menu-item,
 html.m-shell .m-top-preview, html.m-shell #mHomeBack, html.m-shell #mFullscreen {
-  flex: 0 0 auto !important; white-space: nowrap !important;
+  flex: 0 0 auto !important; white-space: nowrap !important; height: 44px !important;
 }
+/* P259：顶栏四颗原来两种底 —— 「‹ 作品」「菜单」是 surface0 灰块，「查找」「预览」是
+   mantle 底 + 描边，一排里灰白混着。统一到 mantle，跟顶栏底色只差一档。 */
+html.m-shell .menubar #mHomeBack, html.m-shell .menubar .menu-item { background: var(--mantle) !important; }
 /* 竖屏顶栏实测溢出：390 宽时全屏按钮右边界 405、工具按钮 445，都被切掉。
    全屏改到「菜单」里（file 菜单已有该项），顶栏只留 6 个够用。 */
 html.m-shell #mFullscreen, html.m-shell #mToolsToggle { display: none !important; }
@@ -213,6 +216,14 @@ html.m-shell.m-wide .m-home-list { padding-bottom: 6px; }
 }
 .m-bin-b:disabled { opacity: .45; }
 .m-bin-bp { color: #e05555; border-color: rgba(224, 85, 85, .3); }
+/* P259：`button:hover{background:var(--lavender)}` 是全局规则，把「彻底删除」染成浅色主题的
+   深蓝 #005a9e，浅色下就是一块蓝底配红字，看着像坏掉。危险键的底只许是自己的 mantle。 */
+html.m-shell .m-bin-b:hover, html.m-shell .m-bin-b:active, html.m-shell .m-bin-b.m-bin-bp {
+  background: var(--mantle) !important;
+}
+/* P259：手机上不足 44 的触控区：删一句的 ✕ 是 42×38、作品台「‹ 作品」是 60×34。 */
+html.m-shell .sf-del { min-width: 44px; height: 44px; }
+html.m-shell #mWorkBack { height: 44px !important; }
 /* 别把整块丢到屏幕中间 —— 实测那样空态离 tab 老远，更像另一个毛病。
    做法是内容贴着上面排、但顶部给足呼吸（tab 下 24px）。 */
 .m-lib-body {
@@ -440,20 +451,13 @@ html.m-shell .m-var-entry { display: flex; align-items: center; gap: 10px;
   margin: 10px 0 6px; padding: 10px 12px; border-radius: 10px;
   border: 1px dashed var(--surface1); background: transparent; }
 html.m-shell .m-var-entry-t { flex: 1; font-size: 13px; color: var(--subtext1); }
-html.m-shell .m-var-entry-b { flex: 0 0 auto; height: 30px; padding: 0 12px; border: 0; border-radius: 8px;
+html.m-shell .m-var-entry-b { flex: 0 0 auto; height: 44px; padding: 0 12px; border: 0; border-radius: 8px;
   background: var(--blue); color: #fff; font-size: 13px; cursor: pointer; }
 
 /* ===== P220 顶部安全带（一处定义，三处引用） =====
-   量出来的事实（probe_p220，390×844，注入 47px 安全区）：
-   1) 顶栏高度定死 50px，安全区被当内边距吃进去，内容只剩 3px —— 「示范案例」top=17、cx=193，
-      正落在中央挖孔竖条 148–242 里；场景页 .cp-head top=1，同样堵在孔里。
-   2) 网页版路径吃不到 env()：给 :root 注入 --safe-top:47px 后，读回的计算值仍是 0px。
-      所以 max(var(--safe-top), env(safe-area-inset-top)) 这种写法在网页版等于没写。
-   3) height:auto 在这一层算不出高度（计算值仍是 50px），定死的高会把内边距吃掉，
-      标题会溢出条子外面 —— 顶栏高度必须显式相加。
-   收敛方式：安全区高度只留一个变量 --safe-pad-top。原生壳置 0（MainActivity 已按
-   systemBars + displayCutout + systemGestures 让过位，再叠加就是双倍空白），
-   其余壳取 40px 底线。改这一处，顶栏 / 场景页头 / 首页同时跟着走。 */
+   probe_p220 量出三条：① 顶栏定死 50px 时安全区被当内边距吃掉，内容只剩 3px，标题落在挖孔里；
+   ② 网页版吃不到 env()（注入 --safe-top:47px 后计算值仍是 0），max(env) 写法等于没写；
+   ③ height:auto 这层算不出高度。收敛成一个变量：原生壳置 0（MainActivity 已让过位，再叠就是双倍）。 */
 html.m-shell { --safe-pad-top: 40px; }
 html.m-shell.native-shell { --safe-pad-top: 0px; }
 /* 横屏时挖孔在侧边不在顶部，顶部那 40px 是白扔的 */
@@ -518,17 +522,12 @@ html.m-shell .scene-page .scene-item::before {
 html.m-shell .scene-page .scene-item.active::before { background: var(--blue); }
 
 /* ===== P222b 场景页别再叠在顶栏上 =====
-   实测：手机壳里 .center-page 是 fixed top:0，而 .menubar 也在 top:0（90px 高），
-   于是「场景编辑」那一条被顶栏压掉一半（截图里字被切）。场景页应该从顶栏下面开始。
-   同时它已不在安全区里，自己那 40px 安全带就不需要了，改成 6px 常规内边距。 */
-html.m-shell .center-page.scene-page { top: calc(50px + var(--safe-pad-top)) !important; }
+   .center-page 本是 fixed top:0，跟 90px 顶栏重叠；场景页从顶栏下开始，它那份 40px 安全带就不要了。 */
+html.m-shell .center-page.scene-page { top: calc(50px + var(--safe-pad-top)) !important; padding-top: 0 !important; }
 html.m-shell .scene-page .cp-head { padding-top: 6px !important; }
 
 /* ===== P249 手机上「✕ 关闭」不再是关闭，统一成「‹」 ====
-   实测（probe_p249 C 段）：#sceneClose x=316 宽 64，文案仍是「✕ 关闭」。
-   同一套 cp-head 里 #cpClose（页面编辑）、#charClose（角色库）也是「✕ 关闭」。
-   手机上这些键的实际语义就是「退回上一层」，用箭头比叉号省字、也少一个方块。
-   做法：字号归零藏掉中文，用 ::before 画一个箭头；DOM 文案保留给读屏与 i18n。 */
+   语义就是退回上一层：字号归零藏掉中文，::before 画箭头；DOM 文案留给读屏与 i18n。 */
 html.m-shell #sceneClose, html.m-shell #cpClose, html.m-shell #charClose {
   font-size: 0 !important; padding: 0 11px !important; min-width: 34px;
 }
@@ -564,7 +563,7 @@ html.m-shell .m-avatar { background: #2f6bd6; }
 html.m-shell #sceneClose, html.m-shell .scn-back {
   background: transparent; box-shadow: none; border: 0;
 }
-html.m-shell #sceneClose { min-width: 22px; padding: 0 2px; }
+html.m-shell #sceneClose { min-width: 44px; padding: 0 2px; }
 html.m-shell .scn-back { padding: 0 2px; }
 html.m-shell .cp-head { padding-right: 12px !important; }
 /* 手指按下/抬起时不要残留高亮块（安卓 WebView 的 tap-hi） */

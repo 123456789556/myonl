@@ -304,7 +304,9 @@ python tools/pack_apk.py --game dist/single/你的作品.html
 
 只想做游戏的话，上面那些就够了。下面是技术细节。
 
-> 全量测试当前 **1423 passed, 4 skipped、退出码 0**（2026-11-21 本机已复跑；数随版本变，以最新一次 `pytest -q` 为准）。
+> 全量测试当前 **1561 passed, 7 skipped、退出码 0**（2026-11-23 本机已复跑；数随版本变，以最新一次 `pytest -q` 为准）。
+> 界面另外有一条机器探针 `tools/ui_probe/probe_shell.py`（24 条，手机 390×844 / 横屏 844×390 / 桌面 1440×900），
+> CI 里 push 改 `editor/**`、`web/**` 就跟着跑，失败会贴出是哪一条不符并留截图 —— 之前的界面验证全在人手上，这是补上的那个洞。
 
 ## 手机端能做什么、做不到什么
 
@@ -312,7 +314,7 @@ python tools/pack_apk.py --game dist/single/你的作品.html
 
 - 剧本由 `engine/parser.js` 解析，和电脑端 `engine/parser.py` **逐字段一致**（`tools/pack_diff.py`
   拿 `games/` 下工程对拍）；成品由 `engine/pack.js` 拼成单文件 HTML，手机上点一下就能导出。
-- **素材**：图片进来就压到最长边 1280；音频原样存；存在设备本机（图片在 `IndexedDB`，剧本在 `localStorage`）。
+- **素材**：图片**原图不动**（列表另存 240 边缩略图给素材页用，压缩只发生在导出口）；音频原样存；存在设备本机（图片在 `IndexedDB`，剧本在 `localStorage`）。
 - **一个真实上限**：单文件 HTML 把素材内联成 base64（体积再涨约三分之一），40 MB 起软提醒、
   80 MB 做强提示（不硬拦导出），但超 80 MB 低端机大概率白屏。更大的素材要走「文件夹 / zip 发行」，还没做。
 
