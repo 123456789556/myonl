@@ -1,16 +1,13 @@
 /* ===================================================================
-   P65：手机端第一层「工作台」
-   打开就是工程卡片（最近用的排前面），点一张才进编辑器。
-   桌面端（>860px）不接管，直接进编辑器 —— 电脑上三列 IDE 是合适的。
-   =================================================================== */
+   P65：手机端第一层「工作台」：打开就是工程卡片（最近用的排前面），点一张才进编辑器。
+   桌面端（>860px）不接管；P260 删完落回收箱的落点也在这里。 =================================================================== */
 (function () {
   "use strict";
   var $ = function (id) { return document.getElementById(id); };
 
   // P209：手机端默认用户名。用户要求别叫「我」，叫「用户」。
   var DEF_NAME = "用户";
-  // P217：没上传头像时圆里写什么。用户原话「他的头像应该是用户两字，而不是只有一个用」。
-  // 默认名整整两个字放得下；自己改的长名字取前两个字，英文/数字名取前两个字符并大写。
+  // P217：没上传头像时圆里写什么（用户原话「头像应该是用户两字」）：默认名整两个字；长名字取前两字，英文/数字取前两字符并大写。
   function avatarText(name) {
     var s = String(name || DEF_NAME).trim();
     if (!s) s = DEF_NAME;
@@ -158,8 +155,8 @@
           '<path d="M3 3v9.6h10M9.9 6.2v4.6M9.9 10.8l-2.2-2.2M9.9 10.8l2.2-2.2"/></svg>' +
       '</button>' +
       // P203：删掉的作品不能就此消失 —— 页头留一个垃圾桶，里面还有东西才显示。
-      // 只有卡片上的「⋯」一个入口的话，作品删光那天就再也打不开垃圾箱了。
-      '<button type="button" class="m-home-find m-home-bin" id="mHomeBin" aria-label="垃圾箱" hidden>' +
+      // 只有卡片上的「⋯」一个入口的话，作品删光那天就再也打不开回收箱了。
+      '<button type="button" class="m-home-find m-home-bin" id="mHomeBin" aria-label="回收箱" hidden>' +
         '<svg viewBox="0 0 16 16" width="18" height="18" fill="none" stroke="currentColor" ' +
           'stroke-width="1.5" stroke-linecap="round" aria-hidden="true">' +
           '<path d="M2.9 4.4h10.2M6.3 4.4V3h3.4v1.4M4.2 4.4l.6 8.4h6.4l.6-8.4M6.7 6.6v4.4M9.3 6.6v4.4"/>' +
@@ -194,11 +191,11 @@
       '<button type="button" class="m-nav-item" data-nav="lib" id="mHomeLib">' +
         ico('M2.4 4.4h11.2v8.2H2.4zM5 4.4l1.8-2.2h4.4l1.8 2.2M6.2 9.2h3.6') +
         '<span>素材</span></button>' +
-      // P210：用户第四次说「我的作品下面最好四个 tab 最少四个」—— 加上垃圾箱。
+      // P210：用户第四次说「我的作品下面最好四个 tab 最少四个」—— 加上回收箱。
       // 不放教程（连着被否三次），第四个得是天天能点到的真实一页。
       '<button type="button" class="m-nav-item" data-nav="bin">' +
         ico('M3.4 4.8h9.2M4.8 4.8v7.6a1.2 1.2 0 0 0 1.2 1.2h4a1.2 1.2 0 0 0 1.2-1.2V4.8M6.4 4.8V3.4h3.2v1.4M6.6 7.8v3M9.4 7.8v3') +
-        '<span>垃圾箱</span></button>' +
+        '<span>回收箱</span></button>' +
       '<button type="button" class="m-nav-item" data-nav="set">' +
         // P210：原来那条是从圆心射 8 条短线，真机上看着像「太阳」。换成六角螺母 + 内圈，才是设置的样子。
         ico('M8 2.6l4.7 2.7v5.4L8 13.4l-4.7-2.7V5.3zM8 6.2a1.8 1.8 0 1 0 .01 3.6 1.8 1.8 0 0 0-.01-3.6z') +
@@ -261,14 +258,14 @@
         ' aria-label="更多操作">⋯</button></div>';
   }
 
-  // P203：垃圾箱里还有东西才显示那颗垃圾桶 —— 空的摆着就是个假的家具。
+  // P203：回收箱里还有东西才显示那颗入口 —— 空的摆着就是个假的家具。
   function refreshBin() {
     var b = $("mHomeBin");
     if (!b) return;
     var n = 0;
     try { if (window.MYONLTrash) n = window.MYONLTrash.list().length; } catch (e) {}
     b.hidden = !n;
-    b.setAttribute("aria-label", n ? "垃圾箱，里面有 " + n + " 个" : "垃圾箱");
+    b.setAttribute("aria-label", n ? "回收箱，里面有 " + n + " 个" : "回收箱");
   }
 
   // P204：选择模式照手机相册那套做 —— 长按一张卡进来，顶栏变「取消 / 已选 N / 全选」，
@@ -1159,6 +1156,8 @@
     if (!res.ok) throw new Error("读不到作品列表");
     orient = res.orientation || "any";
     render(res.projects || []);
+    // P260：删完落回收箱（标记由 editor_trash.delMany 写，读完即清）；刚删的东西得当场看得见。
+    if (localStorage.getItem("myonl:off:goto:v1") === "bin") { localStorage.removeItem("myonl:off:goto:v1"); if (window.MYONLTrash) window.MYONLTrash.openBin(); }
   }).catch(function (e) {
     var list = $("mHomeList");
     if (list) list.innerHTML = '<div class="m-home-err">' + (e.message || "读不到作品列表") + '</div>' +
@@ -1181,7 +1180,7 @@
   var binBtn = $("mHomeBin");
   if (binBtn) binBtn.addEventListener("click", function () {
     if (window.MYONLTrash) window.MYONLTrash.openBin();
-    else toast("垃圾箱没加载，刷新一下页面");
+    else toast("回收箱没加载，刷新一下页面");
   });
   // P255：导入从设置页搬到首页头部。两条路（选文件 / 整段粘贴）都在导出页里，
   // 这里只负责把那一页叫起来；离线内核下没有 MYONLExport 时才回落到旧的读文件实现。
@@ -1211,10 +1210,10 @@
   if (selDel) selDel.addEventListener("click", function () {
     var names = selNames();
     if (!names.length) return;
-    // 批量删除只问一次：问三次就是把人当小孩，进垃圾箱还能还原
+    // 批量删除只问一次：问三次就是把人当小孩，进回收箱还能还原
     dlgConfirm({
       title: "删除 " + names.length + " 个作品？",
-      msg: "会先进垃圾箱，30 天内能还原。",
+      msg: "会先进回收箱，30 天内能还原。",
       ok: "删除", danger: true
     }).then(function (yes) {
       if (!yes) return;
@@ -1241,7 +1240,7 @@
       else if (kind === "set") openSettings();
       else if (kind === "bin") {
         if (window.MYONLTrash) window.MYONLTrash.openBin();
-        else toast("垃圾箱没加载，刷新一下页面");
+        else toast("回收箱没加载，刷新一下页面");
       }
       else if (kind === "tut") openTutorialSheet();
       else layer.scrollTo({ top: 0, behavior: "smooth" });

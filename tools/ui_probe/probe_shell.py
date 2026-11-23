@@ -120,7 +120,11 @@ def probe_mobile(pg, rep: Report, shots: Path, base: str) -> None:
     def c_bars() -> bool:
         nav = count(pg, "[data-nav]")
         heads = count(pg, ".m-home-find")
-        return rep.add("手机 底栏 4 格 / 页头 3 钮", nav == 4 and heads == 3, "nav=%d heads=%d" % (nav, heads))
+        # P260：底栏第三格从「垃圾箱」改名「回收箱」—— 名字得跟这页真实行为对上。
+        txt = pg.eval_on_selector_all("[data-nav]", "els=>els.map(e=>e.textContent.trim())")
+        lab = "回收箱" in txt
+        return rep.add("手机 底栏 4 格 / 页头 3 钮 / 第三格叫回收箱", nav == 4 and heads == 3 and lab,
+                       "nav=%d heads=%d labels=%s" % (nav, heads, txt))
 
     def c_no_splash() -> bool:
         vis = pg.evaluate(
@@ -375,10 +379,10 @@ def probe_editor(pg, rep: Report, shots: Path, base: str) -> None:
     """P259 手机残留：触控底线与两处量出来的版面硬伤。
 
     这三类此前没人守，靠人看截图：
-      ① 顶栏四颗只有 34 高、场景页头 38 高、变量入口 30 高、删句 ✕ 38 高 —— 全在 44 以下；
+      ① 顶栏几颗只有 34 高、场景页头 38 高、变量入口 30 高、删句 ✕ 38 高 —— 全在 44 以下；
       ② 场景页从 top=50+safe 开始，却还被 .center-page 的 padding-top:40 再让一次安全区，
          头顶一条 40px 白带（实测 cp-head.top - page.top = 41）；
-      ③ 垃圾箱「彻底删除」被全局 button:hover 染成浅色主题的 deep-blue 底 + 红字。
+      ③ 回收箱「彻底删除」被全局 button:hover 染成浅色主题的 deep-blue 底 + 红字。
     """
     pg.set_viewport_size({"width": MOBILE_W, "height": MOBILE_H})
     pg.goto(base + PAGE, wait_until="domcontentloaded", timeout=60000)
@@ -392,11 +396,17 @@ def probe_editor(pg, rep: Report, shots: Path, base: str) -> None:
     pg.wait_for_timeout(1200)
 
     def c_topbar() -> bool:
-        hs = []
-        for sel in ("#mHomeBack", "#mTopFind", "#mTopPreview", ".menubar .menu-item"):
-            hs.append((sel, rect(pg, sel)[3] if count(pg, sel) else 0))
-        bad = [s for s, h in hs if h < 44]
-        return rep.add("顶栏四颗高 ≥44", not bad, "实测 %s" % hs)
+        # P260：查找那颗收进「下面那颗放大镜浮球」，顶栏剩三颗；作品名顶到原来查找的位置。
+        hs = [("mHomeBack", rect(pg, "#mHomeBack")[3]),
+              ("mTopPreview", rect(pg, "#mTopPreview")[3]),
+              ("menu", rect(pg, ".menubar .menu-item")[3])]
+        bad = [n for n, h in hs if h < 44]
+        find_vis = pg.is_visible("#mTopFind") if count(pg, "#mTopFind") else False
+        back, title = rect(pg, "#mHomeBack"), rect(pg, ".menubar .m-title2")
+        gap = title[0] - (back[0] + back[2])
+        return rep.add("顶栏三颗高 ≥44 / 查找已收 / 作品名顶上来",
+                       (not bad) and (not find_vis) and gap <= 16,
+                       "实测 %s find=%s 间距=%d" % (hs, find_vis, gap))
 
     def c_scene_gap() -> bool:
         page = rect(pg, "#scenePage")
@@ -428,13 +438,13 @@ def probe_editor(pg, rep: Report, shots: Path, base: str) -> None:
         bg = pg.eval_on_selector("#mBinPurge", "el=>getComputedStyle(el).backgroundColor")
         bad = bg.startswith("rgb(0, 90, 158)") or bg.startswith("rgb(0, 102, 184)")
         pg.screenshot(path=str(shots / "m07-bin.png"))
-        return rep.add("垃圾箱「彻底删除」底不是主色块（悬停后也一样）", not bad, "bg=%s" % bg)
+        return rep.add("回收箱「彻底删除」底不是主色块（悬停后也一样）", not bad, "bg=%s" % bg)
 
     rep.check("顶栏 44", c_topbar, shots, pg)
     rep.check("场景页空带", c_scene_gap, shots, pg)
     rep.check("场景页头按钮", c_scene_btns, shots, pg)
     rep.check("变量入口高度", c_var_entry, shots, pg)
-    rep.check("垃圾箱危险键底色", c_bin_purge, shots, pg)
+    rep.check("回收箱危险键底色", c_bin_purge, shots, pg)
 
 
 def main() -> int:

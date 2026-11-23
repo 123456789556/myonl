@@ -1,16 +1,11 @@
-/* P203 作品更多操作 / 垃圾箱 / 素材库页。
-   手机离线内核只有一个写路由 /api/new，作品删不掉、改不了名 —— 用户四个
-   「未命名」只能一直堆在列表里。这里补三件事，全部走同一个 localStorage
-   作品库，不新增后端路由（在线端本来就各有各的接口，不该被这套覆盖）：
-   1) 每张卡的「⋯」→ 改名 / 删除；
-   2) 删除先进垃圾箱（30 天可还原），彻底删才真没了；
-   3) 底栏「素材库」：列出现有素材（图 / 音频 / 视频）、删除、导入。
-   依赖：window.__myonlLib（gal_offline.js 暴露 read/write）、
-        window.MYONLRenameProject（ui_layout.js 暴露的三处同步改名）。 */
+/* P203 作品更多操作 / 回收箱 / 素材库页。手机离线内核只有一个写路由 /api/new，作品删不掉、改不了名，
+   这里补三件事，全走同一个 localStorage 作品库，不新增后端路由：1) 卡片「⋯」→ 改名 / 删除；
+   2) 删除先进回收箱（30 天内可还原；在回收箱里再删一次就不可恢复）；3) 素材库列出/删除/导入。
+   依赖：window.__myonlLib（gal_offline.js read/write）、window.MYONLRenameProject（ui_layout.js 三处改名同步）。 */
 (function () {
   "use strict";
-  var TRASH_KEY = "myonl:off:trash:v1";
-  var DAY = 86400000;          // 垃圾箱按毫秒算日子，作品库里的时间戳是秒
+  var TRASH_KEY = "myonl:off:trash:v1", GOTO_KEY = "myonl:off:goto:v1";   // P260：删完落回收箱的标记
+  var DAY = 86400000;          // 回收箱按毫秒算日子，作品库里的时间戳是秒
   var KEEP_DAYS = 30;
 
   function libApi() { return window.__myonlLib || null; }
@@ -48,7 +43,7 @@
     return "未命名 " + n;
   }
 
-  // ---- 垃圾箱读写
+  // ---- 回收箱读写
   function readTrash() {
     var rows = [];
     try { rows = JSON.parse(localStorage.getItem(TRASH_KEY) || "[]") || []; } catch (e) { rows = []; }
@@ -62,7 +57,7 @@
     try { localStorage.setItem(TRASH_KEY, JSON.stringify(rows)); } catch (e) {}
   }
 
-  // 批量删除：一次搬 N 个进垃圾箱，只 reload 一次。
+  // 批量删除：一次搬 N 个进回收箱，reload 一次后落在回收箱页。
   // 一个个删会连续 reload N 次，选五个就像卡死了。
   function delMany(names) {
     var api = libApi();
@@ -86,6 +81,7 @@
     gone.forEach(function (nm) {
       try { if (window.MYONLDraft && window.MYONLDraft.drop) window.MYONLDraft.drop(nm); } catch (e) {}
     });
+    try { localStorage.setItem(GOTO_KEY, "bin"); } catch (e) {}   // P260：reload 后落在回收箱
     location.reload();
   }
 
@@ -108,7 +104,7 @@
     api.write(lib);
     writeTrash(rows);
     if (!done) {
-      toast(dup ? "都有同名作品，先改个名再还原" : "垃圾箱里没有它们");
+      toast(dup ? "都有同名作品，先改个名再还原" : "回收箱里没有它们");
       return;
     }
     if (dup) toast("还原 " + done + " 个，另有 " + dup + " 个同名跳过");
@@ -255,12 +251,12 @@
       else toast("这个设备上没有历史版本模块");
     });
     moreEl.querySelector("#mMoreDel").addEventListener("click", function () {
-      // 删完就 reload，来不及说"进垃圾箱了"，所以把归宿写进这句确认里；
+      // 删完就 reload，来不及说"进回收箱了"，所以把归宿写进这句确认里；
       // 误触一下就要多点一次还原，问一句比事后道歉便宜。
       closeMore();  // 别让菜单留在确认框底下被压成灰片
       dlgConfirm({
         title: "删除「" + name + "」？",
-        msg: "会先进垃圾箱，" + KEEP_DAYS + " 天内能还原。",
+        msg: "会先进回收箱，" + KEEP_DAYS + " 天内能还原。",
         ok: "删除", danger: true
       }).then(function (yes) {
         if (!yes) return;
@@ -270,7 +266,7 @@
     });
   }
 
-  // ---- 垃圾箱：照相册「最近删除」——整页、左上返回箭头、标题居中、右上「选择」
+  // ---- 回收箱：照相册「最近删除」——整页、左上返回箭头、标题居中、右上「选择」
   var binEl = null, binSel = {}, binSelOn = false;
 
   function binPick() {
@@ -310,7 +306,7 @@
       if (pg) { pg.disabled = !picked.length; pg.textContent = picked.length ? ("彻底删除（" + picked.length + "）") : "彻底删除"; }
     } else {
       if (l) l.textContent = "‹";
-      if (t) t.textContent = "已删除";
+      if (t) t.textContent = "回收箱";
       if (r) { r.textContent = "选择"; r.disabled = !total; }
       if (bar) bar.hidden = true;
     }
@@ -336,10 +332,10 @@
     binEl.innerHTML =
       '<div class="m-bin-top">' +
         '<button type="button" class="m-back" id="mBinLeft" aria-label="返回">‹</button>' +
-        '<span class="m-bin-title" id="mBinTitle">已删除</span>' +
+        '<span class="m-bin-title" id="mBinTitle">回收箱</span>' +
         '<button type="button" class="m-bin-act" id="mBinRight">选择</button>' +
       '</div>' +
-      '<div class="m-bin-note">已删除的作品仅保留 ' + KEEP_DAYS + ' 天，逾期永久删掉。</div>' +
+      '<div class="m-bin-note">回收箱保存 ' + KEEP_DAYS + ' 天；在这里再删一次就不可恢复。</div>' +
       '<div class="m-bin-grid">' + grid + '</div>' +
       '<div class="m-bin-bar" id="mBinBar" hidden>' +
         '<button type="button" class="m-bin-b" id="mBinRestore" disabled>还原</button>' +

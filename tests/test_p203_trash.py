@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""P203 作品可删、删了能找回：卡片「⋯」更多菜单 + 垃圾箱 + 素材库格。
+"""P203 作品可删、删了能找回：卡片「⋯」更多菜单 + 回收箱 + 素材库格。
 
 用户这轮原话：「做一个删除的垃圾箱标志，每个作品那里都有三个点的标志表示更多的
 处理方式」「我们的游戏怎么删除呢是不是可以批量处理呢有没有垃圾箱呢三十天内可
@@ -8,7 +8,7 @@
 守六件事：
 1. 每张作品卡右上有一个「⋯」，点它出菜单，不再只有"点开=进作品"一个动作；
 2. 删除不是真删，先进 `myonl:off:trash:v1`，30 天可找回；
-3. 垃圾箱**不动** `myonl:off:lib:v1` 的结构 —— 那个库空掉会被 readLib 当成
+3. 回收箱**不动** `myonl:off:lib:v1` 的结构 —— 那个库空掉会被 readLib 当成
    「第一次打开」重建一个"我的第一个游戏"，所以回收不能塞在里面；
 4. 改名要同步草稿，否则下次打开会被判成别人的草稿丢掉；
 5. 未命名作品自动编号，不再靠 `未命名 · MMDD-HHMM` 撞名；
@@ -39,7 +39,7 @@ def test_卡片右上有一个更多按钮():
     assert "MYONLTrash.more(" in HOME_JS
 
 
-def test_删除进垃圾箱不真删():
+def test_删除进回收箱不真删():
     assert "window.MYONLTrash" in TRASH_JS
     assert '"myonl:off:trash:v1"' in TRASH_JS
     # 30 天：常量写成乘式，改天数时算式还在
@@ -49,7 +49,7 @@ def test_删除进垃圾箱不真删():
     assert "MYONLDraft" in TRASH_JS and "drop(" in TRASH_JS
 
 
-def test_垃圾箱不碰作品库结构():
+def test_回收箱不碰作品库结构():
     # 独立 key：readLib 里「lib.projects.length 为 0 → 重建 blankLib」这条
     # 会把空库变成"我的第一个游戏"，回收站塞进 lib 必然触发它
     assert '"myonl:off:lib:v1"' not in TRASH_JS
@@ -65,8 +65,8 @@ def test_改名对外暴露且与内核同一份缓存():
     assert "window.__myonlLib = { read: readLib, write: writeLib };" in OFFLINE_JS
 
 
-def test_垃圾箱自己有入口不怕作品删光():
-    # 只靠卡片上的「⋯」，作品删到最后一张就再也进不去垃圾箱了
+def test_回收箱自己有入口不怕作品删光():
+    # 只靠卡片上的「⋯」，作品删到最后一张就再也进不去回收箱了
     assert 'id="mHomeBin"' in HOME_JS
     assert "window.MYONLTrash.openBin()" in HOME_JS
     # 空的时候不显示：home.css 给 .m-home-find 定了 display:flex，得压回去
@@ -75,11 +75,11 @@ def test_垃圾箱自己有入口不怕作品删光():
     assert ".m-home-find[hidden] { display: none; }" in CSS
 
 
-def test_点删除先问一句再进垃圾箱():
+def test_点删除先问一句再进回收箱():
     # P209：换成自绘弹窗（系统 confirm 在手机上丑得没法看），动作仍是「先问一句再进箱」
     assert "dlgConfirm({" in TRASH_JS
     assert 'title: "删除「" + name + "」？"' in TRASH_JS
-    assert 'msg: "会先进垃圾箱，" + KEEP_DAYS + " 天内能还原。"' in TRASH_JS
+    assert 'msg: "会先进回收箱，" + KEEP_DAYS + " 天内能还原。"' in TRASH_JS
 
 
 def test_新建入口常驻列表末尾():

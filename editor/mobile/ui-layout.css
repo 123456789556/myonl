@@ -12,15 +12,16 @@ html.m-shell .menubar > *, html.m-shell .menubar .menu-item,
 html.m-shell .m-top-preview, html.m-shell #mHomeBack, html.m-shell #mFullscreen {
   flex: 0 0 auto !important; white-space: nowrap !important; height: 44px !important;
 }
-/* P259：顶栏四颗原来两种底 —— 「‹ 作品」「菜单」是 surface0 灰块，「查找」「预览」是
+/* P259：顶栏几颗原来两种底 —— 「‹ 作品」「菜单」是 surface0 灰块，「查找」「预览」是
    mantle 底 + 描边，一排里灰白混着。统一到 mantle，跟顶栏底色只差一档。 */
 html.m-shell .menubar #mHomeBack, html.m-shell .menubar .menu-item { background: var(--mantle) !important; }
-/* 竖屏顶栏实测溢出：390 宽时全屏按钮右边界 405、工具按钮 445，都被切掉。
-   全屏改到「菜单」里（file 菜单已有该项），顶栏只留 6 个够用。 */
-html.m-shell #mFullscreen, html.m-shell #mToolsToggle { display: none !important; }
-/* 收完还是超（作品名一长就顶出去：390 宽实测最右到 435）：间距 8→4，作品名限宽省略 */
+/* 竖屏顶栏实测溢出：390 宽时全屏按钮右边界 405、工具按钮 445，都被切掉。全屏改到「菜单」里；P260 查找也收掉（下方已有放大镜浮球），收掉后作品名顶到原查找位置。
+   收完还是超（作品名一长就顶出去：390 宽实测最右到 435）：间距 8→4，作品名限宽省略 */
+html.m-shell #mFullscreen, html.m-shell #mToolsToggle, html.m-shell .menubar #mTopFind { display: none !important; }
 html.m-shell .menubar { gap: 4px !important; padding-left: 6px !important; padding-right: 6px !important; }
 html.m-shell .menubar .m-title2 { max-width: 84px; overflow: hidden; text-overflow: ellipsis; }
+/* P260：作品名不再居中飘着 —— 「‹ 作品」右边原来让了 108px 给它居中，现在贴着「‹ 作品」，右侧那组靠右 */
+html.m-shell .menubar > #mHomeBack { margin-right: 8px !important; } html.m-shell .menubar #mTopPreview { margin-left: auto !important; }
 /* 横屏只留「返回 / 作品名 / 预览 / 菜单」四个，编辑/视图/运行/帮助收进「菜单」 */
 html.m-shell.m-wide .menubar .menu-item:not([data-menu="file"]),
 html.m-shell.m-wide #mFullscreen { display: none !important; }
@@ -454,11 +455,11 @@ html.m-shell .m-var-entry-t { flex: 1; font-size: 13px; color: var(--subtext1); 
 html.m-shell .m-var-entry-b { flex: 0 0 auto; height: 44px; padding: 0 12px; border: 0; border-radius: 8px;
   background: var(--blue); color: #fff; font-size: 13px; cursor: pointer; }
 
-/* ===== P220 顶部安全带（一处定义，三处引用） =====
+/* ===== P220 顶部安全带（一处定义，三处引用；P260 40→28：顶栏整行上移 12px） =====
    probe_p220 量出三条：① 顶栏定死 50px 时安全区被当内边距吃掉，内容只剩 3px，标题落在挖孔里；
    ② 网页版吃不到 env()（注入 --safe-top:47px 后计算值仍是 0），max(env) 写法等于没写；
    ③ height:auto 这层算不出高度。收敛成一个变量：原生壳置 0（MainActivity 已让过位，再叠就是双倍）。 */
-html.m-shell { --safe-pad-top: 40px; }
+html.m-shell { --safe-pad-top: 28px; }
 html.m-shell.native-shell { --safe-pad-top: 0px; }
 /* 横屏时挖孔在侧边不在顶部，顶部那 40px 是白扔的 */
 @media (orientation: landscape) { html.m-shell { --safe-pad-top: 0px; } }

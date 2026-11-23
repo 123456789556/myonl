@@ -8,8 +8,8 @@
 守五件事：
 1. 底栏只留 作品 / 素材 / 设置，教程不在底栏（给一个列表下方的小入口）；
 2. 底栏顶上那条 1px 横线去掉；
-3. 垃圾箱与素材改成整页：左上返回箭头、标题居中、右上动作 —— 不是底部抽屉；
-4. 垃圾箱照相册「最近删除」：三列格子、每格写还剩几天、可多选、底部还原/彻底删除；
+3. 回收箱与素材改成整页：左上返回箭头、标题居中、右上动作 —— 不是底部抽屉；
+4. 回收箱照相册「最近删除」：三列格子、每格写还剩几天、可多选、底部还原/彻底删除；
 5. 首页长按卡片进选择模式：顶栏取消/已选/全选，底部一条删除，批量删只问一次。
 """
 from pathlib import Path
@@ -26,10 +26,10 @@ CSS = (ROOT / "editor" / "mobile" / "ui-layout.css").read_text(encoding="utf-8")
 
 def test_底栏三格且没有横线():
     nav = HOME_JS.split('id="mHomeNav"')[1].split("</div>")[0]
-    # P210：用户第四次要求「我的作品下面最好四个 tab 最少四个」→ 加回一格，放垃圾箱
+    # P210：用户第四次要求「我的作品下面最好四个 tab 最少四个」→ 加回一格，放回收箱
     assert nav.count("data-nav=") == 4
     assert 'data-nav="lib"' in nav and "<span>素材</span>" in nav
-    assert 'data-nav="bin"' in nav and "<span>垃圾箱</span>" in nav
+    assert 'data-nav="bin"' in nav and "<span>回收箱</span>" in nav
     assert 'data-nav="tut"' not in nav
     assert "border-top: 0 !important" in CSS
 
@@ -50,7 +50,7 @@ def test_二级页是整页且返回箭头在左():
     assert "grid-template-columns: 76px 1fr 76px" in CSS
     assert 'id="mBinLeft" aria-label="返回">‹<' in TRASH_JS
     assert ".m-bin-title { text-align: center;" in CSS
-    # 垃圾箱与素材都必须走这层骨架，不许退回 m-sheet 抽屉
+    # 回收箱与素材都必须走这层骨架，不许退回 m-sheet 抽屉
     assert 'binEl.className = "m-bin-page";' in TRASH_JS
     assert 'asEl.className = "m-lib-page";' in TRASH_JS
     # 设置页也走这层骨架，左上 ‹，顶上圆形头像
@@ -60,7 +60,7 @@ def test_二级页是整页且返回箭头在左():
     assert ".m-sel-top[hidden]" in CSS
 
 
-def test_垃圾箱照相册最近删除():
+def test_回收箱照相册最近删除():
     assert "grid-template-columns: repeat(3, 1fr)" in CSS
     assert "days + \" 天\"" in TRASH_JS
     assert 'class="m-bin-cell" data-row=' in TRASH_JS
@@ -75,9 +75,9 @@ def test_首页长按进多选():
     assert "if (selMode) { toggleSel(b.dataset.folder); return; }" in HOME_JS
     assert 'id="mSelTop"' in HOME_JS and 'id="mSelBar"' in HOME_JS
     assert 'id="mSelCancel"' in HOME_JS and 'id="mSelAll"' in HOME_JS and 'id="mSelDel"' in HOME_JS
-    # 批量删只问一次，进垃圾箱还能还原
+    # 批量删只问一次，进回收箱还能还原
     assert "MYONLTrash.delMany" in HOME_JS
-    assert "会先进垃圾箱，30 天内能还原" in HOME_JS
+    assert "会先进回收箱，30 天内能还原" in HOME_JS
 
 
 def test_批量删除只reload一次():
