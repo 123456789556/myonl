@@ -614,3 +614,13 @@ html.m-shell .m-note-ta {
    真机冷启动截图里就是「设置」上面浮着一块蓝字。手机只留顶部那条细进度条，
    电脑端保持原样（那边右下角是空的）。 */
 html.m-shell .splash-badge { display: none !important; }
+
+/* P256：卡片「⋯」那块面板只给容器挂了 .on，遮罩自己没挂 —— 结果是 0×0、点不中，
+   用户点空白处关不掉（只能去点最下面的「取消」），看着也没有暗幕。
+   这是「多按键不能用」的同一种毛病：按键在、点了没反应。 */
+/* 这个面板实际铺满了整屏：容器还带着老规则 .m-sheet{inset:0}，于是点「⋯」整屏变白、
+   四行按钮挤在屏幕最上面，底下一大片空白。改成只贴底、高度由内容决定。 */
+html.m-shell .m-more-sheet { top: auto; }
+html.m-shell .m-more-sheet > .m-sheet-mask { display: block; background: rgba(0, 0, 0, .45); z-index: 1; }
+/* 遮罩有 z-index，面板正文没有就会反过来盖住按钮（修完遮罩第一版就是这样，点了删除没反应） */
+html.m-shell .m-more-sheet > .m-sheet-body { position: relative; z-index: 2; }
