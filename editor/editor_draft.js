@@ -99,9 +99,11 @@
     el.style.cssText =
       "position:fixed;left:50%;transform:translateX(-50%);" +
       "bottom:calc(52px + env(safe-area-inset-bottom) + 6px);" +
-      "z-index:520;height:22px;line-height:22px;padding:0 10px;border-radius:11px;" +
-      "font-size:12px;color:#9fb3d1;background:rgba(16,22,34,.86);" +
-      "border:1px solid rgba(120,160,220,.22);pointer-events:none;" +
+      // P261：窄条原来是 11px 胶囊 + 写死的深蓝底，两套皮都不跟 —— 改成 4px 硬边、
+      // 底色吃卡片、描边吃 surface0，字色走语义变量（两套皮各自保证对比度）。
+      "z-index:520;height:22px;line-height:22px;padding:0 10px;border-radius:4px;" +
+      "font-size:12px;color:var(--text);background:var(--card-bg);" +
+      "border:1px solid var(--surface0);pointer-events:none;" +
       "transition:opacity .5s ease;opacity:1;white-space:nowrap;";
     document.body.appendChild(el);
     return el;
@@ -122,20 +124,20 @@
     // 状态写到属性上：手机壳里 saved 态由 ui-layout.css 压掉（状态栏已经在说「已保存」）。
     // 交给 CSS 是因为 m-shell 类可能比这次 paint 晚一步打上，窄条 fixed 常驻不重绘，JS 判一次会漏。
     el.setAttribute("data-state", state);
-    var text = "", color = "#9fb3d1";
+    var text = "", color = "var(--text)";
     // 本作品已保存、但另一个作品还压着一份没恢复的草稿：窄条改成这条，
     // 让"在工作台漏看了提示"的人还有第二个地方能捞回来。
     var orp = (state === "saved" || state === "draft") ? readOrphan() : null;
     if (orp) {
       var days = Math.max(1, Math.round((now() - (orp.at || 0)) / 86400000));
       text = "「" + orp.name + "」有未恢复草稿 · " + days + " 天前";
-      color = "#e0c46a";
+      color = "var(--yellow)";
     } else if (state === "saved") {
-      text = "已保存 " + stamp; color = "#7fd6a0";
+      text = "已保存 " + stamp; color = "var(--green)";
     }
-    else if (state === "dirty") { text = "存草稿中…"; color = "#e0c46a"; }
-    else if (state === "draft") { text = "草稿 " + stamp + " · 未保存"; color = "#8fb8e8"; }
-    else if (state === "fail") { text = "自动保存失败 · 点这里重试"; color = "#e07a6a"; }
+    else if (state === "dirty") { text = "存草稿中…"; color = "var(--yellow)"; }
+    else if (state === "draft") { text = "草稿 " + stamp + " · 未保存"; color = "var(--blue-ink)"; }
+    else if (state === "fail") { text = "自动保存失败 · 点这里重试"; color = "var(--red)"; }
     el.textContent = text;
     el.style.color = color;
     el.style.opacity = "1";

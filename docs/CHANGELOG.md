@@ -8,6 +8,17 @@
 
 ---
 
+## 2026-11-24 · v1.2.61
+
+**一句话**：v1.2.60 只差最后一条胶囊 —— 编辑器底部那条「已保存 12:37」窄条还在用 JS 里写死的 `border-radius:11px` + 深蓝底。它是全站最后一块不跟主题的东西，这一版把它收掉。
+
+- **窄条（`editor/editor_draft.js`）**：`11px` → `4px`；`background:rgba(16,22,34,.86)` → `var(--card-bg)`，`border:1px solid var(--surface0)`；五个状态字色从写死值（`#7fd6a0` / `#e0c46a` / `#8fb8e8` / `#e07a6a`）改成语义变量（`var(--green/--yellow/--blue-ink/--red)`），两套皮各自保证对比度。
+- **为什么不能只改圆角**：窄条原本是「深蓝底 + 浅绿字」，只把圆角改成 4px 会变成「深蓝硬块」，在纸底上更突兀；底色和字色必须一起吃主题才对。
+- **量到的结果**（Playwright，1440×900）：`draftBar` 圆角 **4px**、字色 `rgb(27,122,75)`、底色 `rgb(249,245,236)`、90×22；全站「可见元素里圆角 >6px 且非 50%」计数 **桌面 0 / 手机首页 0 / 素材页 0**（改前桌面 1 —— 就是这条窄条）。
+- **门禁**：pytest **1561 passed / 7 skipped / exit 0**（131.96s）· pyright **109 = 基线 / exit 0** · 探针 **25/25 / exit 0** · `node --check editor_draft.js` exit 0 · 单文件 **1.17 MB / 29 脚本 / 5 样式**。`editor_draft.js` 419 行（cap 420）。
+
+**仍是欠账**：桌面搜索浮层 `editor_find.js`（内联深色 + `#2b6cf6`）、`editor_switch.js` / `editor_snapshots.js` / `editor_tryplay.js` / `editor_uidesign.js` 里的内联圆角、首次生成作品封面的蓝紫渐变。
+
 ## 2026-11-24 · v1.2.60 · 界面换掉「AI 平均值」：纸感浅色 + 终端感深色，一套硬边规矩
 
 这一版只改样子，不改功能。起因是那条讲「一眼看出 UI 是 AI 写的」的视频，你回了一句「abc 一起做」——
