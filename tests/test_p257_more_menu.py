@@ -32,15 +32,19 @@ def test_抽屉与灰罩规则已删净():
     assert ".m-sheet-mask" not in CSS
 
 
-def test_浮层是无边框带投影的实体块():
+def test_浮层是实底带细边零投影():
+    """P257 的「无边框、只做投影」被 P261 顶掉：全站去投影，改 1px 细描边分层。
+    用户当时否的是灰罩和贴边（见 test_抽屉与灰罩规则已删净 / test_落点按整张卡算），
+    不是一条 1px 的发丝线；投影没了又不描边，浮层就跟页面糊成一块（探针 25 条里的
+    「浮层是实底」会当场红）。"""
     assert ".m-more-pop" in CSS
     assert "position: fixed" in CSS
     assert "min-width: 178px" in CSS
     assert "max-width: calc(100vw - 24px)" in CSS
-    assert "box-shadow" in CSS
-    # 不能有 border：用户不要灰描边
     pop_block = CSS.split(".m-more-pop {", 1)[1].split("}", 1)[0]
-    assert "border:" not in pop_block
+    assert "border: 1px solid var(--surface0)" in pop_block
+    assert "border-radius: 4px" in pop_block
+    assert "box-shadow: none" in pop_block
 
 
 def test_按压态不铺灰底():

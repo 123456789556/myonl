@@ -7,7 +7,7 @@
    这里改成 72px 方图、名字一行、下面一行灰字（句 / 素材 / 时间），卡高从 110 掉到 92，
    一屏能露五到六张。三个胶囊是表单元素，一叠起来像设置项，不像"我的作品"。 */
 .m-home-card { padding: 12px !important; gap: 12px !important; margin-bottom: 10px !important; }
-.m-card-thumb { width: 88px !important; height: 88px !important; border-radius: 14px !important; }
+.m-card-thumb { width: 88px !important; height: 88px !important; border-radius: 4px !important; }
 .m-home-card .m-card-name { font-size: 17px; font-weight: 500; }
 .m-home-card .m-card-meta { font-size: 13px; color: var(--subtext0); }
 
@@ -27,14 +27,14 @@
 .m-home-findbox { display: flex; align-items: center; gap: 8px; margin: 0 0 10px; }
 .m-home-findbox[hidden] { display: none !important; }
 .m-home-findbox input {
-  flex: 1 1 auto; min-width: 0; min-height: 40px; padding: 0 12px; border-radius: 10px;
+  flex: 1 1 auto; min-width: 0; min-height: 40px; padding: 0 12px; border-radius: 4px;
   border: 1px solid var(--surface1); background: var(--mantle); color: var(--text);
   font-family: inherit; font-size: 14px;
 }
-.m-home-findbox input:focus { outline: none; border-color: var(--blue); }
+.m-home-findbox input:focus { outline: none; border-color: var(--blue-ink); }
 .m-home-findbox button {
-  flex: 0 0 auto; min-height: 40px; padding: 0 12px; border: 0; border-radius: 10px;
-  background: transparent; color: var(--blue); font-family: inherit; font-size: 13px;
+  flex: 0 0 auto; min-height: 40px; padding: 0 12px; border: 0; border-radius: 4px;
+  background: transparent; color: var(--blue-ink); font-family: inherit; font-size: 13px;
   font-weight: 600; cursor: pointer;
 }
 
@@ -72,8 +72,8 @@ body.m-has-projects .m-home-list { flex: 1 1 auto !important; }
 .m-nav-main-ic {
   display: flex; align-items: center; justify-content: center;
   width: 44px; height: 44px; margin-top: -18px; border-radius: 50%;
-  background: var(--blue); color: #fff;
-  box-shadow: 0 4px 12px rgba(79, 140, 255, .38);
+  background: var(--blue-ink); color: #fff;
+  box-shadow: none;
 }
 .m-nav-main-ic svg { width: 18px; height: 18px; stroke: #fff; }
 .m-nav-item.m-nav-main:active .m-nav-main-ic { filter: brightness(.92); }
@@ -112,7 +112,7 @@ body.m-has-projects .m-home-list { flex: 1 1 auto !important; }
      （用户原话「比例不对」）。正方形不裁不拉，两格数字把高度顶起来。 */
   .m-det-top { flex: 0 0 auto; display: flex; align-items: center; gap: 12px; }
   .m-det-thumb {
-    flex: 0 0 auto; width: 88px; height: 88px; border-radius: 12px;
+    flex: 0 0 auto; width: 88px; height: 88px; border-radius: 4px;
     border: 1px solid var(--surface0);
     background: var(--surface0) center/cover no-repeat;
   }
@@ -126,14 +126,14 @@ body.m-has-projects .m-home-list { flex: 1 1 auto !important; }
   .m-det-kv { flex: 0 0 auto; display: flex; gap: 10px; }
   .m-det-kv div {
     flex: 1 1 0; display: flex; flex-direction: column; gap: 1px;
-    padding: 9px 12px; border-radius: 12px;
+    padding: 9px 12px; border-radius: 4px;
     background: var(--mantle); border: 1px solid var(--surface0);
   }
   .m-det-kv b { font-size: 19px; font-weight: 600; line-height: 1.1; color: var(--text); }
   .m-det-kv span { font-size: 11px; color: var(--subtext0); }
   .m-det-go {
-    flex: 0 0 auto; width: 100%; height: 44px; border: 0; border-radius: 12px;
-    background: var(--blue); color: #fff; font-size: 14px; font-weight: 600;
+    flex: 0 0 auto; width: 100%; height: 44px; border: 0; border-radius: 4px;
+    background: var(--blue-ink); color: #fff; font-size: 14px; font-weight: 600;
     font-family: inherit; cursor: pointer;
   }
   .m-det-go:active { filter: brightness(.92); }
@@ -141,21 +141,21 @@ body.m-has-projects .m-home-list { flex: 1 1 auto !important; }
   .m-det-empty { font-size: 12.5px; line-height: 1.7; color: var(--subtext0); }
   /* 选中态：左列那张卡描一圈、名字变主色，一眼知道右侧说的是谁 */
   .m-home-card.on { border-color: rgba(79, 140, 255, .55); }
-  .m-home-card.on .m-card-name { color: var(--blue); }
+  .m-home-card.on .m-card-name { color: var(--blue-ink); }
 }
 
 /* 空态：一句说明 + 一句成品台词当样例，不是「暂无数据」 */
 .m-empty {
   flex: 1 1 auto; min-height: 180px; display: flex; flex-direction: column;
   justify-content: center; gap: 7px;
-  padding: 22px 20px; border-radius: 14px; border: 1px dashed var(--surface1);
+  padding: 22px 20px; border-radius: 4px; border: 1px dashed var(--surface1);
 }
 .m-empty-ic { display: block; color: var(--overlay0); }
 .m-empty-ic svg { width: 34px; height: 34px; stroke-width: 1.1; }
 .m-empty-t { font-size: 14px; font-weight: 600; color: var(--subtext1); }
 .m-empty-d { font-size: 12.5px; line-height: 1.6; color: var(--subtext0); }
 .m-empty-say {
-  margin-top: 6px; padding: 10px 12px; border-radius: 10px; color: var(--text);
+  margin-top: 6px; padding: 10px 12px; border-radius: 4px; color: var(--text);
   background: var(--mantle); border: 1px solid var(--surface0);
   font-size: 12.5px; line-height: 1.5;
 }
@@ -165,12 +165,12 @@ body.m-has-projects .m-home-list { flex: 1 1 auto !important; }
    手指知道每块在讲什么。下面接「建一份练习（可删）」，出来的是能改能删的真作品。 */
 .m-tut-doc { display: flex; flex-direction: column; gap: 8px; margin: 2px 0 12px; }
 .m-tut-item {
-  display: flex; gap: 10px; padding: 10px 11px; border-radius: 12px;
+  display: flex; gap: 10px; padding: 10px 11px; border-radius: 4px;
   background: var(--mantle); border: 1px solid var(--surface0);
 }
 .m-tut-ic2 {
-  flex: 0 0 auto; width: 28px; height: 28px; border-radius: 8px;
-  display: flex; align-items: center; justify-content: center; color: var(--blue);
+  flex: 0 0 auto; width: 28px; height: 28px; border-radius: 4px;
+  display: flex; align-items: center; justify-content: center; color: var(--blue-ink);
   background: color-mix(in srgb, var(--blue) 12%, transparent);
 }
 .m-tut-ic2 svg { width: 15px; height: 15px; }
@@ -178,14 +178,14 @@ body.m-has-projects .m-home-list { flex: 1 1 auto !important; }
 .m-tut-b b { font-size: 13px; font-weight: 600; color: var(--text); }
 .m-tut-b span { font-size: 11.5px; line-height: 1.5; color: var(--subtext0); }
 .m-tut-b code {
-  margin-top: 2px; padding: 5px 8px; border-radius: 8px; overflow-x: auto; white-space: nowrap;
+  margin-top: 2px; padding: 5px 8px; border-radius: 4px; overflow-x: auto; white-space: nowrap;
   background: var(--base); border: 1px solid var(--surface0); color: var(--text);
   font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 11.5px;
 }
 .m-tut-start {
   display: flex; flex-direction: column; gap: 3px; width: 100%; margin-bottom: 12px;
   min-height: 52px; padding: 10px 14px; cursor: pointer;
-  border: 0; border-radius: 12px; background: var(--blue); color: #fff;
+  border: 0; border-radius: 4px; background: var(--blue-ink); color: #fff;
   font-family: inherit; font-size: 14px; font-weight: 600; text-align: left;
   -webkit-tap-highlight-color: transparent;
 }
@@ -205,7 +205,7 @@ body.m-has-projects .m-home-list { flex: 1 1 auto !important; }
 @keyframes m-work-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 .m-work-head { display: flex; align-items: center; justify-content: space-between; height: 44px; flex: 0 0 auto; }
 .m-work-back {
-  height: 34px; padding: 0 12px; border-radius: 999px; cursor: pointer;
+  height: 34px; padding: 0 12px; border-radius: 4px; cursor: pointer;
   border: 1px solid var(--surface1); background: var(--mantle);
   color: var(--text); font-family: inherit; font-size: 13px;
   -webkit-tap-highlight-color: transparent;
@@ -213,7 +213,7 @@ body.m-has-projects .m-home-list { flex: 1 1 auto !important; }
 .m-work-dot { font-size: 12px; color: var(--subtext0); }
 .m-work-cover {
   margin-top: 6px; width: 100%; aspect-ratio: 16 / 10; flex: 0 0 auto;
-  border-radius: 18px; overflow: hidden; background: var(--surface0);
+  border-radius: 4px; overflow: hidden; background: var(--surface0);
   border: 1px solid var(--surface1); position: relative;
 }
 .m-work-cover img { width: 100%; height: 100%; object-fit: cover; display: block; opacity: 0; transition: opacity .2s; }
@@ -233,14 +233,14 @@ body.m-has-projects .m-home-list { flex: 1 1 auto !important; }
 .m-work-meta { margin-top: 4px; font-size: 12.5px; color: var(--subtext0); }
 .m-work-play {
   margin-top: 16px; width: 100%; height: 52px; flex: 0 0 auto;
-  border: 0; border-radius: 14px; background: var(--blue); color: #fff;
+  border: 0; border-radius: 4px; background: var(--blue-ink); color: #fff;
   font-family: inherit; font-size: 17px; font-weight: 650; cursor: pointer;
   -webkit-tap-highlight-color: transparent;
 }
 .m-work-play:active { filter: brightness(.94); }
 .m-work-acts { margin-top: 10px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; flex: 0 0 auto; }
 .m-work-acts button {
-  height: 44px; border-radius: 12px; cursor: pointer;
+  height: 44px; border-radius: 4px; cursor: pointer;
   border: 1px solid var(--surface1); background: var(--mantle); color: var(--text);
   font-family: inherit; font-size: 14px;
   -webkit-tap-highlight-color: transparent;
@@ -249,7 +249,7 @@ body.m-has-projects .m-home-list { flex: 1 1 auto !important; }
 /* 「写 / 玩」双入口：播放是主动作（蓝、52），写是次动作（描边、44） */
 .m-work-write {
   margin-top: 10px; width: 100%; height: 44px; flex: 0 0 auto;
-  border-radius: 12px; cursor: pointer; border: 1px solid var(--surface1);
+  border-radius: 4px; cursor: pointer; border: 1px solid var(--surface1);
   background: var(--mantle); color: var(--text);
   font-family: inherit; font-size: 15px; font-weight: 600;
   -webkit-tap-highlight-color: transparent;
@@ -266,7 +266,7 @@ body.m-has-projects .m-home-list { flex: 1 1 auto !important; }
 .m-work-rows button {
   width: 100%; height: 50px; display: flex; align-items: center; gap: 10px;
   padding: 0 14px; margin-bottom: 8px; cursor: pointer;
-  border-radius: 12px; border: 1px solid var(--surface1);
+  border-radius: 4px; border: 1px solid var(--surface1);
   background: var(--mantle); color: var(--text); font-family: inherit;
   -webkit-tap-highlight-color: transparent;
 }
@@ -289,7 +289,7 @@ body.m-has-projects .m-home-list { flex: 1 1 auto !important; }
   }
   .m-work-hero { width: 300px; flex: 0 0 300px; overflow: auto; padding-right: 2px; }
   .m-work-side { flex: 1 1 auto; overflow: auto; }
-  .m-work-cover { margin-top: 0; aspect-ratio: 16 / 9; border-radius: 14px; }
+  .m-work-cover { margin-top: 0; aspect-ratio: 16 / 9; border-radius: 4px; }
   .m-work-title { margin-top: 10px; font-size: 18px; }
   .m-work-meta { margin-top: 2px; font-size: 11.5px; }
   .m-work-play { margin-top: 10px; height: 44px; font-size: 15px; }

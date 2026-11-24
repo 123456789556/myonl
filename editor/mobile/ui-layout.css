@@ -58,22 +58,22 @@ html.m-shell.m-wide .center-page {
 .p202-box {
   position: fixed; left: 18px; right: 18px; top: 50%; transform: translateY(-50%);
   z-index: 641; background: var(--base); border: 1px solid var(--surface0);
-  border-radius: 16px; padding: 16px 14px 12px; box-shadow: 0 16px 44px rgba(0,0,0,.3);
+  border-radius: 4px; padding: 16px 14px 12px; box-shadow: none;
   max-height: calc(100dvh - 24px); box-sizing: border-box;
 }
 .p202-box h4 { margin: 0 0 10px; font-size: 15px; font-weight: 600; color: var(--text); }
 .p202-in {
   width: 100%; height: 42px; box-sizing: border-box; padding: 0 12px;
-  border: 1px solid var(--surface1); border-radius: 10px; background: var(--mantle);
+  border: 1px solid var(--surface1); border-radius: 4px; background: var(--mantle);
   color: var(--text); font-size: 15px; font-family: inherit;
 }
 .p202-row { display: flex; gap: 8px; margin-top: 12px; }
 .p202-row button {
-  flex: 1 1 0; height: 40px; border-radius: 10px; font-size: 14.5px;
+  flex: 1 1 0; height: 40px; border-radius: 4px; font-size: 14.5px;
   font-family: inherit; cursor: pointer; white-space: nowrap;
 }
 .p202-cancel { border: 1px solid var(--surface1); background: var(--mantle); color: var(--subtext0); }
-.p202-ok { border: none; background: var(--blue); color: #fff; font-weight: 600; }
+.p202-ok { border: none; background: var(--blue-ink); color: #fff; font-weight: 600; }
 
 /* ===== P203 作品卡「⋯」/ 垃圾箱 / 素材库 / 教程两版 =====
    卡从 <button> 改成 <div>（button 里不能再套 button），所以这里把原来靠
@@ -86,7 +86,7 @@ html.m-shell .m-home-card {
 html.m-shell .m-home-card .m-card-go { display: none; }
 html.m-shell .m-card-more {
   position: absolute; top: 50%; right: 2px; transform: translateY(-50%);
-  width: 44px; height: 44px; border: 0; border-radius: 10px;
+  width: 44px; height: 44px; border: 0; border-radius: 4px;
   background: transparent; color: var(--overlay1);
   font-size: 19px; line-height: 1; font-family: inherit; cursor: pointer;
   display: flex; align-items: center; justify-content: center;
@@ -110,38 +110,38 @@ html.m-shell .m-home-hid { flex: 1 1 auto; min-width: 0; }
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .m-more-row {
-  display: block; width: 100%; height: 50px; border: 1px solid var(--surface0); border-radius: 12px;
+  display: block; width: 100%; height: 50px; border: 1px solid var(--surface0); border-radius: 4px;
   margin-bottom: 6px; background: var(--mantle); color: var(--text); text-align: center;
   font-size: 15.5px; font-family: inherit; cursor: pointer;
 }
 .m-more-row:active { filter: brightness(.95); }
-.m-more-danger { color: #e05555; border-color: rgba(224, 85, 85, .35); }
+.m-more-danger { color: var(--red); border-color: rgba(224, 85, 85, .35); }
 .m-more-plain { background: transparent; border-color: transparent; color: var(--subtext0); }
 
 /* 垃圾箱 / 素材库：一行一项，名字过长省略但不断行 */
 .m-bin-row { display: flex; align-items: center; gap: 8px; padding: 8px 0; border-bottom: 1px solid var(--surface0); }
 .m-bin-t { flex: 1 1 auto; min-width: 0; font-size: 14px; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .m-bin-a, .m-bin-x {
-  flex: 0 0 auto; height: 34px; padding: 0 12px; border-radius: 9px;
+  flex: 0 0 auto; height: 34px; padding: 0 12px; border-radius: 4px;
   border: 1px solid var(--surface1); background: var(--mantle);
   color: var(--subtext0); font-size: 12.5px; font-family: inherit; cursor: pointer;
 }
-.m-bin-x { color: #e05555; border-color: rgba(224, 85, 85, .35); }
+.m-bin-x { color: var(--red); border-color: rgba(224, 85, 85, .35); }
 .m-bin-empty { padding: 8px 0 28px; text-align: center; font-size: 13.5px; line-height: 1.7; color: var(--subtext0); }
 /* 素材页空的时候，那句「还没有图片」落在 tab 和速查之间居中，别贴死在 tab 底下 */
 html.m-shell .m-lib-body > .m-bin-empty { margin: auto 0; }
 .m-lib-sec { display: flex; align-items: baseline; gap: 7px; margin: 18px 0 6px; font-size: 13px; font-weight: 600; color: var(--subtext0); }
 .m-lib-sec i { font-style: normal; font-weight: 400; font-size: 11.5px; color: var(--overlay0); }
 .m-lib-row { display: flex; align-items: center; gap: 10px; padding: 11px 12px; margin-bottom: 8px;
-  border-radius: 12px; background: var(--mantle); border-bottom: 0; }
+  border-radius: 4px; background: var(--mantle); border-bottom: 0; }
 .m-lib-n { flex: 1 1 auto; min-width: 0; font-size: 14px; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 /* P209：图片用相册那种两列方格，画面自己说话；音频视频给一个类型方块，行高抬起来不再像薄条 */
-.m-lib-ic { width: 38px; height: 38px; flex: 0 0 auto; border-radius: 10px; background: var(--surface0);
-  color: var(--blue); font-size: 16px; display: flex; align-items: center; justify-content: center; }
+.m-lib-ic { width: 38px; height: 38px; flex: 0 0 auto; border-radius: 4px; background: transparent; border: 1px solid var(--surface1);
+  color: var(--blue-ink); font-size: 16px; display: flex; align-items: center; justify-content: center; }
 .m-lib-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px 12px; margin-bottom: 6px; }
 .m-lib-cell { min-width: 0; display: flex; flex-direction: column; gap: 7px; }
-.m-lib-th { position: relative; aspect-ratio: 1 / 1; border-radius: 12px; overflow: hidden;
-  background: linear-gradient(150deg, #3b3f6b, #1d2038); }
+.m-lib-th { position: relative; aspect-ratio: 1 / 1; border-radius: 4px; overflow: hidden;
+  background: var(--deep-bg); }
 .m-lib-th img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .m-lib-x { position: absolute; right: 6px; top: 6px; width: 24px; height: 24px; border: 0; cursor: pointer;
   border-radius: 50%; background: rgba(0, 0, 0, .55); color: #fff; font-size: 15px; line-height: 1; }
@@ -154,7 +154,7 @@ html.m-shell .m-lib-body > .m-bin-empty { margin: auto 0; }
 .m-tut-h:first-child { margin-top: 0; }
 .m-tut-p { font-size: 13.5px; line-height: 1.7; color: var(--subtext0); }
 .m-tut-c {
-  padding: 10px 12px; border-radius: 10px; background: var(--mantle); border: 1px solid var(--surface0);
+  padding: 10px 12px; border-radius: 4px; background: var(--mantle); border: 1px solid var(--surface0);
   font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 13px; color: var(--text);
   overflow-x: auto; white-space: nowrap;
 }
@@ -183,7 +183,7 @@ html.m-shell.m-wide .m-home-list { padding-bottom: 6px; }
 }
 .m-bin-title { text-align: center; font-size: 18px; font-weight: 600; letter-spacing: .2px; color: var(--text); }
 .m-bin-act {
-  height: 40px; padding: 0 8px; border: 0; background: transparent; color: var(--blue);
+  height: 40px; padding: 0 8px; border: 0; background: transparent; color: var(--blue-ink);
   font-size: 15px; font-family: inherit; cursor: pointer; text-align: right;
 }
 .m-bin-act:disabled { color: var(--overlay0); }
@@ -195,7 +195,7 @@ html.m-shell.m-wide .m-home-list { padding-bottom: 6px; }
 }
 .m-bin-cell { position: relative; display: flex; flex-direction: column; gap: 6px; cursor: pointer; min-width: 0; }
 .m-bin-th {
-  aspect-ratio: 1 / 1; border-radius: 10px; background: linear-gradient(150deg, #3b3f6b, #1d2038);
+  aspect-ratio: 1 / 1; border-radius: 4px; background: var(--deep-bg);
   color: #fff; font-size: 22px; font-weight: 600;
   display: flex; align-items: center; justify-content: center;
 }
@@ -204,7 +204,7 @@ html.m-shell.m-wide .m-home-list { padding-bottom: 6px; }
 .m-bin-cell.on .m-bin-th { outline: 2px solid var(--blue); outline-offset: -2px; }
 .m-bin-cell.on::after {
   content: "✓"; position: absolute; right: 6px; top: 6px; width: 22px; height: 22px;
-  border-radius: 50%; background: var(--blue); color: #fff; font-size: 13px;
+  border-radius: 50%; background: var(--blue-ink); color: #fff; font-size: 13px;
   display: flex; align-items: center; justify-content: center;
 }
 .m-bin-bar {
@@ -212,11 +212,11 @@ html.m-shell.m-wide .m-home-list { padding-bottom: 6px; }
   padding: 12px 14px calc(14px + env(safe-area-inset-bottom, 0px));
 }
 .m-bin-b {
-  flex: 1 1 0; height: 48px; border-radius: 12px; border: 1px solid var(--surface1);
+  flex: 1 1 0; height: 48px; border-radius: 4px; border: 1px solid var(--surface1);
   background: var(--mantle); color: var(--subtext0); font-size: 15px; font-family: inherit; cursor: pointer;
 }
 .m-bin-b:disabled { opacity: .45; }
-.m-bin-bp { color: #e05555; border-color: rgba(224, 85, 85, .3); }
+.m-bin-bp { color: var(--red); border-color: rgba(224, 85, 85, .3); }
 /* P259：`button:hover{background:var(--lavender)}` 是全局规则，把「彻底删除」染成浅色主题的
    深蓝 #005a9e，浅色下就是一块蓝底配红字，看着像坏掉。危险键的底只许是自己的 mantle。 */
 html.m-shell .m-bin-b:hover, html.m-shell .m-bin-b:active, html.m-shell .m-bin-b.m-bin-bp {
@@ -237,7 +237,7 @@ html.m-shell .m-home-nav { border-top: 0 !important; }
 /* 教程入口挪到列表下面那行小字，贴着右边 */
 html.m-shell .m-home-tip { display: flex; align-items: center; justify-content: space-between; }
 html.m-shell .m-home-tutlink {
-  border: 0; background: transparent; color: var(--blue);
+  border: 0; background: transparent; color: var(--blue-ink);
   font: inherit; font-size: 12px; padding: 2px 0; cursor: pointer;
 }
 
@@ -250,7 +250,7 @@ html.m-shell .m-sel-top {
   background: var(--base);
 }
 html.m-shell .m-sel-x, html.m-shell .m-sel-all {
-  height: 44px; border: 0; background: transparent; color: var(--blue);
+  height: 44px; border: 0; background: transparent; color: var(--blue-ink);
   font: inherit; font-size: 14.5px; cursor: pointer;
 }
 html.m-shell .m-sel-x { text-align: left; padding-left: 8px; }
@@ -266,7 +266,7 @@ html.m-shell .m-sel-bar {
   background: var(--base);
 }
 html.m-shell .m-sel-del {
-  width: 100%; height: 48px; border: 0; border-radius: 12px; background: #e05555; color: #fff;
+  width: 100%; height: 48px; border: 0; border-radius: 4px; background: var(--red); color: #fff;
   font: inherit; font-size: 16px; font-weight: 600; cursor: pointer;
 }
 html.m-shell .m-sel-del:disabled { opacity: .5; }
@@ -280,24 +280,24 @@ html.m-shell body.m-selecting .m-home { padding-top: calc(62px + env(safe-area-i
 html.m-shell .m-home-card.m-card-sel { outline: 2px solid var(--blue); outline-offset: -2px; }
 html.m-shell .m-home-card.m-card-sel::after {
   content: "✓"; position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
-  width: 24px; height: 24px; border-radius: 50%; background: var(--blue); color: #fff;
+  width: 24px; height: 24px; border-radius: 50%; background: var(--blue-ink); color: #fff;
   font-size: 14px; display: flex; align-items: center; justify-content: center;
 }
 
 /* ===== P205 素材页 tab：图片 / 音频 / 视频（教程不占列，见下） ===== */
 .m-lib-tabs { flex: 0 0 auto; display: flex; gap: 8px; padding: 14px 14px 18px; }
 .m-lib-tab {
-  flex: 1 1 0; min-width: 0; height: 48px; border-radius: 12px;
+  flex: 1 1 0; min-width: 0; height: 48px; border-radius: 4px;
   border: 1px solid var(--surface1); background: var(--mantle); color: var(--subtext0);
   font: inherit; font-size: 14.5px; cursor: pointer;
   display: inline-flex; align-items: center; justify-content: center; gap: 5px;
 }
-.m-lib-tab.on { background: var(--blue); border-color: var(--blue); color: #fff; font-weight: 600; }
+.m-lib-tab.on { background: var(--blue-ink); border-color: var(--blue-ink); color: #fff; font-weight: 600; }
 .m-lib-tab i { font-style: normal; font-size: 12px; opacity: .8; }
 .m-lib-tut { padding-bottom: 12px; }
 .m-lib-tutbox { margin-top: 18px; border-top: 1px solid var(--surface0); padding-top: 14px; }
 .m-lib-tutlink {
-  border: 0; background: transparent; padding: 8px 0; color: var(--blue);
+  border: 0; background: transparent; padding: 8px 0; color: var(--blue-ink);
   font: inherit; font-size: 14px; cursor: pointer;
 }
 /* ===== P205 设置页顶部头像：圆形，点一下换图，点名字改 ===== */
@@ -307,7 +307,7 @@ html.m-shell .m-home-card.m-card-sel::after {
 }
 .m-avatar {
   width: 68px; height: 68px; border-radius: 50%; overflow: hidden; padding: 0;
-  border: 1px solid var(--surface1); background: var(--blue);
+  border: 1px solid var(--surface1); background: var(--blue-ink);
   color: #fff; font: inherit; font-size: 27px; font-weight: 600;
   display: flex; align-items: center; justify-content: center; cursor: pointer;
   flex: 0 0 auto;
@@ -322,7 +322,7 @@ html.m-shell .m-home-card.m-card-sel::after {
 /* P210：名字行 + 铅笔（QQ 那种：名字右边一小支笔，不用另写一行提示） */
 .m-profile-row { display: flex; align-items: center; gap: 6px; }
 .m-profile-pen {
-  width: 26px; height: 26px; flex: 0 0 auto; padding: 0; border: 0; border-radius: 8px;
+  width: 26px; height: 26px; flex: 0 0 auto; padding: 0; border: 0; border-radius: 4px;
   background: transparent; color: var(--overlay0); font-size: 14px; line-height: 1; cursor: pointer;
 }
 .m-profile-pen:active { background: var(--surface0); }
@@ -331,14 +331,14 @@ html.m-shell .m-home-card.m-card-sel::after {
 .m-exp-sec { margin: 10px 0 8px; font-size: 12.5px; color: var(--overlay0); }
 .m-exp-row {
   display: flex; align-items: center; gap: 12px; width: 100%;
-  padding: 14px; margin: 0 0 10px; border-radius: 12px;
+  padding: 14px; margin: 0 0 10px; border-radius: 4px;
   border: 1px solid var(--surface1); background: var(--mantle); color: var(--text);
   font: inherit; text-align: left; cursor: pointer; box-sizing: border-box;
   height: auto !important; min-height: 70px;
 }
 .m-exp-ic {
-  width: 34px; height: 34px; border-radius: 10px; flex: 0 0 auto;
-  background: rgba(79, 140, 255, .16); color: var(--blue);
+  width: 34px; height: 34px; border-radius: 4px; flex: 0 0 auto;
+  background: rgba(79, 140, 255, .16); color: var(--blue-ink);
   display: flex; align-items: center; justify-content: center; font-size: 16px;
 }
 .m-exp-b { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
@@ -392,7 +392,7 @@ html.m-shell .m-swatches button::after {
    看完写法立刻能跳到那份能玩能改的作品，不用再回首页自己找。 */
 html.m-shell .m-tut-open {
   display: block; width: 100%; min-height: 44px; margin-top: 12px;
-  border: 1px solid var(--accent, #4f8cff); border-radius: 12px;
+  border: 1px solid var(--accent, #4f8cff); border-radius: 4px;
   background: transparent; color: var(--accent, #4f8cff);
   font-size: 15px; font-weight: 500;
 }
@@ -424,36 +424,36 @@ html.m-shell .m-bin-grid > .m-bin-empty {
 .m-varmask.on { opacity: 1; pointer-events: auto; }
 .m-varsheet { position: fixed; left: 0; right: 0; bottom: 0; z-index: 8900; max-height: 84vh;
   overflow: auto; background: var(--mantle); color: var(--text);
-  border-radius: 14px 14px 0 0; border-top: 1px solid var(--surface0);
+  border-radius: 4px 14px 0 0; border-top: 1px solid var(--surface0);
   padding: 14px 16px calc(18px + var(--safe-bottom, 0px));
-  transform: translateY(100%); transition: transform .18s; box-shadow: 0 -10px 28px rgba(0, 0, 0, .3); }
+  transform: translateY(100%); transition: transform .18s; box-shadow: none; }
 .m-varsheet.on { transform: translateY(0); }
 .m-var-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
 .m-var-head b { font-size: 16px; }
-.m-var-x { width: 32px; height: 32px; padding: 0; border: 0; border-radius: 8px; background: transparent;
+.m-var-x { width: 32px; height: 32px; padding: 0; border: 0; border-radius: 4px; background: transparent;
   color: var(--subtext1); font-size: 18px; line-height: 1; cursor: pointer; }
 .m-var-tip { font-size: 12px; line-height: 1.6; color: var(--subtext1); margin-bottom: 12px; }
 .m-var-sec { font-size: 13px; font-weight: 600; margin: 14px 0 6px; }
 .m-var-row { display: flex; gap: 8px; align-items: center; }
 .m-var-row-1 { margin-top: 8px; }
-.m-var-row input, .m-var-row select { flex: 1; min-width: 0; height: 34px; padding: 0 10px; border-radius: 8px;
+.m-var-row input, .m-var-row select { flex: 1; min-width: 0; height: 34px; padding: 0 10px; border-radius: 4px;
   border: 1px solid var(--surface1); background: var(--base); color: var(--text); font-size: 14px; }
 .m-var-row .m-var-name, .m-var-row .m-var-cname { flex: 1.4; }
 .m-var-row .m-var-op, .m-var-row .m-var-cmp { flex: 0 0 76px; }
 .m-var-row .m-var-val, .m-var-row .m-var-cval { flex: 0 0 64px; text-align: center; }
 .m-var-row .m-var-target { flex: 1; }
 .m-var-lb { flex: 0 0 auto; font-size: 13px; color: var(--subtext1); }
-.m-var-do { margin-top: 10px; width: 100%; height: 38px; border: 0; border-radius: 10px;
-  background: var(--blue); color: #fff; font-size: 14px; cursor: pointer; }
+.m-var-do { margin-top: 10px; width: 100%; height: 38px; border: 0; border-radius: 4px;
+  background: var(--blue-ink); color: #fff; font-size: 14px; cursor: pointer; }
 .m-var-known { margin-top: 12px; font-size: 12px; line-height: 1.6; color: var(--subtext1); }
 
 /* P219：属性面板末尾的「变量与条件」入口。一行，右对齐，不抢台词的注意力。 */
 html.m-shell .m-var-entry { display: flex; align-items: center; gap: 10px;
-  margin: 10px 0 6px; padding: 10px 12px; border-radius: 10px;
+  margin: 10px 0 6px; padding: 10px 12px; border-radius: 4px;
   border: 1px dashed var(--surface1); background: transparent; }
 html.m-shell .m-var-entry-t { flex: 1; font-size: 13px; color: var(--subtext1); }
-html.m-shell .m-var-entry-b { flex: 0 0 auto; height: 44px; padding: 0 12px; border: 0; border-radius: 8px;
-  background: var(--blue); color: #fff; font-size: 13px; cursor: pointer; }
+html.m-shell .m-var-entry-b { flex: 0 0 auto; height: 44px; padding: 0 12px; border: 0; border-radius: 4px;
+  background: var(--blue-ink); color: #fff; font-size: 13px; cursor: pointer; }
 
 /* ===== P220 顶部安全带（一处定义，三处引用；P260 40→28：顶栏整行上移 12px） =====
    probe_p220 量出三条：① 顶栏定死 50px 时安全区被当内边距吃掉，内容只剩 3px，标题落在挖孔里；
@@ -507,20 +507,20 @@ html.m-shell .menubar::-webkit-scrollbar { display: none; }
    章节行：实心底色 + 圆角，读起来像一个文件夹。
    幕行：左缩进 18px + 一条竖线挂到所属章节，当前幕那条竖线变蓝。 */
 html.m-shell .scene-page .scene-chapter {
-  background: var(--mantle) !important; border-radius: 8px;
+  background: var(--mantle) !important; border-radius: 4px;
   padding: 0 10px !important; color: var(--text) !important; font-size: 12.5px !important;
 }
 html.m-shell .scene-page .sc-chev { width: 14px !important; font-size: 12px; opacity: .9 !important; }
 html.m-shell .scene-page .sc-ch-name { font-weight: 600; letter-spacing: .02em; }
 html.m-shell .scene-page .sc-ch-count {
-  background: var(--surface0); border-radius: 9px; padding: 1px 7px; opacity: .85 !important;
+  background: var(--surface0); border-radius: 4px; padding: 1px 7px; opacity: .85 !important;
 }
 html.m-shell .scene-page .scene-item { padding-left: 20px !important; }
 html.m-shell .scene-page .scene-item::before {
   content: ""; position: absolute; left: 7px; top: 7px; bottom: 7px; width: 2px;
   background: var(--surface1); border-radius: 1px;
 }
-html.m-shell .scene-page .scene-item.active::before { background: var(--blue); }
+html.m-shell .scene-page .scene-item.active::before { background: var(--blue-ink); }
 
 /* ===== P222b 场景页别再叠在顶栏上 =====
    .center-page 本是 fixed top:0，跟 90px 顶栏重叠；场景页从顶栏下开始，它那份 40px 安全带就不要了。 */
@@ -555,7 +555,7 @@ html.m-shell #sceneClose, html.m-shell #cpClose, html.m-shell #charClose { order
 html.m-shell .m-nav-item:active { opacity: 1; background: transparent; }
 html.m-shell .m-nav-item.on::after { display: none; content: none; }
 html.m-shell .m-nav-item.on { box-shadow: inset 0 -2px 0 var(--blue); }
-html.m-shell .m-avatar { background: #2f6bd6; }
+html.m-shell .m-avatar { background: var(--blue-ink); }
 
 /* ===== P250：场景页左上那一排别是"两个方块并排" =====
    实测截图（C-scene.png）：最左一颗灰底「‹」方块、紧挨着又一颗灰底「场景列表」方块，
@@ -598,7 +598,7 @@ html.m-shell .m-note-b span { font-size: 12px; color: var(--subtext0); }
    实测截图里它被染成了一块蓝底、蓝字，等于看不见。 */
 html.m-shell .m-note-page .m-bin-act {
   background: transparent !important;
-  color: var(--blue) !important;
+  color: var(--blue-ink) !important;
   font-weight: 600;
 }
 /* 写的那页：顶栏照素材页，正文铺满，键盘弹起也不会被挡（整页不是 fixed 居中） */
@@ -622,23 +622,23 @@ html.m-shell .splash-badge { display: none !important; }
    不盖住正在看的那张卡；点屏幕任何别的地方就收起。 */
 html.m-shell .m-more-pop {
   position: fixed; z-index: 640; min-width: 178px; padding: 6px;
-  background: var(--base); border-radius: 14px; max-width: calc(100vw - 24px);
-  box-shadow: 0 14px 34px rgba(0, 0, 0, .20), 0 3px 8px rgba(0, 0, 0, .10);
+  background: var(--base); border: 1px solid var(--surface0); border-radius: 4px;
+  max-width: calc(100vw - 24px); box-shadow: none;
 }
 html.m-shell .m-more-row2 {
   display: flex; align-items: center; gap: 9px; width: 100%; box-sizing: border-box;
   border: 0; background: transparent; color: var(--text);
-  font-size: 15px; line-height: 1.2; padding: 13px 11px; border-radius: 10px;
+  font-size: 15px; line-height: 1.2; padding: 13px 11px; border-radius: 4px;
   text-align: left; -webkit-tap-highlight-color: transparent;
 }
 /* 按压只给一点点缩放，不铺灰块 —— 静态画面里一个灰角都不能有 */
 html.m-shell .m-more-row2:active { transform: scale(.985); }
-html.m-shell .m-more-row2.danger { color: #e0454b; }
+html.m-shell .m-more-row2.danger { color: var(--red); }
 html.m-shell .m-more-row2 svg { width: 17px; height: 17px; flex: 0 0 17px; opacity: .85; }
 /* 深色下浮层若还用页面底色就跟背景糊成一块：抬一档底、加重投影，不描灰线 */
 html.m-shell[data-theme="dark"] .m-more-pop {
-  background: #262626;
-  box-shadow: 0 18px 40px rgba(0, 0, 0, .55), 0 0 0 1px rgba(255, 255, 255, .07);
+  background: #181d24; border: 1px solid var(--surface1);
+  box-shadow: none, 0 0 0 1px rgba(255, 255, 255, .07);
 }
 /* 历史版本原来是半透明全屏层，手机上首页的标题会透上来跟它叠字 —— 手机壳里改成实底 */
 html.m-shell .snap-panel {

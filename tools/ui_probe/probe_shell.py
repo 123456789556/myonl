@@ -160,11 +160,43 @@ def probe_mobile(pg, rep: Report, shots: Path, base: str) -> None:
         return rep.add("浮层不出屏也不贴边（左右各留 ≥6px）", ok, "pop=%s 屏=%dx%d" % (pop, MOBILE_W, MOBILE_H))
 
     def c_opaque() -> bool:
+        # P261 改底色后，这条口径从「等于 #fff / #262626」改成「不透明 + 不糊成一块」：
+        # 浮层要么和页面底色差着，要么有 1px 描边；半透明两条都不算。
         bg = pg.eval_on_selector(".m-more-pop", "el=>getComputedStyle(el).backgroundColor")
+        info = pg.eval_on_selector(
+            ".m-more-pop",
+            "el=>{const c=getComputedStyle(el);return {bg:c.backgroundColor,bw:c.borderTopWidth,bs:c.borderTopStyle,"
+            "page:getComputedStyle(document.body).backgroundColor};}")
         theme = pg.evaluate("()=>document.documentElement.dataset.theme||'light'")
         opaque = "rgba" not in bg or ", 1)" in bg or bg.startswith("rgb(")
-        want_ok = bg in ("rgb(255, 255, 255)", "rgb(38, 38, 38)")
-        return rep.add("浮层是实底（白 #fff / 深 #262626 之外不算）", opaque and want_ok, "theme=%s bg=%s" % (theme, bg))
+        differs = bg != info["page"]
+        has_border = info["bs"] not in ("none", "hidden") and info["bw"] not in ("0px", "")
+        return rep.add("浮层是实底（不透明，且与底色不同或有描边）", opaque and (differs or has_border),
+                       "theme=%s bg=%s page=%s border=%s" % (theme, bg, info["page"], info["bw"]))
+
+    def c_radius() -> bool:
+        # P261：全站改成硬边（A/B/C 三条一起落：纸感 + 终端感 + 结构性去味）。
+        # 只认两种圆角：≤6px，或者真圆 50%；其他（12/14/16/999 胶囊）一律算没改到位。
+        data = pg.evaluate(
+            "()=>{const out=[];const sel=['.m-home-card','.m-card-thumb','.m-home-find',"
+            "'.m-home-findbox input','.m-more-pop','.m-more-row2','.m-link'];"
+            "for(const s of sel){for(const el of document.querySelectorAll(s)){"
+            "if(!(el.offsetWidth||el.offsetHeight))continue;"
+            "const c=getComputedStyle(el);"
+            "out.push([s, c.borderTopLeftRadius, c.borderBottomRightRadius]);}}return out;}")
+        bad = []
+        for sel_name, tl, br in data:
+            for v in (tl, br):
+                if v in ("50%", "0px", ""):
+                    continue
+                try:
+                    px = float(v.replace("px", ""))
+                except ValueError:
+                    bad.append("%s=%s" % (sel_name, v)); continue
+                if px > 6:
+                    bad.append("%s=%s" % (sel_name, v))
+        return rep.add("圆角统一：≤6px 或真圆 50%（胶囊/大圆角清零）", not bad,
+                       "样本 %d 个；越界 %s" % (len(data), bad if bad else "无"))
 
     def c_outside() -> bool:
         pg.mouse.click(30, MOBILE_H - 120)
@@ -271,6 +303,7 @@ def probe_mobile(pg, rep: Report, shots: Path, base: str) -> None:
     rep.check("浮层不压卡", c_no_overlap, shots, pg)
     rep.check("浮层不出屏", c_inside, shots, pg)
     rep.check("浮层实底", c_opaque, shots, pg)
+    rep.check("圆角统一", c_radius, shots, pg)
     rep.check("点别处收起", c_outside, shots, pg)
     rep.check("同钮收起", c_toggle, shots, pg)
     rep.check("导出不串整页", c_export_one, shots, pg)
@@ -436,9 +469,15 @@ def probe_editor(pg, rep: Report, shots: Path, base: str) -> None:
         pg.locator("#mBinPurge").hover(timeout=4000)
         pg.wait_for_timeout(250)
         bg = pg.eval_on_selector("#mBinPurge", "el=>getComputedStyle(el).backgroundColor")
-        bad = bg.startswith("rgb(0, 90, 158)") or bg.startswith("rgb(0, 102, 184)")
+        # P261：不再写死浅色那两个蓝，直接从主题变量取「主色 / 带字主色」再比 —— 换肤也不会放过它
+        accents = pg.evaluate(
+            "()=>{const s=getComputedStyle(document.documentElement);"
+            "const hex=h=>{const v=h.trim().replace('#','');"
+            "return 'rgb(' + parseInt(v.slice(0,2),16) + ', ' + parseInt(v.slice(2,4),16) + ', ' + parseInt(v.slice(4,6),16) + ')';};"
+            "return [hex(s.getPropertyValue('--blue')||'#000'), hex(s.getPropertyValue('--blue-ink')||'#000')];}")
+        bad = any(bg.startswith(a) for a in accents)
         pg.screenshot(path=str(shots / "m07-bin.png"))
-        return rep.add("回收箱「彻底删除」底不是主色块（悬停后也一样）", not bad, "bg=%s" % bg)
+        return rep.add("回收箱「彻底删除」底不是主色块（悬停后也一样）", not bad, "bg=%s 主色=%s" % (bg, accents))
 
     rep.check("顶栏 44", c_topbar, shots, pg)
     rep.check("场景页空带", c_scene_gap, shots, pg)
