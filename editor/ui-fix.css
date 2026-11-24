@@ -97,11 +97,12 @@ html.kb-open .m-sheet-body { bottom: var(--kb-h, 0px) !important; }
 .tx-top {
   position: absolute; top: 8px; left: 10px; right: 10px;
   display: flex; justify-content: space-between; align-items: center;
-  font-size: 11px; color: rgba(255,255,255,.78); text-shadow: 0 1px 3px rgba(0,0,0,.5);
+  font-size: 11px; color: var(--text);
 }
+.tx-top span { background: var(--card-bg); border: 1px solid var(--surface0); border-radius: 4px; padding: 3px 8px; }
 .tx-run {
-  border: 1px solid rgba(255,255,255,.35); background: rgba(10,12,20,.45);
-  color: #fff; border-radius: 4px; padding: 4px 14px; font-size: 12px;
+  border: 1px solid var(--surface0); background: transparent;
+  color: var(--text); border-radius: 4px; padding: 4px 14px; font-size: 12px;
 }
 .tx-box {
   position: absolute; left: 10px; right: 10px; bottom: 12px;
