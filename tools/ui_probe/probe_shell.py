@@ -398,6 +398,50 @@ def probe_desktop(pg, rep: Report, shots: Path, base: str) -> None:
         # 单文件版没有后端，导出必然失败——允许失败，但不许静默（P258 之前这里真的什么都没有）
         return rep.add("桌面 导出入口点了有反馈（失败也行，静默不行）", bool(msg), "提示=%r" % msg[:120])
 
+    def c_find() -> bool:
+        # P262：这层以前整套写死深色 + 投影 + 23px 胶囊，两套皮都不跟。现在要求它跟主题：
+        # 不透明、有描边、零投影、圆角 ≤6，并且正文字色对底色 ≥4.5:1。
+        try:
+            pg.keyboard.press("Control+f")
+            pg.wait_for_function(
+                "()=>{const e=document.querySelector('#mlRoot');return !!e&&!e.classList.contains('hidden')}",
+                timeout=4000,
+            )
+        except Exception:
+            return rep.add("桌面 搜索浮层跟主题", False, "Ctrl+F 没打开浮层")
+        try:
+            pg.fill("#mlFind", "label", timeout=3000)
+        except Exception:
+            pass
+        pg.wait_for_timeout(300)
+        got = pg.evaluate(
+            "()=>{const r=document.querySelector('#mlRoot');const c=getComputedStyle(r);"
+            "const s=document.querySelector('.ml-in');const cs=s?getComputedStyle(s):null;"
+            "const pg_=getComputedStyle(document.body);"
+            "const L=(h)=>{const m=h.match(/\\d+/g);if(!m)return null;const v=m.slice(0,3).map(Number).map(x=>{x/=255;"
+            "return x<=0.03928?x/12.92:Math.pow((x+0.055)/1.055,2.4)});return 0.2126*v[0]+0.7152*v[1]+0.0722*v[2]};"
+            "const fg=L(c.color),bg=L(c.backgroundColor);"
+            "const ratio=fg&&bg?(Math.max(fg,bg)+0.05)/(Math.min(fg,bg)+0.05):0;"
+            "return {bg:c.backgroundColor,page:pg_.backgroundColor,bw:parseFloat(c.borderTopWidth),"
+            "sh:c.boxShadow,rad:parseFloat(c.borderTopLeftRadius),txt:c.color,ratio:Number(ratio.toFixed(2)),"
+            "inRad:cs?parseFloat(cs.borderTopLeftRadius):-1};}"
+        )
+        pg.screenshot(path=str(shots / "d04-find.png"))
+        ok = (
+            got["bg"] not in ("rgba(0, 0, 0, 0)", "transparent")
+            and (got["bg"] != got["page"] or got["bw"] >= 1)
+            and got["sh"] in ("none", "")
+            and 0 <= got["rad"] <= 6
+            and 0 <= got["inRad"] <= 6
+            and got["ratio"] >= 4.5
+        )
+        return rep.add(
+            "桌面 搜索浮层跟主题（实底·细边·零投影·4px·字底≥4.5）",
+            ok,
+            "bg=%s page=%s border=%s shadow=%s r=%s 输入框r=%s 字/底=%.2f" % (
+                got["bg"], got["page"], got["bw"], got["sh"], got["rad"], got["inRad"], got["ratio"]),
+        )
+
     def c_no_errors() -> bool:
         allbad = errors + badres
         return rep.add("桌面 零 JS 异常、零资源 404", len(allbad) == 0, " | ".join(allbad)[:300])
@@ -405,6 +449,7 @@ def probe_desktop(pg, rep: Report, shots: Path, base: str) -> None:
     rep.check("桌面 三栏", c_shell, shots, pg)
     rep.check("桌面 文件菜单", c_filemenu, shots, pg)
     rep.check("桌面 导出", c_export_toast, shots, pg)
+    rep.check("桌面 搜索浮层", c_find, shots, pg)
     rep.check("桌面 无异常", c_no_errors, shots, pg)
 
 

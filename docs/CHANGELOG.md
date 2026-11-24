@@ -8,6 +8,54 @@
 
 ---
 
+## 2026-11-24 · v1.2.63
+
+**用户原话**：纸色「有点类似电子书的效果就好了」+「editor_find 并进主题」+「手机适配电脑端你自己去优化吧全部优化更新」。
+这一版把这两条一起落，并且把「自己带一套深色/自带圆角」的界面全部收进令牌。
+
+**一、纸改成电子书米黄（整组一起移，不是只改底色）**
+
+| 令牌 | 旧 | 新 | 对比（新） |
+|---|---|---|---|
+| `--base` | `#f6f2e9` | **`#f5ecd9`** | 墨 15.5:1 |
+| `--card-bg` | `#f9f5ec` | `#f8f0de` | 蓝字 6.1:1 |
+| `--surface0` | `#d5ccb9` | `#d2c3a8` | — |
+| `--text` | `#191712` | `#191510` | 15.5:1 |
+| `--subtext0` | `#4f4938` | `#4a4433` | 8.3:1 |
+| `--deep-bg` | `#ede7d9` | `#eae0c9` | — |
+| `--input-bg`/`--hover-bg`/`--border-strong`/`--scroll-thumb` 等 11 项 | — | 同步压暖 | — |
+
+共替换 20 处（`editor.css` 内，行数 3362 未变）。
+
+**二、桌面搜索浮层 `editor_find.js` 并进主题**
+
+原来是整套写死深色：`rgba(18,22,30,.97)` 底、`#2b6cf6` 主色、`0 10px 30px` 投影、圆角 16/23/14/10/9/8。
+现在：`var(--card-bg)` + `1px var(--surface0)` + **4px** + `box-shadow: none`；输入框 `var(--input-bg)`；
+「检查全文」等实心键 `var(--blue-ink)` + `var(--base)` 字；选中 chip 只描边不铺色；错误条 `var(--card-bg)` + `var(--red)` 边。
+桌面档改成右上角一块浮板（`right:16px;top:8px;width:440px`，四角 4px）。
+
+**三、作品封面不再铺蓝紫渐变**
+
+`gal_offline.js` 里那 6 组两色渐变（`coverCss`）删掉，封面位就是纸的一格（`var(--deep-bg)`）+ 首字（`var(--subtext0)`，去文字投影）；
+`home.css` 的工作台大封面空态、`editor.css` 浅色大卡（`--deep-bg` + `--surface0`）、大卡标题/说明/按钮一并改令牌。
+
+**四、编辑器侧 JS 里写死的圆角 ≥6px 全部改 4px（17 处）**
+
+`mobile/editor_dialog.js`、`mobile/editor_home.js`、`editor_snapshots.js`、`editor_switch.js`、`editor_tryplay.js`、
+`editor_uidesign.js`、`editor_shell.js`、`editor_find.js`、`editor_draft.js` 全部覆盖，行数一行未增。
+**故意没动** `gal_offline.js` 的系统 toast 与投递框：那是玩家端/游戏内界面，不属于编辑器外壳审美。
+
+**五、探针 25 → 26（新增「桌面搜索浮层跟主题」）**
+
+`c_find`：Ctrl+F 打开 → 断言「不透明 + 与页面底色不同或有描边 + `box-shadow:none` + 根与输入框圆角 ≤6 + 字/底 ≥4.5」。
+实测：`bg=rgb(248,240,222)` `page=rgb(245,236,217)` `border=1` `shadow=none` `r=4` `输入框r=4` `字/底=16.01`。
+
+**六、复核**
+
+- 全站可见元素「圆角 >6px 且非 50%」计数：**手机首页 0 / 桌面启动 0 / 桌面开搜索浮层 0**（上一版日志里那 8·9·10·12·14·23px 全清）。
+- `node --check` 10 个改动过的 JS 全 exit 0。
+- 门禁：pytest **1561 passed / 7 skipped / exit 0**（151.94s）· pyright **109 = 基线 / exit 0** · 探针 **26/26 / exit 0** · 单文件 **1.17 MB / 29 脚本 / 5 样式**。
+
 ## 2026-11-24 · v1.2.62
 
 **一句话**：纸底上有一行白字看不见 —— 预览占位左上「第 22 行 · 共 9 句」是 `rgba(255,255,255,.78)` + 文字投影，那是给深色舞台写的；换成纸底后对比度塌到 **1.4:1**，等于没有。

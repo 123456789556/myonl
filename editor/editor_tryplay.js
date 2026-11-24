@@ -105,7 +105,7 @@
       "flex:0 0 auto;height:46px;display:flex;align-items:center;gap:10px;padding:0 10px;" +
       "background:#111a29;border-bottom:1px solid rgba(255,255,255,.08);box-sizing:border-box");
     var exit = mk("button",
-      "flex:0 0 auto;padding:7px 12px;border-radius:10px;border:1px solid rgba(79,140,255,.5);" +
+      "flex:0 0 auto;padding:7px 12px;border-radius:4px;border:1px solid rgba(79,140,255,.5);" +
       "background:rgba(79,140,255,.16);color:#dce8ff;font-size:13px;font-weight:600;font-family:inherit",
       "✕ 退出试玩");
     exit.type = "button";

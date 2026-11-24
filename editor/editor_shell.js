@@ -20,7 +20,7 @@
     const d = document.createElement("div");
     d.textContent = msg;
     d.style.cssText = "position:fixed;left:50%;bottom:64px;transform:translateX(-50%);z-index:9999;"
-      + "background:rgba(0,0,0,.86);color:#fff;padding:9px 14px;border-radius:10px;font:13px/1.4 system-ui;max-width:70vw";
+      + "background:rgba(0,0,0,.86);color:#fff;padding:9px 14px;border-radius:4px;font:13px/1.4 system-ui;max-width:70vw";
     document.body.appendChild(d);
     setTimeout(() => d.remove(), 2800);
   }

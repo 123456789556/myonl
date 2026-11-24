@@ -649,7 +649,7 @@
       var df = window.MYONLDraft.diffText(dft);
       var tip = document.createElement("div");
       tip.className = "m-draft-tip";
-      tip.style.cssText = "margin:0 0 12px;padding:10px 12px;border-radius:12px;" +
+      tip.style.cssText = "margin:0 0 12px;padding:10px 12px;border-radius:4px;" +
         "background:rgba(224,196,106,.10);border:1px solid rgba(224,196,106,.34);";
       tip.innerHTML =
         '<div style="font-size:13px;color:#e0c46a;line-height:1.5">' +
@@ -658,10 +658,10 @@
           (dft.stale ? '<br><span style="color:#e08a6a">草稿基于的版本已经变过（回退或导入过）</span>' : '') +
         '</div>' +
         '<div style="display:flex;gap:8px;margin-top:8px">' +
-          '<button type="button" id="mDraftGo" style="flex:1;height:34px;border:0;border-radius:9px;' +
+          '<button type="button" id="mDraftGo" style="flex:1;height:34px;border:0;border-radius:4px;' +
             'background:#4f8cff;color:#fff;font-size:13px">继续创作（接上次内容）</button>' +
           '<button type="button" id="mDraftNo" style="flex:0 0 76px;height:34px;' +
-            'border:1px solid rgba(160,180,210,.4);border-radius:9px;background:transparent;' +
+            'border:1px solid rgba(160,180,210,.4);border-radius:4px;background:transparent;' +
             'color:#9fb3d1;font-size:13px">丢弃</button>' +
         '</div>';
       var hero = workEl.querySelector(".m-work-hero");

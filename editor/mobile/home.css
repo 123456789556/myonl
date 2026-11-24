@@ -221,13 +221,13 @@ body.m-has-projects .m-home-list { flex: 1 1 auto !important; }
 .m-work-cover.on img { opacity: 1; }
 /* 没封面时不留一块死灰：渐变底 + 作品名首字 */
 .m-work-cover.empty {
-  background: linear-gradient(135deg, #24344f 0%, #101822 100%);
+  background: var(--deep-bg);
   display: grid; place-items: center;
 }
 .m-work-cover.empty img { display: none; }
 .m-work-cover.empty::after {
   content: attr(data-ch);
-  font-size: 46px; font-weight: 700; color: rgba(255, 255, 255, .46); letter-spacing: 2px;
+  font-size: 46px; font-weight: 700; color: var(--subtext0); letter-spacing: 2px;
 }
 .m-work-title { margin-top: 14px; font-size: 21px; font-weight: 650; letter-spacing: .2px; }
 .m-work-meta { margin-top: 4px; font-size: 12.5px; color: var(--subtext0); }

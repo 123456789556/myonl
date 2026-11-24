@@ -184,7 +184,7 @@
     var x = document.createElement("button");
     x.type = "button";
     x.textContent = "关闭";
-    x.style.cssText = "flex:0 0 auto;padding:6px 12px;border-radius:8px;border:1px solid rgba(255,255,255,.2);" +
+    x.style.cssText = "flex:0 0 auto;padding:6px 12px;border-radius:4px;border:1px solid rgba(255,255,255,.2);" +
       "background:transparent;color:#9fb2d0;font-size:13px";
     x.onclick = closePanel;
     head.appendChild(t); head.appendChild(x);
@@ -202,7 +202,7 @@
     rows.forEach(function (r) {
       var row = document.createElement("div");
       row.style.cssText = "display:flex;align-items:center;gap:10px;padding:10px 12px;" +
-        "border-radius:10px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.09)";
+        "border-radius:4px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.09)";
       var info = document.createElement("div");
       info.style.cssText = "flex:1;min-width:0";
       var l1 = document.createElement("div");
@@ -215,7 +215,7 @@
       var btn = document.createElement("button");
       btn.type = "button";
       btn.textContent = "退回到这版";
-      btn.style.cssText = "padding:7px 11px;border-radius:8px;border:1px solid rgba(79,140,255,.45);" +
+      btn.style.cssText = "padding:7px 11px;border-radius:4px;border:1px solid rgba(79,140,255,.45);" +
         "background:rgba(79,140,255,.18);color:#dce8ff;font-size:12px;white-space:nowrap";
       btn.onclick = function () {
         read(r.key).then(function (rec) {

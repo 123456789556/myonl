@@ -978,7 +978,7 @@
         big.className = "modal-hint";
         const hard = resp.file_warning_level === "hard";
         if (hard) {
-          big.style.cssText = "margin-top:10px;padding:12px 14px;border-radius:12px;"
+          big.style.cssText = "margin-top:10px;padding:12px 14px;border-radius:4px;"
             + "background:rgba(255,77,77,.14);border:1px solid rgba(255,77,77,.55);color:#ffb3b3;";
           big.textContent = "⚠ 硬线告警：这一份 " + (resp.file_mb || "?") + " MB：" + resp.file_warning
             + " 不精简素材就发出去，对方手机很可能打不开。";
@@ -1197,7 +1197,7 @@
       ".uid-zoom-btn:hover{border-color:#4f8cff;color:#fff}",
       ".uid-zoom-val{min-width:44px}",
       ".uid-zoom-hint{margin-left:auto;font-size:11px;color:#7d8899;white-space:nowrap}",
-      ".uid-stage-scroll{overflow:auto;max-height:62vh;border-radius:6px;",
+      ".uid-stage-scroll{overflow:auto;max-height:62vh;border-radius:4px;",
       "-webkit-overflow-scrolling:touch;touch-action:pan-x pan-y}",
       // 触摸设备（手指比鼠标粗）：手柄整个放大 1.6 倍，transform 不影响定位只放大视觉 + 命中区
       "body.uid-touch .uid-sel-h{transform:scale(1.6)}",

@@ -1656,10 +1656,9 @@
     return h;
   }
   function coverCss(name) {
-    var pair = PALETTE[hueOf(name) % PALETTE.length];
-    return "radial-gradient(120% 90% at 78% 12%, rgba(255,255,255,.30) 0%, rgba(255,255,255,0) 46%)," +
-      "repeating-linear-gradient(115deg, rgba(255,255,255,.055) 0 2px, rgba(255,255,255,0) 2px 7px)," +
-      "linear-gradient(140deg, " + pair[1] + " 0%, " + pair[0] + " 74%)";
+    // P262：以前按作品名铺一张蓝紫渐变当「身份」，在纸底下就是一块发光的塑料片；
+    // 现在封面位就是纸的一格（深色下是同档深灰），身份靠首字，不靠颜色。
+    return "var(--deep-bg)";
   }
   function decorateOne(card) {
     var name = card.getAttribute("data-folder");
@@ -1680,7 +1679,7 @@
         g.className = "off-glyph";
         g.textContent = name.slice(0, 1);
         g.style.cssText = "position:absolute;inset:0;display:flex;align-items:center;justify-content:center;" +
-          "font-size:26px;font-weight:600;color:rgba(255,255,255,.82);text-shadow:0 2px 10px rgba(0,0,0,.35)";
+          "font-size:26px;font-weight:600;color:var(--subtext0);";
         thumb.style.position = "relative";
         thumb.style.overflow = "hidden";
         thumb.appendChild(g);

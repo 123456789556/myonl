@@ -1477,16 +1477,16 @@ input[type="text"], input[type="search"], select { background: var(--input-bg); 
 
 /* ---- 浅色主题 ---- */
 :root[data-theme="light"] {
-  --base: #f6f2e9;      /* 纸（不是纯白）：纯白是 AI 平均值的默认，纸才像要印东西 */
-  --mantle: #efeadd;
-  --crust: #e7e1d2;
-  --surface0: #d5ccb9;  /* 描边：细、暖、看得见但不抢 */
-  --surface1: #c2b8a4;
-  --surface2: #7b7466;
-  --overlay0: #6c6557;
-  --subtext0: #4f4938;
-  --subtext1: #322d24;
-  --text: #191712;      /* 墨（16:1）*/
+  --base: #f5ecd9;      /* 纸（不是纯白）：纯白是 AI 平均值的默认，纸才像要印东西 */
+  --mantle: #ece2cd;
+  --crust: #e2d7bf;
+  --surface0: #d2c3a8;  /* 描边：细、暖、看得见但不抢 */
+  --surface1: #bcac90;
+  --surface2: #766b58;
+  --overlay0: #655c4a;
+  --subtext0: #4a4433;
+  --subtext1: #2d281f;
+  --text: #191510;      /* 墨（16:1）*/
   --blue: #4f8cff;      /* 总纲主色，占位/填充/边框 */
   --blue-ink: #2456b0;  /* 纸上当文字用：6.2:1，同一色相压深，不是第二个蓝 */
   --lavender: #6f9dff;
@@ -1498,14 +1498,14 @@ input[type="text"], input[type="search"], select { background: var(--input-bg); 
   --pink: #8f2a5e;
   --teal: #0a5f5f;
   --sky: #1a5490;
-  --input-bg: #fbf7ef;
-  --card-bg: #f9f5ec;
-  --deep-bg: #ede7d9;
-  --hover-bg: #e4ddcc;
-  --border-strong: #bfb49f;
-  --scroll-thumb: #c6bca8;
-  --scroll-thumb-hover: #ab9f89;
-  --preview-dot: #e2dccb;
+  --input-bg: #faf3e3;
+  --card-bg: #f8f0de;
+  --deep-bg: #eae0c9;
+  --hover-bg: #e1d5bc;
+  --border-strong: #b9a98d;
+  --scroll-thumb: #c3b498;
+  --scroll-thumb-hover: #a99a80;
+  --preview-dot: #e0d4ba;
 }
 :root[data-theme="light"] .file-pane { background: var(--deep-bg); }
 :root[data-theme="light"] .menubar .mb-search { border-color: var(--surface0); }
@@ -1542,7 +1542,7 @@ input[type="text"], input[type="search"], select { background: var(--input-bg); 
 :root[data-theme="light"] .error-overlay { background: rgba(196,43,28,.10); border-color: rgba(196,43,28,.45); }
 :root[data-theme="light"] .clothesline { background: rgba(246,242,233,.97); border-color: var(--surface0); }
 :root[data-theme="light"] .cl-trigger { background: var(--mantle); border-color: var(--surface0); }
-:root[data-theme="light"] .toast { background: #191712; color: #f6f2e9; }
+:root[data-theme="light"] .toast { background: #191510; color: #f5ecd9; }
 
 /* 游戏界面在左时的顺序：活动栏 | 工程文件 | 游戏界面 | 编辑区 */
 .main.preview-left > .activity-bar { order: -4; }
@@ -2430,15 +2430,15 @@ input[type="color"] {
    压到 14% 又变成一层灰雾，同样不好看 —— 浅色下直接不铺大图，
    用淡蓝品牌渐变 + 深色文字，干净。想看封面就切回深色。 */
 :root[data-theme="light"] .m-home-hero {
-  background: linear-gradient(135deg, #f4f8ff 0%, #e9f1ff 58%, #e3edff 100%);
-  border: 1px solid rgba(79,140,255,.16);
+  background: var(--deep-bg);
+  border: 1px solid var(--surface0);
 }
 :root[data-theme="light"] .m-hero-cover { display: none; }
 :root[data-theme="light"] .m-hero-veil { background: none; }
-:root[data-theme="light"] .m-hero-name { color: #12151c; text-shadow: none; }
-:root[data-theme="light"] .m-hero-meta { color: rgba(18,21,28,.62); }
+:root[data-theme="light"] .m-hero-name { color: var(--text); text-shadow: none; }
+:root[data-theme="light"] .m-hero-meta { color: var(--subtext0); }
 :root[data-theme="light"] .m-hero-go {
-  background: rgba(79,140,255,.1); border-color: rgba(79,140,255,.28); color: #2b5fd9;
+  background: transparent; border-color: var(--surface0); color: var(--text);
   backdrop-filter: none;
 }
 

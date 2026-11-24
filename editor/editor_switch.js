@@ -31,7 +31,7 @@
       "display:flex;align-items:center;justify-content:center;padding:18px");
     maskEl.id = "projSwitchMask";
     boxEl = el("div", "width:min(420px,100%);max-height:min(70vh,560px);display:flex;flex-direction:column;" +
-      "background:var(--bg-2,#1c2331);border:1px solid rgba(255,255,255,.10);border-radius:12px;" +
+      "background:var(--bg-2,#1c2331);border:1px solid rgba(255,255,255,.10);border-radius:4px;" +
       "box-shadow:0 18px 50px rgba(0,0,0,.45);overflow:hidden");
     var head = el("div", "padding:14px 16px 10px;border-bottom:1px solid rgba(255,255,255,.08)");
     head.appendChild(el("div", "font-size:15px;font-weight:600;color:var(--fg,#e8eefc)", "换一个作品"));
@@ -42,7 +42,7 @@
     boxEl.appendChild(listEl);
     var foot = el("div", "padding:10px 16px 14px;display:flex;justify-content:flex-end;gap:8px;" +
       "border-top:1px solid rgba(255,255,255,.08)");
-    var cancel = el("button", "height:32px;padding:0 14px;border-radius:8px;cursor:pointer;" +
+    var cancel = el("button", "height:32px;padding:0 14px;border-radius:4px;cursor:pointer;" +
       "background:transparent;border:1px solid rgba(255,255,255,.14);color:#b8c6de", "取消");
     cancel.type = "button";
     cancel.addEventListener("click", close);
@@ -64,7 +64,7 @@
   function row(p) {
     var on = !!p.current;
     var r = el("button", "display:flex;align-items:center;gap:10px;width:100%;text-align:left;" +
-      "padding:10px 12px;margin-bottom:4px;border-radius:8px;cursor:pointer;border:1px solid transparent;" +
+      "padding:10px 12px;margin-bottom:4px;border-radius:4px;cursor:pointer;border:1px solid transparent;" +
       (on ? "background:rgba(79,140,255,.14);border-color:rgba(79,140,255,.45);" : "background:transparent;") +
       "color:var(--fg,#e8eefc)");
     r.type = "button";
