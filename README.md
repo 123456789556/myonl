@@ -1,7 +1,7 @@
 # MYONL · 手机上的视觉小说编辑器
 
 [![tests](https://github.com/123456789556/myonl/actions/workflows/tests.yml/badge.svg?branch=main)](https://github.com/123456789556/myonl/actions/workflows/tests.yml)
-![Release](https://img.shields.io/badge/release-v1.2.64-blue)
+![Release](https://img.shields.io/badge/release-v1.2.65-blue)
 ![License](https://img.shields.io/badge/License-MIT-green)
 ![Platform](https://img.shields.io/badge/platform-Android%207.0%2B%20%C2%B7%20Windows%20%C2%B7%20Web-19b6a3)
 ![Offline](https://img.shields.io/badge/offline-100%25-2ea44f)
@@ -249,7 +249,10 @@ python tools/pack_apk.py --game dist/single/你的作品.html
  · 打成 APK        —— 装到安卓上，就是一个独立 App
 ```
 
-横屏的剧本页已经是「左栏场景树 + 右栏正文」：左边一直看得见自己写到第几幕，右边改词；
+横屏的剧本页是「左栏场景树 · 中间画面预览 · 右栏正文」：左边一直看得见自己写到第几幕，
+预览紧挨着场景树（改台词时画面就在旁边），右边那片宽的地方整个留给正文。
+左栏宽度能拖（150–320，松手记住）；预览右上角一枚 × 收起来，只留一条竖着写「预览」的窄条，点一下就回来；
+收起后正文拿走全部宽度。拖到多宽多窄都按屏幕自己算，窄到 700 以下仍旧一屏一件事。
 底栏仍旧留在下面，不搬去侧边（搬过去等于把两层导航叠成三层）。只对剧本页这么做：
 素材、外观那些页还是一屏一件事，横屏分栏要一页一页验，凑在一起改出了问题分不清是谁的。
 
@@ -260,13 +263,17 @@ python tools/pack_apk.py --game dist/single/你的作品.html
 
 ![竖屏四种](docs/images/showcase-portrait.png)
 
-横屏（800×360 / 1024×768）：导航留在底部；剧本页左栏场景树、右栏正文（宽度 <700 时仍是一屏一件事）。
+横屏（800×360 / 1024×768）：导航留在底部；剧本页左栏场景树、中间预览、右栏正文（宽度 <700 时仍是一屏一件事）。
 
 ![横屏两种](docs/images/showcase-landscape.png)
 
-横屏的剧本页（844×390 实测）：左边场景树，右边改台词，底栏还在下面。
+横屏的剧本页（844×390 实测）：左边场景树，中间画面预览（可收起），右边改台词，底栏还在下面。
 
 ![横屏剧本页](docs/images/showcase-landscape-script.png)
+
+预览收起之后，正文拿走全部宽度（左边那条竖着写「预览」的窄条就是入口）：
+
+![横屏剧本页-预览收起](docs/images/showcase-landscape-preview-off.png)
 
 浅色是**电子书纸**（米黄、硬边）、深色是**终端**（近黑、薄描边），设置里随时切：
 
@@ -276,9 +283,9 @@ python tools/pack_apk.py --game dist/single/你的作品.html
 
 ## 装它
 
-**[⬇ 下载 MYONL-v1.2.64.apk](https://github.com/123456789556/myonl/releases/download/v1.2.64/MYONL-v1.2.64.apk)** · 安卓 7.0 以上 · 手机 / 折叠屏 / 平板都能用，横竖屏自适应
+**[⬇ 下载 MYONL-v1.2.65.apk](https://github.com/123456789556/myonl/releases/download/v1.2.65/MYONL-v1.2.65.apk)** · 安卓 7.0 以上 · 手机 / 折叠屏 / 平板都能用，横竖屏自适应
 
-**[⬇ 下载 MYONL-v1.2.64-editor-win.zip](https://github.com/123456789556/myonl/releases/download/v1.2.64/MYONL-v1.2.64-editor-win.zip)** · Windows 10/11 · 解压双击 `editor.exe`，不用装 Python
+**[⬇ 下载 MYONL-v1.2.65-editor-win.zip](https://github.com/123456789556/myonl/releases/download/v1.2.65/MYONL-v1.2.65-editor-win.zip)** · Windows 10/11 · 解压双击 `editor.exe`，不用装 Python
 
 装好打开就是书架，点「新建作品」开始。底部「导出」有两条出口：
 自包含 `.html`（发微信对方就能玩）和 APK（装到手机上就是一个独立 App）。
@@ -304,7 +311,7 @@ python tools/pack_apk.py --game dist/single/你的作品.html
 
 - 作品和素材不离开这台设备，不上传、不联网。换手机要自己导出带走。
 - 固定签名，覆盖安装新版不会清空作品。
-- 横屏竖屏都能用；横屏的剧本页已分栏，其余页仍是一屏一件事。
+- 横屏竖屏都能用；横屏的剧本页已分栏（左栏可拖宽、预览可收起），其余页仍是一屏一件事。
 
 ## 版本怎么算
 
@@ -317,7 +324,7 @@ python tools/pack_apk.py --game dist/single/你的作品.html
 
 只想做游戏的话，上面那些就够了。下面是技术细节。
 
-> 全量测试当前 **1561 passed, 7 skipped、退出码 0**（2026-11-24 本机已复跑；数随版本变，以最新一次 `pytest -q` 为准）。
+> 全量测试当前 **1574 passed, 7 skipped、退出码 0**（2026-11-25 本机已复跑；数随版本变，以最新一次 `pytest -q` 为准）。
 > 界面另外有一条机器探针 `tools/ui_probe/probe_shell.py`（26 条，手机 390×844 / 横屏 844×390 / 桌面 1440×900），
 > CI 里 push 改 `editor/**`、`web/**` 就跟着跑，失败会贴出是哪一条不符并留截图 —— 之前的界面验证全在人手上，这是补上的那个洞。
 

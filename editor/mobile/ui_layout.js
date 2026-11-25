@@ -34,9 +34,72 @@
     }
   }
 
+  /* ---- P264 横屏分栏：左栏可拖宽、预览可收起、编辑与预览换位 ----
+     用户原话「横屏编辑和预览区换一下位置，预览区可关闭，左边区域收一些可以拖动宽度，自适应做好」。
+     拖动只改 --m-rail，没有任何元素写死 width；收起只给 html 挂 m-stage-off，版式全交给 CSS。 */
+  var RAIL = "myonl:off:railW:v1", STAGE = "myonl:off:stageOff:v1";
+  function railPx() {
+    var v = 0; try { v = parseInt(localStorage.getItem(RAIL) || "", 10) || 0; } catch (e) {}
+    return v > 0 ? v : 232;
+  }
+  function stageOff() { try { return localStorage.getItem(STAGE) === "1"; } catch (e) { return false; } }
+  // 左栏最多 320，整块编辑区至少留 380：宽度不够时先压缩左栏，不允许把编辑区挤成一条缝
+  function railMax() { return Math.max(150, Math.min(320, window.innerWidth - 380)); }
+  function applyPane() {
+    if (!shell()) { DE.classList.remove("m-stage-off"); DE.style.removeProperty("--m-rail"); return; }
+    DE.style.setProperty("--m-rail", Math.min(Math.max(railPx(), 150), railMax()) + "px");
+    DE.classList.toggle("m-stage-off", stageOff());
+    // 分栏只在横屏且 ≥700 宽成立（同 @media (orientation:landscape) and (min-width:700px)）；竖屏不许多出手柄和按钮
+    var split = window.innerWidth >= 700 && window.innerWidth > window.innerHeight;
+    var g = document.getElementById("mRailGrip"), b = document.getElementById("mStageBtn");
+    if (g) g.style.display = split ? "" : "none";
+    if (b) {
+      b.style.display = split ? "" : "none";
+      b.textContent = stageOff() ? "\u9884\u89C8" : "\u00D7";
+      b.setAttribute("aria-label", stageOff() ? "展开画面预览" : "收起画面预览");
+    }
+  }
+  function toggleStage() {
+    try { localStorage.setItem(STAGE, stageOff() ? "0" : "1"); } catch (e) {}
+    applyPane();
+  }
+  function ensurePane() {
+    var p = document.getElementById("scenePage");
+    if (!p) return;
+    if (!document.getElementById("mRailGrip")) {
+      var g = document.createElement("div");
+      g.id = "mRailGrip"; g.className = "m-rail-grip"; g.setAttribute("role", "separator");
+      p.appendChild(g);
+      g.addEventListener("pointerdown", function (e) {
+        e.preventDefault(); e.stopPropagation();
+        try { g.setPointerCapture(e.pointerId); } catch (err) {}
+        p.classList.add("m-dragging");
+        function move(ev) {
+          var w = Math.min(Math.max(Math.round(ev.clientX - p.getBoundingClientRect().left), 150), railMax());
+          DE.style.setProperty("--m-rail", w + "px");
+        }
+        function up() {
+          p.classList.remove("m-dragging");
+          g.removeEventListener("pointermove", move); g.removeEventListener("pointerup", up);
+          try { localStorage.setItem(RAIL, String(parseInt(DE.style.getPropertyValue("--m-rail"), 10) || 232)); } catch (err) {}
+        }
+        g.addEventListener("pointermove", move); g.addEventListener("pointerup", up);
+      });
+    }
+    var sw = p.querySelector(".sf-stage-wrap");
+    if (sw && !document.getElementById("mStageBtn")) {
+      var btn = document.createElement("button");
+      btn.type = "button"; btn.id = "mStageBtn"; btn.className = "m-stage-btn";
+      btn.addEventListener("click", function (e) { e.preventDefault(); e.stopPropagation(); toggleStage(); });
+      sw.appendChild(btn);
+    }
+    applyPane();
+  }
+
   function apply() {
     if (!shell()) return;
     DE.classList.add("m-shell"); if (window.visualViewport) DE.style.setProperty("--m-vvh", Math.round(window.visualViewport.height) + "px");
+    applyPane(); ensurePane();
     var w = wide();
     DE.classList.toggle("m-wide", w);
     iconify(document.querySelector('.menubar .menu-item[data-menu="file"]'), w, "菜单", "☰", "菜单");
@@ -169,6 +232,12 @@
   document.addEventListener("click", function (e) {
     var t = e.target && e.target.closest ? e.target.closest("#mHomeBack, .m-work-back, .mb-back") : null;
     if (t) cleanOverlays();
+  }, true);
+
+  // 场景页是后建的：点进某一幕才把拖动手柄与「收起预览」按钮挂上去（P264）
+  document.addEventListener("click", function (e) {
+    var t = e.target && e.target.closest ? e.target.closest("#sceneList .scene-item") : null;
+    if (t) setTimeout(ensurePane, 0);
   }, true);
 
   // 作品名可点改名

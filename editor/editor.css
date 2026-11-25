@@ -2994,7 +2994,19 @@ input[type="color"] {
 @media (orientation: landscape) and (min-width: 700px) {
   html.m-shell.m-wide #scenePage.center-page.scene-page.open { height: calc(100vh - 92px) !important; height: calc(var(--m-vvh, 100dvh) - 92px) !important; bottom: auto !important; padding-bottom: 0 !important; }
   html.m-shell .scene-page .scene-body { flex-direction: row; }
-  html.m-shell .scene-page .scene-list { width: 232px; flex: 0 0 232px; border-right: 1px solid var(--surface0); }
+  html.m-shell .scene-page .scene-list { width: var(--m-rail, 232px); flex: 0 0 var(--m-rail, 232px); border-right: 1px solid var(--surface0); }
+  /* P264 换位：预览在左、编辑在右；左栏宽度只吃 --m-rail（拖动由 ui_layout 改写它） */
+  html.m-shell #scenePage.m-detail #sceneForm { grid-template-columns: minmax(170px, 34%) minmax(0, 1fr) !important; }
+  html.m-shell #scenePage #sceneForm > * { grid-column: 2; } html.m-shell #scenePage #sceneForm > .sf-actions { grid-column: 1 / -1; }
+  html.m-shell #scenePage #sceneForm > .sf-stage-wrap { grid-column: 1; }
+  /* 预览收起：左栏留 34px 窄条点回来，编辑独占其余宽度 */
+  html.m-shell.m-stage-off #scenePage.m-detail #sceneForm { grid-template-columns: 34px minmax(0, 1fr) !important; }
+  html.m-shell.m-stage-off #scenePage .sf-stage-wrap { position: relative !important; align-self: start !important; height: 96px; min-height: 0; padding: 0 !important; border-right: 1px solid var(--surface1); background: none !important; }
+  html.m-shell.m-stage-off #scenePage .sf-stage-wrap > :not(.m-stage-btn), html.m-shell.m-stage-off #scenePage .sf-stage-wrap.m-stage-empty::after { display: none !important; }
+  .m-rail-grip { position: absolute; z-index: 6; left: calc(var(--m-rail, 232px) - 5px); top: 94px; bottom: 0; width: 11px; cursor: col-resize; background: transparent; }
+  .m-rail-grip::after { content: ""; position: absolute; left: 5px; top: 8px; bottom: 8px; width: 1px; background: var(--surface1); }
+  .m-stage-btn { position: absolute; right: 6px; top: 6px; z-index: 7; min-width: 30px; height: 30px; padding: 0 8px; border-radius: 4px; border: 1px solid var(--surface1); background: var(--card-bg); color: var(--text); font-size: 14px; line-height: 1; }
+  html.m-shell.m-stage-off .m-stage-btn { position: absolute; inset: 0; width: 100%; height: 100%; min-width: 0; border: 0; border-radius: 0; background: none; color: var(--text); opacity: .6; writing-mode: vertical-rl; text-orientation: upright; letter-spacing: 3px; font-size: 12px; }
   html.m-shell .scene-page.m-detail .scene-list { display: block; }
   html.m-shell #scenePage #sceneForm { flex: 1 1 auto; min-width: 0; padding-bottom: 12px !important; }
   #scenePage.scene-page .m-modebar { padding: 6px 10px 4px; } #scenePage.scene-page .m-modebar .m-mode { height: 34px; font-size: 13px; }

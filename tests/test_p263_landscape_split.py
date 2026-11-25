@@ -40,7 +40,8 @@ def test_横屏分栏只在_700_宽以上():
 def test_左栏就是场景列表且详情里也看得见():
     blk = _block()
     assert "flex-direction: row" in blk
-    assert "width: 232px" in blk
+    # P264 起宽度改吃 --m-rail（可拖），232 只是默认值
+    assert "width: var(--m-rail, 232px)" in blk
     assert "html.m-shell .scene-page.m-detail .scene-list { display: block; }" in blk
 
 
