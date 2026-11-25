@@ -3029,7 +3029,8 @@ input[type="color"] {
   /* P270：幕名一长，flex 会把「场景」挤成竖排两个字（实测 25px → 19px、16px → 32px 高）。
      小标必须不缩不换行；要挤就挤幕名，它自己换行 */
   html.m-shell #scenePage .sf-scene .sf-label { display: inline-block; margin: 0; flex: 0 0 auto; min-width: 0; white-space: nowrap; font-size: 12.5px; }
-  html.m-shell #scenePage .sf-scene b { font-size: 17px; line-height: 1.2; flex: 1 1 auto; min-width: 0; }
+  /* P272：幕名超长不再换两行（第二行只剩「说出口」，看着像排错），单行省略，行高固定 20 不掉回 175 */
+  html.m-shell #scenePage .sf-scene b { font-size: 17px; line-height: 1.2; flex: 1 1 auto; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   html.m-shell #scenePage .sf-sec { margin: 2px 0 4px; }
   /* 预览收起：左栏留 34px 窄条点回来，编辑独占其余宽度 */
   html.m-shell.m-stage-off #scenePage.m-detail #sceneForm { grid-template-columns: 34px minmax(0, 1fr) !important; }
@@ -3040,20 +3041,23 @@ input[type="color"] {
   .m-rail-grip, .m-prev-grip { position: absolute; z-index: 6; top: 52px; bottom: 0; width: 22px; margin-left: -11px; cursor: col-resize; background: transparent; touch-action: none; outline: none; }
   .m-rail-grip { left: var(--m-rail, 232px); }
   .m-prev-grip { left: calc(var(--m-rail, 232px) + var(--m-prev, 34%)); }
-  .m-rail-grip::after, .m-prev-grip::after { content: ""; position: absolute; left: 8px; top: 50%; width: 5px; height: 48px; margin-top: -24px; border-radius: 3px; background: rgba(79, 140, 255, .35); transition: height .12s, margin-top .12s, background .12s; }
+  .m-rail-grip::after, .m-prev-grip::after { content: ""; position: absolute; left: 8px; top: 12px; width: 5px; height: 48px; margin-top: 0; border-radius: 3px; background: rgba(79, 140, 255, .35); transition: height .12s, background .12s; }
   .m-rail-grip:hover::after, .m-prev-grip:hover::after { background: rgba(79, 140, 255, .6); }
-  .m-rail-grip.on::after, .m-prev-grip.on::after { height: 76px; margin-top: -38px; background: rgba(79, 140, 255, .9); }
+  .m-rail-grip.on::after, .m-prev-grip.on::after { height: 76px; background: rgba(79, 140, 255, .9); }
   html.m-shell.m-dragging, html.m-shell.m-dragging * { cursor: col-resize !important; user-select: none; }
   /* P271：原来 right:6px，30px 的 × 正好压在预览右边界那条 22px 拖拽把手上（把手 z 更高），
      实测 x 中心点落到元素是 mPrevGrip —— 看得见却点不动。往内挪 30px 让开把手。 */
-  .m-stage-btn { position: absolute; right: 34px; top: 6px; z-index: 7; min-width: 30px; height: 30px; padding: 0 8px; border-radius: 4px; border: 1px solid var(--surface1); background: var(--card-bg); color: var(--text); font-size: 14px; line-height: 1; white-space: nowrap; }
+  .m-stage-btn { position: absolute; left: 8px; top: 6px; right: auto; z-index: 7; min-width: 30px; height: 30px; padding: 0 8px; border-radius: 4px; border: 1px solid var(--surface1); background: var(--card-bg); color: var(--text); font-size: 14px; line-height: 1; white-space: nowrap; }
   /* P265：收起后竖排的「预览」贴顶，与正文「场景」两个字齐平（原来居中，比「场景」低一截 —— 用户：「不平行」） */
   html.m-shell.m-stage-off .m-stage-btn { position: absolute; inset: 0; width: 100%; height: 100%; min-width: 0; border: 0; border-radius: 0; background: none; color: var(--text); opacity: .6; writing-mode: vertical-rl; text-orientation: upright; letter-spacing: 3px; font-size: 12px; text-align: left; padding: 5px 0 0; }
   /* P265 左栏流程图（蓝图式节点图）：盖在场景列表上，列表照常排版；「流程 | 列表」与缩放三颗在场景页头 */
   html.m-shell .scene-page .scene-body { position: relative; }
   html.m-shell #mGraphBar { display: flex; align-items: center; gap: 8px; }
   #mGraphBar button { height: 44px; min-width: 44px; padding: 0 9px; border: 0; border-radius: 4px; background: none; color: var(--subtext0); font-size: 14px; font-weight: 600; white-space: nowrap; }
-  #mGraphBar .m-gmodes, #mGraphBar .m-gori { display: flex; border: 1px solid var(--surface1); border-radius: 4px; overflow: hidden; }
+  /* P272：缩放那三个原来没有容器，跟左右两组站一起像掉在缝里（用户截图指出）。统一成同一套分组样式 */
+  #mGraphBar .m-gmodes, #mGraphBar .m-gori, #mGraphBar .m-gzoom { display: flex; border: 1px solid var(--surface1); border-radius: 4px; overflow: hidden; }
+  #mGraphBar .m-gzoom button { font-size: 15px; font-weight: 600; letter-spacing: .02em; }
+  #mGraphBar .m-gzoom button[data-z="fit"] { font-size: 11.5px; font-weight: 400; letter-spacing: 0; }
   #mGraphBar .m-gmodes button { min-width: 48px; } #mGraphBar .m-gori button { min-width: 40px; }
   #mGraphBar .m-gmodes button.on, #mGraphBar .m-gori button.on { background: rgba(79, 140, 255, .1); color: var(--blue-ink); }
   html.m-shell:not(.m-graph-on) #mGraphBar .m-gzoom, html.m-shell:not(.m-graph-on) #mGraphBar .m-gori { display: none; }

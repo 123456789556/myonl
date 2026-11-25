@@ -39,9 +39,11 @@ def test_absolute_buttons_keep_their_position():
 
 
 def test_stage_close_button_moved_off_the_grip():
-    assert ".m-stage-btn { position: absolute; right: 34px; top: 6px;" in CSS
-    # 原来 right:6 的写法必须消失，否则又压回把手上
+    # P272 起挪到预览左上角（右边界被把手占着，往内挪又会悬空）
+    assert ".m-stage-btn { position: absolute; left: 8px; top: 6px; right: auto;" in CSS
+    # 原来 right:6 / right:34 的写法都不许回来
     assert ".m-stage-btn { position: absolute; right: 6px;" not in CSS
+    assert "right: 34px; top: 6px;" not in CSS
     # × 只有一个字，不许折行（溢出审计报过「折行」）
     line = [l for l in CSS.splitlines() if l.strip().startswith(".m-stage-btn {")][0]
     assert "white-space: nowrap" in line

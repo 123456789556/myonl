@@ -487,7 +487,7 @@
       bar = document.createElement("div"); bar.id = "mGraphBar";
       bar.innerHTML = '<div class="m-gmodes"><button type="button" data-m="graph">流程</button><button type="button" data-m="list">列表</button></div>' +
         '<div class="m-gori"><button type="button" data-o="v" aria-label="竖排">竖排</button><button type="button" data-o="h" aria-label="横排">横排</button></div>' +
-        '<div class="m-gzoom"><button type="button" data-z="-" aria-label="缩小">−</button><button type="button" data-z="+" aria-label="放大">＋</button><button type="button" data-z="fit" aria-label="看全局">□</button></div>';
+        '<div class="m-gzoom"><button type="button" data-z="-" aria-label="缩小">−</button><button type="button" data-z="+" aria-label="放大">＋</button><button type="button" data-z="fit" aria-label="看全局">全局</button></div>';
       bar.addEventListener("click", function (e) {
         var b = e.target.closest ? e.target.closest("button") : null; if (!b) return;
         var m = b.getAttribute("data-m");
