@@ -36,7 +36,7 @@
 
   function apply() {
     if (!shell()) return;
-    DE.classList.add("m-shell");
+    DE.classList.add("m-shell"); if (window.visualViewport) DE.style.setProperty("--m-vvh", Math.round(window.visualViewport.height) + "px");
     var w = wide();
     DE.classList.toggle("m-wide", w);
     iconify(document.querySelector('.menubar .menu-item[data-menu="file"]'), w, "菜单", "☰", "菜单");
@@ -177,7 +177,7 @@
     if (t) openRename();
   }, false);
 
-  window.addEventListener("resize", apply);
+  window.addEventListener("resize", apply); try { if (window.visualViewport) window.visualViewport.addEventListener("resize", apply); } catch (e) {}
   window.addEventListener("orientationchange", function () { setTimeout(apply, 260); });
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", apply);
   else apply();

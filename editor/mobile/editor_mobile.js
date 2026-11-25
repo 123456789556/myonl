@@ -293,15 +293,15 @@
     if (!scnPop) {
       scnPop = document.createElement("div");
       scnPop.className = "scn-pop";
-      [["sceneCopy", "复制这一幕"], ["sceneRename", "重命名这一幕"], ["sceneDel", "删除这一幕"], ["sceneRefresh", "重新读取剧本"]]
+      [["sceneCopy", "复制这一幕"], ["sceneRename", "重命名这一幕"], ["sceneDel", "删除这一幕"], ["sceneRefresh", "重新读取剧本"], ["mlFind", "查找台词"]]
         .forEach(function (it) {
           var b = document.createElement("button");
           b.type = "button";
           b.textContent = it[1];
           b.addEventListener("click", function () {
-            var src = document.getElementById(it[0]);
             closePop();
-            if (src) src.click();
+            if (it[0] === "mlFind") { if (window.MYONLLintUI) MYONLLintUI.open(); return; }
+            var src = document.getElementById(it[0]); if (src) src.click();
           });
           scnPop.appendChild(b);
         });

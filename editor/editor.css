@@ -2990,6 +2990,23 @@ input[type="color"] {
   .scene-page .sf-add, .scene-page .icon-btn { min-width: 42px; min-height: 38px; }
 }
 
+/* 横屏（≥700 宽）剧本页：左栏场景树 + 右栏正文，一屏同时看见两边；<700 不分栏（360 高切两栏，正文只剩十几字宽）。 */
+@media (orientation: landscape) and (min-width: 700px) {
+  html.m-shell.m-wide #scenePage.center-page.scene-page.open { height: calc(100vh - 92px) !important; height: calc(var(--m-vvh, 100dvh) - 92px) !important; bottom: auto !important; padding-bottom: 0 !important; }
+  html.m-shell .scene-page .scene-body { flex-direction: row; }
+  html.m-shell .scene-page .scene-list { width: 232px; flex: 0 0 232px; border-right: 1px solid var(--surface0); }
+  html.m-shell .scene-page.m-detail .scene-list { display: block; }
+  html.m-shell #scenePage #sceneForm { flex: 1 1 auto; min-width: 0; padding-bottom: 12px !important; }
+  #scenePage.scene-page .m-modebar { padding: 6px 10px 4px; } #scenePage.scene-page .m-modebar .m-mode { height: 34px; font-size: 13px; }
+  html.m-shell .scene-page.m-detail .scn-back { display: none; } html.m-shell .scene-page.m-detail .cp-title { display: block; }
+  html.m-shell .scene-page.m-detail .scn-more { display: inline-flex !important; } html.m-shell .scene-page #sceneForm > #mVarEntry { order: 6; }
+  /* 左栏本身就是场景列表，「＋新场景」不用退回列表；「变量与条件」是配菜，排台词后免得把台词卡挤出屏幕 */
+  html.m-shell .scene-page.m-detail #sceneAdd { display: inline-flex !important; }
+  /* 分栏后右下角「查找」压住画面预览：横屏改从「⋯」进；:not(.x) 只把权重压过 ui-layout.css 的 id 级 display:flex */
+  :root.m-shell #mlFab:not(.x) { display: none !important; }
+}
+}
+
 /* ======================================================================
    横屏（手机躺下、平板横拿）的首页：「最近编辑」这张大卡
 
