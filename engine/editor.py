@@ -756,7 +756,7 @@ class _EditorHandler(BaseHTTPRequestHandler):
         ("GET", "/editor_pro.js"): "_serve_pro_js",
         # 场景视图（可视化编辑）：独立模块，源码/场景互不覆盖
         ("GET", "/editor_scene.js"): "_serve_scene_js",
-        ("GET", "/editor_strip.js"): "_serve_js",
+        ("GET", "/editor_strip.js"): "_serve_js", ("GET", "/editor_perf.js"): "_serve_js",  # 预算不允许涨行，两个转发合并一行
         ("GET", "/asset_thumb.js"): "_serve_js",
         ("GET", "/ui_polish.js"): "_serve_js",
         ("GET", "/strip.css"): "_serve_editor_css",

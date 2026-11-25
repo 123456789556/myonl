@@ -124,7 +124,7 @@
 
   function parseScene(lines, sc) {
     var seg = lines.slice(sc.start, sc.end);
-    var m = { name: sc.name, lines: seg, start: sc.start, end: sc.end, bg: null, music: null, fg: null, chars: [], says: [], options: [], jump: null };
+    var m = { name: sc.name, lines: seg, start: sc.start, end: sc.end, bg: null, music: null, fg: null, chars: [], says: [], options: [], jump: null, perf: [] };
     var choiceLine = -1;
     for (var i = 0; i < seg.length; i++) {
       var t = seg[i];
@@ -151,6 +151,9 @@
         m.chars.push(ch);
       }
       var fgm = t.match(/^@fg\s+(\S+)/); if (fgm) m.fg = { i: i, name: fgm[1] };
+      // P273：演出指令进参数表单（@voice/@cg/@fg/@camera/@transition），认不出的行不动
+      var pf = window.MYONLPerf ? window.MYONLPerf.scan(t) : null;
+      if (pf) { pf.i = i; m.perf.push(pf); }
       var jp = t.match(/^@jump\s+(\S+)/); if (jp) m.jump = { i: i, target: jp[1] };
       if (/^@choice\s*:/.test(t.trim())) choiceLine = i;
       // 台词三种写法：@[[角色]] 整屏 / @[角色] 普通 / @ 角色 文本（旧写法）
@@ -528,6 +531,7 @@
         '<button type="button" class="icon-btn sf-del" data-kind="char" data-i="' + i + '">✕</button></div>');
     });
     h.push("</div>");
+    h.push(window.MYONLPerf.render(model, { images: images, audios: audios, videos: videos }));
     h.push(window.MYONLStrip.render(model, pool, { esc: esc, optsHtml: optsHtml }));
     h.push('<div class="sf-sec sf-sec-opt">选项（@choice） <button type="button" class="icon-btn" id="sfAddOpt">＋ 加选项</button></div>');
     h.push('<div id="sfOpts">');
@@ -684,12 +688,49 @@
         if (kind === "char") model.chars[idx].del = true;
         if (kind === "say") model.says[idx].del = true;
         if (kind === "opt") model.options[idx].del = true;
+        if (kind === "perf" && model.perf[idx]) model.perf[idx].del = true;
         renderForm();
       });
     }
     $("sfAddChar").addEventListener("click", function () { model.chars.push({ added: true, name: charactersSafe()[0] || "", expr: "" }); renderForm(); });
     $("sfAddSay").addEventListener("click", function () { model.says.push({ added: true, who: charactersSafe()[0] || "", text: "" }); renderForm(); });
     $("sfAddOpt").addEventListener("click", function () { model.options.push({ added: true, text: "", target: "" }); renderForm(); });
+    // P273：演出面板（新增一条 / 换子命令 / 清除前景）
+    var perfBox = formEl.querySelector(".sf-perf-box");
+    if (perfBox) perfBox.addEventListener("toggle", function () { model.perfOpen = this.open; });
+    var perfAdds = formEl.querySelectorAll(".sf-p-add");
+    for (var pa = 0; pa < perfAdds.length; pa++) {
+      perfAdds[pa].addEventListener("click", function () {
+        var op = this.getAttribute("data-perf");
+        model.perfOpen = true;                 // 加一条就展开，别让面板自己收回去
+        model.perf = model.perf || [];
+        model.perf.push({ added: true, op: op, kind: op === "camera" ? "pan" : "dissolve",
+          sound: "", name: op === "fg" ? "无" : "", x: 0, y: 0, alpha: 1,
+          dir: "左", secs: 0.6, amp: 12, from: 1, to: 1.2 });
+        if (op === "voice" && !model.says.length) toast("@voice 要跟在台词后面：先加一句台词");
+        renderForm();
+      });
+    }
+    var perfKinds = formEl.querySelectorAll(".sf-p-kind");
+    for (var pk = 0; pk < perfKinds.length; pk++) {
+      perfKinds[pk].addEventListener("change", function () {
+        var row = this.closest(".sf-perf");
+        var idx = row ? parseInt(row.getAttribute("data-i"), 10) : -1;
+        if (idx < 0 || !model.perf[idx]) return;
+        model.perf[idx].kind = this.value;   // 换子命令等于换一组参数，其余字段本来就不通用
+        renderForm();
+      });
+    }
+    var perfClear = formEl.querySelectorAll(".sf-p-clear");
+    for (var pc = 0; pc < perfClear.length; pc++) {
+      perfClear[pc].addEventListener("click", function () {
+        var row = this.closest(".sf-perf");
+        var idx = row ? parseInt(row.getAttribute("data-i"), 10) : -1;
+        var input = row && row.querySelector(".sf-p-name");
+        if (input) input.value = "无";
+        if (idx >= 0 && model.perf[idx]) model.perf[idx].name = "无";
+      });
+    }
     var edits = formEl.querySelectorAll(".sf-edit-char");
     for (var m = 0; m < edits.length; m++) {
       edits[m].addEventListener("click", function () {
@@ -770,6 +811,7 @@
     }
     model.newOptions = opts;
     model.newJump = $("sfJump") ? $("sfJump").value.trim() : "";
+    model.newPerf = window.MYONLPerf.read(formEl, model);
   }
 
   function saveCurrent() {
@@ -881,16 +923,33 @@
       else markAdd(endLine >= 0 ? endLine - 1 : seg.length - 1, ["@jump " + model.newJump]);
     } else if (jumpLine >= 0) seg[jumpLine] = null;
 
+    // 演出指令（P273）：原有行原位改写，删掉的置空，新加的放在场景末（@voice 由 fixVoices 归位）
+    var perfAt = {};
+    for (var pz = 0; pz < seg.length; pz++) {
+      if (seg[pz] !== null && /^@(voice|cg|fg|camera|transition)\b/.test(seg[pz])) seg[pz] = null;
+    }
+    (model.perf || []).forEach(function (p) { if (p.i != null) perfAt[p.i] = 1; });
+    var perfEnd = firstEnd >= 0 ? firstEnd - 1 : seg.length - 1;
+    (model.newPerf || []).forEach(function (p) {
+      var pl = window.MYONLPerf.line(p);
+      if (!pl) return;
+      if (p.i != null && perfAt[p.i]) seg[p.i] = pl;
+      else markAdd(perfEnd, [pl]);
+    });
+
     var outSeg = [];
     for (var z = 0; z < seg.length; z++) {
       if (seg[z] !== null) outSeg.push(seg[z]);
       if (insertAfter[z]) outSeg.push.apply(outSeg, insertAfter[z]);
     }
     if (insertAfter[-1]) outSeg = insertAfter[-1].concat(outSeg);
+    var vf = window.MYONLPerf.fixVoices(outSeg);   // 配音必须紧跟台词，否则解析器会报错
+    outSeg = vf.lines;
     var newText = lines.slice(0, sc.start).concat(outSeg, lines.slice(sc.end)).join("\n");
     if (E.setText) E.setText(newText);
     try { var b = $("btnSave"); if (b) b.click(); } catch (e) {}
-    toast("场景「" + scenes[curIdx].name + "」已应用到编辑器，正在保存…");
+    toast("场景「" + scenes[curIdx].name + "」已应用到编辑器，正在保存…" +
+      (vf.dropped ? "（" + vf.dropped + " 条配音前面没有台词，已跳过）" : ""));
     refresh();
   }
 
