@@ -62,8 +62,8 @@ def test_minimap_built_with_graph_and_navigates():
 
 def test_spacing_rules():
     b = _block()
-    # 正文行距：幕名与「台词」之间收紧
-    assert "html.m-shell #scenePage .sf-scene { margin-bottom: 4px; padding-bottom: 2px; }" in b
-    assert "html.m-shell #scenePage .sf-sec { margin: 6px 0 4px; }" in b
+    # 正文行距：幕名与「台词」之间收紧（P269 起「场景」小标并进标题行，量级见 test_p269）
+    assert "html.m-shell #scenePage .sf-scene { display: flex; align-items: baseline; gap: 8px; margin: 0 0 4px; padding-bottom: 0; }" in b
+    assert "html.m-shell #scenePage .sf-sec { margin: 2px 0 4px; }" in b
     # 窄横屏顶栏放不下：缩放只留「□」
     assert "html.m-shell.m-chrome-on .m-gzoom [data-z=\"-\"], html.m-shell.m-chrome-on .m-gzoom [data-z=\"+\"] { display: none; }" in b
