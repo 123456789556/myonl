@@ -3026,8 +3026,10 @@ input[type="color"] {
   /* P269：光把「场景」和预览顶边对齐不省空间（用户：「平行空间不是不会更大吗」）——
      真正省空间的是把「场景」小标从独立一行改成跟幕名同一行，台词再上移一整行 */
   html.m-shell #scenePage .sf-scene { display: flex; align-items: baseline; gap: 8px; margin: 0 0 4px; padding-bottom: 0; }
-  html.m-shell #scenePage .sf-scene .sf-label { display: inline-block; margin: 0; min-width: 0; font-size: 12.5px; }
-  html.m-shell #scenePage .sf-scene b { font-size: 17px; line-height: 1.2; }
+  /* P270：幕名一长，flex 会把「场景」挤成竖排两个字（实测 25px → 19px、16px → 32px 高）。
+     小标必须不缩不换行；要挤就挤幕名，它自己换行 */
+  html.m-shell #scenePage .sf-scene .sf-label { display: inline-block; margin: 0; flex: 0 0 auto; min-width: 0; white-space: nowrap; font-size: 12.5px; }
+  html.m-shell #scenePage .sf-scene b { font-size: 17px; line-height: 1.2; flex: 1 1 auto; min-width: 0; }
   html.m-shell #scenePage .sf-sec { margin: 2px 0 4px; }
   /* 预览收起：左栏留 34px 窄条点回来，编辑独占其余宽度 */
   html.m-shell.m-stage-off #scenePage.m-detail #sceneForm { grid-template-columns: 34px minmax(0, 1fr) !important; }

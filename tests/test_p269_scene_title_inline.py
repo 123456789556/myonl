@@ -30,9 +30,10 @@ def test_scene_label_inline_in_landscape():
     b = _block()
     # 整块变 baseline 对齐的一行；小标不再 block、不再留 6px 下边距
     assert "html.m-shell #scenePage .sf-scene { display: flex; align-items: baseline; gap: 8px; margin: 0 0 4px; padding-bottom: 0; }" in b
-    assert "html.m-shell #scenePage .sf-scene .sf-label { display: inline-block; margin: 0; min-width: 0; font-size: 12.5px; }" in b
+    # 小标并进同一行（P270 起再钉「不许被挤成竖排」，见 test_p270）
+    assert "html.m-shell #scenePage .sf-scene .sf-label { display: inline-block; margin: 0; flex: 0 0 auto; min-width: 0; white-space: nowrap; font-size: 12.5px; }" in b
     # 幕名 17px / 1.2 行高：一行里还要看得清
-    assert "html.m-shell #scenePage .sf-scene b { font-size: 17px; line-height: 1.2; }" in b
+    assert "html.m-shell #scenePage .sf-scene b { font-size: 17px; line-height: 1.2; flex: 1 1 auto; min-width: 0; }" in b
     # 旧的「两行」写法必须消失，否则等于没做
     assert "html.m-shell #scenePage .sf-scene { margin-bottom: 4px; padding-bottom: 2px; }" not in b
 
