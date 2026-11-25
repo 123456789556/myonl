@@ -75,7 +75,7 @@ def test_scene_head_merged_into_topbar():
     assert 'var on = !!(split && p && mb && more && p.classList.contains("open"));' in LAYOUT
     assert "for (var i = els.length - 1; i >= 0; i--)" in LAYOUT       # 倒着放回去
     assert "graphSync(); chromeSync(split);" in LAYOUT
-    assert "if (!shell()) { chromeSync(false);" in LAYOUT
+    assert "chromeSync(false); DE.classList.remove(\"m-stage-off\", \"m-graph-on\");" in LAYOUT
     assert "html.m-shell.m-chrome-on #scenePage .cp-head { display: none !important; }" in b
     assert "html.m-shell .menubar > #sceneAdd, html.m-shell .menubar > #sceneSave {" in b
     assert "html.m-shell .menubar > .scn-more {" in b

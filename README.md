@@ -1,7 +1,7 @@
 # MYONL · 手机上的视觉小说编辑器
 
 [![tests](https://github.com/123456789556/myonl/actions/workflows/tests.yml/badge.svg?branch=main)](https://github.com/123456789556/myonl/actions/workflows/tests.yml)
-![Release](https://img.shields.io/badge/release-v1.2.67-blue)
+![Release](https://img.shields.io/badge/release-v1.2.68-blue)
 ![License](https://img.shields.io/badge/License-MIT-green)
 ![Platform](https://img.shields.io/badge/platform-Android%207.0%2B%20%C2%B7%20Windows%20%C2%B7%20Web-19b6a3)
 ![Offline](https://img.shields.io/badge/offline-100%25-2ea44f)
@@ -297,9 +297,9 @@ python tools/pack_apk.py --game dist/single/你的作品.html
 
 ## 装它
 
-**[⬇ 下载 MYONL-v1.2.67.apk](https://github.com/123456789556/myonl/releases/download/v1.2.67/MYONL-v1.2.67.apk)** · 安卓 7.0 以上 · 手机 / 折叠屏 / 平板都能用，横竖屏自适应
+**[⬇ 下载 MYONL-v1.2.68.apk](https://github.com/123456789556/myonl/releases/download/v1.2.68/MYONL-v1.2.68.apk)** · 安卓 7.0 以上 · 手机 / 折叠屏 / 平板都能用，横竖屏自适应
 
-**[⬇ 下载 MYONL-v1.2.67-editor-win.zip](https://github.com/123456789556/myonl/releases/download/v1.2.67/MYONL-v1.2.67-editor-win.zip)** · Windows 10/11 · 解压双击 `editor.exe`，不用装 Python
+**[⬇ 下载 MYONL-v1.2.68-editor-win.zip](https://github.com/123456789556/myonl/releases/download/v1.2.68/MYONL-v1.2.68-editor-win.zip)** · Windows 10/11 · 解压双击 `editor.exe`，不用装 Python
 
 装好打开就是书架，点「新建作品」开始。底部「导出」有两条出口：
 自包含 `.html`（发微信对方就能玩）和 APK（装到手机上就是一个独立 App）。
@@ -338,7 +338,7 @@ python tools/pack_apk.py --game dist/single/你的作品.html
 
 只想做游戏的话，上面那些就够了。下面是技术细节。
 
-> 全量测试当前 **1585 passed, 7 skipped、退出码 0**（2026-11-25 本机已复跑；数随版本变，以最新一次 `pytest -q` 为准）。
+> 全量测试当前 **1590 passed, 7 skipped、退出码 0**（2026-11-25 本机已复跑；数随版本变，以最新一次 `pytest -q` 为准）。
 > 界面另外有一条机器探针 `tools/ui_probe/probe_shell.py`（26 条，手机 390×844 / 横屏 844×390 / 桌面 1440×900），
 > CI 里 push 改 `editor/**`、`web/**` 就跟着跑，失败会贴出是哪一条不符并留截图 —— 之前的界面验证全在人手上，这是补上的那个洞。
 

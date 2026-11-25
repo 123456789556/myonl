@@ -30,7 +30,8 @@ def _block() -> str:
 
 def test_preview_moved_left_editor_right():
     b = _block()
-    assert "html.m-shell #scenePage.m-detail #sceneForm { grid-template-columns: minmax(170px, 34%) minmax(0, 1fr) !important; }" in b
+    # P268：列宽改吃 --m-prev（默认 34%），拖动见 test_p268_pane_widths
+    assert "html.m-shell #scenePage.m-detail #sceneForm { grid-template-columns: var(--m-prev, 34%) minmax(0, 1fr) !important; }" in b
     assert "html.m-shell #scenePage #sceneForm > * { grid-column: 2; }" in b
     assert "html.m-shell #scenePage #sceneForm > .sf-stage-wrap { grid-column: 1; top: 0; }" in b   # P265：top 必须是 0
     # 底部的保存/删除按钮原来横跨两列，换位后仍要横跨，否则会被塞进 170px 的预览列
@@ -51,11 +52,14 @@ def test_preview_collapse_rules():
 
 
 def test_drag_geometry_and_persistence():
-    assert 'var RAIL = "myonl:off:railW:v1", STAGE = "myonl:off:stageOff:v1";' in LAYOUT
+    # P268：加预览列后三样东西要一起存在，否则左栏拖宽会把正文挤没
+    assert 'var RAIL = "myonl:off:railW:v1", STAGE = "myonl:off:stageOff:v1", PREV = "myonl:off:prevW:v1";' in LAYOUT
     assert 'id = "mRailGrip"' in LAYOUT
     assert "Math.min(Math.max(railPx(), 150), railMax())" in LAYOUT
-    assert "Math.max(150, Math.min(320, window.innerWidth - 380))" in LAYOUT
-    assert 'localStorage.setItem(RAIL' in LAYOUT and 'localStorage.setItem(STAGE' in LAYOUT
+    assert "Math.max(150, Math.min(320, window.innerWidth - 460))" in LAYOUT
+    # 宽度都要落到本机：P268 起两条把手共用 setItem(key, cur())，key 是 RAIL / PREV 之一
+    assert 'try { localStorage.setItem(key, String(cur())); } catch (err) {}' in LAYOUT
+    assert 'try { localStorage.setItem(STAGE, stageOff() ? "0" : "1"); } catch (e) {}' in LAYOUT
 
 
 def test_split_gate_hides_controls_outside_landscape():

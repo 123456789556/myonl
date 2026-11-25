@@ -287,8 +287,10 @@ html.kb-open .m-sheet-body { bottom: var(--kb-h, 0px) !important; }
   #scenePage .sf-stage-hint { display: none; }
   /* 还没选背景时舞台是空的（hint 又被藏了），整块会塌成一个点：
      台词卡顶上突然什么都没有，看不出这里本来该有画面。撑一块占位并把话说清楚。 */
+  /* P268：空态占位也要跟真舞台同一个高宽比，否则把预览拖宽只多出一条空带，
+     用户看不出「宽了以后画面会长高」（拖宽的目的就是看清楚画面） */
   #scenePage .sf-stage-wrap.m-stage-empty {
-    min-height: 96px; position: relative;
+    height: 0; min-height: 0; padding-bottom: var(--sf-pad, 36%); position: relative;
     background: var(--surface0); border-radius: 4px;
   }
   #scenePage .sf-stage-wrap.m-stage-empty .sf-stage { display: none; }
