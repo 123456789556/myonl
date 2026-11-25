@@ -191,14 +191,17 @@
      节点 = 一幕（上半截是这一幕的背景缩略图），线 = @jump / 选项 / 没写跳转时顺序流到下一幕；
      分支横向并排、汇合画回同一个节点、跳回前面幕的线是虚线，跳到不存在的幕是红虚线小块。
      点节点 = 进那一幕；拖动平移、双指缩放、「□」看全局。数据每次从正文现读，不另存一份。 */
-  var VIEW = "myonl:off:sceneView:v1", NW = 104, NH = 62, GW = 88, GH = 24, GX = 18, GY = 34;
+  var VIEW = "myonl:off:sceneView:v1", ORI = "myonl:off:graphOri:v1", MW = 88, MH = 64;
+  var NW = 104, NH = 62, GW = 88, GH = 24, GX = 18, GY = 42;   // GY：竖排层间距，42 是给线上的字留的
   var gT = { x: 0, y: 0, z: 1 }, gSig = "", gCount = -1, gD = null, gSvg = null, gAct = -1;
-  var gPtr = {}, gDist = 0, gPinch = 0, gDown = null;
+  var gPtr = {}, gDist = 0, gPinch = 0, gDown = null, gMini = { s: 1, ox: 0, oy: 0 };
   function escG(s) { return String(s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
   function cut(s, n) { s = String(s); return s.length > n ? s.slice(0, n - 1) + "\u2026" : s; }
   function own(o, k) { return Object.prototype.hasOwnProperty.call(o, k); }
   function graphOn() { try { return localStorage.getItem(VIEW) !== "list"; } catch (e) { return true; } }
   function graphSplit() { return shell() && window.innerWidth >= 700 && window.innerWidth > window.innerHeight; }
+  // 蓝图可以竖着走也可以横着走（用户：「蓝图可以竖着可以横着」）：默认竖排 = 层往下、同层往右；横排 = 层往右、同层往下
+  function graphHori() { try { return localStorage.getItem(ORI) === "h"; } catch (e) { return false; } }
 
   function graphData() {
     var E = window.__editor || {}, src = "";
@@ -257,10 +260,16 @@
       cnt[r] = ids.length; cw = Math.max(cw, ids.length);
       ids.forEach(function (a, c) { col[a] = c; });
     }
-    var w = cw * (NW + GX) - GX, hsh = 0;
+    var H = graphHori(), LA = H ? 56 : GY, pitch = H ? NH : NW, step = H ? NW : NH;   // LA：层间距（横排留大些给线上的字）；pitch：同层步长的边长，step：层方向上的边长
+    var w = H ? maxR * (NW + LA) + NW : cw * (NW + GX) - GX, hsh = 0;
     for (i = 0; i < src.length; i++) hsh = (hsh * 31 + src.charCodeAt(i)) | 0;
-    all.forEach(function (n, a) { n.x = (w - (cnt[rank[a]] * (NW + GX) - GX)) / 2 + col[a] * (NW + GX); n.y = rank[a] * (NH + GY); });
-    return { all: all, edges: edges, w: w, h: (maxR + 1) * NH + maxR * GY, sig: ns.length + "|" + edges.length + "|" + hsh };
+    all.forEach(function (n, a) {
+      var gw = n.ghost ? GW : NW, gh = n.ghost ? GH : NH, major = rank[a] * (step + LA);
+      var minor = (cw * (pitch + GX) - GX - (cnt[rank[a]] * (pitch + GX) - GX)) / 2 + col[a] * (pitch + GX);
+      n.x = H ? major : minor + (NW - gw) / 2; n.y = H ? minor + (NH - gh) / 2 : major;
+    });
+    return { all: all, edges: edges, w: w, h: H ? cw * (NH + GX) - GX : maxR * (NH + GY) + NH, hori: H,
+             sig: ns.length + "|" + edges.length + "|" + hsh + "|" + (H ? "h" : "v") };
   }
 
   function applyT() {
@@ -269,12 +278,29 @@
     gT.x = Math.min(Math.max(gT.x, 44 - gD.w * gT.z), W - 44);   // 怎么拖都至少留 44px 图在栏里
     gT.y = Math.min(Math.max(gT.y, 44 - gD.h * gT.z), H - 44);
     gSvg.setAttribute("transform", "translate(" + gT.x + "," + gT.y + ") scale(" + gT.z + ")");
+    var mv = document.getElementById("mMiniV"), mm = mv && mv.parentNode;
+    // 图整个都在栏里时不显示小总览；放大或拖走了才出来，框告诉你现在看的是哪一块
+    if (mm) mm.style.display = (gD.w * gT.z > W + 1 || gD.h * gT.z > H + 1) ? "" : "none";
+    if (mv) {
+      mv.setAttribute("x", gMini.ox - gT.x / gT.z * gMini.s); mv.setAttribute("y", gMini.oy - gT.y / gT.z * gMini.s);
+      mv.setAttribute("width", W / gT.z * gMini.s); mv.setAttribute("height", H / gT.z * gMini.s);
+    }
+  }
+  // 在小总览上点 / 拖：点的那个位置挪到栏中央
+  function miniNav(e) {
+    var m = document.getElementById("mMini"), box = document.getElementById("mGraph");
+    if (!m || !box || !gD) return;
+    var r = m.getBoundingClientRect(), s = gMini.s;
+    gT.x = box.clientWidth / 2 - (e.clientX - r.left - gMini.ox) / s * gT.z;
+    gT.y = box.clientHeight / 2 - (e.clientY - r.top - gMini.oy) / s * gT.z; applyT();
   }
   function graphFit() {
     if (!gD) return;
     var box = document.getElementById("mGraph"), W = box.clientWidth - 12, H = box.clientHeight - 12;
     gT.z = Math.max(0.6, Math.min(1, W / gD.w, H / gD.h));       // 不小于 0.6：再小字就看不清了，宁可拖着看
-    gT.x = Math.max(6, (W - gD.w * gT.z) / 2); gT.y = Math.max(6, (H - gD.h * gT.z) / 2);
+    // 竖排：第一排节点贴顶，跟右边正文的「场景」两个字同一水平线（用户：「场景和 start 平行」）；横排：第一列贴左
+    gT.x = gD.hori ? 12 : Math.max(6, (W - gD.w * gT.z) / 2);
+    gT.y = gD.hori ? Math.max(6, (H - gD.h * gT.z) / 2) : 12;
     applyT();
   }
   function zoomAt(px, py, f) {
@@ -292,23 +318,30 @@
     gSig = d.sig + "|" + gAct; gD = d;
     var W = box.clientWidth, H = box.clientHeight; if (!W || !H) return;
     var E = window.__editor || {}, act = gAct, h = [];
+    var H = d.hori;   // 「层方向」= 竖排的 y / 横排的 x；「横方向」= 另一个。下面的函数都按这两个轴说话
+    function al(n) { return H ? n.x : n.y; }                                   // 层方向起点
+    function ac(n) { return H ? n.y : n.x; }                                   // 横方向起点
+    function ll(n) { return n.ghost ? (H ? GW : GH) : (H ? NW : NH); }          // 层方向长度
+    function lc(n) { return n.ghost ? (H ? GH : GW) : (H ? NH : NW); }          // 横方向长度
+    function pt(a, b) { return H ? a + " " + b : b + " " + a; }
     var mk = 'viewBox="0 0 6 6" refX="5" refY="3" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0L6 3L0 6z"/></marker>';
     h.push('<svg><defs><marker id="mga" ' + mk + '<marker id="mgb" ' + mk +
       '<clipPath id="mgc"><rect x="4" y="4" width="96" height="40" rx="2"/></clipPath></defs><g id="mGraphView">');
     d.edges.forEach(function (e) {
-      var a = d.all[e.from], b = d.all[e.to], bw = b.ghost ? GW : NW, bh = b.ghost ? GH : NH, p;
-      var lx, ly, an = "middle";   // 线上的字：选项写选项原文，@jump 写「跳」，顺序流不写字
-      if (e.back) {   // 跳回前面：从源头右腰绕出去，落回目标右腰
-        var sx = a.x + NW, sy = a.y + NH / 2, ex = b.x + bw, ey = b.y + bh / 2;
-        p = "M" + sx + " " + sy + "C" + (sx + 36) + " " + sy + " " + (ex + 36) + " " + ey + " " + ex + " " + ey;
-        lx = (sx + ex) / 2 + 20; ly = (sy + ey) / 2 + 4;
+      var a = d.all[e.from], b = d.all[e.to], p, l1, l2, an = "middle";
+      // 线上的字：选项写选项原文，@jump 写「跳」，顺序流不写字
+      if (e.back) {   // 跳回前面：从源头外侧绕出去，落回目标外侧
+        var s1 = al(a) + ll(a) / 2, s2 = ac(a) + lc(a), e1 = al(b) + ll(b) / 2, e2 = ac(b) + lc(b), bu = 36;
+        p = "M" + pt(s1, s2) + "C" + pt(s1, s2 + bu) + " " + pt(e1, e2 + bu) + " " + pt(e1, e2);
+        l1 = (s1 + e1) / 2; l2 = (s2 + e2) / 2 + bu * 0.86;
       } else {
-        var x1 = a.x + NW / 2, y1 = a.y + NH, x2 = b.x + bw / 2, y2 = b.y, my = (y1 + y2) / 2;
-        p = "M" + x1 + " " + y1 + "C" + x1 + " " + my + " " + x2 + " " + my + " " + x2 + " " + y2;
-        // 上下正对着的两个节点，字写在箭头右边（写在线上会盖住箭头）；分叉的线写在线的中点
-        if (Math.abs(x1 - x2) < 2) { lx = x1 + 5; an = "start"; } else lx = (x1 + x2) / 2;
-        ly = my + 4;
+        var f1 = al(a) + ll(a), f2 = ac(a) + lc(a) / 2, t1 = al(b), t2 = ac(b) + lc(b) / 2, mm = (f1 + t1) / 2;
+        p = "M" + pt(f1, f2) + "C" + pt(mm, f2) + " " + pt(mm, t2) + " " + pt(t1, t2);
+        // 正对着的两个节点：字写在线的下 / 右侧（写在线上会盖住箭头）；分叉的线写在线的中点
+        if (Math.abs(f2 - t2) < 2) { l1 = H ? mm : f2 + 5; l2 = H ? f2 + 14 : mm + 4; if (!H) an = "start"; }
+        else { l1 = mm; l2 = (f2 + t2) / 2 + 4; }
       }
+      var lx = H ? l1 : l2, ly = H ? l2 : l1;
       h.push('<path class="m-ge ' + e.k + (e.back ? " back" : "") + '" d="' + p + '" marker-end="url(#' + (e.k === "choice" ? "mgb" : "mga") + ')"/>' +
         (e.txt && !e.back ? '<text class="m-gel ' + e.k + '" x="' + lx + '" y="' + ly + '" text-anchor="' + an + '">' + escG(cut(e.txt, 6)) + "</text>" : "") +
         (e.back ? '<text class="m-gel back" x="' + lx + '" y="' + ly + '" text-anchor="middle">' + escG(cut(e.txt || "", 4)) + "</text>" : ""));
@@ -329,6 +362,19 @@
         (n.choice ? '<circle class="m-gn-fork" cx="13" cy="13" r="8"/><path class="m-gn-forkp" d="M13 8v4M9 18l4-6M17 18l-4-6"/>' : "") + "</g>");
     });
     h.push("</g></svg>");
+    // 小总览（用户：「再来一个小的总览去寻找」）：整张图缩成一块，只画节点块 + 一个取景框；点上头就把视图挪过去
+    gMini.s = Math.max(0.04, Math.min((MW - 8) / d.w, (MH - 8) / d.h, 1)); gMini.ox = (MW - d.w * gMini.s) / 2; gMini.oy = (MH - d.h * gMini.s) / 2;
+    h.push('<svg id="mMini" viewBox="0 0 ' + MW + " " + MH + '" aria-label="总览">');
+    d.edges.forEach(function (e) {   // 先画线：小总览里也要看得出谁连着谁（点线图）
+      var a = d.all[e.from], b = d.all[e.to], x1 = gMini.ox + (a.x + NW / 2) * gMini.s, y1 = gMini.oy + (a.y + NH / 2) * gMini.s;
+      var x2 = gMini.ox + (b.x + (b.ghost ? GW : NW) / 2) * gMini.s, y2 = gMini.oy + (b.y + (b.ghost ? GH : NH) / 2) * gMini.s;
+      h.push('<line class="mm-e' + (e.back ? " back" : "") + '" x1="' + x1.toFixed(1) + '" y1="' + y1.toFixed(1) + '" x2="' + x2.toFixed(1) + '" y2="' + y2.toFixed(1) + '"/>');
+    });
+    d.all.forEach(function (n, a) {
+      h.push('<rect class="mm-n' + (a === act ? " on" : "") + (n.ghost ? " ghost" : "") + '" x="' + (gMini.ox + n.x * gMini.s).toFixed(1) +
+        '" y="' + (gMini.oy + n.y * gMini.s).toFixed(1) + '" width="' + ((n.ghost ? GW : NW) * gMini.s).toFixed(1) + '" height="' + ((n.ghost ? GH : NH) * gMini.s).toFixed(1) + '"/>');
+    });
+    h.push('<rect id="mMiniV"/></svg>');
     box.innerHTML = h.join(""); gSvg = box.querySelector("#mGraphView");
     if (gCount !== d.all.length) graphFit(); else applyT();   // 幕数变了才重新看全局，改台词不抢视角
     gCount = d.all.length;
@@ -346,7 +392,8 @@
   function bindGraph(box) {
     box.addEventListener("pointerdown", function (e) {
       if (e.button > 0) return;
-      gPtr[e.pointerId] = [e.clientX, e.clientY];
+      var onMini = !!(e.target.closest && e.target.closest("#mMini"));
+      gPtr[e.pointerId] = onMini ? [-1e6, -1e6] : [e.clientX, e.clientY];
       try { box.setPointerCapture(e.pointerId); } catch (err) {}
       if (Object.keys(gPtr).length === 1) { gDist = 0; gDown = e.target.closest ? e.target.closest(".m-gn[data-i]") : null; }
       else { gPinch = 0; gDown = null; gDist = 99; }
@@ -354,6 +401,7 @@
     });
     box.addEventListener("pointermove", function (e) {
       var p = gPtr[e.pointerId]; if (!p) return;
+      if (p[0] < -1e5) { miniNav(e); return; }   // 这根手指在小总览上
       var dx = e.clientX - p[0], dy = e.clientY - p[1], ks = Object.keys(gPtr), r = box.getBoundingClientRect();
       gPtr[e.pointerId] = [e.clientX, e.clientY];
       if (ks.length >= 2) {
@@ -378,7 +426,7 @@
     }, { passive: false });
   }
 
-  // 场景页头的「流程 | 列表」与缩放三颗，只建一次
+  // 场景页头的「流程 | 列表」「竖排 | 横排」与缩放三颗，只建一次
   function graphBar(p, on) {
     var head = p.querySelector(".cp-head"), add = document.getElementById("sceneAdd");
     if (!head || !add) return;
@@ -386,11 +434,14 @@
     if (!bar) {
       bar = document.createElement("div"); bar.id = "mGraphBar";
       bar.innerHTML = '<div class="m-gmodes"><button type="button" data-m="graph">流程</button><button type="button" data-m="list">列表</button></div>' +
+        '<div class="m-gori"><button type="button" data-o="v" aria-label="竖排">竖排</button><button type="button" data-o="h" aria-label="横排">横排</button></div>' +
         '<div class="m-gzoom"><button type="button" data-z="-" aria-label="缩小">−</button><button type="button" data-z="+" aria-label="放大">＋</button><button type="button" data-z="fit" aria-label="看全局">□</button></div>';
       bar.addEventListener("click", function (e) {
         var b = e.target.closest ? e.target.closest("button") : null; if (!b) return;
         var m = b.getAttribute("data-m");
         if (m) { try { localStorage.setItem(VIEW, m); } catch (err) {} graphSync(); return; }
+        var o = b.getAttribute("data-o");
+        if (o) { try { localStorage.setItem(ORI, o); } catch (err) {} gSig = ""; gCount = -1; renderGraph(); return; }   // 换方向 = 重新看全局
         var box = document.getElementById("mGraph"); if (!box) return;
         if (b.getAttribute("data-z") === "fit") graphFit();
         else zoomAt(box.clientWidth / 2, box.clientHeight / 2, b.getAttribute("data-z") === "+" ? 1.25 : 0.8);
@@ -398,6 +449,7 @@
       head.insertBefore(bar, add);
     }
     Array.prototype.forEach.call(bar.querySelectorAll("[data-m]"), function (b) { b.classList.toggle("on", (b.getAttribute("data-m") === "graph") === on); });
+    Array.prototype.forEach.call(bar.querySelectorAll("[data-o]"), function (b) { b.classList.toggle("on", (b.getAttribute("data-o") === "h") === graphHori()); });
   }
 
   function graphSync() {

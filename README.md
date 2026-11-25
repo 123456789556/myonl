@@ -1,7 +1,7 @@
 # MYONL · 手机上的视觉小说编辑器
 
 [![tests](https://github.com/123456789556/myonl/actions/workflows/tests.yml/badge.svg?branch=main)](https://github.com/123456789556/myonl/actions/workflows/tests.yml)
-![Release](https://img.shields.io/badge/release-v1.2.66-blue)
+![Release](https://img.shields.io/badge/release-v1.2.67-blue)
 ![License](https://img.shields.io/badge/License-MIT-green)
 ![Platform](https://img.shields.io/badge/platform-Android%207.0%2B%20%C2%B7%20Windows%20%C2%B7%20Web-19b6a3)
 ![Offline](https://img.shields.io/badge/offline-100%25-2ea44f)
@@ -253,6 +253,7 @@ python tools/pack_apk.py --game dist/single/你的作品.html
 节点上半截是这一幕的背景缩略图；选项分叉横着并排、汇合画回同一个节点、`@jump` 跳回前面的幕是虚线、
 跳到不存在的幕是红虚线小块，线上写的字就是选项原文 —— 哪条线通向哪、哪里断了，一眼看出来。
 点节点就进那一幕；拖动平移、双指缩放，「□」看全局；想看文字清单点顶栏「列表」切回去（记住上次选的）。
+蓝图能竖着走也能横着走（顶栏「竖排｜横排」，会记住）；放大或拖远之后左栏右下角出一个小总览，点它直接跳到那一块。
 「＋新场景 / 保存本场景 / ⋯」都在顶栏那一行，场景页不再自己占一行标题；回作品只按顶栏「‹ 作品」一次。
 画面预览的顶边和正文齐平，右上角一枚 × 收起来，只留一条竖着写「预览」的窄条，点一下就回来；
 左栏宽度能拖（150–320，松手记住）。窄到 700 以下仍旧一屏一件事。
@@ -278,6 +279,10 @@ python tools/pack_apk.py --game dist/single/你的作品.html
 
 ![横屏流程图](docs/images/showcase-landscape-flow.png)
 
+切成横排、放大之后，右下角的小总览框出来说明现在看的是哪一段：
+
+![横屏流程图-横排](docs/images/showcase-landscape-flow-h.png)
+
 预览收起之后，正文拿走全部宽度（左边那条竖着写「预览」的窄条就是入口）；点顶栏「列表」切回文字清单：
 
 ![横屏剧本页-预览收起](docs/images/showcase-landscape-preview-off.png)
@@ -292,9 +297,9 @@ python tools/pack_apk.py --game dist/single/你的作品.html
 
 ## 装它
 
-**[⬇ 下载 MYONL-v1.2.66.apk](https://github.com/123456789556/myonl/releases/download/v1.2.66/MYONL-v1.2.66.apk)** · 安卓 7.0 以上 · 手机 / 折叠屏 / 平板都能用，横竖屏自适应
+**[⬇ 下载 MYONL-v1.2.67.apk](https://github.com/123456789556/myonl/releases/download/v1.2.67/MYONL-v1.2.67.apk)** · 安卓 7.0 以上 · 手机 / 折叠屏 / 平板都能用，横竖屏自适应
 
-**[⬇ 下载 MYONL-v1.2.66-editor-win.zip](https://github.com/123456789556/myonl/releases/download/v1.2.66/MYONL-v1.2.66-editor-win.zip)** · Windows 10/11 · 解压双击 `editor.exe`，不用装 Python
+**[⬇ 下载 MYONL-v1.2.67-editor-win.zip](https://github.com/123456789556/myonl/releases/download/v1.2.67/MYONL-v1.2.67-editor-win.zip)** · Windows 10/11 · 解压双击 `editor.exe`，不用装 Python
 
 装好打开就是书架，点「新建作品」开始。底部「导出」有两条出口：
 自包含 `.html`（发微信对方就能玩）和 APK（装到手机上就是一个独立 App）。
@@ -333,7 +338,7 @@ python tools/pack_apk.py --game dist/single/你的作品.html
 
 只想做游戏的话，上面那些就够了。下面是技术细节。
 
-> 全量测试当前 **1581 passed, 7 skipped、退出码 0**（2026-11-25 本机已复跑；数随版本变，以最新一次 `pytest -q` 为准）。
+> 全量测试当前 **1585 passed, 7 skipped、退出码 0**（2026-11-25 本机已复跑；数随版本变，以最新一次 `pytest -q` 为准）。
 > 界面另外有一条机器探针 `tools/ui_probe/probe_shell.py`（26 条，手机 390×844 / 横屏 844×390 / 桌面 1440×900），
 > CI 里 push 改 `editor/**`、`web/**` 就跟着跑，失败会贴出是哪一条不符并留截图 —— 之前的界面验证全在人手上，这是补上的那个洞。
 
