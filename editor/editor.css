@@ -2990,6 +2990,9 @@ input[type="color"] {
   .scene-page .sf-add, .scene-page .icon-btn { min-width: 42px; min-height: 38px; }
 }
 
+/* P265 左栏流程图与它的页头开关：竖屏 / 桌面一律不存在（下面的横屏块才把它放出来） */
+#mGraph, #mGraphBar { display: none; }
+
 /* 横屏（≥700 宽）剧本页：左栏场景树 + 右栏正文，一屏同时看见两边；<700 不分栏（360 高切两栏，正文只剩十几字宽）。 */
 @media (orientation: landscape) and (min-width: 700px) {
   html.m-shell.m-wide #scenePage.center-page.scene-page.open { height: calc(100vh - 92px) !important; height: calc(var(--m-vvh, 100dvh) - 92px) !important; bottom: auto !important; padding-bottom: 0 !important; }
@@ -2998,7 +3001,25 @@ input[type="color"] {
   /* P264 换位：预览在左、编辑在右；左栏宽度只吃 --m-rail（拖动由 ui_layout 改写它） */
   html.m-shell #scenePage.m-detail #sceneForm { grid-template-columns: minmax(170px, 34%) minmax(0, 1fr) !important; }
   html.m-shell #scenePage #sceneForm > * { grid-column: 2; } html.m-shell #scenePage #sceneForm > .sf-actions { grid-column: 1 / -1; }
-  html.m-shell #scenePage #sceneForm > .sf-stage-wrap { grid-column: 1; }
+  /* P265 预览顶边与正文第一行对齐：P113 给它 sticky top:72px，不滚动也凭空下沉 72px（用户：「不平行」）。
+     实测 top 给多少就下沉多少（滚动容器是表单自己，12px 内边距不算在里头），所以必须是 0 */
+  html.m-shell #scenePage #sceneForm > .sf-stage-wrap { grid-column: 1; top: 0; }
+  /* 「真实渲染预览」原本贴预览右上角，正好压住 P264 的收起钮；横屏往下让一行 */
+  html.m-shell #scenePage .sf-real-btn { top: 44px; }
+  /* P265b 场景页头并进顶栏（节点由 ui_layout.js 的 chromeSync 搬进 .menubar，竖屏原样）：
+     它们离开了 .scene-page，原来靠祖先选中的那几条规则全部失效，这里按原值重写一遍 */
+  html.m-shell.m-chrome-on #scenePage .cp-head { display: none !important; }
+  html.m-shell .menubar > #sceneAdd, html.m-shell .menubar > #sceneSave {
+    display: inline-flex !important; align-items: center; height: 44px; padding: 0 11px;
+    font-size: 13px; border-radius: 4px; white-space: nowrap;
+  }
+  html.m-shell .menubar > .scn-more {
+    display: inline-flex !important; align-items: center; justify-content: center;
+    width: 38px; padding: 0; font-size: 17px; line-height: 1;
+  }
+  html.m-shell .menubar > #mGraphBar { margin-right: 4px; }
+  html.m-shell.m-chrome-on #scenePage .scn-pop { top: 6px; }
+  @media (max-width: 779px) { html.m-shell.m-chrome-on .m-gzoom [data-z="-"] { display: none; } }
   /* 预览收起：左栏留 34px 窄条点回来，编辑独占其余宽度 */
   html.m-shell.m-stage-off #scenePage.m-detail #sceneForm { grid-template-columns: 34px minmax(0, 1fr) !important; }
   html.m-shell.m-stage-off #scenePage .sf-stage-wrap { position: relative !important; align-self: start !important; height: 96px; min-height: 0; padding: 0 !important; border-right: 1px solid var(--surface1); background: none !important; }
@@ -3006,7 +3027,27 @@ input[type="color"] {
   .m-rail-grip { position: absolute; z-index: 6; left: calc(var(--m-rail, 232px) - 5px); top: 94px; bottom: 0; width: 11px; cursor: col-resize; background: transparent; }
   .m-rail-grip::after { content: ""; position: absolute; left: 5px; top: 8px; bottom: 8px; width: 1px; background: var(--surface1); }
   .m-stage-btn { position: absolute; right: 6px; top: 6px; z-index: 7; min-width: 30px; height: 30px; padding: 0 8px; border-radius: 4px; border: 1px solid var(--surface1); background: var(--card-bg); color: var(--text); font-size: 14px; line-height: 1; }
-  html.m-shell.m-stage-off .m-stage-btn { position: absolute; inset: 0; width: 100%; height: 100%; min-width: 0; border: 0; border-radius: 0; background: none; color: var(--text); opacity: .6; writing-mode: vertical-rl; text-orientation: upright; letter-spacing: 3px; font-size: 12px; }
+  /* P265：收起后竖排的「预览」贴顶，与正文「场景」两个字齐平（原来居中，比「场景」低一截 —— 用户：「不平行」） */
+  html.m-shell.m-stage-off .m-stage-btn { position: absolute; inset: 0; width: 100%; height: 100%; min-width: 0; border: 0; border-radius: 0; background: none; color: var(--text); opacity: .6; writing-mode: vertical-rl; text-orientation: upright; letter-spacing: 3px; font-size: 12px; text-align: left; padding: 5px 0 0; }
+  /* P265 左栏流程图（蓝图式节点图）：盖在场景列表上，列表照常排版；「流程 | 列表」与缩放三颗在场景页头 */
+  html.m-shell .scene-page .scene-body { position: relative; }
+  html.m-shell #mGraphBar { display: flex; align-items: center; gap: 8px; }
+  #mGraphBar button { height: 44px; min-width: 44px; padding: 0 9px; border: 0; border-radius: 4px; background: none; color: var(--subtext0); font-size: 14px; font-weight: 600; white-space: nowrap; }
+  #mGraphBar .m-gmodes { display: flex; border: 1px solid var(--surface1); border-radius: 4px; overflow: hidden; }
+  #mGraphBar .m-gmodes button { min-width: 48px; }
+  #mGraphBar .m-gmodes button.on { background: rgba(79, 140, 255, .1); color: var(--blue-ink); }
+  html.m-shell:not(.m-graph-on) #mGraphBar .m-gzoom { display: none; }
+  html.m-shell.m-graph-on #mGraph { position: absolute; z-index: 5; left: 0; top: 0; display: block; width: var(--m-rail, 232px); height: 100%; overflow: hidden; background: var(--base); touch-action: none; }
+  #mGraph svg { display: block; width: 100%; height: 100%; } #mGraph .m-gn { cursor: pointer; }
+  #mGraph .m-ge { fill: none; stroke: var(--surface1); stroke-width: 1.5; } #mGraph .m-ge.choice { stroke: var(--blue-ink); stroke-width: 1.8; } #mGraph .m-ge.back { stroke-dasharray: 4 3; }
+  #mga path { fill: var(--surface1); } #mgb path { fill: var(--blue-ink); }
+  #mGraph .m-gn-box { fill: var(--card-bg); stroke: var(--surface0); } #mGraph .m-gn.on .m-gn-box { stroke: var(--blue-ink); stroke-width: 2; }
+  #mGraph .m-gn-thumb { fill: var(--mantle); } #mGraph .m-gn-none { fill: none; stroke: var(--surface1); }
+  #mGraph .m-gn text { fill: var(--text); font-size: 13px; } #mGraph .m-gn.on text { font-weight: 600; }
+  #mGraph .m-gn.ghost rect { fill: var(--card-bg); stroke: var(--red); stroke-dasharray: 3 2; } #mGraph .m-gn.ghost text { fill: var(--red); font-size: 11px; }
+    #mGraph .m-gel { fill: var(--blue-ink); font-size: 10px; paint-order: stroke; stroke: var(--base); stroke-width: 3px; } #mGraph .m-gel.jump, #mGraph .m-gel.back { fill: var(--subtext0); }
+  #mGraph .m-gn-fork { fill: var(--card-bg); stroke: var(--blue-ink); } #mGraph .m-gn-forkp { fill: none; stroke: var(--blue-ink); stroke-width: 1.4; stroke-linecap: round; }
+  #mGraph .m-g-empty { fill: var(--subtext0); font-size: 12px; }
   html.m-shell .scene-page.m-detail .scene-list { display: block; }
   html.m-shell #scenePage #sceneForm { flex: 1 1 auto; min-width: 0; padding-bottom: 12px !important; }
   #scenePage.scene-page .m-modebar { padding: 6px 10px 4px; } #scenePage.scene-page .m-modebar .m-mode { height: 34px; font-size: 13px; }

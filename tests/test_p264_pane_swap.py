@@ -32,7 +32,7 @@ def test_preview_moved_left_editor_right():
     b = _block()
     assert "html.m-shell #scenePage.m-detail #sceneForm { grid-template-columns: minmax(170px, 34%) minmax(0, 1fr) !important; }" in b
     assert "html.m-shell #scenePage #sceneForm > * { grid-column: 2; }" in b
-    assert "html.m-shell #scenePage #sceneForm > .sf-stage-wrap { grid-column: 1; }" in b
+    assert "html.m-shell #scenePage #sceneForm > .sf-stage-wrap { grid-column: 1; top: 0; }" in b   # P265：top 必须是 0
     # 底部的保存/删除按钮原来横跨两列，换位后仍要横跨，否则会被塞进 170px 的预览列
     assert "> .sf-actions { grid-column: 1 / -1; }" in b
 
