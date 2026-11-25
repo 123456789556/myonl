@@ -3044,7 +3044,9 @@ input[type="color"] {
   .m-rail-grip:hover::after, .m-prev-grip:hover::after { background: rgba(79, 140, 255, .6); }
   .m-rail-grip.on::after, .m-prev-grip.on::after { height: 76px; margin-top: -38px; background: rgba(79, 140, 255, .9); }
   html.m-shell.m-dragging, html.m-shell.m-dragging * { cursor: col-resize !important; user-select: none; }
-  .m-stage-btn { position: absolute; right: 6px; top: 6px; z-index: 7; min-width: 30px; height: 30px; padding: 0 8px; border-radius: 4px; border: 1px solid var(--surface1); background: var(--card-bg); color: var(--text); font-size: 14px; line-height: 1; }
+  /* P271：原来 right:6px，30px 的 × 正好压在预览右边界那条 22px 拖拽把手上（把手 z 更高），
+     实测 x 中心点落到元素是 mPrevGrip —— 看得见却点不动。往内挪 30px 让开把手。 */
+  .m-stage-btn { position: absolute; right: 34px; top: 6px; z-index: 7; min-width: 30px; height: 30px; padding: 0 8px; border-radius: 4px; border: 1px solid var(--surface1); background: var(--card-bg); color: var(--text); font-size: 14px; line-height: 1; white-space: nowrap; }
   /* P265：收起后竖排的「预览」贴顶，与正文「场景」两个字齐平（原来居中，比「场景」低一截 —— 用户：「不平行」） */
   html.m-shell.m-stage-off .m-stage-btn { position: absolute; inset: 0; width: 100%; height: 100%; min-width: 0; border: 0; border-radius: 0; background: none; color: var(--text); opacity: .6; writing-mode: vertical-rl; text-orientation: upright; letter-spacing: 3px; font-size: 12px; text-align: left; padding: 5px 0 0; }
   /* P265 左栏流程图（蓝图式节点图）：盖在场景列表上，列表照常排版；「流程 | 列表」与缩放三颗在场景页头 */
@@ -3453,3 +3455,13 @@ body.m-home-open .ob-card { display: none !important; }
   .toast-wrap { left: auto; right: 16px; bottom: calc(56px + 16px); align-items: flex-end; }
 }
 .sf-fold>summary{list-style:none;cursor:pointer} .sf-fold>summary::-webkit-details-marker{display:none}
+
+/* P271 触控命中区：视觉尺寸不动，只把「按不到」的小钮命中区扩到 44（用户：不要看起来好用起来不好）。
+   实测横屏 844×390：预览角上的 × 只有 30×30、顶栏 ▶ 36×44、⋯ 38×44、＋加一句 67×38、真实渲染 91×26。
+   宽条纹（逐句编辑/源码 408×34）按「宽度 ≥300 视为大目标」豁免，高度不再动（否则又吃掉 10px 编辑区）。 */
+/* 只管静态定位的那批；× 与「真实渲染预览」本身是绝对定位，硬改成 relative 会挪位置 */
+html.m-shell :is(#mTopPreview, .menubar .scn-more, #sfAddSay, #sfAddChar, #sfAddOpt, .m-codehelp) { position: relative; }
+html.m-shell :is(#mStageBtn, #mTopPreview, .menubar .scn-more, #sfAddSay, #sfAddChar, #sfAddOpt, .sf-real-btn, .m-codehelp)::after {
+  content: ""; position: absolute; left: 50%; top: 50%; translate: -50% -50%;
+  width: max(44px, 100%); height: max(44px, 100%);
+}
