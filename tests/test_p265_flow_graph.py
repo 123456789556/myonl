@@ -57,8 +57,11 @@ def test_three_edge_kinds_and_back_edges():
 
 def test_zoom_floor_and_fit():
     assert "gT.z = Math.max(0.6, Math.min(1, W / gD.w, H / gD.h));" in LAYOUT
-    assert "Math.min(2, Math.max(0.5, gT.z * f))" in LAYOUT
-    assert 'data-z="fit" aria-label="看全局"' in LAYOUT
+    # P275：顶栏那三颗「− ＋ 全局」撤掉了（用户：「加减的全局不好，完全可以用手放大」），
+    # 缩放交给双指/滚轮，回全局改成空白处点两下（见 taps）。范围放宽到 0.4~3。
+    assert "Math.min(3, Math.max(0.4, gT.z * f))" in LAYOUT
+    assert 'data-z="fit"' not in LAYOUT, "顶栏不许再有「全局」按钮"
+    assert "graphFit(); gTap = null;" in LAYOUT, "空白处点两下要能回全局"
 
 
 def test_preview_top_flush_with_text():

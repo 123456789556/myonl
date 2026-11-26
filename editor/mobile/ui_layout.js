@@ -242,11 +242,11 @@
      用户原话「可串联可并联可视化更高也就是类似虚幻蓝图」「游戏可是预览图串联起来的节点分布图」。
      节点 = 一幕（上半截是这一幕的背景缩略图），线 = @jump / 选项 / 没写跳转时顺序流到下一幕；
      分支横向并排、汇合画回同一个节点、跳回前面幕的线是虚线，跳到不存在的幕是红虚线小块。
-     点节点 = 进那一幕；拖动平移、双指缩放、「□」看全局。数据每次从正文现读，不另存一份。 */
+     点节点 = 进那一幕；拖动平移、双指缩放、空白处点两下回全局。数据每次从正文现读，不另存一份。 */
   var VIEW = "myonl:off:sceneView:v1", ORI = "myonl:off:graphOri:v1", MW = 88, MH = 64;
   var NW = 104, NH = 62, GW = 88, GH = 24, GX = 18, GY = 42;   // GY：竖排层间距，42 是给线上的字留的
   var gT = { x: 0, y: 0, z: 1 }, gSig = "", gCount = -1, gD = null, gSvg = null, gAct = -1;
-  var gPtr = {}, gDist = 0, gPinch = 0, gDown = null, gMini = { s: 1, ox: 0, oy: 0 };
+  var gPtr = {}, gDist = 0, gPinch = 0, gDown = null, gMini = { s: 1, ox: 0, oy: 0 }, gTap = null;
   function escG(s) { return String(s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
   function cut(s, n) { s = String(s); return s.length > n ? s.slice(0, n - 1) + "\u2026" : s; }
   function own(o, k) { return Object.prototype.hasOwnProperty.call(o, k); }
@@ -356,7 +356,7 @@
     applyT();
   }
   function zoomAt(px, py, f) {
-    var z = Math.min(2, Math.max(0.5, gT.z * f)); if (z === gT.z) return;
+    var z = Math.min(3, Math.max(0.4, gT.z * f)); if (z === gT.z) return;
     gT.x = px - (px - gT.x) * (z / gT.z); gT.y = py - (py - gT.y) * (z / gT.z); gT.z = z; applyT();
   }
 
@@ -466,7 +466,18 @@
       box.addEventListener(ev, function (e) {
         delete gPtr[e.pointerId]; gPinch = 0;
         if (Object.keys(gPtr).length) return;
-        if (gDist < 8 && gDown) openScene(parseInt(gDown.getAttribute("data-i"), 10));
+        if (gDist < 8) {
+          if (gDown) openScene(parseInt(gDown.getAttribute("data-i"), 10));
+          else {
+            // P275：空白处点两下 = 回全局。顶栏那三颗「− ＋ 全局」撤掉了：
+            // 手势本来就有（双指缩放、拖动平移），再摆一排按钮只把顶栏挤满。
+            // 判据：300ms 内、30px 内的第二下；节点上的两下算两次进幕，不算回全局。
+            var t2 = Date.now(), pv = gTap;
+            if (pv && t2 - pv.t < 300 && Math.abs(e.clientX - pv.x) < 30 && Math.abs(e.clientY - pv.y) < 30) {
+              graphFit(); gTap = null;
+            } else gTap = { t: t2, x: e.clientX, y: e.clientY };
+          }
+        }
         gDown = null;
       });
     });
@@ -486,17 +497,13 @@
     if (!bar) {
       bar = document.createElement("div"); bar.id = "mGraphBar";
       bar.innerHTML = '<div class="m-gmodes"><button type="button" data-m="graph">流程</button><button type="button" data-m="list">列表</button></div>' +
-        '<div class="m-gori"><button type="button" data-o="v" aria-label="竖排">竖排</button><button type="button" data-o="h" aria-label="横排">横排</button></div>' +
-        '<div class="m-gzoom"><button type="button" data-z="-" aria-label="缩小">−</button><button type="button" data-z="+" aria-label="放大">＋</button><button type="button" data-z="fit" aria-label="看全局">全局</button></div>';
+        '<div class="m-gori"><button type="button" data-o="v" aria-label="竖排">竖排</button><button type="button" data-o="h" aria-label="横排">横排</button></div>';
       bar.addEventListener("click", function (e) {
         var b = e.target.closest ? e.target.closest("button") : null; if (!b) return;
         var m = b.getAttribute("data-m");
         if (m) { try { localStorage.setItem(VIEW, m); } catch (err) {} graphSync(); return; }
         var o = b.getAttribute("data-o");
         if (o) { try { localStorage.setItem(ORI, o); } catch (err) {} gSig = ""; gCount = -1; renderGraph(); return; }   // 换方向 = 重新看全局
-        var box = document.getElementById("mGraph"); if (!box) return;
-        if (b.getAttribute("data-z") === "fit") graphFit();
-        else zoomAt(box.clientWidth / 2, box.clientHeight / 2, b.getAttribute("data-z") === "+" ? 1.25 : 0.8);
       });
       head.insertBefore(bar, add);
     }

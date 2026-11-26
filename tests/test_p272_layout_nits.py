@@ -24,9 +24,9 @@ def test_zoom_group_has_its_own_frame():
 
 
 def test_fit_button_reads_as_words():
-    # 「□」改成「全局」：图标没人看懂，字看得懂
-    assert 'aria-label="看全局">全局</button>' in JS
-    assert 'aria-label="看全局">□</button>' not in JS
+    # P275 把这三颗整个撤了：不再有图标/文字之争，缩放交给手势，回全局靠点两下
+    assert 'aria-label="看全局"' not in JS
+    assert '>□</button>' not in JS
 
 
 def test_title_single_line_ellipsis():
