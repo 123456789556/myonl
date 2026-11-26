@@ -19,7 +19,7 @@ JS = (ROOT / "editor" / "mobile" / "ui_layout.js").read_text(encoding="utf-8")
 
 def test_zoom_group_has_its_own_frame():
     # 三组同一个写法：有边框、圆角、内部按钮不溢出的「一格一组」
-    assert ("#mGraphBar .m-gmodes, #mGraphBar .m-gori, #mGraphBar .m-gzoom { display: flex; "
+    assert ("#mGraphBar .m-gmodes, #mGraphBar .m-gori { display: flex; "
             "border: 1px solid var(--surface1); border-radius: 4px; overflow: hidden; }") in CSS
 
 

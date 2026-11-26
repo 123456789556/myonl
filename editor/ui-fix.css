@@ -287,18 +287,12 @@ html.kb-open .m-sheet-body { bottom: var(--kb-h, 0px) !important; }
   #scenePage .sf-stage-hint { display: none; }
   /* 还没选背景时舞台是空的（hint 又被藏了），整块会塌成一个点：
      台词卡顶上突然什么都没有，看不出这里本来该有画面。撑一块占位并把话说清楚。 */
-  /* P268：空态占位也要跟真舞台同一个高宽比，否则把预览拖宽只多出一条空带，
-     用户看不出「宽了以后画面会长高」（拖宽的目的就是看清楚画面） */
-  #scenePage .sf-stage-wrap.m-stage-empty {
-    height: 0; min-height: 0; padding-bottom: var(--sf-pad, 36%); position: relative;
-    background: var(--surface0); border-radius: 4px;
-  }
-  #scenePage .sf-stage-wrap.m-stage-empty .sf-stage { display: none; }
-  #scenePage .sf-stage-wrap.m-stage-empty::after {
-    content: "选背景后这里显示画面预览"; position: absolute; inset: 0;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 12px; color: var(--subtext0);
-  }
+  /* P276：空态整块砍掉。以前撑着同比例占位，结果右栏一大块被「没画面的板子 + 一行灰字」
+     占着（用户原话：预览部分我觉得你该把问题给砍了）。没背景、没视频、没缺图提示时不出场；
+     一旦有内容，这块才出现——那时它才是「预览」而不是「占位」。 */
+  #scenePage .sf-stage-wrap.m-stage-empty { display: none; }
+  /* 舞台不在，拖它宽窄的那根把手也不该悬在表单中间（用户截图里它杵在空白里） */
+  html.m-shell #scenePage.m-no-stage .m-prev-grip { display: none; }
   /* 状态栏是 fixed 的（bottom 52px + 26 高），最后一个「保存这个场景」会被压在它下面 */
   #scenePage #sceneForm { padding-bottom: 86px; }
   /* 外观一级页：先看见效果，再决定改哪一组。

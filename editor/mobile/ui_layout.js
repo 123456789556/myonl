@@ -497,7 +497,7 @@
     if (!bar) {
       bar = document.createElement("div"); bar.id = "mGraphBar";
       bar.innerHTML = '<div class="m-gmodes"><button type="button" data-m="graph">流程</button><button type="button" data-m="list">列表</button></div>' +
-        '<div class="m-gori"><button type="button" data-o="v" aria-label="竖排">竖排</button><button type="button" data-o="h" aria-label="横排">横排</button></div>';
+        '<div class="m-gori"><button type="button" data-o="v" aria-label="换方向"></button></div>';
       bar.addEventListener("click", function (e) {
         var b = e.target.closest ? e.target.closest("button") : null; if (!b) return;
         var m = b.getAttribute("data-m");
@@ -508,7 +508,14 @@
       head.insertBefore(bar, add);
     }
     Array.prototype.forEach.call(bar.querySelectorAll("[data-m]"), function (b) { b.classList.toggle("on", (b.getAttribute("data-m") === "graph") === on); });
-    Array.prototype.forEach.call(bar.querySelectorAll("[data-o]"), function (b) { b.classList.toggle("on", (b.getAttribute("data-o") === "h") === graphHori()); });
+    // P276：竖排/横排合成一枚「当前方向 ⇄」，点一下就翻。两枚并排占 92px，
+    // 又都得读一遍才知道哪个是当前状态；一枚写着自己现在的状态，点一下就是另一个。
+    var ob = bar.querySelector("[data-o]");
+    if (ob) {
+      var hh = graphHori();
+      ob.setAttribute("data-o", hh ? "v" : "h");
+      ob.textContent = hh ? "横排 ⇄" : "竖排 ⇄";
+    }
   }
 
   function graphSync() {

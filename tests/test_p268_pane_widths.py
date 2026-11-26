@@ -64,6 +64,8 @@ def test_columns_read_only_the_vars():
     assert "html.m-shell.m-stage-off #scenePage.m-detail #sceneForm { grid-template-columns: 34px minmax(0, 1fr) !important; }" in CSS
 
 
-def test_empty_stage_follows_ratio():
-    assert "padding-bottom: var(--sf-pad, 36%); position: relative;" in FIX
-    assert "height: 0; min-height: 0; padding-bottom: var(--sf-pad, 36%);" in FIX
+def test_empty_stage_is_gone():
+    # P276：空舞台以前撑一块同比例占位（板子 + 一行灰字）。用户说预览这块该砍，
+    # 于是没内容时整块不出场，有背景/视频/缺图提示时才出现。
+    assert "#scenePage .sf-stage-wrap.m-stage-empty { display: none; }" in FIX
+    assert 'content: "选背景后这里显示画面预览"' not in FIX, "那条灰字占位提示已随空态一起删掉"

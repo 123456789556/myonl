@@ -3021,8 +3021,7 @@ input[type="color"] {
   html.m-shell .menubar > #mGraphBar { margin-right: 4px; }
   html.m-shell.m-chrome-on #scenePage .scn-pop { top: 6px; }
   /* 窄横屏顶栏放不下：缩放只留「□」（双指 / 滚轮仍可缩放） */
-  @media (max-width: 779px) { html.m-shell.m-chrome-on .m-gzoom [data-z="-"], html.m-shell.m-chrome-on .m-gzoom [data-z="+"] { display: none; } }
-  /* 正文行距收紧（用户：「调整距离」）：幕名与「台词」之间原来空 47px（14 + 8 + 13 + 12），横屏高度金贵 */
+    /* 正文行距收紧（用户：「调整距离」）：幕名与「台词」之间原来空 47px（14 + 8 + 13 + 12），横屏高度金贵 */
   /* P269：光把「场景」和预览顶边对齐不省空间（用户：「平行空间不是不会更大吗」）——
      真正省空间的是把「场景」小标从独立一行改成跟幕名同一行，台词再上移一整行 */
   html.m-shell #scenePage .sf-scene { display: flex; align-items: baseline; gap: 8px; margin: 0 0 4px; padding-bottom: 0; }
@@ -3054,13 +3053,11 @@ input[type="color"] {
   html.m-shell .scene-page .scene-body { position: relative; }
   html.m-shell #mGraphBar { display: flex; align-items: center; gap: 8px; }
   #mGraphBar button { height: 44px; min-width: 44px; padding: 0 9px; border: 0; border-radius: 4px; background: none; color: var(--subtext0); font-size: 14px; font-weight: 600; white-space: nowrap; }
-  /* P272：缩放那三个原来没有容器，跟左右两组站一起像掉在缝里（用户截图指出）。统一成同一套分组样式 */
-  #mGraphBar .m-gmodes, #mGraphBar .m-gori, #mGraphBar .m-gzoom { display: flex; border: 1px solid var(--surface1); border-radius: 4px; overflow: hidden; }
-  #mGraphBar .m-gzoom button { font-size: 15px; font-weight: 600; letter-spacing: .02em; }
-  #mGraphBar .m-gzoom button[data-z="fit"] { font-size: 11.5px; font-weight: 400; letter-spacing: 0; }
-  #mGraphBar .m-gmodes button { min-width: 48px; } #mGraphBar .m-gori button { min-width: 40px; }
+  /* P272：两组并排时原来没有容器，像掉在缝里。统一成同一套分组样式（P276 缩放三颗撤掉） */
+  #mGraphBar .m-gmodes, #mGraphBar .m-gori { display: flex; border: 1px solid var(--surface1); border-radius: 4px; overflow: hidden; }
+      #mGraphBar .m-gmodes button { min-width: 48px; } #mGraphBar .m-gori button { min-width: 40px; }
   #mGraphBar .m-gmodes button.on, #mGraphBar .m-gori button.on { background: rgba(79, 140, 255, .1); color: var(--blue-ink); }
-  html.m-shell:not(.m-graph-on) #mGraphBar .m-gzoom, html.m-shell:not(.m-graph-on) #mGraphBar .m-gori { display: none; }
+  html.m-shell:not(.m-graph-on) #mGraphBar .m-gori { display: none; }
   /* 小总览：右下角一块，图没放大时不出 */
   #mGraph #mMini { position: absolute; right: 6px; bottom: 6px; width: 88px; height: 64px; background: var(--card-bg); border: 1px solid var(--surface0); border-radius: 4px; }
   #mGraph #mMini .mm-e { stroke: var(--surface1); stroke-width: 1; } #mGraph #mMini .mm-e.back { stroke-dasharray: 2 2; }

@@ -1,7 +1,7 @@
 # MYONL · 手机上的视觉小说编辑器
 
 [![tests](https://github.com/123456789556/myonl/actions/workflows/tests.yml/badge.svg?branch=main)](https://github.com/123456789556/myonl/actions/workflows/tests.yml)
-![Release](https://img.shields.io/badge/release-v1.2.75-blue)
+![Release](https://img.shields.io/badge/release-v1.2.76-blue)
 
 安卓 7.0+ / Windows 10+ / 网页 · 离线可用 · 没有账号 · 不联网 · MIT
 
@@ -292,9 +292,9 @@ python tools/pack_apk.py --game dist/single/你的作品.html
 
 ## 装它
 
-**[⬇ 下载 MYONL-v1.2.75.apk](https://github.com/123456789556/myonl/releases/download/v1.2.75/MYONL-v1.2.75.apk)** · 安卓 7.0 以上 · 手机 / 折叠屏 / 平板都能用，横竖屏自适应
+**[⬇ 下载 MYONL-v1.2.76.apk](https://github.com/123456789556/myonl/releases/download/v1.2.76/MYONL-v1.2.76.apk)** · 安卓 7.0 以上 · 手机 / 折叠屏 / 平板都能用，横竖屏自适应
 
-**[⬇ 下载 MYONL-v1.2.75-editor-win.zip](https://github.com/123456789556/myonl/releases/download/v1.2.75/MYONL-v1.2.75-editor-win.zip)** · Windows 10/11 · 解压双击 `editor.exe`，不用装 Python
+**[⬇ 下载 MYONL-v1.2.76-editor-win.zip](https://github.com/123456789556/myonl/releases/download/v1.2.76/MYONL-v1.2.76-editor-win.zip)** · Windows 10/11 · 解压双击 `editor.exe`，不用装 Python
 
 装好打开就是书架，点「新建作品」开始。底部「导出」有两条出口：
 自包含 `.html`（发微信对方就能玩）和 APK（装到手机上就是一个独立 App）。

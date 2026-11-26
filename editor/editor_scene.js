@@ -666,6 +666,14 @@
       });
       stage.appendChild(chip);
     });
+    // P276：空舞台整块不出场。以前靠 ui_polish 的 syncStageEmpty 过一会儿补 class，
+    // 每次重画都先亮一下再消失（截图正好抓到亮的那一刻）。这里画完就定下来：
+    // 有背景图、有视频、缺图提示、有角色贴片，四种之一才算「有内容」。
+    var wr = stage.parentNode;
+    var empty = !stage.querySelector(".sf-stage-bg, .sf-stage-video, .sf-stage-missing, .sf-sprite");
+    if (wr && wr.classList && wr.classList.contains("sf-stage-wrap")) wr.classList.toggle("m-stage-empty", empty);
+    var sp = document.getElementById("scenePage");
+    if (sp) sp.classList.toggle("m-no-stage", empty);
   }
   document.addEventListener("pointermove", function (ev) {
     if (!dragState) return;

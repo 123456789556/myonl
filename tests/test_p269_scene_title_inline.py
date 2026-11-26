@@ -41,8 +41,8 @@ def test_scene_label_inline_in_landscape():
 def test_say_row_margin_tightened():
     b = _block()
     assert "html.m-shell #scenePage .sf-sec { margin: 2px 0 4px; }" in b
-    # 触控高不许动（按钮仍是 44 / 38）
-    assert "@media (max-width: 779px) { html.m-shell.m-chrome-on .m-gzoom" in b
+    # P276：缩放松开三颗撤了，那条窄横屏兜底规则同时删掉；触控高由 #mGraphBar button 的 44 兜底
+    assert ".m-gzoom" not in b
 
 
 def test_portrait_rules_untouched():

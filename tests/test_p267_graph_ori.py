@@ -30,7 +30,9 @@ def test_orientation_is_remembered_and_refits():
     assert 'ORI = "myonl:off:graphOri:v1", MW = 88, MH = 64;' in LAYOUT
     assert 'return localStorage.getItem(ORI) === "h";' in LAYOUT
     assert "if (o) { try { localStorage.setItem(ORI, o); } catch (err) {} gSig = \"\"; gCount = -1; renderGraph(); return; }" in LAYOUT
-    assert 'data-o="v" aria-label="竖排">竖排</button><button type="button" data-o="h" aria-label="横排">横排</button>' in LAYOUT
+    assert 'class="m-gori"><button type="button" data-o="v" aria-label="换方向"></button>' in LAYOUT
+    # P276：两枚并排（竖排/横排）合成一枚「当前方向 ⇄」，点一下翻
+    assert "ob.textContent = hh ? \"横排 ⇄\" : \"竖排 ⇄\";" in LAYOUT
 
 
 def test_layout_and_edges_speak_in_two_axes():
@@ -65,5 +67,5 @@ def test_spacing_rules():
     # 正文行距：幕名与「台词」之间收紧（P269 起「场景」小标并进标题行，量级见 test_p269）
     assert "html.m-shell #scenePage .sf-scene { display: flex; align-items: baseline; gap: 8px; margin: 0 0 4px; padding-bottom: 0; }" in b
     assert "html.m-shell #scenePage .sf-sec { margin: 2px 0 4px; }" in b
-    # 窄横屏顶栏放不下：缩放只留「□」
-    assert "html.m-shell.m-chrome-on .m-gzoom [data-z=\"-\"], html.m-shell.m-chrome-on .m-gzoom [data-z=\"+\"] { display: none; }" in b
+    # P276：缩放松开三颗已撤，那条「窄横屏只留 □」的兜底规则跟着删干净
+    assert ".m-gzoom" not in b
