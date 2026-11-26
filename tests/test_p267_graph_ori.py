@@ -29,7 +29,9 @@ def _block() -> str:
 def test_orientation_is_remembered_and_refits():
     assert 'ORI = "myonl:off:graphOri:v1", MW = 88, MH = 64;' in LAYOUT
     assert 'return localStorage.getItem(ORI) === "h";' in LAYOUT
-    assert "if (o) { try { localStorage.setItem(ORI, o); } catch (err) {} gSig = \"\"; gCount = -1; renderGraph(); return; }" in LAYOUT
+    # P277：竖排/横排收进 ⋯，点完必须刷回标签，否则看不出现在是什么方向
+    assert 'try { localStorage.setItem(ORI, o); } catch (err) {}' in LAYOUT
+    assert 'graphBar(document.getElementById("scenePage"), graphOn());' in LAYOUT
     assert 'class="m-gori"><button type="button" data-o="v" aria-label="换方向"></button>' in LAYOUT
     # P276：两枚并排（竖排/横排）合成一枚「当前方向 ⇄」，点一下翻
     assert "ob.textContent = hh ? \"横排 ⇄\" : \"竖排 ⇄\";" in LAYOUT

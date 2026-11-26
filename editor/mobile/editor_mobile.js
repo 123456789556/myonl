@@ -293,7 +293,11 @@
     if (!scnPop) {
       scnPop = document.createElement("div");
       scnPop.className = "scn-pop";
-      [["sceneCopy", "复制这一幕"], ["sceneRename", "重命名这一幕"], ["sceneDel", "删除这一幕"], ["sceneRefresh", "重新读取剧本"], ["mlFind", "查找台词"]]
+      // P277：顶栏那行只留「回作品 / 作品名 / 流程·列表 / ⋯ / 试玩 / 菜单」。
+      // 新建、保存、竖排横排原来各占一格按钮，现在收进这里——点的是同一个隐藏按钮，行为不变。
+      [["sceneAdd", "＋ 新建一幕"], ["sceneSave", "保存这一幕"], ["graphOri", "竖排 / 横排切换"],
+       ["sceneCopy", "复制这一幕"], ["sceneRename", "重命名这一幕"], ["sceneDel", "删除这一幕"],
+       ["sceneRefresh", "重新读取剧本"], ["mlFind", "查找台词"]]
         .forEach(function (it) {
           var b = document.createElement("button");
           b.type = "button";
@@ -301,6 +305,9 @@
           b.addEventListener("click", function () {
             closePop();
             if (it[0] === "mlFind") { if (window.MYONLLintUI) MYONLLintUI.open(); return; }
+            if (it[0] === "graphOri") {   // 顶栏那枚「竖排 ⇄」已收进这里，点它即可翻
+              var ori = document.querySelector("#mGraphBar [data-o]"); if (ori) ori.click(); return;
+            }
             var src = document.getElementById(it[0]); if (src) src.click();
           });
           scnPop.appendChild(b);
@@ -321,7 +328,8 @@
 
     // 顶栏原来 7 个按钮，窄屏一律挤成两行还被截断。
     // 只留「＋新场景 / 保存修改 / ✕」三个，其余（角色库、复制、删除…）标成 scn-extra 由 CSS 收进 ⋯。
-    var KEEP = { sceneAdd: 1, sceneSave: 1, sceneClose: 1 };
+    // P277：条上只留「关闭（‹ 作品）」；新建 / 保存交给 ⋯（点的是同一个节点）
+    var KEEP = { sceneClose: 1 };
     Array.prototype.forEach.call(head.querySelectorAll(".cp-btn"), function (b) {
       if (b === scnBack || b === scnMore) return;
       if (b.id && KEEP[b.id]) return;

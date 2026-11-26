@@ -503,7 +503,14 @@
         var m = b.getAttribute("data-m");
         if (m) { try { localStorage.setItem(VIEW, m); } catch (err) {} graphSync(); return; }
         var o = b.getAttribute("data-o");
-        if (o) { try { localStorage.setItem(ORI, o); } catch (err) {} gSig = ""; gCount = -1; renderGraph(); return; }   // 换方向 = 重新看全局
+        if (o) {
+          try { localStorage.setItem(ORI, o); } catch (err) {}
+          gSig = ""; gCount = -1; renderGraph();
+          // P277：这枚现在收在 ⋯ 里，点完不刷标签的话，人只看到菜单关了、图翻了，
+          // 不知道当前是竖还是横。刷完再走，标签始终写着"现在是什么方向"。
+          graphBar(document.getElementById("scenePage"), graphOn());
+          return;   // 换方向 = 重新看全局
+        }
       });
       head.insertBefore(bar, add);
     }

@@ -57,7 +57,8 @@ def test_head_buttons_are_thinned_out():
     """顶栏原来 7 个按钮在 390 宽会被挤出屏幕，必须收进 ⋯。"""
     js = _read(MOBILE_JS)
     assert "scn-extra" in js, "顶栏按钮没有瘦身标记"
-    assert "sceneAdd: 1" in js and "sceneSave: 1" in js and "sceneClose: 1" in js
+    # P277：条上只剩「关闭（‹ 作品）」，新建与保存也交给 ⋯ —— 收得比 P110 更彻底
+    assert "var KEEP = { sceneClose: 1 };" in js
     # ⋯ 弹层里要能把复制/删除/刷新递回去（不是自己重写一遍逻辑）
     for src in ("sceneCopy", "sceneDel", "sceneRefresh"):
         assert src in js, f"⋯ 弹层漏了 {src}"

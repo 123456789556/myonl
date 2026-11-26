@@ -3057,6 +3057,12 @@ input[type="color"] {
   #mGraphBar .m-gmodes, #mGraphBar .m-gori { display: flex; border: 1px solid var(--surface1); border-radius: 4px; overflow: hidden; }
       #mGraphBar .m-gmodes button { min-width: 48px; } #mGraphBar .m-gori button { min-width: 40px; }
   #mGraphBar .m-gmodes button.on, #mGraphBar .m-gori button.on { background: rgba(79, 140, 255, .1); color: var(--blue-ink); }
+html.m-shell #mGraphBar .m-gori { display: none; }   /* P277：竖排/横排收进 ⋯，条上不再占一格 */
+/* P277：新建 / 保存这两颗被 chromeSync 搬进顶栏后就不在 #scenePage 里了，
+   详情态那条 display:none 管不到它们 —— 这里补一刀，条上不画，⋯ 里点的是同一个节点 */
+html.m-shell .menubar #sceneAdd, html.m-shell .menubar #sceneSave { display: none !important; }
+/* P277：视图切换归到右侧一组（视图 / ⋯ / 试玩 / 菜单），别跟作品名挤在一块 */
+html.m-shell .menubar #mGraphBar { margin-left: auto; margin-right: 8px; }
   html.m-shell:not(.m-graph-on) #mGraphBar .m-gori { display: none; }
   /* 小总览：右下角一块，图没放大时不出 */
   #mGraph #mMini { position: absolute; right: 6px; bottom: 6px; width: 88px; height: 64px; background: var(--card-bg); border: 1px solid var(--surface0); border-radius: 4px; }

@@ -293,6 +293,17 @@ html.kb-open .m-sheet-body { bottom: var(--kb-h, 0px) !important; }
   #scenePage .sf-stage-wrap.m-stage-empty { display: none; }
   /* 舞台不在，拖它宽窄的那根把手也不该悬在表单中间（用户截图里它杵在空白里） */
   html.m-shell #scenePage.m-no-stage .m-prev-grip { display: none; }
+  /* P277：空的预览轨道要收掉。以前只把舞台藏了，那个列轨道还占着 34%，
+     表单的字段全被推到右边，中间留一大块空白（用户原话：消失的话要自适应，
+     左右两边向中间移动，一个分界）。舞台不在 → 表单塌成单列，左右贴住，
+     交界处留一条 1px 的线当分界；那根把手照旧能拖，只是不再画蓝胶囊。 */
+  html.m-shell #scenePage.m-detail.m-no-stage #sceneForm { grid-template-columns: minmax(0, 1fr) !important; column-gap: 0 !important; }
+  /* 光塌列不够：editor.css 3004 把表单每个子项都钉在「第 2 列」（预览占第 1 列）。
+     预览不在，第 1 列空着、第 2 列隐式撑出来，字段还是被推在右边。这里把子项放回自动排布。 */
+  html.m-shell #scenePage.m-detail.m-no-stage #sceneForm > * { grid-column: auto !important; }
+  html.m-shell #scenePage.m-detail.m-no-stage #sceneForm > .sf-actions { grid-column: 1 / -1 !important; }
+  html.m-shell #scenePage.m-no-stage .m-rail-grip { width: 13px; margin-left: -7px; border-left: 1px solid var(--surface1); }
+  html.m-shell #scenePage.m-no-stage .m-rail-grip::after { display: none; }
   /* 状态栏是 fixed 的（bottom 52px + 26 高），最后一个「保存这个场景」会被压在它下面 */
   #scenePage #sceneForm { padding-bottom: 86px; }
   /* 外观一级页：先看见效果，再决定改哪一组。

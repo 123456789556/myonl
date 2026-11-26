@@ -493,11 +493,17 @@ def probe_editor(pg, rep: Report, shots: Path, base: str) -> None:
         return rep.add("场景页头顶不留安全带空带（≤8px）", gap <= 8, "page.top=%d head.top=%d 空带=%d" % (page[1], head[1], gap))
 
     def c_scene_btns() -> bool:
-        hs = [("cp-btn", rect(pg, "#sceneSave")[3]),
-              ("sceneClose", rect(pg, "#sceneClose")[3]),
+        # P277：条上只留「‹ 作品」与「⋯」；保存搬进 ⋯（弹层里每项也是 44 高）。
+        # 这里量条上仍在的两颗，外加确认保存已不在条上（不该再占一格）。
+        more = rect(pg, ".menubar .scn-more")[3] if count(pg, ".menubar .scn-more") else None
+        hs = [("sceneClose", rect(pg, "#sceneClose")[3]),
               ("sceneClose.w", rect(pg, "#sceneClose")[2])]
+        if more is not None:                     # 手机外壳才有「⋯」；桌面形态量不到，不判它
+            hs.append(("scnMore", more))
         bad = [n for n, v in hs if v < 44]
-        return rep.add("场景页头：保存/关闭 高与宽 ≥44", not bad, "实测 %s" % hs)
+        save_on_bar = rect(pg, "#sceneSave")[3] > 0 if more is not None else False
+        return rep.add("场景页头：返回/⋯ 高与宽 ≥44（保存已收进 ⋯）", (not bad) and not save_on_bar,
+                       "实测 %s saveOnBar=%s" % (hs, save_on_bar))
 
     def c_var_entry() -> bool:
         h = rect(pg, ".m-var-entry-b")[3] if count(pg, ".m-var-entry-b") else 0
