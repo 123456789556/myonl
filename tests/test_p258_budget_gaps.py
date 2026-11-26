@@ -34,7 +34,7 @@ HOT_FILES: dict[str, int] = {
     "editor/mobile/editor_mobile.js": 721,
     "editor/mobile/editor_trash.js": 676,  # P257 一天内 131→676
     "editor/mobile/editor_export.js": 653,
-    "editor/mobile/ui-layout.css": 647,
+    "editor/mobile/ui-layout.css": 634,   # P279 顶栏 auto 收进 :not(.m-chrome-on)（两 auto 平分空白的病根消掉）+ 删 #mlFab 死规则，647→634（-13）
     "editor/mobile/home.css": 348,
     "editor/mobile/ui_layout.js": 650,   # P276 竖横排合一枚「当前方向 ⇄」+7（636→643）；  # P275 撤顶栏缩放三颗 + 空白处点两下回全局 +7（629→636）；P267 竖横排 + 小总览 +45；P265 蓝图式流程图 + 页头并进顶栏 +270（新文件接线面大，故放这里）
     "editor/mobile/editor_dialog.js": 157,
@@ -48,7 +48,7 @@ HOT_FILES: dict[str, int] = {
 
 # 区总量：允许区内互相搬行，区总不许涨。
 AREA_CAP: dict[str, int] = {
-    "editor/mobile": 5688,   # P276 ui_layout +7（见上）   # P275 ui_layout.js +7（见上）
+    "editor/mobile": 5675,   # P279 随 ui-layout.css -13（见上），5688→5675；P276 ui_layout +7（见上）；P275 ui_layout.js +7（见上）
     "web": 4766,   # P274 @anim 缓动 +44（player +43 / core +1），从 4722 涨到 4766
 }
 

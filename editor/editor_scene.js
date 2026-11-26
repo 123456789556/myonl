@@ -258,7 +258,8 @@
       }
     }
     scenes.forEach(function (sc, i) {
-      var seg = lines.slice(sc.start + 1, sc.end).join("\n");
+      var segLines = lines.slice(sc.start + 1, sc.end);
+      var seg = segLines.join("\n");
       var isVideo = /^@video\s+\S/m.test(seg);
       var hasShow = /^@show\s+\S/m.test(seg);
       var hasSay = /^(?:@\s+\S|@\[)/m.test(seg);
@@ -280,25 +281,17 @@
         }
       }
       if (chapters.length && collapsedChapters[ch || "(未分章)"]) return;   // 折叠：只留组头
-      // 卡片上除了"是不是视频"，还要能看出故事形状：
-      // 这一场是不是分支点（@choice）、结束跳到哪（@jump）。
-      // 否则整列卡片长得一模一样，看不出"留下→结尾""走→结尾"这种汇合关系。
-      var jumpTo = (seg.match(/^@jump\s+(\S+)/m) || [])[1];
-      var hasChoice = /^@choice/m.test(seg);
-      var badges = [];
-      if (isVideo) badges.push('<span class="sc-badge video">视频</span>');
-      else if (!hasSay && hasShow) badges.push('<span class="sc-badge">纯画面</span>');
-      if (hasChoice) badges.push('<span class="sc-badge branch">分支</span>');
-      if (jumpTo) badges.push('<span class="sc-badge edge">→ ' + jumpTo + '</span>');
-      rows.push({
-        type: "scene",
-        i: i,
-        h: ROW_H,
-        name: sc.name,
-        bg: (seg.match(/^@bg\s+(\S+)/m) || [])[1] || "—",
-        kind: isVideo ? "视频" : (hasSay ? "有台词" : (hasShow ? "纯画面" : "空")),
-        badge: badges.join(""),
-      });
+      // 一行摘要只放三样：有没有素材（图/视频/音乐/立绘任一）、台词首句、分支数；
+      // 背景名/类型/跳转目标表单里已有，列表不复述。
+      var hasAsset = /^@bg\s+\S/m.test(seg) || isVideo || /^@music\s+\S/m.test(seg) || hasShow;
+      var firstSay = "";
+      for (var si = 0; si < segLines.length; si++) {
+        var said = parseSayLine(segLines[si]);
+        if (said && said.text) { firstSay = said.text; break; }
+      }
+      var branchN = 0;
+      segLines.forEach(function (l) { if (/^\s*>\s*.+?\s*->\s*\S+\s*$/.test(l)) branchN++; });
+      rows.push({ type: "scene", i: i, h: ROW_H, name: sc.name, asset: hasAsset, line: firstSay, branches: branchN });
     });
     flushGroup();
     return rows;
@@ -347,10 +340,12 @@
           '<span class="sc-ch-count">' + r.count + "</span></div>";
         continue;
       }
+      var dot = r.asset ? '<span class="sc-dot" title="有素材"></span>' : "";
+      var say = r.line ? '<div class="sc-line">' + esc(r.line) + "</div>" : "";
+      var br = r.branches > 0 ? '<span class="sc-branches">' + r.branches + " 分支</span>" : "";
       html += '<div class="scene-item' + (r.i === curIdx ? " active" : "") + '" data-i="' + r.i +
-        '" style="top:' + y + 'px" title="' + esc(r.name) + '">' +
-        '<div class="sc-name">' + esc(r.name) + r.badge + "</div>" +
-        '<div class="sc-meta">' + esc(r.bg) + " · " + r.kind + "</div></div>";
+        '" style="top:' + y + 'px" title="' + esc(r.name) + '">' + dot +
+        '<div class="sc-main"><div class="sc-name">' + esc(r.name) + "</div>" + say + "</div>" + br + "</div>";
     }
     holder.innerHTML = html;
   }
@@ -508,22 +503,24 @@
     var h = [];
     h.push('<div class="sf-scene"><span class="sf-label">场景</span><b>' + esc(model.name) + "</b></div>");
     h.push('<div class="sf-stage-wrap"><div class="sf-stage" id="sfStage"></div><div class="sf-stage-hint">拖动角色调整位置 · 双击复位 · 也可用下面的位置下拉</div></div>');
-    // P274：底板 —— 背景/视频/音乐按渲染顺序排在最上面，不再藏进折叠里。
-    // 前景带 x/y/alpha 且能中途换，归「演出」卡管，这里不重复放一个写手。
-    h.push('<div class="sf-base"><span class="sf-base-tag">底板</span>' +
+    // P279：素材收成一个区块（图/视频/音乐/角色同一处进出）；序列帧/GIF 无独立写手不摆空格，前景归演出卡。
+    h.push('<div class="sf-asset">');
+    h.push('<div class="sf-sec sf-sec-asset">素材</div>');
+    h.push('<div class="sf-base">' +
       '<label class="sf-base-cell">背景<select id="sfBg">' + optsHtml(images, model.bg ? model.bg.name : "", "（不变）") + "</select></label>" +
       '<label class="sf-base-cell">视频<select id="sfVideo" title="@video 全屏视频：只有视频、没有台词的过场就靠它">' + optsHtml(videos, model.video ? model.video.name : "", "（无）") + "</select></label>" +
       '<label class="sf-base-cell">音乐<select id="sfMusic">' + optsHtml(audios, model.music ? model.music.name : "", "（不变）") + "</select></label>" +
       "</div>");
-    h.push('<details class="sf-fold"><summary class="sf-sec sf-sec-res">图层 <span class="sf-hint">背景 &lt; 立绘 &lt; 前景 &lt; UI</span></summary>');
-    h.push('<datalist id="sfExprList">' + Object.keys(exprs).map(function (k) { return '<option value="' + esc(k) + '">'; }).join("") + "</datalist>");
-    h.push(layerPanelHtml());
-    h.push("</details>");
-    h.push('<div class="sf-sec sf-sec-char">角色 <button type="button" class="icon-btn" id="sfAddChar">＋ 加角色</button></div>');
+    h.push('<div class="sf-asset-char"><span class="sf-label">角色</span>' +
+      '<button type="button" class="icon-btn" id="sfAddChar">＋ 加角色</button></div>');
     h.push('<div id="sfChars">');
     model.chars.forEach(function (c, i) {
       if (c.del) return;
-      h.push('<div class="sf-cast" data-i="' + i + '"><select class="sf-char">' + optsHtml(pool, c.name, pool.length ? "角色…" : "（还没建角色）") + '</select>' +
+      h.push('<div class="sf-cast" data-i="' + i + '">' +
+        '<div class="sf-cast-main"><select class="sf-char">' + optsHtml(pool, c.name, pool.length ? "角色…" : "（还没建角色）") + '</select>' +
+        '<button type="button" class="icon-btn sf-edit-char" data-i="' + i + '" title="编辑这个角色（会打开角色库）">✎</button>' +
+        '<button type="button" class="icon-btn sf-del" data-kind="char" data-i="' + i + '">✕</button></div>' +
+        '<div class="sf-cast-extra">' +
         '<input class="sf-expr" list="sfExprList" placeholder="表情" value="' + esc(c.expr) + '">' +
         '<input class="sf-scale" type="number" min="0.5" max="2" step="0.05" placeholder="缩放" title="scale 0.5~2" value="' + (c.scale != null ? c.scale : "") + '">' +
         '<input class="sf-z" type="number" step="1" placeholder="层级" title="z 图层顺序，大者在上" value="' + (c.z != null ? c.z : "") + '">' +
@@ -531,10 +528,13 @@
         '<option value="左"' + (c.pos === "左" ? " selected" : "") + '>左</option>' +
         '<option value="中"' + (c.pos === "中" ? " selected" : "") + '>中</option>' +
         '<option value="右"' + (c.pos === "右" ? " selected" : "") + '>右</option></select>' +
-        '<button type="button" class="icon-btn sf-edit-char" data-i="' + i + '" title="编辑这个角色（会打开角色库）">✎</button>' +
-        '<button type="button" class="icon-btn sf-del" data-kind="char" data-i="' + i + '">✕</button></div>');
+        '</div></div>');
     });
-    h.push("</div>");
+    h.push("</div></div>");
+    h.push('<details class="sf-fold"><summary class="sf-sec sf-sec-res">图层 <span class="sf-hint">背景 &lt; 立绘 &lt; 前景 &lt; UI</span></summary>');
+    h.push('<datalist id="sfExprList">' + Object.keys(exprs).map(function (k) { return '<option value="' + esc(k) + '">'; }).join("") + "</datalist>");
+    h.push(layerPanelHtml());
+    h.push("</details>");
     var castNames = model.chars.filter(function (c) { return !c.del && c.name; }).map(function (c) { return c.name; });
     h.push(window.MYONLPerf.render(model, { images: images, audios: audios, videos: videos,
       chars: castNames.length ? castNames : pool }));

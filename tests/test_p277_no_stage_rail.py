@@ -39,6 +39,7 @@ def test_old_placeholder_is_gone():
 
 MOB = (ROOT / "editor" / "mobile" / "editor_mobile.js").read_text(encoding="utf-8")
 CSS = (ROOT / "editor" / "editor.css").read_text(encoding="utf-8")
+UILAY = (ROOT / "editor" / "mobile" / "ui-layout.css").read_text(encoding="utf-8")
 
 
 def test_bar_keeps_only_navigation():
@@ -47,6 +48,12 @@ def test_bar_keeps_only_navigation():
     assert 'html.m-shell .menubar #sceneAdd, html.m-shell .menubar #sceneSave { display: none !important; }' in CSS
     # 视图组靠右，跟作品名分开
     assert "html.m-shell .menubar #mGraphBar { margin-left: auto; margin-right: 8px; }" in CSS
+    # P279 顶栏空洞：靠右的 auto 每个右组只准有一颗。
+    # 原断言（无，旧规则未被钉住）→ 新断言：#mTopPreview 的 auto 只在非分栏态（:not(.m-chrome-on)）生效；
+    # 理由：横屏 m-chrome-on 时右组领头是 #mGraphBar，它已吃 auto；预览再吃一个 auto，两个 auto 平分空白，
+    # ⋯ 与 ▶ 之间塌出 200+px 的洞（实测 844×390 两处间距各 227.5px）。
+    assert "html.m-shell:not(.m-chrome-on) .menubar #mTopPreview { margin-left: auto !important; }" in UILAY
+    assert "html.m-shell .menubar #mTopPreview { margin-left: auto !important; }" not in UILAY
 
 
 def test_more_menu_carries_the_moved_actions():

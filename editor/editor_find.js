@@ -39,12 +39,7 @@
     "border:1px solid var(--surface0);border-top:0;border-radius:0 0 4px 4px;box-shadow:none;",
     "padding:calc(6px + env(safe-area-inset-top)) 10px 0;font:14px/1.4 -apple-system,'PingFang SC','Microsoft YaHei',sans-serif}",
     "#mlRoot.hidden{display:none}",
-    "#mlFab{position:fixed;right:12px;bottom:calc(66px + env(safe-area-inset-bottom));min-width:46px;",
-    "height:46px;padding:0 12px;border-radius:4px;border:0;background:var(--blue-ink);color:var(--base);font-size:13px;",
-    "z-index:600}",
-    "#mlFab.hide{display:none}",
     "#mTopFind.hide{display:none}",
-    "body.m-home-open #mlFab{display:none !important}",
     ".ml-head{display:flex;gap:6px;align-items:center;padding-bottom:6px}",
     ".ml-in{flex:1;min-width:0;height:34px;border-radius:4px;border:1px solid var(--surface0);background:var(--input-bg);",
     "color:var(--text);padding:0 10px;font-size:14px;outline:none}",
@@ -161,8 +156,6 @@
     $("mlAll").textContent = T("find.all");
     $("mlCheck").textContent = T("find.check");
     $("mlClose").title = T("find.close");
-    var fab = $("mlFab");
-    if (fab) fab.textContent = T("find.fab");
     if (lastAlert) paintAlert();     // 红条是上一次替换的结果，语言换了要重画
     syncChips();
   }
@@ -431,17 +424,8 @@
         fm.parentNode.insertBefore(b, fm);
       }
     }
-    // 手机上的真入口：场景编辑页会把 menubar 压掉，顶栏那个「查找」在那屏根本看不见。
-    // 一颗常驻浮钮，不依赖任何容器，逐句页和源码页都在。
-    if (!document.getElementById("mlFab")) {
-      var fab = document.createElement("button");
-      fab.type = "button";
-      fab.id = "mlFab";
-      fab.title = T("find.top");
-      fab.textContent = T("find.fab");
-      fab.addEventListener("click", open);
-      document.body.appendChild(fab);
-    }
+    // P279：常驻右下角的查找浮钮已撤 —— 它压住台词卡；手机入口走 ⋯ 弹层「查找台词」，
+    // 电脑端有 menubar 搜索框 + Ctrl+F / Ctrl+Shift+F，不再需要第二颗悬浮钮。
     syncEntry();
   }
 
@@ -450,9 +434,7 @@
   function syncEntry() {
     var m = isMobile();
     var top = document.getElementById("mTopFind");
-    var fab = document.getElementById("mlFab");
     if (top) top.classList.toggle("hide", !m);
-    if (fab) fab.classList.toggle("hide", !m);
   }
 
   document.addEventListener("keydown", function (e) {

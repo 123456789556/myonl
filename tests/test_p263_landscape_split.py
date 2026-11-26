@@ -22,6 +22,7 @@ ROOT = Path(__file__).resolve().parents[1]
 CSS = (ROOT / "editor" / "editor.css").read_text(encoding="utf-8")
 LAYOUT = (ROOT / "editor" / "mobile" / "ui_layout.js").read_text(encoding="utf-8")
 MOBILE = (ROOT / "editor" / "mobile" / "editor_mobile.js").read_text(encoding="utf-8")
+FIND = (ROOT / "editor" / "editor_find.js").read_text(encoding="utf-8")
 
 
 def _block() -> str:
@@ -66,8 +67,10 @@ def test_变量条排在台词之后():
 
 
 def test_查找入口改从更多菜单进():
-    blk = _block()
-    assert "#mlFab:not(.x) { display: none !important; }" in blk
+    # P279：右下角查找浮钮（#mlFab）已整体撤除（DOM/CSS/死规则一并清掉），手机入口只走 ⋯ 弹层；
+    # 原断言 "#mlFab:not(.x) { display: none !important; }" 随 editor.css 那条死规则一起删除。
+    assert "mlFab" not in FIND, "editor_find.js 里不许再留浮钮节点/样式引用"
+    assert "#mlFab" not in CSS, "editor.css 里不许再留 #mlFab 死规则"
     assert '["mlFind", "查找台词"]' in MOBILE
     assert "MYONLLintUI.open()" in MOBILE
 

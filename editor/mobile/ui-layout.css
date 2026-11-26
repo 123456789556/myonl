@@ -15,13 +15,16 @@ html.m-shell .m-top-preview, html.m-shell #mHomeBack, html.m-shell #mFullscreen 
 /* P259：顶栏几颗原来两种底 —— 「‹ 作品」「菜单」是 surface0 灰块，「查找」「预览」是
    mantle 底 + 描边，一排里灰白混着。统一到 mantle，跟顶栏底色只差一档。 */
 html.m-shell .menubar #mHomeBack, html.m-shell .menubar .menu-item { background: var(--mantle) !important; }
-/* 竖屏顶栏实测溢出：390 宽时全屏按钮右边界 405、工具按钮 445，都被切掉。全屏改到「菜单」里；P260 查找也收掉（下方已有放大镜浮球），收掉后作品名顶到原查找位置。
+/* 竖屏顶栏实测溢出：390 宽时全屏按钮右边界 405、工具按钮 445，都被切掉。全屏改到「菜单」里；P260 查找也收掉（入口在 ⋯ 弹层「查找台词」），收掉后作品名顶到原查找位置。
    收完还是超（作品名一长就顶出去：390 宽实测最右到 435）：间距 8→4，作品名限宽省略 */
 html.m-shell #mFullscreen, html.m-shell #mToolsToggle, html.m-shell .menubar #mTopFind { display: none !important; }
 html.m-shell .menubar { gap: 4px !important; padding-left: 6px !important; padding-right: 6px !important; }
 html.m-shell .menubar .m-title2 { max-width: 84px; overflow: hidden; text-overflow: ellipsis; }
-/* P260：作品名不再居中飘着 —— 「‹ 作品」右边原来让了 108px 给它居中，现在贴着「‹ 作品」，右侧那组靠右 */
-html.m-shell .menubar > #mHomeBack { margin-right: 8px !important; } html.m-shell .menubar #mTopPreview { margin-left: auto !important; }
+/* P260：作品名不再居中飘着 —— 「‹ 作品」右边原来让了 108px 给它居中，现在贴着「‹ 作品」，右侧那组靠右。
+   P279：靠右的 auto 只给右组领头那一颗。竖屏/非分栏时右组领头是 #mTopPreview；横屏 m-chrome-on 时
+   右组领头是 #mGraphBar（editor.css 给它 margin-left:auto），这里再给 #mTopPreview 一个 auto，
+   两个 auto 会把空白平分，⋯ 与 ▶ 之间塌出一个 200+px 的洞。 */
+html.m-shell .menubar > #mHomeBack { margin-right: 8px !important; } html.m-shell:not(.m-chrome-on) .menubar #mTopPreview { margin-left: auto !important; }
 /* 横屏只留「返回 / 作品名 / 预览 / 菜单」四个，编辑/视图/运行/帮助收进「菜单」 */
 html.m-shell.m-wide .menubar .menu-item:not([data-menu="file"]),
 html.m-shell.m-wide #mFullscreen { display: none !important; }
@@ -42,9 +45,8 @@ html.m-shell .m-sheet-body {
   overflow: auto !important;
   padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px)) !important;
 }
-/* 浮动球不压字：页面底部给它留出球径 */
+/* 页面底部留档：最后一行内容不贴住底栏（P279 起浮钮已撤，这份留白仍给底栏让位） */
 html.m-shell .center-page { padding-bottom: 92px !important; }
-html.m-shell #mlFab { bottom: calc(96px + env(safe-area-inset-bottom, 0px)) !important; }
 /* 横屏：整页层底边必须顶到 tab 栏上沿。原来按竖屏 52px 让位，横屏 tab 只有 42，
    中间露一条 10px 的底 —— 截图里那块"凭空多出来的灰方块"就是这条缝。 */
 html.m-shell.m-wide #scenePage.center-page,
@@ -478,21 +480,6 @@ html.m-shell .menubar {
 }
 /* 首页原本自带 24px 上留白，抬到 14px + 安全带 = 54（实测标题落在 top=54，正好出孔带） */
 html.m-shell .m-home { padding-top: calc(14px + var(--safe-pad-top)) !important; }
-
-/* ---- P220 查找改成放大镜图标：那颗浮球原来写「查」字（46px 里挤），改成图形后
-   字号归零、图标 20×20 居中；文案仍留在 DOM，读屏与 i18n 不受影响。
-   位置抬到状态栏上方（实测查球 bottom=748、状态栏「共 15 行」top=772，本来不重叠，
-   但只差 24px，手指按下去容易误触）。 */
-html.m-shell #mlFab {
-  font-size: 0 !important;
-  display: flex !important; align-items: center !important; justify-content: center !important;
-  bottom: calc(120px + env(safe-area-inset-bottom, 0px)) !important;
-}
-html.m-shell #mlFab::after {
-  content: ""; width: 20px; height: 20px; flex: 0 0 20px;
-  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><circle cx='10.5' cy='10.5' r='6.3' fill='none' stroke='%23ffffff' stroke-width='2'/><line x1='15.3' y1='15.3' x2='21' y2='21' stroke='%23ffffff' stroke-width='2'/></svg>");
-  background-repeat: no-repeat; background-size: 20px 20px; background-position: center;
-}
 
 /* 顶栏在 390 宽上塞了 6 个入口，实测第 6 个被切在屏幕外（源码模式截图可见）。
    先给一条兜底：允许横滑、不显示滚动条，宁可滑也不要把按钮切掉。

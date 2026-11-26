@@ -68,7 +68,6 @@
 
 /* 折叠标题之间原来各留 18px 上边距，七块表单时不显，收成两行标题就露出大洞 */
 .scene-page .sf-fold > summary { margin: 10px 0 6px; }
-.scene-page #sceneForm > .sf-sec-char,
 .scene-page #sceneForm > .sf-sec-say,
 .scene-page #sceneForm > .sf-sec-opt { margin: 13px 0 7px; }
 
@@ -79,8 +78,6 @@
   #scenePage #sceneForm > .sf-scene       { order: 0; }
   #scenePage #sceneForm > .sf-stage-wrap  { order: 1; }
   #scenePage #sceneForm > .sf-fold        { order: 2; }
-  #scenePage #sceneForm > .sf-sec-char    { order: 3; }
-  #scenePage #sceneForm > #sfChars        { order: 4; }
   #scenePage #sceneForm > .sf-sec-say     { order: 5; }
   #scenePage #sceneForm > #sfSays         { order: 6; }
   #scenePage #sceneForm > .sf-sec-opt     { order: 7; }

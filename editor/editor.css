@@ -3089,8 +3089,6 @@ html.m-shell .menubar #mGraphBar { margin-left: auto; margin-right: 8px; }
   html.m-shell .scene-page.m-detail .scn-more { display: inline-flex !important; } html.m-shell .scene-page #sceneForm > #mVarEntry { order: 6; }
   /* 左栏本身就是场景列表，「＋新场景」不用退回列表；「变量与条件」是配菜，排台词后免得把台词卡挤出屏幕 */
   html.m-shell .scene-page.m-detail #sceneAdd { display: inline-flex !important; }
-  /* 分栏后右下角「查找」压住画面预览：横屏改从「⋯」进；:not(.x) 只把权重压过 ui-layout.css 的 id 级 display:flex */
-  :root.m-shell #mlFab:not(.x) { display: none !important; }
 }
 }
 
@@ -3137,8 +3135,6 @@ html.m-shell .menubar #mGraphBar { margin-left: auto; margin-right: 8px; }
   #sceneForm { display: flex; flex-direction: column; }
   #sceneForm > * { flex: 0 0 auto; min-width: 0; }
   #sceneForm > .sf-scene       { order: 0; }
-  #sceneForm > .sf-sec-char    { order: 1; }
-  #sceneForm > #sfChars        { order: 2; }
   #sceneForm > .sf-sec-say     { order: 3; }
   #sceneForm > #sfSays         { order: 4; }
   #sceneForm > .sf-stage-wrap  { order: 5; }
