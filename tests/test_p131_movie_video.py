@@ -51,7 +51,7 @@ def test_parser_js未支持名单是单一来源且不含_video():
     m = re.search(r"var UNSUPPORTED_DIRECTIVES = \[([^\]]*)\]", PARSER_JS)
     assert m, "parser.js 里找不到 UNSUPPORTED_DIRECTIVES 常量（名单必须单一来源）"
     names = re.findall(r'"([a-z]+)"', m.group(1))
-    assert names == ["anim", "plug", "include"], f"未支持名单变了：{names}；放开一条请同步这条期望"
+    assert names == ["plug", "include"], f"未支持名单变了：{names}；放开一条请同步这条期望"
     assert "video" not in names, "@video 还挂在手机端解析器的拒收名单里"
     assert "UNSUPPORTED_DIRECTIVES.map" in PARSER_JS, "报错文案应引用常量拼，别把名单写死进中文句子"
 

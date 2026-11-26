@@ -1527,6 +1527,48 @@
     ctx.restore();
   }
 
+  // P274：@anim 的缓动曲线。电脑端有 22 条（engine/timeline.py），手机端以前一律线性，
+  // 同一行 @anim 两边观感不同。这里照 timeline.py 的公式抄一遍，名字与解析器白名单一一对应。
+  var EASE = (function () {
+    function qi(t) { return t * t; }
+    function qo(t) { return 1 - (1 - t) * (1 - t); }
+    function qio(t) { return t < 0.5 ? 2 * t * t : 1 - 2 * (1 - t) * (1 - t); }
+    function ci(t) { return t * t * t; }
+    function co(t) { return 1 - Math.pow(1 - t, 3); }
+    function cio(t) { return t < 0.5 ? 4 * t * t * t : 1 - 4 * Math.pow(1 - t, 3); }
+    function qti(t) { return t * t * t * t; }
+    function qto(t) { return 1 - Math.pow(1 - t, 4); }
+    function qtio(t) { return t < 0.5 ? 8 * t * t * t * t : 1 - 8 * Math.pow(1 - t, 4); }
+    function si(t) { return 1 - Math.cos(t * Math.PI * 0.5); }
+    function so(t) { return Math.sin(t * Math.PI * 0.5); }
+    function sio(t) { return 0.5 - 0.5 * Math.cos(Math.PI * t); }
+    function ei(t) { return t === 0 ? 0 : Math.pow(2, 10 * t - 10); }
+    function eo(t) { return t === 1 ? 1 : 1 - Math.pow(2, -10 * t); }
+    function eio(t) {
+      if (t === 0) return 0;
+      if (t === 1) return 1;
+      return 0.5 * (t < 0.5 ? Math.pow(2, 20 * t - 10) : 2 - Math.pow(2, -20 * t + 10));
+    }
+    var C1 = 1.70158, C3 = C1 + 1, C2 = C1 * 1.525;
+    function bi(t) { return C3 * t * t * t - C1 * t * t; }
+    function bo(t) { var u = t - 1; return 1 + C3 * u * u * u + C1 * u * u; }
+    function bio(t) {
+      if (t < 0.5) { var a = 2 * t; return a * a * ((C2 + 1) * a - C2) / 2; }
+      var b = 2 * t - 2;
+      return (b * b * ((C2 + 1) * b + C2) + 2) / 2;
+    }
+    return {
+      linear: function (t) { return t; },
+      none: function () { return 1; },
+      ease_in: qi, ease_out: qo, ease_in_quad: qi, ease_out_quad: qo, ease_in_out_quad: qio,
+      ease_in_cubic: ci, ease_out_cubic: co, ease_in_out_cubic: cio,
+      ease_in_quart: qti, ease_out_quart: qto, ease_in_out_quart: qtio,
+      ease_in_sine: si, ease_out_sine: so, ease_in_out_sine: sio,
+      ease_in_expo: ei, ease_out_expo: eo, ease_in_out_expo: eio,
+      ease_in_back: bi, ease_out_back: bo, ease_in_out_back: bio
+    };
+  })();
+
   // @anim 的当前显示值：逐参数补间取进度。@anim 的 x/y 是「1280 宽基准的像素」，
   // 和桌面端同一套数字，所以这里除缩放系数后面统一换算。
   function animDisp(char) {
@@ -1538,7 +1580,8 @@
       if (!(p in out)) continue;
       const a = rec[p];
       const k = a.secs > 0 ? Math.max(0, Math.min(1, (now - a.t0) / (a.secs * 1000))) : 1;
-      out[p] = a.from + (a.to - a.from) * k;
+      const ease = EASE[a.ease] || EASE.linear;
+      out[p] = a.from + (a.to - a.from) * ease(k);
     }
     return out;
   }

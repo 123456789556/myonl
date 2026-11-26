@@ -10,7 +10,7 @@
 1. golden 里的期望值与当前 Python 解析结果逐字段相等（golden 不会悄悄过期）；
 2. node 跑 engine/parser.js 解析同一份剧本，结果与 Python 完全相等；
 3. @voice 孤立出现时两端都拦（不许一边放行一边报错）；
-4. 仍然写不了的只有 @anim / @plug / @include，报错文案说清这一点。
+4. 仍然写不了的只有 @plug / @include，报错文案说清这一点（P274 已放开 @anim）。
 
 本机没有 node 时，JS 实跑部分跳过；源码级断言照跑。
 """

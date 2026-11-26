@@ -20,8 +20,28 @@
   var SAY_BR = /^@\[/;
   var VOICE_RE = /^@voice\b/;
 
-  var LABEL = { voice: "配音", cg: "CG", fg: "前景", camera: "镜头", transition: "转场" };
-  var OPS = ["voice", "cg", "fg", "camera", "transition"];
+  var LABEL = { voice: "配音", cg: "CG", fg: "前景", camera: "镜头", transition: "转场", anim: "补间" };
+  var OPS = ["voice", "cg", "fg", "camera", "transition", "anim"];
+
+  // P274：@anim 的缓动曲线名字来自 engine/timeline.py（22 条），这里只给中文短标签，
+  // 写回源码永远是英文名 —— 用户看中文，剧本里存英文。
+  var EASE_LABEL = {
+    linear: "匀速", ease_in: "慢起", ease_out: "慢收", none: "直达",
+    ease_in_quad: "二次·慢起", ease_out_quad: "二次·慢收", ease_in_out_quad: "二次·慢起慢收",
+    ease_in_cubic: "三次·慢起", ease_out_cubic: "三次·慢收", ease_in_out_cubic: "三次·慢起慢收",
+    ease_in_quart: "四次·慢起", ease_out_quart: "四次·慢收", ease_in_out_quart: "四次·慢起慢收",
+    ease_in_sine: "正弦·慢起", ease_out_sine: "正弦·慢收", ease_in_out_sine: "正弦·慢起慢收",
+    ease_in_expo: "指数·慢起", ease_out_expo: "指数·慢收", ease_in_out_expo: "指数·慢起慢收",
+    ease_in_back: "回弹·慢起", ease_out_back: "回弹·慢收", ease_in_out_back: "回弹·慢起慢收"
+  };
+  var EASE_ORDER = ["linear", "ease_in", "ease_out", "none",
+    "ease_in_quad", "ease_out_quad", "ease_in_out_quad",
+    "ease_in_cubic", "ease_out_cubic", "ease_in_out_cubic",
+    "ease_in_quart", "ease_out_quart", "ease_in_out_quart",
+    "ease_in_sine", "ease_out_sine", "ease_in_out_sine",
+    "ease_in_expo", "ease_out_expo", "ease_in_out_expo",
+    "ease_in_back", "ease_out_back", "ease_in_out_back"];
+  var ANIM_PARAM = { x: "左右位移", y: "上下位移", alpha: "透明度", scale: "缩放" };
 
   function num(v, d) { var n = Number(v); return isFinite(n) ? n : d; }
   function fmt(n) { return String(Number(n)); }
@@ -67,6 +87,25 @@
       else { q.dir = DIRS[ta[0]] || "左"; q.secs = num(ta[1], 0.6); }
       return q;
     }
+    if ((m = b.match(/^@anim\s+(.+)$/))) {
+      var aa = m[1].trim().split(/\s+/).filter(Boolean);
+      if (aa.length < 3) return null;
+      var pv = aa[1];
+      if (pv.indexOf("=") < 0) return null;
+      var pn = pv.split("=")[0];
+      if (!ANIM_PARAM[pn]) return null;
+      var raw = pv.slice(pn.length + 1), from = null;
+      if (raw.indexOf("~") >= 0) {
+        var rr = raw.split("~");
+        from = num(rr[0], 0);
+        raw = rr.length > 1 ? rr[1] : "0";
+      }
+      var ez = "linear";
+      if (aa[3] && aa[3].indexOf("ease=") === 0) ez = aa[3].slice(5);
+      if (!EASE_LABEL[ez]) ez = "linear";
+      return { op: "anim", char: aa[0], param: pn, from: from,
+        to: num(raw, 0), secs: Math.max(0, num(aa[2], 1)), ease: ez };
+    }
     return null;
   }
 
@@ -92,6 +131,12 @@
     if (p.op === "transition") {
       if (p.kind === "dissolve") return "@transition dissolve " + fmt(num(p.secs, 0.6));
       return "@transition " + p.kind + " " + (p.dir || "左") + " " + fmt(num(p.secs, 0.6));
+    }
+    if (p.op === "anim") {
+      var ar = (p.param || "x") + "=" + (p.from == null ? "" : fmt(num(p.from, 0)) + "~") + fmt(num(p.to, 0));
+      var al = "@anim " + (p.char || "") + " " + ar + " " + fmt(num(p.secs, 1));
+      if (p.ease && p.ease !== "linear") al += " ease=" + p.ease;
+      return al;
     }
     return "";
   }
@@ -157,6 +202,17 @@
       } else {
         h += row("方向", dirSel(p.dir) + numInput("sf-p-secs", p.secs, "0.1", 0.1, null, "秒"));
       }
+    } else if (p.op === "anim") {
+      h += row("角色", '<input class="sf-p-char" list="sfPerfChar" placeholder="角色 ID" value="' + esc(p.char || "") + '">', del);
+      h += row("参数", '<select class="sf-p-param">' + ["x", "y", "alpha", "scale"].map(function (k) {
+        return '<option value="' + k + '"' + (p.param === k ? " selected" : "") + ">" + ANIM_PARAM[k] + "</option>";
+      }).join("") + "</select>", del);
+      h += row("起止", numInput("sf-p-from", p.from == null ? "" : p.from, "0.1", null, null, "从（留空=接着上一次）") +
+        numInput("sf-p-to", p.to, "0.1", null, null, "到"));
+      h += row("时长", numInput("sf-p-secs", p.secs, "0.1", 0, null, "秒") +
+        '<select class="sf-p-ease">' + EASE_ORDER.map(function (k) {
+          return '<option value="' + k + '"' + ((p.ease || "linear") === k ? " selected" : "") + ">" + EASE_LABEL[k] + "</option>";
+        }).join("") + "</select>");
     }
     h += '<div class="sf-pcmd">' + esc(line(p)) + "</div>";
     h += "</div>";
@@ -167,7 +223,7 @@
     model.perf = model.perf || [];
     var live = model.perf.filter(function (p) { return !p.del; });
     var h = [];
-    h.push('<details class="sf-fold sf-perf-box"' + (model.perfOpen ? " open" : "") + '><summary class="sf-sec">演出 <span class="sf-hint">配音 · CG · 前景 · 镜头 · 转场' +
+    h.push('<details class="sf-fold sf-perf-box"' + (model.perfOpen ? " open" : "") + '><summary class="sf-sec">演出 <span class="sf-hint">配音 · CG · 前景 · 镜头 · 转场 · 补间' +
       (live.length ? " · " + live.length + " 条" : "") + "</span></summary>");
     h.push('<div class="sf-padd">' + OPS.map(function (o) {
       return '<button type="button" class="icon-btn sf-p-add" data-perf="' + o + '">＋' + LABEL[o] + "</button>";
@@ -181,6 +237,9 @@
       return '<option value="' + esc(x) + '">';
     }).join("") + "</datalist>");
     h.push('<datalist id="sfPerfAudio">' + uniq(auds).map(function (x) {
+      return '<option value="' + esc(x) + '">';
+    }).join("") + "</datalist>");
+    h.push('<datalist id="sfPerfChar">' + uniq((t && t.chars) || []).map(function (x) {
       return '<option value="' + esc(x) + '">';
     }).join("") + "</datalist>");
     return h.join("");
@@ -228,6 +287,17 @@
         if (tk === "dissolve") tp.secs = Math.max(0.1, numOf(el, "sf-p-secs", 0.6));
         else { tp.dir = val(el, "sf-p-dir") || "左"; tp.secs = Math.max(0.1, numOf(el, "sf-p-secs", 0.6)); }
         out.push(tp);
+      } else if (op === "anim") {
+        var achar = val(el, "sf-p-char");
+        if (!achar) continue;                            // 没角色就等于没写，不留半条指令
+        var aparam = val(el, "sf-p-param") || (base.param || "x");
+        var fromTxt = val(el, "sf-p-from");
+        var ap2 = { i: base.i, op: "anim", char: achar, param: aparam,
+          from: fromTxt === "" ? null : num(fromTxt, 0),
+          to: numOf(el, "sf-p-to", 0),
+          secs: Math.max(0, numOf(el, "sf-p-secs", 1)),
+          ease: val(el, "sf-p-ease") || "linear" };
+        out.push(ap2);
       }
     }
     return out;

@@ -29,7 +29,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 # 记账日期：2026-11-22（P258）。数字 = 当天实测行数。
 HOT_FILES: dict[str, int] = {
-    "web/myonl-player.js": 4160,          # 全仓最大代码文件，此前完全不在预算里
+    "web/myonl-player.js": 4203,          # P274 @anim 缓动曲线 22 条（照 timeline.py 公式抄，+43，4160→4203）；全仓最大代码文件
     "editor/mobile/editor_home.js": 1294,  # 首页 + 作品卡 + 上下文菜单的调用点
     "editor/mobile/editor_mobile.js": 713,
     "editor/mobile/editor_trash.js": 676,  # P257 一天内 131→676
@@ -38,7 +38,7 @@ HOT_FILES: dict[str, int] = {
     "editor/mobile/home.css": 348,
     "editor/mobile/ui_layout.js": 629,  # P267 竖横排 + 小总览 +45；P265 蓝图式流程图 + 页头并进顶栏 +270（新文件接线面大，故放这里）
     "editor/mobile/editor_dialog.js": 157,
-    "web/myonl-core.js": 412,
+    "web/myonl-core.js": 413,   # P274 补间记录带 ease（+1）
     "web/myonl-layout.js": 150,
     "editor/editor_characters.js": 409,
     "editor/editor_snapshots.js": 242,
@@ -49,7 +49,7 @@ HOT_FILES: dict[str, int] = {
 # 区总量：允许区内互相搬行，区总不许涨。
 AREA_CAP: dict[str, int] = {
     "editor/mobile": 5659,
-    "web": 4722,
+    "web": 4766,   # P274 @anim 缓动 +44（player +43 / core +1），从 4722 涨到 4766
 }
 
 # 超过这个行数的 js/css 必须出现在某张预算表里，不许有「没人管的巨型文件」。

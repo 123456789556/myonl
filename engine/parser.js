@@ -13,7 +13,7 @@
      show / hide / choice / jump / if / end / wait / video /
      voice / cg / fg / camera / transition（P192 补齐；字段与校验照 parser.py 逐条对齐）
    未覆盖（遇到就抛清楚的中文错误，不静默走偏）：
-     anim / plug / @include
+     plug / @include（@anim 已由 P274 补齐）
    ============================================================ */
 (function (global) {
   "use strict";
@@ -72,12 +72,34 @@
   /* 手机端解析器不产出的指令：单一来源。
      报错文案由它拼，测试也从它读 —— 放开一条只改这个数组，
      别再把条数或名单写死进中文句子（写死过一次，改文案就得同步改测试）。
-     P192 已从这里移出 voice / cg / fg / camera / transition。 */
-  var UNSUPPORTED_DIRECTIVES = ["anim", "plug", "include"];
+     P192 已从这里移出 voice / cg / fg / camera / transition；P274 移出 anim。 */
+  var UNSUPPORTED_DIRECTIVES = ["plug", "include"];
+
+  // 缓动曲线名单单一来源：照 engine/timeline.py 的 EASINGS 22 条抄一份（Python 那边是函数表，
+  // JS 只做校验，播放器另有同名实现 web/myonl-player.js 的 EASE）。
+  var EASE_NAMES = ["linear", "ease_in", "ease_out", "none",
+    "ease_in_quad", "ease_out_quad", "ease_in_out_quad",
+    "ease_in_cubic", "ease_out_cubic", "ease_in_out_cubic",
+    "ease_in_quart", "ease_out_quart", "ease_in_out_quart",
+    "ease_in_sine", "ease_out_sine", "ease_in_out_sine",
+    "ease_in_expo", "ease_out_expo", "ease_in_out_expo",
+    "ease_in_back", "ease_out_back", "ease_in_out_back"];
+
+  // @anim 的参数只能补这 4 个（照 parser.py 的 _ANIM_PARAMS）
+  var ANIM_PARAMS = ["x", "y", "alpha", "scale"];
 
   function num(s) {
     var v = Number(s);
     return v === Math.floor(v) ? Math.floor(v) : v;
+  }
+
+  // 等价 parser.py 的 _anim_value：x/y 不限、alpha 0~1、scale 0.5~2.0
+  function animValue(line, param, text) {
+    if (!NUMBER.test(text)) throw synErr(line, '@anim 的数值应为数字，实际为 "' + text + '"');
+    var v = num(text);
+    if (param === "alpha" && (v < 0 || v > 1)) throw synErr(line, "alpha 范围 0~1，实际为 " + text);
+    if (param === "scale" && (v < 0.5 || v > 2)) throw synErr(line, "scale 范围 0.5~2.0，实际为 " + text);
+    return v;
   }
 
   // 等价 Python 的 s.split(None, 1)：只切一刀，第二段保留剩余全部。
@@ -305,6 +327,51 @@
       return { op: "fg", name: fgn, x: fx, y: fy, alpha: falpha, line: n };
     }
 
+    if (head === "anim") {
+      /* P274：立绘参数补间（x / y / alpha / scale）。以前这条只能在电脑端写，
+         手机端解析器直接报「暂时写不了」，但播放器（myonl-core.js / myonl-player.js）
+         早就会演了 —— 只差这一层语法。字段与校验逐条照 engine/parser.py。 */
+      var animArgs = argstr.split(/\s+/).filter(Boolean);
+      if (animArgs.length < 3 || animArgs.length > 4) {
+        throw synErr(n, "@anim 需要 3 个参数（角色ID 参数=起始~结束|目标 秒数），"
+          + "可追加 ease=linear|ease_in|ease_out|ease_in_cubic|...（T7 共 22 种）");
+      }
+      var animChar = animArgs[0];
+      if (animArgs[1].indexOf("=") < 0) {
+        throw synErr(n, '@anim 的参数应为 参数=值（如 x=-100~0），实际为 "' + animArgs[1] + '"');
+      }
+      var apName = animArgs[1].split("=")[0];
+      var apVal = animArgs[1].slice(apName.length + 1);
+      if (ANIM_PARAMS.indexOf(apName) < 0) {
+        throw synErr(n, '@anim 支持的参数：x / y / alpha / scale，实际为 "' + apName + '"');
+      }
+      var animFrom = null;
+      if (apVal.indexOf("~") >= 0) {
+        var tilde = apVal.indexOf("~");
+        animFrom = animValue(n, apName, apVal.slice(0, tilde));
+        apVal = apVal.slice(tilde + 1);
+      }
+      var animTo = animValue(n, apName, apVal);
+      if (!NUMBER.test(animArgs[2])) {
+        throw synErr(n, '@anim 的秒数应为数字，实际为 "' + animArgs[2] + '"');
+      }
+      if (Number(animArgs[2]) < 0) throw synErr(n, "@anim 的秒数不能为负，实际为 " + animArgs[2]);
+      var animEase = "linear";
+      if (animArgs.length === 4) {
+        if (animArgs[3].indexOf("ease=") !== 0) {
+          throw synErr(n, 'ease 格式应为 ease=<曲线名>，实际为 "' + animArgs[3] + '"');
+        }
+        animEase = animArgs[3].slice(5);
+        if (EASE_NAMES.indexOf(animEase) < 0) {
+          throw synErr(n, 'ease 只能是 ' + EASE_NAMES.slice().sort().join(" / ") + ' 之一，实际为 "' + animEase + '"');
+        }
+      }
+      var animIns = { op: "anim", char: animChar, param: apName, to: animTo,
+        secs: num(animArgs[2]), ease: animEase, line: n };
+      if (animFrom !== null) animIns.from = animFrom;
+      return animIns;
+    }
+
     if (head === "camera") {
       var camArgs = argstr.split(/\s+/).filter(Boolean);
       if (camArgs.length < 2) throw synErr(n, "@camera 需要 子命令(pan/zoom/shake/reset) + 参数");
@@ -507,9 +574,9 @@
 
     var unsNames = UNSUPPORTED_DIRECTIVES.map(function (d) { return "@" + d; }).join(" / ");
     throw synErr(n, '未知指令 "@' + head + '"（手机端解析器支持：@character @bg @music @sfx @show @hide @wait '
-      + '@chapter @label @jump @end @set @if @video @voice @cg @fg @camera @transition @choice: '
+      + '@chapter @label @jump @end @set @if @video @voice @cg @fg @anim @camera @transition @choice: '
       + '"@[角色] 文本" "@ 文本"；暂时写不了的是 ' + unsNames
-      + '（@anim、@include 的成品在手机上能演，@plug 连成品也不演：播放器没有插件实现））');
+      + '（@include 的成品在手机上能演（电脑端打包时已内联展开），@plug 连成品也不演：播放器没有插件实现））');
   };
 
   Parser.prototype.sayNext = function (line) {

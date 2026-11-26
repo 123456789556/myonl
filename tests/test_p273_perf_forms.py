@@ -115,7 +115,7 @@ def test_scene_hooks_present():
     assert "var pl = window.MYONLPerf.line(p)" in SCENE
     assert "window.MYONLPerf.fixVoices(outSeg)" in SCENE
     # 旧行必须真的被清掉，否则同一场里会出现两条同名演出
-    assert r'/^@(voice|cg|fg|camera|transition)\b/.test(seg[pz])) seg[pz] = null' in SCENE
+    assert r'/^@(voice|cg|fg|camera|transition|anim)\b/.test(seg[pz])) seg[pz] = null' in SCENE
 
 
 def test_perf_file_is_shipped():
@@ -139,7 +139,7 @@ def test_render_makes_a_real_form_for_each_op():
     assert html.count('class="sf-perf"') == 5
     for cls in ["sf-p-sound", "sf-p-name", "sf-p-x", "sf-p-y", "sf-p-alpha", "sf-p-from", "sf-p-to", "sf-p-dir", "sf-p-secs", "sf-p-kind"]:
         assert cls in html, cls
-    assert html.count("sf-p-add") == 5
+    assert html.count("sf-p-add") == 6   # P274 加第 6 条：补间
     assert 'data-op="transition"' in html and "@transition wipe 右 0.5" in html
     # 默认折叠：不占台词的位置；加过东西后靠 model.perfOpen 保持展开
     assert '<details class="sf-fold sf-perf-box">' in html

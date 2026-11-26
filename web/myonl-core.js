@@ -287,8 +287,9 @@
               const f = Number(ins.from);
               from = isNaN(f) ? 0 : f;
             }
-            rec[p] = {from: from, to: to, secs: secs, t0: nowMs()};
-            return {type: "anim", char: ch, param: p, from: from, to: to, secs: secs};
+            rec[p] = {from: from, to: to, secs: secs, ease: ins.ease || "linear", t0: nowMs()};
+            return {type: "anim", char: ch, param: p, from: from, to: to, secs: secs,
+                    ease: ins.ease || "linear"};
           }
           case "end":
             state.ended = true;

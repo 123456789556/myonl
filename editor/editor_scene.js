@@ -504,14 +504,18 @@
     var exprs = {};
     lib.forEach(function (c) { Object.keys(c.avatars || {}).forEach(function (k) { exprs[k] = 1; }); });
     var images = assetList("images"), audios = assetList("audio");
+    var videos = assetList("videos");
     var h = [];
     h.push('<div class="sf-scene"><span class="sf-label">场景</span><b>' + esc(model.name) + "</b></div>");
     h.push('<div class="sf-stage-wrap"><div class="sf-stage" id="sfStage"></div><div class="sf-stage-hint">拖动角色调整位置 · 双击复位 · 也可用下面的位置下拉</div></div>');
-    h.push('<details class="sf-fold"><summary class="sf-sec sf-sec-res">场景设置 <span class="sf-hint">背景 · 音乐 · 图层 · 跳转</span></summary>');
-    h.push('<div class="sf-row"><span class="sf-label">背景</span><select id="sfBg">' + optsHtml(images, model.bg ? model.bg.name : "", "（保持不变）") + "</select></div>");
-    h.push('<div class="sf-row"><span class="sf-label">音乐</span><select id="sfMusic">' + optsHtml(audios, model.music ? model.music.name : "", "（保持不变）") + "</select></div>");
-    var videos = assetList("videos");
-    h.push('<div class="sf-row"><span class="sf-label">视频</span><select id="sfVideo" title="@video 全屏视频：只有视频、没有台词的过场就靠它">' + optsHtml(videos, model.video ? model.video.name : "", "（无视频）") + "</select></div>");
+    // P274：底板 —— 背景/视频/音乐按渲染顺序排在最上面，不再藏进折叠里。
+    // 前景带 x/y/alpha 且能中途换，归「演出」卡管，这里不重复放一个写手。
+    h.push('<div class="sf-base"><span class="sf-base-tag">底板</span>' +
+      '<label class="sf-base-cell">背景<select id="sfBg">' + optsHtml(images, model.bg ? model.bg.name : "", "（不变）") + "</select></label>" +
+      '<label class="sf-base-cell">视频<select id="sfVideo" title="@video 全屏视频：只有视频、没有台词的过场就靠它">' + optsHtml(videos, model.video ? model.video.name : "", "（无）") + "</select></label>" +
+      '<label class="sf-base-cell">音乐<select id="sfMusic">' + optsHtml(audios, model.music ? model.music.name : "", "（不变）") + "</select></label>" +
+      "</div>");
+    h.push('<details class="sf-fold"><summary class="sf-sec sf-sec-res">图层 <span class="sf-hint">背景 &lt; 立绘 &lt; 前景 &lt; UI</span></summary>');
     h.push('<datalist id="sfExprList">' + Object.keys(exprs).map(function (k) { return '<option value="' + esc(k) + '">'; }).join("") + "</datalist>");
     h.push(layerPanelHtml());
     h.push("</details>");
@@ -531,7 +535,9 @@
         '<button type="button" class="icon-btn sf-del" data-kind="char" data-i="' + i + '">✕</button></div>');
     });
     h.push("</div>");
-    h.push(window.MYONLPerf.render(model, { images: images, audios: audios, videos: videos }));
+    var castNames = model.chars.filter(function (c) { return !c.del && c.name; }).map(function (c) { return c.name; });
+    h.push(window.MYONLPerf.render(model, { images: images, audios: audios, videos: videos,
+      chars: castNames.length ? castNames : pool }));
     h.push(window.MYONLStrip.render(model, pool, { esc: esc, optsHtml: optsHtml }));
     h.push('<div class="sf-sec sf-sec-opt">选项（@choice） <button type="button" class="icon-btn" id="sfAddOpt">＋ 加选项</button></div>');
     h.push('<div id="sfOpts">');
@@ -706,7 +712,9 @@
         model.perf = model.perf || [];
         model.perf.push({ added: true, op: op, kind: op === "camera" ? "pan" : "dissolve",
           sound: "", name: op === "fg" ? "无" : "", x: 0, y: 0, alpha: 1,
-          dir: "左", secs: 0.6, amp: 12, from: 1, to: 1.2 });
+          dir: "左", secs: op === "anim" ? 1 : 0.6, amp: 12,
+          from: op === "anim" ? 0 : 1, to: op === "anim" ? 0 : 1.2,
+          param: op === "anim" ? "x" : null, ease: op === "anim" ? "linear" : null });
         if (op === "voice" && !model.says.length) toast("@voice 要跟在台词后面：先加一句台词");
         renderForm();
       });
@@ -926,7 +934,7 @@
     // 演出指令（P273）：原有行原位改写，删掉的置空，新加的放在场景末（@voice 由 fixVoices 归位）
     var perfAt = {};
     for (var pz = 0; pz < seg.length; pz++) {
-      if (seg[pz] !== null && /^@(voice|cg|fg|camera|transition)\b/.test(seg[pz])) seg[pz] = null;
+      if (seg[pz] !== null && /^@(voice|cg|fg|camera|transition|anim)\b/.test(seg[pz])) seg[pz] = null;
     }
     (model.perf || []).forEach(function (p) { if (p.i != null) perfAt[p.i] = 1; });
     var perfEnd = firstEnd >= 0 ? firstEnd - 1 : seg.length - 1;
