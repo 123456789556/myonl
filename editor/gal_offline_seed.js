@@ -33,26 +33,65 @@
     }
   } catch (e) { markDone(); }
 
-  // 素材卡片缩略图补丁：<img> 走浏览器原生取图通道，绕得过 fetch 劫持，
-  // 离线静态页上 /api/thumb 是 404。按名字回 IndexedDB 取 dataURL 直接换 src，
-  // 素材列表里的图才真亮出来（和内核里 /api/asset/images/ 那道补丁同思路）。
-  function patchThumbs() {
+  // 图片时序救援：场景舞台 / 角色头像 / 素材卡片的 <img> 走浏览器原生取图通道，
+  // 绕得过 fetch 劫持；离线静态服务对 /api/asset/images/、/api/thumb 回 404。
+  // 舞台图还挂了内联 onerror="this.remove()"，约 100ms 内抢先删节点，轮询到点时
+  // 节点已经没了。两道互补：① document 捕获阶段抢在内联处理器之前掐掉事件；
+  // ② MutationObserver 扫晚挂载 / lazy 加载、还没发 error 的卡图。
+  // 只认 /api/asset/images/ 与 /api/thumb 两类 src，别的图一概不碰。
+  function lookupData(am, name) {
+    return am
+      ? window.MYONLAssets.get(name).then(function (v) { return v && v.dataUrl; })
+      : window.MYONLAssets.thumbOf(name);
+  }
+  function resolveImg(img) {
+    if (!img || img.tagName !== "IMG" || !window.MYONLAssets) return;
+    var src = String(img.getAttribute("src") || "");
+    var am = src.match(/^\/api\/asset\/images\/(.*)$/);
+    var tm = src.match(/^\/api\/thumb\?[^#]*name=([^&]+)/);
+    if (!am && !tm) return;
+    if (img.dataset.offRescue) return;
+    img.dataset.offRescue = "1";
+    var name = decodeURIComponent(am ? am[1] : tm[1]);
+    var orig = img.onerror;
+    // 有内联 onerror 的（舞台图）先摘下来：就算捕获阶段挡不住 target 自身处理器，
+    // 节点也不会被 this.remove() 抢先删掉；原处理器留着，取不到图时补回。
+    if (am && typeof orig === "function") img.onerror = null;
+    lookupData(!!am, name).then(function (u) {
+      if (u) { img.src = u; return; }
+      if (am && typeof orig === "function") orig.call(img);
+    }).catch(function () {
+      if (am && typeof orig === "function") orig.call(img);
+    });
+  }
+  function sweep(root) {
     if (!window.MYONLAssets) return;
-    var ims = document.querySelectorAll('img[src*="/api/thumb?name="]');
-    for (var i = 0; i < ims.length; i++) {
-      var im = ims[i];
-      if (im.dataset.offThumbFixed) continue;
-      var m = String(im.getAttribute("src") || "").match(/[?&]name=([^&]+)/);
-      if (!m) continue;
-      var nm = decodeURIComponent(m[1]);
-      im.dataset.offThumbFixed = "1";
-      (function (img, name) {
-        window.MYONLAssets.thumbOf(name).then(function (u) {
-          if (u) img.src = u;
-        }).catch(function () {});
-      })(im, nm);
+    if (root && root.tagName === "IMG") resolveImg(root);
+    var ims = root && root.querySelectorAll ? root.querySelectorAll("img") : [];
+    for (var i = 0; i < ims.length; i++) resolveImg(ims[i]);
+  }
+  function rescueAssetError(e) {
+    var img = e.target;
+    if (!img || img.tagName !== "IMG" || !window.MYONLAssets) return;
+    var src = String(img.getAttribute("src") || "");
+    if (/^\/api\/asset\/images\//.test(src) || /^\/api\/thumb\?[^#]*name=/.test(src)) {
+      e.stopPropagation();
+      resolveImg(img);
     }
   }
-  setInterval(patchThumbs, 700);
-  document.addEventListener("DOMContentLoaded", patchThumbs);
+  document.addEventListener("error", rescueAssetError, true);
+  var mo = new MutationObserver(function (muts) {
+    for (var i = 0; i < muts.length; i++) {
+      var m = muts[i];
+      if (m.type === "childList") {
+        for (var j = 0; j < m.addedNodes.length; j++) {
+          if (m.addedNodes[j].nodeType === 1) sweep(m.addedNodes[j]);
+        }
+      } else if (m.attributeName === "src" && m.target.tagName === "IMG") {
+        resolveImg(m.target);
+      }
+    }
+  });
+  mo.observe(document, { childList: true, subtree: true, attributes: true, attributeFilter: ["src"] });
+  document.addEventListener("DOMContentLoaded", function () { sweep(document); });
 })();
