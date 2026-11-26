@@ -2906,7 +2906,9 @@ input[type="color"] {
     padding: 10px 12px 6px; background: var(--base);
   }
   .m-modebar .m-mode {
-    flex: 1 1 0; height: 44px; border-radius: 4px; cursor: pointer;
+    /* P278：原来 flex:1 各占一半 = 两条 400 宽的巨钮，压得整页发闷。
+       改成内容宽的小分段（触控高仍 44），左边一组，右边留白不再是"两条大条撑满"。 */
+    flex: 0 0 auto; min-width: 104px; padding: 0 16px; height: 44px; border-radius: 4px; cursor: pointer;
     border: 1px solid var(--surface1); background: var(--mantle);
     color: var(--subtext0); font-size: 14px; font-weight: 600;
     transition: background .16s, border-color .16s, color .16s;

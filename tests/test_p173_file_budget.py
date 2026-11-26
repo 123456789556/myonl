@@ -55,7 +55,7 @@ FILE_BUDGET: dict[str, int] = {
     "editor/mobile/ui_polish.js": 548,   # P188 主链路收口 + P189 结构两层（模式槽/预览浮条/空态合成/外观入口）+ P190 场景页时序兜底（场景列表重扫 + 空态恢复 + 空舞台占位 + 重扫不弹 toast）；P194 移进 mobile/，路径随搬迁改
     "editor/ui-fix.css": 341,   # P277 空轨道收掉 + 分界线 +7（330→337）；   # P276 空态预览整块砍掉 -8（占位块/灰字/比例三行一起删，336→328）；     # P274 底板条样式 +9（.sf-base / .sf-base-cell / 44 高 select，327→336）；P186 手机外壳 + P188 主链路样式 + P189 结构两层（浮条/场景 order/外观预览置顶）+ P190 空舞台占位（宽度显式给，否则 padding 撑高的舞台会塌成 0），新文件；P268 空舞台改成跟真舞台同比例（+3 行：height:0/min-height:0/padding-bottom 一行落点 + 两行注释）
     "editor/perf.css": 21,        # P273 演出面板样式（新文件，不收进 3471 的 editor.css）
-    "editor/editor.css": 3474,   # P276 删掉 .m-gzoom 死规则 -3（3471→3468）；   # P267 小总览 / 竖横排开关 / 正文行距 +8；P265 流程图样式 / 预览顶边齐平 / 场景页头并进顶栏 +41；P264 横屏把预览挪到左、左栏宽度走 --m-rail、预览收起条 +12   # P179 首页去大卡后布局收口 +5；P185 顶部安全带（挖孔/侧边 cutout）+18；P190 +25 手机场景两态真正分开（#sceneForm 的 id 级 display 压过 class 级 none）+ 横屏列表不再被表单挤成 29px + 横屏右侧不留缝
+    "editor/editor.css": 3478,   # P278 逐句/源码两枚巨钮改成内容宽分段（+4）；   # P276 删掉 .m-gzoom 死规则 -3（3471→3468）；   # P267 小总览 / 竖横排开关 / 正文行距 +8；P265 流程图样式 / 预览顶边齐平 / 场景页头并进顶栏 +41；P264 横屏把预览挪到左、左栏宽度走 --m-rail、预览收起条 +12   # P179 首页去大卡后布局收口 +5；P185 顶部安全带（挖孔/侧边 cutout）+18；P190 +25 手机场景两态真正分开（#sceneForm 的 id 级 display 压过 class 级 none）+ 横屏列表不再被表单挤成 29px + 横屏右侧不留缝
     "engine/editor.py": 3063,   # P199a 加 /editor_lint.js /editor_find.js /i18n.js 三条路由与 serve 方法（+15，3043→3058）；P201 加 /editor_tryplay.js 路由与 _serve_tryplay_js（+5，3058→3063）；P198 新增 /editor_draft.js 路由与 _serve_draft_js（+5，3038→3043）；P184b asset_thumb.js 静态路由 +1；P188 ui_polish.js 路由 +1
     "engine/parser.py": 1080,
 }
