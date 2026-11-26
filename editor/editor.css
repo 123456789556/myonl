@@ -2989,14 +2989,14 @@ input[type="color"] {
   .scene-page .sf-actions { padding: 14px 0 8px; }
   .scene-page #sfSaveBtn { width: 100% !important; height: 48px !important; font-size: 15px; font-weight: 600;
     background: rgba(79, 140, 255, .14) !important; border: 1px solid rgba(79, 140, 255, .5) !important; color: #cfe0ff !important; border-radius: 4px !important; }
-  .scene-page .sf-add, .scene-page .icon-btn { min-width: 42px; min-height: 38px; }
+  .scene-page .sf-add, .scene-page .icon-btn { min-width: 42px; min-height: 44px; }
 }
 
 /* P265 左栏流程图与它的页头开关：竖屏 / 桌面一律不存在（下面的横屏块才把它放出来） */
 #mGraph, #mGraphBar { display: none; }
 
-/* 横屏（≥700 宽）剧本页：左栏场景树 + 右栏正文，一屏同时看见两边；<700 不分栏（360 高切两栏，正文只剩十几字宽）。 */
-@media (orientation: landscape) and (min-width: 700px) {
+/* 横屏（≥700 宽）剧本页：左栏场景树 + 右栏正文；平板竖屏（宽 ≥700 且高 ≥700）同样分栏，舞台不铺满；<700 不分栏。 */
+@media (orientation: landscape) and (min-width: 700px), (min-width: 700px) and (min-height: 700px) {
   html.m-shell.m-wide #scenePage.center-page.scene-page.open { height: calc(100vh - 92px) !important; height: calc(var(--m-vvh, 100dvh) - 92px) !important; bottom: auto !important; padding-bottom: 0 !important; }
   html.m-shell .scene-page .scene-body { flex-direction: row; }
   html.m-shell .scene-page .scene-list { width: var(--m-rail, 232px); flex: 0 0 var(--m-rail, 232px); border-right: 1px solid var(--surface0); }
@@ -3037,14 +3037,15 @@ input[type="color"] {
   html.m-shell.m-stage-off #scenePage.m-detail #sceneForm { grid-template-columns: 34px minmax(0, 1fr) !important; }
   html.m-shell.m-stage-off #scenePage .sf-stage-wrap { position: relative !important; align-self: start !important; height: 96px; min-height: 0; padding: 0 !important; border-right: 1px solid var(--surface1); background: none !important; }
   html.m-shell.m-stage-off #scenePage .sf-stage-wrap > :not(.m-stage-btn), html.m-shell.m-stage-off #scenePage .sf-stage-wrap.m-stage-empty::after { display: none !important; }
-  /* P268 两条把手（左栏 / 预览）：命中区 22px，看得见的是中间一颗 4x44 短条；拖动时拉长变蓝。
-     触摸下必须 touch-action:none，否则手指一压就被滚动/缩放抢走（「看起来好用起来不好」） */
+  /* P268 两条把手：命中区 22px 不动；可见物是 1px 细线，挪到外侧离开舞台图 ≥8px；touch-action:none 防滚动抢手势 */
   .m-rail-grip, .m-prev-grip { position: absolute; z-index: 6; top: 52px; bottom: 0; width: 22px; margin-left: -11px; cursor: col-resize; background: transparent; touch-action: none; outline: none; }
   .m-rail-grip { left: var(--m-rail, 232px); }
-  .m-prev-grip { left: calc(var(--m-rail, 232px) + var(--m-prev, 34%)); }
-  .m-rail-grip::after, .m-prev-grip::after { content: ""; position: absolute; left: 8px; top: 12px; width: 5px; height: 48px; margin-top: 0; border-radius: 3px; background: rgba(79, 140, 255, .35); transition: height .12s, background .12s; }
-  .m-rail-grip:hover::after, .m-prev-grip:hover::after { background: rgba(79, 140, 255, .6); }
-  .m-rail-grip.on::after, .m-prev-grip.on::after { height: 76px; background: rgba(79, 140, 255, .9); }
+  .m-prev-grip { left: calc(var(--m-rail, 232px) + var(--m-prev, 34%) + 13px); }
+  .m-rail-grip::after, .m-prev-grip::after { content: ""; position: absolute; top: 12px; width: 1px; height: 44px; background: rgba(79, 140, 255, .28); transition: width .12s, height .12s, background .12s; }
+  .m-rail-grip::after { left: 2px; } .m-prev-grip::after { left: 19px; }
+  .m-rail-grip:hover::after, .m-prev-grip:hover::after { background: rgba(79, 140, 255, .45); }
+  .m-rail-grip.on::after, .m-prev-grip.on::after { width: 2px; height: 56px; background: rgba(79, 140, 255, .8); }
+  .m-rail-grip.on::after { left: 1px; } .m-prev-grip.on::after { left: 19px; }
   html.m-shell.m-dragging, html.m-shell.m-dragging * { cursor: col-resize !important; user-select: none; }
   /* P271：原来 right:6px，30px 的 × 正好压在预览右边界那条 22px 拖拽把手上（把手 z 更高），
      实测 x 中心点落到元素是 mPrevGrip —— 看得见却点不动。往内挪 30px 让开把手。 */
@@ -3065,7 +3066,6 @@ html.m-shell #mGraphBar .m-gori { display: none; }   /* P277：竖排/横排收�
 html.m-shell .menubar #sceneAdd, html.m-shell .menubar #sceneSave { display: none !important; }
 /* P277：视图切换归到右侧一组（视图 / ⋯ / 试玩 / 菜单），别跟作品名挤在一块 */
 html.m-shell .menubar #mGraphBar { margin-left: auto; margin-right: 8px; }
-  html.m-shell:not(.m-graph-on) #mGraphBar .m-gori { display: none; }
   /* 小总览：右下角一块，图没放大时不出 */
   #mGraph #mMini { position: absolute; right: 6px; bottom: 6px; width: 88px; height: 64px; background: var(--card-bg); border: 1px solid var(--surface0); border-radius: 4px; }
   #mGraph #mMini .mm-e { stroke: var(--surface1); stroke-width: 1; } #mGraph #mMini .mm-e.back { stroke-dasharray: 2 2; }
@@ -3084,7 +3084,7 @@ html.m-shell .menubar #mGraphBar { margin-left: auto; margin-right: 8px; }
   #mGraph .m-g-empty { fill: var(--subtext0); font-size: 12px; }
   html.m-shell .scene-page.m-detail .scene-list { display: block; }
   html.m-shell #scenePage #sceneForm { flex: 1 1 auto; min-width: 0; padding-bottom: 12px !important; }
-  #scenePage.scene-page .m-modebar { padding: 6px 10px 4px; } #scenePage.scene-page .m-modebar .m-mode { height: 34px; font-size: 13px; }
+  #scenePage.scene-page .m-modebar { padding: 6px 10px 4px; } #scenePage.scene-page .m-modebar .m-mode { font-size: 13px; }
   html.m-shell .scene-page.m-detail .scn-back { display: none; } html.m-shell .scene-page.m-detail .cp-title { display: block; }
   html.m-shell .scene-page.m-detail .scn-more { display: inline-flex !important; } html.m-shell .scene-page #sceneForm > #mVarEntry { order: 6; }
   /* 左栏本身就是场景列表，「＋新场景」不用退回列表；「变量与条件」是配菜，排台词后免得把台词卡挤出屏幕 */
@@ -3178,7 +3178,7 @@ html.m-shell .menubar #mGraphBar { margin-left: auto; margin-right: 8px; }
    原来不管在哪一态都把 #sceneForm 打开，结果横屏进场景页是「列表 29px + 表单」，
    列表被压成一条缝，四幕只能看见第一行。横屏也该先看列表、点一幕再进详情。
    ============================================================ */
-@media (max-height: 520px), (min-width: 900px) and (pointer: coarse) and (max-width: 1400px) {
+@media (max-height: 520px), (min-width: 900px) and (pointer: coarse) and (max-width: 1400px), (min-width: 700px) and (min-height: 700px) and (pointer: coarse) {
   #scenePage.m-detail #sceneForm {
     display: grid !important;
     grid-template-columns: minmax(0, 1fr) minmax(200px, 38%) !important;

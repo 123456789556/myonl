@@ -32,6 +32,7 @@
   pane.appendChild(page);
 
   var listEl = $("sceneList"), formEl = $("sceneForm");
+  if (window.MYONLSetup) window.MYONLSetup.watch(formEl);   // 变量与条件入口收进「场景设置」同一处
   // 搜索框放在两栏上方的工具条里：直接插进 .scene-body 会多一个 flex 子项，把
   // 左侧列表和右侧表单挤成一条缝（并溢出到预览面板上，导致控件点不到）。
   var toolsBar = document.createElement("div");
@@ -503,20 +504,24 @@
     var h = [];
     h.push('<div class="sf-scene"><span class="sf-label">场景</span><b>' + esc(model.name) + "</b></div>");
     h.push('<div class="sf-stage-wrap"><div class="sf-stage" id="sfStage"></div><div class="sf-stage-hint">拖动角色调整位置 · 双击复位 · 也可用下面的位置下拉</div></div>');
+    // 一级：台词流先看见，演出入口跟台词同层；素材/角色/图层/选项/跳转全收进二级一条折叠。
+    h.push(window.MYONLStrip.render(model, pool, { esc: esc, optsHtml: optsHtml }));
+    var castNames = model.chars.filter(function (c) { return !c.del && c.name; }).map(function (c) { return c.name; });
+    h.push(window.MYONLPerf.render(model, { images: images, audios: audios, videos: videos, chars: castNames.length ? castNames : pool }));
+    var s = [];
     // P279：素材收成一个区块（图/视频/音乐/角色同一处进出）；序列帧/GIF 无独立写手不摆空格，前景归演出卡。
-    h.push('<div class="sf-asset">');
-    h.push('<div class="sf-sec sf-sec-asset">素材</div>');
-    h.push('<div class="sf-base">' +
+    s.push('<div class="sf-asset">');
+    s.push('<div class="sf-sec sf-sec-asset">素材</div>');
+    s.push('<div class="sf-base">' +
       '<label class="sf-base-cell">背景<select id="sfBg">' + optsHtml(images, model.bg ? model.bg.name : "", "（不变）") + "</select></label>" +
       '<label class="sf-base-cell">视频<select id="sfVideo" title="@video 全屏视频：只有视频、没有台词的过场就靠它">' + optsHtml(videos, model.video ? model.video.name : "", "（无）") + "</select></label>" +
       '<label class="sf-base-cell">音乐<select id="sfMusic">' + optsHtml(audios, model.music ? model.music.name : "", "（不变）") + "</select></label>" +
       "</div>");
-    h.push('<div class="sf-asset-char"><span class="sf-label">角色</span>' +
-      '<button type="button" class="icon-btn" id="sfAddChar">＋ 加角色</button></div>');
-    h.push('<div id="sfChars">');
+    s.push('<div class="sf-asset-char"><span class="sf-label">角色</span><button type="button" class="icon-btn" id="sfAddChar">＋ 加角色</button></div>');
+    s.push('<div id="sfChars">');
     model.chars.forEach(function (c, i) {
       if (c.del) return;
-      h.push('<div class="sf-cast" data-i="' + i + '">' +
+      s.push('<div class="sf-cast" data-i="' + i + '">' +
         '<div class="sf-cast-main"><select class="sf-char">' + optsHtml(pool, c.name, pool.length ? "角色…" : "（还没建角色）") + '</select>' +
         '<button type="button" class="icon-btn sf-edit-char" data-i="' + i + '" title="编辑这个角色（会打开角色库）">✎</button>' +
         '<button type="button" class="icon-btn sf-del" data-kind="char" data-i="' + i + '">✕</button></div>' +
@@ -530,26 +535,21 @@
         '<option value="右"' + (c.pos === "右" ? " selected" : "") + '>右</option></select>' +
         '</div></div>');
     });
-    h.push("</div></div>");
-    h.push('<details class="sf-fold"><summary class="sf-sec sf-sec-res">图层 <span class="sf-hint">背景 &lt; 立绘 &lt; 前景 &lt; UI</span></summary>');
-    h.push('<datalist id="sfExprList">' + Object.keys(exprs).map(function (k) { return '<option value="' + esc(k) + '">'; }).join("") + "</datalist>");
-    h.push(layerPanelHtml());
-    h.push("</details>");
-    var castNames = model.chars.filter(function (c) { return !c.del && c.name; }).map(function (c) { return c.name; });
-    h.push(window.MYONLPerf.render(model, { images: images, audios: audios, videos: videos,
-      chars: castNames.length ? castNames : pool }));
-    h.push(window.MYONLStrip.render(model, pool, { esc: esc, optsHtml: optsHtml }));
-    h.push('<div class="sf-sec sf-sec-opt">选项（@choice） <button type="button" class="icon-btn" id="sfAddOpt">＋ 加选项</button></div>');
-    h.push('<div id="sfOpts">');
+    s.push("</div></div>");
+    s.push('<details class="sf-fold"><summary class="sf-sec sf-sec-res">图层 <span class="sf-hint">背景 &lt; 立绘 &lt; 前景 &lt; UI</span></summary>');
+    s.push('<datalist id="sfExprList">' + Object.keys(exprs).map(function (k) { return '<option value="' + esc(k) + '">'; }).join("") + "</datalist>");
+    s.push(layerPanelHtml());
+    s.push("</details>");
+    s.push('<div class="sf-sec sf-sec-opt">选项（@choice） <button type="button" class="icon-btn" id="sfAddOpt">＋ 加选项</button></div>');
+    s.push('<div id="sfOpts">');
     model.options.forEach(function (o, i) {
       if (o.del) return;
-      h.push('<div class="sf-opt" data-i="' + i + '"><input class="sf-opt-text" placeholder="选项文字" value="' + esc(o.text) + '">' +
-        '<input class="sf-opt-target" placeholder="跳转到 label" value="' + esc(o.target) + '">' +
-        '<button type="button" class="icon-btn sf-del" data-kind="opt" data-i="' + i + '">✕</button></div>');
+      s.push('<div class="sf-opt" data-i="' + i + '"><input class="sf-opt-text" placeholder="选项文字" value="' + esc(o.text) + '"><input class="sf-opt-target" placeholder="跳转到 label" value="' + esc(o.target) + '"><button type="button" class="icon-btn sf-del" data-kind="opt" data-i="' + i + '">✕</button></div>');
     });
-    h.push("</div>");
-    h.push('<details class="sf-fold"><summary class="sf-sec">结束跳转 <span class="sf-hint">这一场演完跳哪</span></summary>');
-    h.push('<div class="sf-row"><span class="sf-label">结束跳转</span><input id="sfJump" placeholder="@jump 目标（留空=不跳）" value="' + esc(model.jump ? model.jump.target : "") + '"></div></details>');
+    s.push("</div>");
+    s.push('<details class="sf-fold"><summary class="sf-sec">结束跳转 <span class="sf-hint">这一场演完跳哪</span></summary>');
+    s.push('<div class="sf-row"><span class="sf-label">结束跳转</span><input id="sfJump" placeholder="@jump 目标（留空=不跳）" value="' + esc(model.jump ? model.jump.target : "") + '"></div></details>');
+    h.push(window.MYONLSetup.wrap(s.join(""), window.MYONLSetup.summary(model)));
     h.push('<div class="sf-actions"><button type="button" class="icon-btn" id="sfSaveBtn">保存这个场景</button></div>');
     formEl.innerHTML = h.join("");
     wire();

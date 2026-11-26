@@ -263,19 +263,17 @@ html.kb-open .m-sheet-body { bottom: var(--kb-h, 0px) !important; }
      原来「角色/台词/舞台/图层/选项」交错排，一开详情满屏是背景音乐视频。
      手机重排：确认画面 → 台词 → 选项 → 设置与角色收底 → 保存。 */
   #scenePage #sceneForm > .sf-stage-wrap { order: 1; }
-  #scenePage #sceneForm > .sf-asset      { order: 2; }
-  #scenePage #sceneForm > .sf-sec-say    { order: 3; }
+  #scenePage #sceneForm > .sf-sec-say    { order: 2; }
   #scenePage #sceneForm > #sfSays,
-  #scenePage #sceneForm > .sf-cards      { order: 4; }
-  #scenePage #sceneForm > .sf-sec-opt    { order: 5; }
-  #scenePage #sceneForm > #sfOpts        { order: 6; }
-  #scenePage #sceneForm > .sf-fold       { order: 10; }
+  #scenePage #sceneForm > .sf-cards      { order: 3; }
+  #scenePage #sceneForm > .sf-perf-box   { order: 4; }
+  #scenePage #sceneForm > .sf-setup      { order: 10; }
   #scenePage #sceneForm > .sf-actions    { order: 20; }
   /* 舞台预览只是确认画面，不要占掉半屏 */
   /* 宽度必须显式给：这一列是 flex，`.sf-stage` 用 padding-bottom 百分比撑高度，
      宽度一塌高度就跟着变 0 —— 竖屏实测 wrap 是 0×96，画面那块直接消失。 */
-  #scenePage .sf-stage-wrap { width: 100%; max-width: 100%; box-sizing: border-box; max-height: 210px; }
-  #scenePage .sf-stage { max-height: 190px; }
+  #scenePage .sf-stage-wrap { width: 100%; max-width: 100%; box-sizing: border-box; max-height: 170px; }
+  #scenePage .sf-stage { max-height: 150px; }
   #scenePage .sf-stage-hint { display: none; }
   /* 还没选背景时舞台是空的（hint 又被藏了），整块会塌成一个点：
      台词卡顶上突然什么都没有，看不出这里本来该有画面。撑一块占位并把话说清楚。 */

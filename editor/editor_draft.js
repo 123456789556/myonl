@@ -136,17 +136,19 @@
       text = "已保存 " + stamp; color = "var(--green)";
     }
     else if (state === "dirty") { text = "存草稿中…"; color = "var(--yellow)"; }
-    else if (state === "draft") { text = "草稿 " + stamp + " · 未保存"; color = "var(--blue-ink)"; }
+    // 草稿态窄条本身就是丢弃入口（作品工作台屏撤掉后唯一能"不要这版"的地方）。
+    else if (state === "draft") { text = "草稿 " + stamp + " · 点这里丢弃"; color = "var(--blue-ink)"; }
     else if (state === "fail") { text = "自动保存失败 · 点这里重试"; color = "var(--red)"; }
     el.textContent = text;
     el.style.color = color;
     el.style.opacity = "1";
-    el.style.pointerEvents = (state === "fail" || orp) ? "auto" : "none";
+    el.style.pointerEvents = (state === "fail" || state === "draft" || orp) ? "auto" : "none";
     el.onclick = state === "fail" ? function () { flush(); }
       : (orp ? function () {
           try { window.__editor.toast("回作品页打开「" + orp.name + "」，进去就会接上那份内容"); }
           catch (e) {}
-        } : null);
+        } : state === "draft" ? function () { var q = currentProject(readLib()); drop(q && q.name); }
+        : null);
     // 稳定态 2.5 秒后淡下去，但不清空 —— 点一下/鼠标移上来还能看到
     if (el._fade) clearTimeout(el._fade);
     if (state === "saved" || state === "draft") {
@@ -399,9 +401,8 @@
       new MutationObserver(function () { paint(); })
         .observe(document.body, { attributes: true, attributeFilter: ["class"] });
     } catch (e) {}
-    // 自动接上（路径 B）：工作台的提示是"预告"，不是"开关"。手比眼快直接点
-    // 「继续创作」是最常发生的路径，靠用户点一下恢复等于靠不住 —— 所以进编辑器
-    // 就把草稿灌进去。不想要的人在作品页点「丢弃」，那时草稿已经删了，这里接不到。
+    // 自动接上（路径 B）：进编辑器就把草稿灌进去，不靠用户再点一下恢复。
+    // 不想要的人点草稿窄条丢弃（见 paint() 的 draft 分支），草稿删了这里就接不到。
     setTimeout(function () { autoApply(0); }, 250);
   }
 

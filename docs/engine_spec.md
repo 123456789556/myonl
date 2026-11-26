@@ -162,9 +162,10 @@ engine/timeline.py（镜头 / 转场 / 立绘补间 / 停留调度，不进 Game
 ### 2.9 手机端未实现的指令
 
 手机端解析器遇到下列指令会抛清楚的中文错误并指出第几行，不静默走偏：
-`@voice` `@anim` `@fg` `@cg` `@camera` `@transition` `@plug` `@include`。
+`@plug` `@include`。
 手机端已覆盖：`@character` `@bg` `@music` `@sfx` `@show` `@hide` `@wait` `@chapter`
-`@label` `@jump` `@end` `@set` `@if` `@video` + `@choice:` + 台词行。完整边界见 [手机端编游戏](mobile/手机端编游戏.md)。
+`@label` `@jump` `@end` `@set` `@if` `@video` `@voice` `@cg` `@fg` `@camera` `@transition` `@anim`
++ `@choice:` + 台词行。完整边界见 [手机端编游戏](mobile/手机端编游戏.md)。
 
 ---
 

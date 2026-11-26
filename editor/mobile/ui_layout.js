@@ -60,6 +60,18 @@
     var byHigh = Math.round((window.innerHeight - 150) * 100 / padPct());
     return Math.max(170, Math.min(460, byBody, byHigh));
   }
+  function syncTopbar() {
+    var mb = document.querySelector(".menubar");
+    if (!mb) return;
+    var safe = parseFloat(getComputedStyle(DE).getPropertyValue("--safe-pad-top")) || 0;
+    var row = 0;
+    Array.prototype.forEach.call(mb.children, function (el) {
+      var cs = getComputedStyle(el); if (cs.display === "none") return;
+      var b = el.getBoundingClientRect(); if (b.height > row) row = b.height;
+    });
+    DE.style.setProperty("--m-topbar-h", Math.ceil(safe + row) + "px");
+  }
+  window.__myonlSyncTopbar = syncTopbar;
   function applyPane() {
     if (!shell()) {
       chromeSync(false); DE.classList.remove("m-stage-off", "m-graph-on");
@@ -68,8 +80,8 @@
     DE.style.setProperty("--m-rail", Math.min(Math.max(railPx(), 150), railMax()) + "px");
     DE.style.setProperty("--m-prev", Math.min(Math.max(prevPx(), 170), prevMax()) + "px");
     DE.classList.toggle("m-stage-off", stageOff());
-    // 分栏只在横屏且 >=700 宽成立（同 @media (orientation:landscape) and (min-width:700px)）；竖屏不许多出手柄和按钮
-    var split = window.innerWidth >= 700 && window.innerWidth > window.innerHeight;
+    // 分栏：横屏 ≥700 宽，或平板竖屏（高 ≥700）；窄竖屏不许多出手柄和按钮
+    var split = window.innerWidth >= 700 && (window.innerHeight >= 700 || window.innerWidth > window.innerHeight);
     var g = document.getElementById("mRailGrip"), b = document.getElementById("mStageBtn"), pg = document.getElementById("mPrevGrip");
     if (g) g.style.display = split ? "" : "none";
     if (pg) pg.style.display = split && !stageOff() ? "" : "none";
@@ -78,7 +90,7 @@
       b.textContent = stageOff() ? "\u9884\u89C8" : "\u00D7";
       b.setAttribute("aria-label", stageOff() ? "展开画面预览" : "收起画面预览");
     }
-    graphSync(); chromeSync(split);
+    graphSync(); chromeSync(split); syncTopbar();
   }
   function toggleStage() {
     try { localStorage.setItem(STAGE, stageOff() ? "0" : "1"); } catch (e) {}
@@ -251,7 +263,7 @@
   function cut(s, n) { s = String(s); return s.length > n ? s.slice(0, n - 1) + "\u2026" : s; }
   function own(o, k) { return Object.prototype.hasOwnProperty.call(o, k); }
   function graphOn() { try { return localStorage.getItem(VIEW) !== "list"; } catch (e) { return true; } }
-  function graphSplit() { return shell() && window.innerWidth >= 700 && window.innerWidth > window.innerHeight; }
+  function graphSplit() { return shell() && window.innerWidth >= 700 && (window.innerHeight >= 700 || window.innerWidth > window.innerHeight); }
   // 蓝图可以竖着走也可以横着走（用户：「蓝图可以竖着可以横着」）：默认竖排 = 层往下、同层往右；横排 = 层往右、同层往下
   function graphHori() { try { return localStorage.getItem(ORI) === "h"; } catch (e) { return false; } }
 
@@ -625,7 +637,7 @@
 
   // 返回首页 / 退出编辑器时先清一遍，别把浮层带到上一页
   document.addEventListener("click", function (e) {
-    var t = e.target && e.target.closest ? e.target.closest("#mHomeBack, .m-work-back, .mb-back") : null;
+    var t = e.target && e.target.closest ? e.target.closest("#mHomeBack, .mb-back") : null;
     if (t) cleanOverlays();
   }, true);
 

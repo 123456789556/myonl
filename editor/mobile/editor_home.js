@@ -16,11 +16,6 @@
   }
   // 统一弹窗（P209 新文件 editor_dialog.js）。它没加载成功就退回系统框，别让界面直接哑掉。
   var dlg = function () { return window.MYONLDialog || null; };
-  function dlgInfo(msg, title) {
-    if (dlg()) return dlg().info({ title: title || "提示", msg: msg });
-    try { window.alert(msg); } catch (e) {}
-    return Promise.resolve();
-  }
   function dlgConfirm(o) {
     if (dlg()) return dlg().confirm(o);
     return Promise.resolve(!!window.confirm(((o && o.title) || "") + "\n" + ((o && o.msg) || "")));
@@ -67,8 +62,6 @@
     // 1.5 设置 / 教程抽屉开着 → 先关抽屉。返回键逐层退：抽屉 → 作品列表 → 退出应用
     if (sheet) { sheet.remove(); sheet = null; return true; }
     if (tutSheet) { tutSheet.remove(); tutSheet = null; return true; }
-    // 1.6 作品页开着 → 退回作品列表（P197：这一层是新增的，返回键要认得它）
-    if (typeof workEl !== "undefined" && workEl) { workEl.remove(); workEl = null; return true; }
     // 2. 正在编辑某个作品 → 回工作台，而不是把应用退掉
     try {
       if (sessionStorage.getItem(EDIT_KEY) === "1") {
@@ -406,7 +399,7 @@
         // 横屏走「先选中、右侧看详情、点继续编辑才进」；
         // 竖屏保持一点就进 —— 一屏只有一个主角，多一步反而累。
         if (splitMode()) { selFolder = b.dataset.folder; paintDetail(projects); return; }
-        openWork(b.dataset.folder);
+        openProject(b.dataset.folder, null, "script");
       });
       // 长按 480ms 进选择（相册的手感）；按住就滑走/抬起都要取消，不能误进
       b.addEventListener("pointerdown", function () {
@@ -493,7 +486,7 @@
       hero.classList.add("has");
     };
     img.src = "/api/thumb?folder=" + encodeURIComponent(p.folder);
-    box.querySelector(".m-det-go").addEventListener("click", function () { openWork(p.folder); });
+    box.querySelector(".m-det-go").addEventListener("click", function () { openProject(p.folder, null, "script"); });
     // 选中态：左列表里同目录的那张卡描一圈，人一眼知道右边这块说的是谁
     var list = $("mHomeList");
     if (list) list.querySelectorAll(".m-home-card").forEach(function (c) {
@@ -594,153 +587,6 @@
       layer.appendChild(t);
       setTimeout(function () { t.remove(); }, 2200);
     });
-  }
-
-  // ---- 作品页（P197）：点作品先进这一屏，不直接进编辑器 ----
-  // 为什么加这一层：点卡就进编辑器，等于第一次用的人打开就是行号、等宽字、@ 指令。
-  // 这一屏先给封面和「播放」，人能立刻知道"这是个能玩的东西"，再决定改不改。
-  var workEl = null;
-  function openWork(folder) {
-    var p = null;
-    for (var i = 0; i < allProjects.length; i++) {
-      if (allProjects[i].folder === folder) p = allProjects[i];
-    }
-    if (!p) return;
-    if (workEl) workEl.remove();
-    workEl = document.createElement("div");
-    workEl.className = "m-work";
-    // P197b 作品工作台：封面 + 「写 / 玩」两个入口 + 创作资源清单。
-    // 不走纯编辑器那一套：这一屏要先让人看见"这是个能玩的作品"，
-    // 再由他自己点进去改。资源清单里的每一项都是真入口，点了就跳对应页。
-    workEl.innerHTML =
-      '<div class="m-work-head">' +
-        '<button type="button" class="m-work-back" id="mWorkBack">‹ 作品</button>' +
-        '<span class="m-work-dot">' + ago(p.mtime) + '</span>' +
-      '</div>' +
-      '<div class="m-work-body">' +
-        '<div class="m-work-hero">' +
-          '<div class="m-work-cover"><img alt=""></div>' +
-          '<div class="m-work-title">' + String(p.name).replace(/</g, "&lt;") + '</div>' +
-          '<div class="m-work-meta">' + (p.ins || 0) + ' 句台词 · ' + ago(p.mtime) + '</div>' +
-          '<button type="button" class="m-work-play" id="mWorkPlay">▶ 播放看一遍</button>' +
-          '<button type="button" class="m-work-write" id="mWorkWrite">✎ 继续创作</button>' +
-        '</div>' +
-        '<div class="m-work-side">' +
-          '<div class="m-work-sec"><span>创作资源</span><i></i></div>' +
-          '<div class="m-work-rows">' +
-            '<button type="button" data-tab="script"><b>剧本</b><span>' + (p.ins || 0) + ' 句台词</span><em>›</em></button>' +
-            '<button type="button" data-tab="assets"><b>素材</b><span>图片·音频·语音</span><em>›</em></button>' +
-            '<button type="button" data-tab="look"><b>外观</b><span>比例·字号·主题</span><em>›</em></button>' +
-            '<button type="button" data-tab="export"><b>导出</b><span>网页 / 安装包</span><em>›</em></button>' +
-            '<button type="button" class="m-work-hist" id="mWorkHist"><b>历史</b>' +
-              '<span id="mWorkHistNum">自动留版</span><em>›</em></button>' +
-          '</div>' +
-        '</div>' +
-      '</div>';
-    document.body.appendChild(workEl);
-    // P198：这一屏本来就是"决定要不要改"的地方，所以未保存草稿在这里就摆出来，
-    // 不等到进了编辑器再弹。不做模态 —— 模态会把封面和「播放」盖住，
-    // 而人可能只是想先看一遍，看完再决定留不留那版草稿。
-    var dft = (window.MYONLDraft && window.MYONLDraft.peek(p.name)) || null;
-    if (dft) {
-      var dt = new Date(dft.at);
-      var hh = (dt.getHours() < 10 ? "0" : "") + dt.getHours();
-      var mm = (dt.getMinutes() < 10 ? "0" : "") + dt.getMinutes();
-      var df = window.MYONLDraft.diffText(dft);
-      var tip = document.createElement("div");
-      tip.className = "m-draft-tip";
-      tip.style.cssText = "margin:0 0 12px;padding:10px 12px;border-radius:4px;" +
-        "background:rgba(224,196,106,.10);border:1px solid rgba(224,196,106,.34);";
-      tip.innerHTML =
-        '<div style="font-size:13px;color:#e0c46a;line-height:1.5">' +
-          '上次没保存的内容会自动接上 · ' + hh + ':' + mm + ' · ' +
-          (df.chars >= 0 ? "多 " + df.chars : "少 " + (-df.chars)) + ' 字' +
-          (dft.stale ? '<br><span style="color:#e08a6a">草稿基于的版本已经变过（回退或导入过）</span>' : '') +
-        '</div>' +
-        '<div style="display:flex;gap:8px;margin-top:8px">' +
-          '<button type="button" id="mDraftGo" style="flex:1;height:34px;border:0;border-radius:4px;' +
-            'background:#4f8cff;color:#fff;font-size:13px">继续创作（接上次内容）</button>' +
-          '<button type="button" id="mDraftNo" style="flex:0 0 76px;height:34px;' +
-            'border:1px solid rgba(160,180,210,.4);border-radius:4px;background:transparent;' +
-            'color:#9fb3d1;font-size:13px">丢弃</button>' +
-        '</div>';
-      var hero = workEl.querySelector(".m-work-hero");
-      if (hero && hero.parentNode) hero.parentNode.insertBefore(tip, hero.nextSibling);
-      else workEl.insertBefore(tip, workEl.firstChild);
-      // P198.1：这里不再"问要不要恢复" —— 进去会自动接上，所以按钮就是"继续创作"。
-      // 留「丢弃」是因为"我不要那版"必须有个地方按，不然自动接上就成了强制。
-      tip.querySelector("#mDraftGo").addEventListener("click", function () {
-        window.MYONLDraft.markShown(dft);
-        openProject(folder, null, "script");
-      });
-      tip.querySelector("#mDraftNo").addEventListener("click", function () {
-        window.MYONLDraft.drop(p.name);
-        tip.remove();
-      });
-    }
-    // P197c：这一屏原来把底栏盖住了 —— 首页那条导航在 .m-home 层里，层被 .m-work 压下去，
-    // 进作品页底部就空了，看着像"tab 被砍了"。这里带一条同样的导航下来，
-    // 点击转给首页那条真导航（新建/导入/教程/设置各自只有一份逻辑）。
-    var nav = document.getElementById("mHomeNav");
-    if (nav) {
-      var clone = nav.cloneNode(true);
-      clone.removeAttribute("id");
-      clone.querySelectorAll("[id]").forEach(function (n) { n.removeAttribute("id"); });
-      clone.classList.add("m-work-nav");
-      clone.querySelectorAll(".m-nav-item").forEach(function (b) { b.classList.remove("on"); });
-      var first = clone.querySelector('.m-nav-item[data-nav="home"]');
-      if (first) first.classList.add("on");
-      workEl.appendChild(clone);
-      clone.addEventListener("click", function (e) {
-        var it = e.target.closest ? e.target.closest(".m-nav-item") : null;
-        if (!it) return;
-        if (it.dataset.nav === "home") {
-          if (workEl) { workEl.remove(); workEl = null; }
-          return;
-        }
-        var orig = nav.querySelector('.m-nav-item[data-nav="' + it.dataset.nav + '"]');
-        if (orig) orig.click();
-      });
-    }
-    var img = workEl.querySelector(".m-work-cover img");
-    var cv = workEl.querySelector(".m-work-cover");
-    // 先把渐变 + 首字垫上，图真加载出来再换成图。反过来做的话没图的工程
-    // 会先闪一块死灰（离线设备 / 新作品都是这个情形）。
-    cv.classList.add("empty");
-    cv.dataset.ch = String(p.name || "作").trim().charAt(0);
-    img.addEventListener("load", function () { cv.classList.remove("empty"); cv.classList.add("on"); });
-    img.src = "/api/thumb?folder=" + encodeURIComponent(folder);
-    workEl.querySelector("#mWorkBack").addEventListener("click", function () {
-      if (workEl) { workEl.remove(); workEl = null; }
-    });
-    workEl.querySelector("#mWorkPlay").addEventListener("click", function () {
-      openProject(folder, null, "preview");
-    });
-    workEl.querySelector("#mWorkWrite").addEventListener("click", function () {
-      openProject(folder, null, "script");
-    });
-    workEl.querySelectorAll(".m-work-rows button").forEach(function (b) {
-      if (!b.dataset.tab) return;   // 「历史」那行没有 tab，单独绑
-      b.addEventListener("click", function () { openProject(folder, null, b.dataset.tab); });
-    });
-    // 历史版本：P197d 把入口从「导出 → 第三行」搬到这里 ——
-    // 之前它埋在导出页里，没有人点得到，等于没有。
-    var hist = workEl.querySelector("#mWorkHist");
-    if (hist) {
-      hist.addEventListener("click", function () {
-        if (window.MYONLSnapshotsUI) window.MYONLSnapshotsUI.open(folder);
-        else dlgInfo("这个设备上没有历史版本模块");
-      });
-      if (window.MYONLSnapshots) {
-        window.MYONLSnapshots.list(folder).then(function (rows) {
-          var n = workEl && workEl.querySelector("#mWorkHistNum");
-          if (!n) return;
-          n.textContent = rows.length
-            ? (rows.length + " 版 · 最近 " + ago(rows[0].at))
-            : "每次保存都自动留一版";
-        }).catch(function () {});
-      }
-    }
   }
 
   function enterEditor() {

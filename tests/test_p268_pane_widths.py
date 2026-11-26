@@ -52,15 +52,18 @@ def test_grip_is_grabbable_on_touch():
     assert "width: 22px" in b and "margin-left: -11px" in b
     assert "touch-action: none;" in b
     assert "top: 52px" in b
-    assert "background: rgba(79, 140, 255, .35);" in b
-    assert ".m-rail-grip.on::after, .m-prev-grip.on::after { height: 76px;" in b
+    # 原：常态 rgba(.35) 5px 胶囊、拖动 76px 粗条；新：常态 1px/.28 细线，拖动最多 2px/56px/.8，不回粗胶囊
+    assert "background: rgba(79, 140, 255, .28);" in b
+    assert ".m-rail-grip.on::after, .m-prev-grip.on::after { width: 2px; height: 56px;" in b
     assert "html.m-shell.m-dragging, html.m-shell.m-dragging * { cursor: col-resize !important; user-select: none; }" in CSS
 
 
 def test_columns_read_only_the_vars():
     assert "html.m-shell #scenePage.m-detail #sceneForm { grid-template-columns: var(--m-prev, 34%) minmax(0, 1fr) !important; }" in CSS
     assert "minmax(170px, 34%)" not in CSS
-    assert ".m-prev-grip { left: calc(var(--m-rail, 232px) + var(--m-prev, 34%)); }" in CSS
+    # 原：prev 把手 left = rail+prev；新：再 +13px 对齐舞台盒右缘（表单左 padding 13px
+    # 把舞台盒推离把手边界 13px），可见线落在图缘右侧 8px，不再压图
+    assert ".m-prev-grip { left: calc(var(--m-rail, 232px) + var(--m-prev, 34%) + 13px); }" in CSS
     assert "html.m-shell.m-stage-off #scenePage.m-detail #sceneForm { grid-template-columns: 34px minmax(0, 1fr) !important; }" in CSS
 
 

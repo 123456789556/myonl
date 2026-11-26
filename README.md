@@ -1,7 +1,7 @@
 # MYONL · 手机上的视觉小说编辑器
 
 [![tests](https://github.com/123456789556/myonl/actions/workflows/tests.yml/badge.svg?branch=main)](https://github.com/123456789556/myonl/actions/workflows/tests.yml)
-![Release](https://img.shields.io/badge/release-v1.2.80-blue)
+![Release](https://img.shields.io/badge/release-v1.2.81-blue)
 
 安卓 7.0+ / Windows 10+ / 网页 · 离线可用 · 没有账号 · 不联网 · MIT
 
@@ -60,8 +60,8 @@ python tools/check_directive_parity.py
 
 | 结论 | 条数 | 含义 |
 |---|---|---|
-| 两端都能写、解析结果一致 | **28** | 手机做完的剧本电脑端能接着改，反过来也行 |
-| 只有电脑端能写 | **2**（`@anim`、`@plug`） | 手机端会给明确的中文提示「这条暂时写不了」，不会崩；其中 `@anim` 的成品在手机上**能演**，`@plug` 连成品也不演（播放器没有插件实现） |
+| 两端都能写、解析结果一致 | **29** | 手机做完的剧本电脑端能接着改，反过来也行（`@include` 两端都拦，算在一致里） |
+| 只有电脑端能写 | **1**（`@plug`） | 手机端会给明确的中文提示，不会崩；`@plug` 连成品也不演（播放器没有插件实现） |
 | 真差异 | **0** | — |
 
 新增一条指令时，这条对拍会自动红，提醒你补另一端；确实只能一端写，就写进
@@ -292,9 +292,9 @@ python tools/pack_apk.py --game dist/single/你的作品.html
 
 ## 装它
 
-**[⬇ 下载 MYONL-v1.2.80.apk](https://github.com/123456789556/myonl/releases/download/v1.2.80/MYONL-v1.2.80.apk)** · 安卓 7.0 以上 · 手机 / 折叠屏 / 平板都能用，横竖屏自适应
+**[⬇ 下载 MYONL-v1.2.81.apk](https://github.com/123456789556/myonl/releases/download/v1.2.81/MYONL-v1.2.81.apk)** · 安卓 7.0 以上 · 手机 / 折叠屏 / 平板都能用，横竖屏自适应
 
-**[⬇ 下载 MYONL-v1.2.80-editor-win.zip](https://github.com/123456789556/myonl/releases/download/v1.2.80/MYONL-v1.2.80-editor-win.zip)** · Windows 10/11 · 解压双击 `editor.exe`，不用装 Python
+**[⬇ 下载 MYONL-v1.2.81-editor-win.zip](https://github.com/123456789556/myonl/releases/download/v1.2.81/MYONL-v1.2.81-editor-win.zip)** · Windows 10/11 · 解压双击 `editor.exe`，不用装 Python
 
 装好打开就是书架，点「新建作品」开始。底部「导出」有两条出口：
 自包含 `.html`（发微信对方就能玩）和 APK（装到手机上就是一个独立 App）。
@@ -353,18 +353,18 @@ APK 的 `minSdk` 是 24（安卓 7.0）。只按手机屏幕排版，平板能�
 **它还能把作品打成 APK**：模板壳和签名材料就在 assets 里，全程不用电脑、不用 Java，
 出来的包发给另一台手机也能直接装。
 
-**手机端编辑器暂时写不了的 3 条**：`@anim` `@plug` `@include`。
-手机端解析器（`engine/parser.js`）会直接报错并指出第几行，不假装写进去了；完整边界见 [docs/手机端编游戏.md](docs/mobile/手机端编游戏.md)。
+**手机端写不了的 2 条**：`@plug` `@include`；`@anim` 已在手机端放开，能写能演。
+手机端解析器（`engine/parser.js`）遇到写不了的行会明确指出第几行，不假装写进去了；完整边界见 [docs/手机端编游戏.md](docs/mobile/手机端编游戏.md)。
 
-> 这 3 条要分开看，别用一句「暂不支持」糊过去：
+> 这几条要分开看，别用一句「暂不支持」糊过去：
 >
 > | 指令 | 手机端能写 | 成品在手机上 |
 > |---|---|---|
-> | `@anim` | ❌ 解析分支还没补 | ✅ 能演（`myonl-core.js:274` 有补间实现，`myonl-player.js:1517` 逐参数取值） |
-> | `@include` | ❌ 手机作品只有单文件 | ✅ 能演（电脑端打包时已内联展开，成品里根本没有这条指令） |
-> | `@plug` | ❌ 没有插件可加载 | ❌ **也不演**：播放器没有插件实现，这条会被静默跳过 |
+> | `@anim` | ✅ 已放开（P274，`parser.js:330` 解析分支） | ✅ 能演（`myonl-core.js:274` 存补间，`myonl-player.js:1574` 逐参数取值） |
+> | `@include` | ❌ 电脑端拆多文件的写法，手机作品只有单文件，这行可以删掉 | ✅ 能演（电脑端打包时已内联展开，成品里根本没有这条指令） |
+> | `@plug` | ❌ 这台设备上没有插件实现 | ❌ **也不演**：播放器没有插件实现，成品里被静默跳过 |
 >
-> 所以只有 `@anim` 和 `@include` 是「电脑端写、手机上演」；`@plug` 两头都没有，别指望它。
+> `@anim` 两端都能写能演；`@include` 是「电脑端写、手机上演」；`@plug` 两头都没有，别指望它。
 
 刚放开的这 5 条（`@voice` `@cg` `@fg` `@camera` `@transition`）在逐句视图里**能看、但只能整行改**：
 卡片视图有中文名和一句摘要（`editor/editor_pro.js:534` 的 `OP_LABEL` / `summarize`），
@@ -435,11 +435,11 @@ APK 的 `minSdk` 是 24（安卓 7.0）。只按手机屏幕排版，平板能�
 |---|---|---|---|
 | 画面 | `@bg` `@show` `@hide` `@video` `@cg` `@fg` | ✅ | ✅ |
 | 演出 | `@chapter` `@wait` `@camera` `@transition` | ✅ | ✅ |
-| 演出 | `@anim` | ❌（暂时，电脑端写） | ✅ |
+| 演出 | `@anim` | ✅ | ✅ |
 | 声音 | `@music` `@sfx` `@voice` | ✅ | ✅ |
 | 流程 | `@label` `@jump` `@choice` `@if` `@set` `@end` | ✅ | ✅ |
-| 扩展 | `@include` | ❌ | 仅电脑端工程 |
-| 扩展 | `@plug` | ❌ | 无实现 |
+| 扩展 | `@include` | ❌（电脑端多文件写法，手机单文件用不上） | ✅（打包时已内联展开） |
+| 扩展 | `@plug` | ❌ | 无实现，成品也不演 |
 
 一句话：**左边一列是"手机能不能打字写进去"，右边一列是"成品在手机上好不好使"**，两件事不要混。
 

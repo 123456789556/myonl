@@ -63,8 +63,9 @@ def test_drag_geometry_and_persistence():
 
 
 def test_split_gate_hides_controls_outside_landscape():
-    # 竖屏不许出手柄/按钮：分栏只在 ≥700 宽且横着时成立
-    assert "var split = window.innerWidth >= 700 && window.innerWidth > window.innerHeight;" in LAYOUT
+    # 竖屏窄屏不许出手柄/按钮。原断言：只认 width>height（横屏）；新断言：横屏 ≥700 宽，
+    # 或平板竖屏（高 ≥700）也分栏 —— 768×1024 不再把舞台拉成通屏宽。
+    assert "var split = window.innerWidth >= 700 && (window.innerHeight >= 700 || window.innerWidth > window.innerHeight);" in LAYOUT
     assert 'if (g) g.style.display = split ? "" : "none";' in LAYOUT
     assert 'if (b) {' in LAYOUT and 'b.style.display = split ? "" : "none";' in LAYOUT
 

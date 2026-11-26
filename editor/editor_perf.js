@@ -222,9 +222,11 @@
   function render(model, t) {
     model.perf = model.perf || [];
     var live = model.perf.filter(function (p) { return !p.del; });
+    var cats = live.map(function (p) { return LABEL[p.op]; }).filter(Boolean);
+    var hint = live.length ? live.length + " 条" + (cats.length ? " · " + cats.join("/") : "")
+      : "配音 · CG · 前景 · 镜头 · 转场 · 补间";
     var h = [];
-    h.push('<details class="sf-fold sf-perf-box"' + (model.perfOpen ? " open" : "") + '><summary class="sf-sec">演出 <span class="sf-hint">配音 · CG · 前景 · 镜头 · 转场 · 补间' +
-      (live.length ? " · " + live.length + " 条" : "") + "</span></summary>");
+    h.push('<details class="sf-fold sf-perf-box"' + (model.perfOpen ? " open" : "") + '><summary class="sf-sec">演出 <span class="sf-hint">' + esc(hint) + "</span></summary>");
     h.push('<div class="sf-padd">' + OPS.map(function (o) {
       return '<button type="button" class="icon-btn sf-p-add" data-perf="' + o + '">＋' + LABEL[o] + "</button>";
     }).join("") + "</div>");

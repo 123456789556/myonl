@@ -35,6 +35,7 @@ def test_title_single_line_ellipsis():
 
 
 def test_grip_stub_hugs_the_top():
-    assert 'top: 12px; width: 5px; height: 48px; margin-top: 0;' in CSS
+    # 原：top:12px; width:5px; height:48px 蓝胶囊；新：1px 竖线、高 44px、贴顶 12px，线挪到把手外侧离开舞台图
+    assert 'top: 12px; width: 1px; height: 44px;' in CSS
     # 垂直居中的老写法必须消失，否则短条又悬在预览块下面
     assert 'top: 50%; width: 5px; height: 48px; margin-top: -24px;' not in CSS

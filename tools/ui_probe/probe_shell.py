@@ -273,28 +273,38 @@ def probe_mobile(pg, rep: Report, shots: Path, base: str) -> None:
         pg.evaluate("()=>{const p=document.querySelector('.snap-panel');if(p)p.remove();}")
         return rep.add("版本历史：面板是实底（首页内容不透上来）", opaque, "bg=%s" % bg)
 
-    def c_workback() -> bool:
-        pg.wait_for_timeout(300)
-        # 卡片上的文字是 span（高度可能为 0），而且卡片带着常驻动画，Playwright 的
-        # 「等元素稳定」永远等不到；按坐标点封面区，事件照样冒泡到卡片自己的处理器。
+    def c_enter_direct() -> bool:
+        # P281：作品工作台封面屏已撤。点卡直接落逐句编辑：底栏五格出来、
+        # 旧 `.m-work` 层不许残留；再点 ‹ 回首页，底栏随之收起。
         card = rect(pg, ".m-home-card")
         pg.mouse.click(card[0] + 24, card[1] + 24)
         try:
-            pg.wait_for_selector(".m-work", state="visible", timeout=8000)
+            pg.wait_for_selector(".m-tabbar", state="visible", timeout=8000)
         except Exception:
-            return rep.add("进作品台后「‹ 作品」可点回首页", False, "作品台没出现")
+            return rep.add("点卡直进逐句编辑（无工作台封面屏）", False, "点完底栏 tab 没出来")
         pg.wait_for_timeout(400)
-        pg.screenshot(path=str(shots / "m06-work.png"))
-        back = rect(pg, "#mWorkBack")
+        pg.screenshot(path=str(shots / "m06-editor.png"))
+        tabs = pg.eval_on_selector_all(
+            ".m-tab", "els=>els.map(e=>e.dataset.tab+':'+e.textContent.trim())")
+        want = ["script:剧本", "assets:素材", "look:外观", "preview:预览", "export:导出"]
+        workbench = count(pg, ".m-work")
+        ok = tabs == want and workbench == 0
+        if not ok:
+            return rep.add("点卡直进逐句编辑（无工作台封面屏）", False,
+                           "tabs=%s work=%d" % (tabs, workbench))
+        back = rect(pg, "#mHomeBack")
         if back[2] < 20 or back[3] < 20:
-            return rep.add("进作品台后「‹ 作品」可点回首页", False, "返回键太小 rect=%s" % (back,))
+            return rep.add("点卡直进逐句编辑（无工作台封面屏）", False,
+                           "返回键太小 rect=%s" % (back,))
         pg.mouse.click(back[0] + back[2] / 2, back[1] + back[3] / 2)
-        pg.wait_for_timeout(600)
-        gone = pg.evaluate("()=>{const w=document.querySelector('.m-work');"
-                           "if(!w)return true;const r=w.getBoundingClientRect();return r.width===0||r.height===0}")
+        pg.wait_for_timeout(800)
+        gone = pg.evaluate("()=>{const t=document.querySelector('.m-tabbar');"
+                           "if(!t)return true;const r=t.getBoundingClientRect();return r.width===0}")
         home = pg.evaluate("()=>{const h=document.querySelector('.m-home');"
                            "if(!h)return 0;const r=h.getBoundingClientRect();return r.width}")
-        return rep.add("进作品台后「‹ 作品」可点回首页", gone and home > 0, "作品台已撤=%s 首页宽=%s" % (gone, home))
+        return rep.add("点卡直进逐句编辑（无工作台封面屏），‹ 可回首页",
+                       ok and gone and home > 0,
+                       "tabs=%s 工作台残留=%d 底栏撤=%s 首页宽=%s" % (tabs, workbench, gone, home))
 
     rep.check("底栏与页头", c_bars, shots, pg)
     rep.check("冷启动无遮挡", c_no_splash, shots, pg)
@@ -309,7 +319,7 @@ def probe_mobile(pg, rep: Report, shots: Path, base: str) -> None:
     rep.check("导出不串整页", c_export_one, shots, pg)
     rep.check("删除确认", c_delete, shots, pg)
     rep.check("历史面板实底", c_hist, shots, pg)
-    rep.check("‹ 作品可点", c_workback, shots, pg)
+    rep.check("点卡直进编辑并回首页", c_enter_direct, shots, pg)
 
 
 def probe_landscape(pg, rep: Report, shots: Path, base: str) -> None:
@@ -468,9 +478,8 @@ def probe_editor(pg, rep: Report, shots: Path, base: str) -> None:
     pg.wait_for_timeout(400)
     card = rect(pg, ".m-home-card")
     pg.mouse.click(card[0] + 24, card[1] + 24)
-    pg.wait_for_selector(".m-work", state="visible", timeout=8000)
-    pg.wait_for_timeout(300)
-    pg.locator("#mWorkWrite").click(timeout=8000)
+    # P281：点卡直接落逐句编辑，中间不再夹作品工作台一层（封面屏 / 写·玩两钮已撤）
+    pg.wait_for_selector(".m-tabbar", state="visible", timeout=8000)
     pg.wait_for_timeout(1200)
 
     def c_topbar() -> bool:

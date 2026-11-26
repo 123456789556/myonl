@@ -224,9 +224,8 @@ html.m-shell.m-wide .m-home-list { padding-bottom: 6px; }
 html.m-shell .m-bin-b:hover, html.m-shell .m-bin-b:active, html.m-shell .m-bin-b.m-bin-bp {
   background: var(--mantle) !important;
 }
-/* P259：手机上不足 44 的触控区：删一句的 ✕ 是 42×38、作品台「‹ 作品」是 60×34。 */
+/* P259：手机上不足 44 的触控区：删一句的 ✕ 是 42×38。 */
 html.m-shell .sf-del { min-width: 44px; height: 44px; }
-html.m-shell #mWorkBack { height: 44px !important; }
 /* 别把整块丢到屏幕中间 —— 实测那样空态离 tab 老远，更像另一个毛病。
    做法是内容贴着上面排、但顶部给足呼吸（tab 下 24px）。 */
 .m-lib-body {
@@ -476,7 +475,7 @@ html.m-shell .asset-pane,
 html.m-shell .file-pane { padding-top: var(--safe-pad-top) !important; }
 
 html.m-shell .menubar {
-  height: calc(50px + var(--safe-pad-top)) !important;
+  height: var(--m-topbar-h, calc(44px + var(--safe-pad-top))) !important;
 }
 /* 首页原本自带 24px 上留白，抬到 14px + 安全带 = 54（实测标题落在 top=54，正好出孔带） */
 html.m-shell .m-home { padding-top: calc(14px + var(--safe-pad-top)) !important; }
@@ -511,7 +510,7 @@ html.m-shell .scene-page .scene-item.active::before { background: var(--blue-ink
 
 /* ===== P222b 场景页别再叠在顶栏上 =====
    .center-page 本是 fixed top:0，跟 90px 顶栏重叠；场景页从顶栏下开始，它那份 40px 安全带就不要了。 */
-html.m-shell .center-page.scene-page { top: calc(50px + var(--safe-pad-top)) !important; padding-top: 0 !important; }
+html.m-shell .center-page.scene-page { top: var(--m-topbar-h, calc(44px + var(--safe-pad-top))) !important; padding-top: 0 !important; }
 html.m-shell .scene-page .cp-head { padding-top: 6px !important; }
 
 /* ===== P249 手机上「✕ 关闭」不再是关闭，统一成「‹」 ====

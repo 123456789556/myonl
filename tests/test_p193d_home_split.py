@@ -37,15 +37,15 @@ def test_横屏打开详情并收起重复入口():
 def test_横屏点卡片先选中不直接进():
     assert "function splitMode()" in HOME_JS
     assert "if (splitMode()) { selFolder = b.dataset.folder; paintDetail(projects); return; }" in HOME_JS
-    # P197：竖屏不是"一点就进编辑器"，而是先进作品页（封面 + 写/玩两个入口）
-    assert "openWork(b.dataset.folder);" in HOME_JS
+    # 竖屏点卡直接进逐句编辑；作品工作台封面屏已撤（手机端是创作主场，不再先给一层"玩/改"选择页）
+    assert "openProject(b.dataset.folder, null, \"script\");" in HOME_JS
 
 
 def test_详情面板有唯一主操作():
     assert "function paintDetail(projects)" in HOME_JS
     assert 'class="m-det-go">继续编辑' in HOME_JS
-    # P197：横屏右栏那一颗也先进作品页，不再直接落编辑器
-    assert 'box.querySelector(".m-det-go").addEventListener("click", function () { openWork(p.folder); });' in HOME_JS
+    # 横屏右栏「继续编辑」直进逐句编辑，不再经过作品工作台封面屏
+    assert 'box.querySelector(".m-det-go").addEventListener("click", function () { openProject(p.folder, null, "script"); });' in HOME_JS
     # P194：教程已进底栏第二格，右栏不再挂第二条教程入口（同一件事第三个位置）
     assert "m-det-tut" not in HOME_JS
 

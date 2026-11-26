@@ -144,9 +144,6 @@
       if (head.indexOf("\t") >= 0) c = head.replace(/\t/g, "    ") + c.slice(lead);
       var indent = c.length - c.replace(/^ +/, "").length;
       var stripped = c.trim();
-      if (stripped.split(/\s+/, 1)[0] === "@include") {
-        throw synErr(n, "@include 只能出现在电脑端（手机端作品是单文件，没有别的文件可引入）");
-      }
       out.push({ n: n, indent: indent, text: stripped });
     }
     return out;
@@ -572,11 +569,21 @@
     if (head === "choice:" || (head === "choice" && argstr === ":")) return this.choice(n, L.indent);
     if (head === "choice") throw synErr(n, '@choice 后面需要冒号，写法是单独一行 "@choice:"，后接缩进的选项列表');
 
+    // 拒收名单单一来源（UNSUPPORTED_DIRECTIVES），但两条分开说，别用一句「暂不支持」糊：
+    // include 是电脑端多文件写法，手机单文件用不上，引导删掉；plug 这台设备没有插件、成品也不演。
+    var baseName = head.split(":")[0];
+    if (baseName === "include") {
+      throw synErr(n, "@include 是电脑端拆多文件的写法：手机上作品就是一份单文件，用不上它，这行可以删掉。"
+        + "（@include 的成品在手机上能演：电脑端打包时已内联展开，成品里根本没有这条指令）");
+    }
+    if (baseName === "plug") {
+      throw synErr(n, "@plug 是电脑端的插件指令：这台设备上没有插件实现，@plug 连成品也不演（播放器没有插件实现）。");
+    }
+
     var unsNames = UNSUPPORTED_DIRECTIVES.map(function (d) { return "@" + d; }).join(" / ");
     throw synErr(n, '未知指令 "@' + head + '"（手机端解析器支持：@character @bg @music @sfx @show @hide @wait '
       + '@chapter @label @jump @end @set @if @video @voice @cg @fg @anim @camera @transition @choice: '
-      + '"@[角色] 文本" "@ 文本"；暂时写不了的是 ' + unsNames
-      + '（@include 的成品在手机上能演（电脑端打包时已内联展开），@plug 连成品也不演：播放器没有插件实现））');
+      + '"@[角色] 文本" "@ 文本"；另外写不了的是 ' + unsNames + '）');
   };
 
   Parser.prototype.sayNext = function (line) {
